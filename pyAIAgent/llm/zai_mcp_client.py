@@ -171,9 +171,20 @@ class ZAIMCPClient:
             request_json = json.dumps(mcp_request) + '\n'
             self.mcp_process.stdin.write(request_json.encode())
 
-            # Read response
-            response_line = await self.mcp_process.stdout.readline()
-            response_data = json.loads(response_line.decode())
+            # Read response with timeout
+            try:
+                response_line = await asyncio.wait_for(
+                    self.mcp_process.stdout.readline(),
+                    timeout=10.0
+                )
+                if not response_line:
+                    log.error("No response from MCP server")
+                    return None
+
+                response_data = json.loads(response_line.decode())
+            except asyncio.TimeoutError:
+                log.error("MCP server response timeout")
+                return None
 
             if 'result' in response_data:
                 return response_data['result'].get('description', 'No description available')

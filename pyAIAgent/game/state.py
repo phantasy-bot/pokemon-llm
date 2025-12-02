@@ -124,8 +124,11 @@ def prep_llm(sock) -> dict:
         map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
         position = (x, y)
     else:
-        # no map data or in battle → empty map
-        open("minimap.png", "wb").close()
+        # no map data or in battle → create default white minimap
+        from PIL import Image
+        # Create a white square with same dimensions as typical minimap
+        default_minimap = Image.new('RGB', (160, 160), color='white')
+        default_minimap.save("minimap.png")
         position = None
         facing = None
 

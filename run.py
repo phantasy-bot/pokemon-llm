@@ -9,7 +9,7 @@ import logging
 
 from pyAIAgent.utils.misc import parse_max_loops_fn
 from pyAIAgent.utils.socket_utils import send_command
-from pyAIAgent.game.state import DEFAULT_ROM
+from pyAIAgent.game.state import DEFAULT_ROM, get_rom_path
 from websocket_service import broadcast_message, run_server_forever as start_websocket_service
 from benchmark import load
 from interactive import interactive_console
@@ -39,7 +39,7 @@ state = {
 }
 
 def start_mgba_with_scripting(rom_path=None, port=config.PORT):
-    rom_path = rom_path or os.path.join(os.path.dirname(__file__), DEFAULT_ROM)
+    rom_path = rom_path or os.path.join(os.path.dirname(__file__), get_rom_path())
     if not os.path.exists(rom_path):
         log.error(f"ROM file not found: {rom_path}")
         sys.exit(1)
@@ -167,7 +167,7 @@ async def terminate_process(proc, is_async):
 
 
 # --- Main Execution Logic ---
-async def main_async(auto, max_loops_arg=None): # Added max_loops_arg
+async def main_async(auto, max_loops_arg=None, selected_mode=None): # Added max_loops_arg and selected_mode
     """Asynchronous main function to run mGBA, WebSocket server, and optionally the LLM loop."""
     proc = sock = None
     websocket_task = None
@@ -281,6 +281,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Select LLM mode first (before any mGBA startup)
+    from client_setup import parse_mode_arg, MODES
+    from llmdriver import set_current_mode
+    selected_mode = parse_mode_arg(MODES)
+
+    # Set the mode in llmdriver
+    set_current_mode(selected_mode)
+
     # Set global config based on parsed arguments
     if args.load_savestate:
         config.LOAD_SAVESTATE = True
@@ -290,7 +298,7 @@ if __name__ == '__main__':
 
     if args.auto:
         try:
-            asyncio.run(main_async(auto=True, max_loops_arg=args.max_loops))
+            asyncio.run(main_async(auto=True, max_loops_arg=args.max_loops, selected_mode=selected_mode))
         except KeyboardInterrupt:
             log.info("KeyboardInterrupt received, stopping async tasks...")
         except Exception as e:
