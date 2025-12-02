@@ -331,7 +331,14 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
     # Build the user message with text and images
     image_parts_for_api = []
-    text_segment = {"type": "text", "text": json.dumps(payload)}
+
+    # Include vision analysis directly in the text content for Z.AI mode
+    text_content = json.dumps(payload)
+    if CURRENT_MODE == "ZAI" and vision_analysis:
+        # Add vision analysis directly to the text for Z.AI mode
+        text_content = f"{text_content}\n\nIMPORTANT VISION ANALYSIS:\n{vision_analysis}"
+
+    text_segment = {"type": "text", "text": text_content}
     current_content = [text_segment]
 
     # Standard image processing for API

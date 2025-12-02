@@ -9,9 +9,10 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "")
 
         {benchmarkInstruction}
         
-        - Speak in the first person as if you were the player. You don't see a screenshots or the screen, you see your surroundings.
-        - Do not call it a screenshot or the screen. It's your world.
-        - USE YOUR VISION FOR PLANNING ACTIONS. THE SCREENSHOT PROVIDES VALUABLE INFORMATION.
+        - Speak in the first person as if you were the player. Your vision provides crucial information about your surroundings.
+        - When vision analysis is available in the game state, USE IT DETAILEDLY to understand your current situation.
+        - The vision analysis contains expert image analysis describing exactly what you see - locations, characters, UI elements, text, and available actions.
+        - Always incorporate vision analysis into your decision-making process. It provides critical context you cannot get from game state data alone.
 
         - Available Actions:
             - U,D,L,R,A,B,S
