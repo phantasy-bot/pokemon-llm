@@ -20,7 +20,15 @@
       "WebFetch(domain:z.ai)",
       "Bash(npx:*)",
       "Bash(pkill:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(git restore:*)",
+      "Bash(netstat:*)",
+      "Bash(POKEMON_ROM=red.gb python:*)",
+      "Bash(env:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(gtimeout:*)",
+      "Bash(ZAI_MODE=9 python:*)"
     ],
     "deny": [],
     "ask": []

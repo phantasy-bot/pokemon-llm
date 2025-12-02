@@ -284,7 +284,7 @@ if __name__ == '__main__':
     # Select LLM mode first (before any mGBA startup)
     from client_setup import parse_mode_arg, MODES
     from llmdriver import set_current_mode
-    selected_mode = parse_mode_arg(MODES)
+    selected_mode = parse_mode_arg(MODES, default_mode="ZAI")
 
     # Set the mode in llmdriver
     set_current_mode(selected_mode)

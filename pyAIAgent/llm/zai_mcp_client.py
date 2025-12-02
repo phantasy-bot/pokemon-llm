@@ -96,6 +96,8 @@ class ZAIMCPClient:
             ]
 
             log.info("Starting Z.AI MCP vision server...")
+            log.info(f"Command: {' '.join(cmd)}")
+            log.info(f"Environment variables: Z_AI_API_KEY={'*' * len(self.api_key)}, Z_AI_MODE={self.mode}")
 
             # Start the subprocess
             self.mcp_process = subprocess.Popen(
@@ -108,17 +110,40 @@ class ZAIMCPClient:
             )
 
             # Give it a moment to start
-            time.sleep(2)
+            time.sleep(3)  # Increased startup time
 
             # Check if process is still running
             if self.mcp_process.returncode is None:
                 self.is_connected = True
                 log.info("Z.AI MCP vision server started successfully")
+                log.info(f"MCP server PID: {self.mcp_process.pid}")
             else:
                 log.error(f"MCP server exited with code: {self.mcp_process.returncode}")
+                # Read stderr to see what went wrong
+                if self.mcp_process.stderr:
+                    stderr_output = self.mcp_process.stderr.read().decode()
+                    log.error(f"MCP server stderr during startup: {stderr_output}")
 
         except Exception as e:
             log.error(f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True)
+
+    def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
+        """
+        Synchronous version of analyze_image for use in sync contexts
+
+        Args:
+            image_path: Path to the image file
+            prompt: Text prompt to accompany the image
+
+        Returns:
+            Analysis result as string, or None if failed
+        """
+        # Use asyncio.run to call the async method
+        try:
+            return asyncio.run(self.analyze_image(image_path, prompt))
+        except Exception as e:
+            log.error(f"Sync image analysis failed: {e}", exc_info=True)
+            return None
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""
@@ -153,46 +178,115 @@ class ZAIMCPClient:
             return None
 
         try:
-            # Create MCP request for image analysis
-            mcp_request = {
+            # First, try to list available tools
+            list_tools_request = {
                 "jsonrpc": "2.0",
                 "id": 1,
+                "method": "tools/list",
+                "params": {}
+            }
+
+            log.info(f"Requesting available tools: {json.dumps(list_tools_request, indent=2)}")
+
+            # Send list tools request
+            list_tools_json = json.dumps(list_tools_request) + '\n'
+            self.mcp_process.stdin.write(list_tools_json.encode())
+            self.mcp_process.stdin.flush()
+
+            # Read tools list response
+            import time
+            import select
+
+            if hasattr(select, 'select'):
+                ready, _, _ = select.select([self.mcp_process.stdout], [], [], 10.0)
+                if not ready:
+                    log.error("Timeout waiting for tools list")
+                    return None
+
+            tools_response = self.mcp_process.stdout.readline()
+            if tools_response:
+                tools_data = json.loads(tools_response.decode())
+                log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
+
+                if 'result' in tools_data and 'tools' in tools_data['result']:
+                    available_tools = tools_data['result']['tools']
+                    log.info(f"Found {len(available_tools)} available tools")
+                    for tool in available_tools:
+                        log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
+            else:
+                log.error("No response for tools list")
+
+            # Use the correct tool name and parameters from the schema
+            tool_name = "analyze_image"
+            log.info(f"Using tool: {tool_name}")
+
+            # Create MCP request for image analysis with correct schema
+            mcp_request = {
+                "jsonrpc": "2.0",
+                "id": 2,
                 "method": "tools/call",
                 "params": {
-                    "name": "analyze_image",
+                    "name": tool_name,
                     "arguments": {
-                        "image": os.path.basename(image_path),
+                        "image_source": image_path,  # Use correct parameter name from schema
                         "prompt": prompt
                     }
                 }
             }
 
+            log.info(f"Sending MCP request: {json.dumps(mcp_request, indent=2)}")
+
             # Send request to MCP server
             request_json = json.dumps(mcp_request) + '\n'
             self.mcp_process.stdin.write(request_json.encode())
+            self.mcp_process.stdin.flush()
 
-            # Read response with timeout
+                # Read response with timeout using sync approach since process was started with Popen
             try:
-                response_line = await asyncio.wait_for(
-                    self.mcp_process.stdout.readline(),
-                    timeout=10.0
-                )
+                log.info(f"Waiting for MCP server response for {tool_name}...")
+
+                # Use select for timeout on subprocess stdout
+                if hasattr(select, 'select'):
+                    ready, _, _ = select.select([self.mcp_process.stdout], [], [], 30.0)
+                    if not ready:
+                        log.error(f"MCP server response timeout for {tool_name}")
+                        return None
+
+                response_line = self.mcp_process.stdout.readline()
                 if not response_line:
-                    log.error("No response from MCP server")
+                    log.error(f"No response from MCP server for {tool_name}")
+                    # Check if server is still running
+                    if self.mcp_process.poll() is not None:
+                        log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
+                        # Read stderr to see what went wrong
+                        if self.mcp_process.stderr:
+                            stderr_output = self.mcp_process.stderr.read().decode()
+                            log.error(f"MCP server stderr: {stderr_output}")
                     return None
 
+                log.info(f"Raw MCP response for {tool_name}: {response_line.decode().strip()}")
                 response_data = json.loads(response_line.decode())
-            except asyncio.TimeoutError:
-                log.error("MCP server response timeout")
+            except Exception as read_error:
+                log.error(f"MCP server communication error for {tool_name}: {read_error}")
                 return None
 
             if 'result' in response_data:
-                return response_data['result'].get('description', 'No description available')
+                result = response_data['result']
+                # Handle different response formats
+                if isinstance(result, dict):
+                    analysis = result.get('description', result.get('analysis', str(result)))
+                elif isinstance(result, str):
+                    analysis = result
+                else:
+                    analysis = str(result)
+
+                log.info(f"Successfully got analysis from {tool_name}")
+                return analysis
             elif 'error' in response_data:
-                log.error(f"MCP server error: {response_data['error']}")
+                log.error(f"MCP server error for {tool_name}: {response_data['error']}")
                 return None
             else:
-                log.error(f"Unexpected MCP response: {response_data}")
+                log.error(f"Unexpected MCP response for {tool_name}: {response_data}")
                 return None
 
         except Exception as e:
