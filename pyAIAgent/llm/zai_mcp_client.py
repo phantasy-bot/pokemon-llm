@@ -274,7 +274,19 @@ class ZAIMCPClient:
                 result = response_data['result']
                 # Handle different response formats
                 if isinstance(result, dict):
-                    analysis = result.get('description', result.get('analysis', str(result)))
+                    # Check for MCP content format first
+                    if 'content' in result and isinstance(result['content'], list) and len(result['content']) > 0:
+                        content = result['content'][0]
+                        if isinstance(content, dict) and 'text' in content:
+                            analysis = content['text']
+                            log.info(f"Successfully parsed MCP content format: {len(analysis)} chars")
+                        else:
+                            analysis = str(content)
+                            log.warning(f"MCP content format unexpected, got: {type(content)}")
+                    else:
+                        # Fallback to other possible formats
+                        analysis = result.get('description', result.get('analysis', str(result)))
+                        log.info(f"Using fallback format for MCP response: {len(str(analysis))} chars")
                 elif isinstance(result, str):
                     analysis = result
                 else:
