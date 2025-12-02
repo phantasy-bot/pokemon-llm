@@ -1,8 +1,17 @@
+import os
 from collections import deque
 from pyAIAgent.game.rom import load_map, load_tileset_header, load_collision_data, load_block_data
 from pyAIAgent.game.graphics import build_quadrant_walkability
 
-DEFAULT_ROM = 'c.gbc'
+DEFAULT_ROM = 'red.gb'
+
+def get_rom_path():
+    """Get ROM path from environment variable or default, relative to roms folder"""
+    rom_name = os.getenv('POKEMON_ROM', DEFAULT_ROM)
+    # If ROM path doesn't include a directory, assume it's in roms folder
+    if os.path.sep not in rom_name and not os.path.isabs(rom_name):
+        return os.path.join('roms', rom_name)
+    return rom_name
 
 def touch_controls_path_find(mapid, currentPos, screenCoords):
     """
@@ -13,7 +22,7 @@ def touch_controls_path_find(mapid, currentPos, screenCoords):
     y = int(screenCoords[1]) - 4
     print(f"POS: {int(currentPos[0])},{int(currentPos[1])}, Translated: {x},{y}, Desination: {int(currentPos[0]) + x},{int(currentPos[1]) + y}")
     destination = [max(int(currentPos[0]) + x, 0), max(int(currentPos[1]) + y, 0)]
-    actions = find_path(DEFAULT_ROM, mapid, currentPos, destination)
+    actions = find_path(get_rom_path(), mapid, currentPos, destination)
     if actions is None:
         return "[PATH BLOCKED OR INVALID UNWALKABLE DESTINATION]\n"
     return actions # None if there is no valid path

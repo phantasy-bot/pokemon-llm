@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger('llm_client_setup')
 
 # --- Configuration Defaults ---
-DEFAULT_MODE = "ANTHOPIC" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC
+DEFAULT_MODE = "ANTHOPIC" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC, ZAI
 DEFAULT_OPENAI_MODEL = "o3"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
 DEFAULT_OLLAMA_MODEL = "gemma3:27b-it-q4_K_M"
@@ -19,6 +19,7 @@ DEFAULT_GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"
 DEFAULT_TOGETHER_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
 DEFAULT_GROK_MODEL = "grok-3-mini"
 DEFAULT_ANTHOPIC_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_ZAI_MODEL = "glm-4v"
 
 DEFAULT_MODEL_BY_MODE = {
     "OPENAI": DEFAULT_OPENAI_MODEL,
@@ -29,6 +30,7 @@ DEFAULT_MODEL_BY_MODE = {
     "TOGETHER": DEFAULT_TOGETHER_MODEL,
     "GROK": DEFAULT_GROK_MODEL,
     "ANTHOPIC": DEFAULT_ANTHOPIC_MODEL,
+    "ZAI": DEFAULT_ZAI_MODEL,
 }
 
 MODES = list(DEFAULT_MODEL_BY_MODE.keys())
@@ -96,13 +98,17 @@ def parse_mode_arg(modes, default_mode=DEFAULT_MODE):
     else:
         print(f"LLM mode specified via command line: {mode}")
 
-    # Assuming you have this dictionary defined somewhere:
-    print(f"Using default model: {DEFAULT_MODEL_BY_MODE[mode]}")
+    # Show the actual model that will be used (from env var or default)
+    actual_model = get_config(f"{mode}_MODEL", DEFAULT_MODEL_BY_MODE[mode])
+    print(f"Using model: {actual_model}")
 
     return mode
 
-def setup_llm_client() -> tuple[OpenAI | None, str | None, str | None]:
-    MODE = parse_mode_arg(MODES)
+def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str | None]:
+    if mode is None:
+        MODE = parse_mode_arg(MODES)
+    else:
+        MODE = mode
 
     client = None
     model = None
@@ -239,10 +245,30 @@ def setup_llm_client() -> tuple[OpenAI | None, str | None, str | None]:
             log.info(f"Using Together Mode (via OpenAI client). Model: {model}")
         except Exception as e:
             log.error(f"Failed to initialize Together client: {e}", exc_info=True)
-            return None, None        
+            return None, None
+
+    elif MODE == "ZAI":
+        api_key = os.getenv("ZAI_API_KEY")
+        if not api_key:
+            log.error("MODE is ZAI but ZAI_API_KEY not found in environment variables.")
+            return None, None
+        try:
+            # Z.AI Coding Plan uses the correct API endpoint
+            base_url = get_config("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
+            client = OpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                timeout=TIMEOUT
+            )
+            model = get_config("ZAI_MODEL", DEFAULT_ZAI_MODEL)
+            supports_reasoning = True  # GLM-4.6 supports reasoning
+            log.info(f"Using Z.AI Coding Plan (via OpenAI client). Model: {model}")
+        except Exception as e:
+            log.error(f"Failed to initialize Z.AI client: {e}", exc_info=True)
+            return None, None
 
     else:
-        log.error(f"Invalid MODE selected: {MODE}. Set MODE environment variable correctly (e.g., OPENAI, GEMINI, OLLAMA, LMSTUDIO).")
+        log.error(f"Invalid MODE selected: {MODE}. Set MODE environment variable correctly (e.g., OPENAI, GEMINI, OLLAMA, LMSTUDIO, ZAI).")
         return None, None
 
     if client and model:
