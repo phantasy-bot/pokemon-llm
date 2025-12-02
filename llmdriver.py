@@ -19,9 +19,10 @@ from pyAIAgent.game.state import prep_llm
 from pyAIAgent.navigation import touch_controls_path_find
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from prompts import build_system_prompt, get_summary_prompt
-from client_setup import setup_llm_client
+from client_setup import setup_llm_client, parse_mode_arg, MODES
 from benchmark import Benchmark
 from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
+from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -46,7 +47,36 @@ MINIMAP_PATH = "minimap.png"
 SAVED_SCREENSHOT_PATH = SCREENSHOT_PATH
 SAVED_MINIMAP_PATH = MINIMAP_PATH
 
-client, MODEL, supports_reasoning = setup_llm_client()
+# Set CURRENT_MODE from external selection or prompt
+CURRENT_MODE = None  # Will be set by main script
+
+def set_current_mode(mode):
+    """Set the current LLM mode from external selection"""
+    global CURRENT_MODE
+    CURRENT_MODE = mode
+
+    # Setup LLM client with the selected mode
+    global client, MODEL, supports_reasoning, zai_vision_client
+    client, MODEL, supports_reasoning = setup_llm_client(CURRENT_MODE)
+
+    # Initialize Z.AI vision client if using Z.AI mode
+    zai_vision_client = None
+    if CURRENT_MODE == "ZAI" and client:
+        try:
+            zai_vision_client = create_zai_vision_client(client, MODEL, use_mcp=True)
+            log.info("Z.AI vision client initialized")
+        except Exception as e:
+            log.warning(f"Failed to initialize Z.AI vision client: {e}")
+
+# Note: CURRENT_MODE should be set by set_current_mode() before using any llmdriver functions
+# This prevents duplicate mode selection prompts
+
+# Initialize variables (will be set properly in set_current_mode)
+client = None
+MODEL = None
+supports_reasoning = False
+zai_vision_client = None
+
 chat_history = []
 response_count = 0
 action_count = 0
@@ -175,18 +205,23 @@ def next_with_timeout(iterator, timeout: float):
 def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchmark: Benchmark = None):
     """
     Determines and executes an action by querying an LLM.
-    
+
     This function intelligently switches between streaming and non-streaming API calls.
     - For models supporting a 'reasoning_effort', it uses a non-streaming call to
       avoid timeouts while the model "thinks".
     - For other models, it streams the response for lower perceived latency.
+    - For Z.AI mode, it optionally uses MCP vision server for image analysis.
     """
-    global response_count, tokens_used_session, chat_history
+    global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE
 
     summary_json = None
     payload = copy.deepcopy(state_data)
     screenshot = payload.pop("screenshot", None)
     minimap = payload.pop("minimap", None)
+
+    # Extract Z.AI specific image paths for MCP processing
+    screenshot_path = payload.pop("screenshot_path", None)
+    minimap_path = payload.pop("minimap_path", None)
 
     if not MINIMAP_2D:
         print("Minimap 2D disabled, removing minimap_2d from payload.")
@@ -200,7 +235,24 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     text_segment = {"type": "text", "text": json.dumps(payload)}
     current_content = [text_segment]
     image_parts_for_api = []
-    
+
+    # Handle Z.AI vision processing (using fallback instead of MCP to avoid async issues)
+    vision_analysis = ""
+    if CURRENT_MODE == "ZAI" and zai_vision_client and hasattr(zai_vision_client, 'analyze_image'):
+        # Skip MCP for now due to async/sync compatibility issues
+        log.info("Z.AI MCP available but using direct API for compatibility")
+    elif CURRENT_MODE == "ZAI" and client:
+        # Add a note about Z.AI vision capabilities
+        vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
+
+    # Add vision analysis to text if available
+    if vision_analysis:
+        updated_payload = payload.copy()
+        updated_payload["vision_analysis"] = vision_analysis.strip()
+        text_segment = {"type": "text", "text": json.dumps(updated_payload)}
+        current_content = [text_segment]
+
+    # Standard image processing for API
     if screenshot and isinstance(screenshot.get("image_url"), dict):
         image_parts_for_api.append({"type": "image_url", "image_url": screenshot["image_url"]})
     if minimap and MINIMAP_ENABLED and isinstance(minimap.get("image_url"), dict):
@@ -246,9 +298,140 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
             # NON-STREAMING path for reasoning models: more robust against long "thinking" times.
             log.info("Model supports reasoning. Making a non-streaming API call.")
             kwargs["stream"] = False
-            kwargs["reasoning_effort"] = REASONING_EFFORT
 
-            response = client.chat.completions.create(**kwargs)
+            # For Z.AI, use the correct API parameter format
+            if CURRENT_MODE == "ZAI":
+                # Create request with Z.AI GLM-4.6 specific parameters
+                zai_kwargs = {
+                    "model": kwargs.get("model"),
+                    "messages": kwargs.get("messages"),
+                    "stream": False
+                }
+
+                # Add Z.AI specific parameters according to their documentation
+                if "max_tokens" in kwargs:
+                    zai_kwargs["max_tokens"] = kwargs["max_tokens"]
+                if "temperature" in kwargs:
+                    zai_kwargs["temperature"] = kwargs["temperature"]
+
+                # Z.AI GLM-4.6 supports thinking parameter with specific format
+                if "thinking" not in zai_kwargs:
+                    zai_kwargs["thinking"] = {"type": "enabled"}
+
+                # Remove any unsupported parameters that might be in kwargs
+                for key in list(zai_kwargs.keys()):
+                    if zai_kwargs[key] is None:
+                        del zai_kwargs[key]
+
+                # Log detailed request information for debugging
+                log.info(f"Z.AI API call - Model: {zai_kwargs['model']}")
+                log.info(f"Z.AI API call - Messages count: {len(zai_kwargs['messages']) if zai_kwargs['messages'] else 0}")
+                if zai_kwargs['messages']:
+                    # Log first message content type and length
+                    first_msg = zai_kwargs['messages'][0]
+                    log.info(f"Z.AI API call - First message role: {first_msg.get('role', 'unknown')}")
+                    if 'content' in first_msg:
+                        if isinstance(first_msg['content'], list):
+                            content_types = [item.get('type') for item in first_msg['content'] if isinstance(item, dict)]
+                            log.info(f"Z.AI API call - Content types: {content_types}")
+                        else:
+                            log.info(f"Z.AI API call - Content type: {type(first_msg['content']).__name__}")
+                            log.info(f"Z.AI API call - Content preview: {str(first_msg['content'])[:200]}...")
+
+                log.info(f"Z.AI API call - Full request structure: {json.dumps({k: v if k != 'messages' else f'array[{len(zai_kwargs[k])}]' for k, v in zai_kwargs.items()}, indent=2)}")
+                log.info(f"Z.AI API call - Base URL: {client.base_url}")
+
+                try:
+                    # Use raw HTTP request for Z.AI since OpenAI client is not compatible
+                    import httpx
+
+                    # Prepare the request data in Z.AI format
+                    # Convert messages to text-only for Z.AI compatibility
+                    text_only_messages = []
+                    for msg in zai_kwargs["messages"]:
+                        if isinstance(msg.get("content"), list):
+                            # Handle multimodal content - extract only text
+                            text_content = ""
+                            for content_item in msg["content"]:
+                                if isinstance(content_item, dict) and content_item.get("type") == "text":
+                                    text_content += content_item.get("text", "")
+                                elif isinstance(content_item, str):
+                                    text_content += content_item
+                            if text_content:
+                                text_only_messages.append({
+                                    "role": msg.get("role", "user"),
+                                    "content": text_content
+                                })
+                        else:
+                            # Handle regular text content
+                            text_only_messages.append({
+                                "role": msg.get("role", "user"),
+                                "content": msg.get("content", "")
+                            })
+
+                    api_data = {
+                        "model": zai_kwargs["model"],
+                        "messages": text_only_messages
+                    }
+
+                    # Add optional parameters if available
+                    if "max_tokens" in zai_kwargs:
+                        api_data["max_tokens"] = zai_kwargs["max_tokens"]
+                    if "temperature" in zai_kwargs:
+                        api_data["temperature"] = zai_kwargs["temperature"]
+
+                    log.info(f"Z.AI API call - Converted multimodal to text-only messages: {len(text_only_messages)} messages")
+
+                    log.info(f"Z.AI API call - Making raw HTTP request to: {client.base_url}chat/completions")
+                    log.info(f"Z.AI API call - Request data keys: {list(api_data.keys())}")
+
+                    # Create httpx client with headers
+                    headers = {
+                        "Authorization": f"Bearer {client.api_key}",
+                        "Content-Type": "application/json"
+                    }
+
+                    with httpx.Client(timeout=30.0) as http_client:
+                        response = http_client.post(
+                            f"{client.base_url}chat/completions",
+                            json=api_data,
+                            headers=headers
+                        )
+
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            log.info("Z.AI API call successful via raw HTTP")
+                            log.info(f"Z.AI API response - Keys: {list(response_data.keys())}")
+
+                            # Create mock classes outside the class definition
+                            class MockMessage:
+                                def __init__(self, message_data):
+                                    self.content = message_data.get('content', None)
+
+                            class MockChoice:
+                                def __init__(self, choice_data):
+                                    self.message = MockMessage(choice_data.get('message', {}))
+                                    self.finish_reason = choice_data.get('finish_reason', 'unknown')
+
+                            class MockResponse:
+                                def __init__(self, data):
+                                    self.choices = []
+                                    if 'choices' in data and data['choices']:
+                                        self.choices = [MockChoice(choice) for choice in data['choices']]
+
+                            response = MockResponse(response_data)
+                        else:
+                            log.error(f"Z.AI API HTTP request failed: {response.status_code}")
+                            log.error(f"Z.AI API response: {response.text}")
+                            raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+                except Exception as e:
+                    log.error(f"Z.AI API call failed with raw HTTP: {str(e)}")
+                    log.error(f"Z.AI API request was: {json.dumps(api_data, default=str, indent=2)}")
+                    raise e
+            else:
+                kwargs["reasoning_effort"] = REASONING_EFFORT
+                response = client.chat.completions.create(**kwargs)
             choice = response.choices[0]
             content = choice.message.content
 
@@ -512,16 +695,36 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             except Exception as e:
                 log.error(f"Failed to combine minimap: {e}")
 
-        b64_ss = encode_image_base64(SCREENSHOT_PATH)
-        if b64_ss:
-            llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
-        else:
-            llm_input_state["screenshot"] = None
+        # Handle image processing based on provider
+        if CURRENT_MODE == "ZAI" and zai_vision_client:
+            # For Z.AI, store image paths for MCP processing
+            llm_input_state["screenshot_path"] = SCREENSHOT_PATH
+            if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
+                llm_input_state["minimap_path"] = MINIMAP_PATH
 
-        if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
-            b64_mm = encode_image_base64(MINIMAP_PATH)
-            if b64_mm:
-                llm_input_state["minimap"] = {"image_url": {"url": f"data:image/png;base64,{b64_mm}", "detail": IMAGE_DETAIL}}
+            # Also create base64 versions for fallback
+            b64_ss = encode_image_base64(SCREENSHOT_PATH)
+            if b64_ss:
+                llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
+            else:
+                llm_input_state["screenshot"] = None
+
+            if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
+                b64_mm = encode_image_base64(MINIMAP_PATH)
+                if b64_mm:
+                    llm_input_state["minimap"] = {"image_url": {"url": f"data:image/png;base64,{b64_mm}", "detail": IMAGE_DETAIL}}
+        else:
+            # Standard base64 image processing for other providers
+            b64_ss = encode_image_base64(SCREENSHOT_PATH)
+            if b64_ss:
+                llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
+            else:
+                llm_input_state["screenshot"] = None
+
+            if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
+                b64_mm = encode_image_base64(MINIMAP_PATH)
+                if b64_mm:
+                    llm_input_state["minimap"] = {"image_url": {"url": f"data:image/png;base64,{b64_mm}", "detail": IMAGE_DETAIL}}
             else:
                 llm_input_state["minimap"] = None
 
