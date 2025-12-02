@@ -236,6 +236,24 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     # Handle Z.AI vision processing using MCP server
     vision_analysis = ""
     if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path) and zai_vision_client:
+        # Check if MCP server process is still alive
+        if hasattr(zai_vision_client, 'mcp_process') and zai_vision_client.mcp_process:
+            if zai_vision_client.mcp_process.poll() is not None:
+                log.warning(f"MCP server process has terminated with code: {zai_vision_client.mcp_process.returncode}")
+                log.warning("Attempting to restart MCP server...")
+                try:
+                    # Try to restart the MCP server
+                    zai_vision_client._start_mcp_server_sync()
+                    if zai_vision_client.is_connected:
+                        log.info("MCP server restarted successfully")
+                    else:
+                        log.warning("Failed to restart MCP server, skipping vision analysis")
+                        payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [MCP server restart failed]"
+                        vision_analysis = ""
+                except Exception as restart_error:
+                    log.error(f"Failed to restart MCP server: {restart_error}")
+                    payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [MCP server unavailable]"
+                    vision_analysis = ""
         try:
             log.info("Z.AI MCP vision server analyzing screenshot...")
 
@@ -257,16 +275,26 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 log.warning("Z.AI vision client doesn't have analyze_image method")
 
             if vision_result:
+                vision_result = vision_result.strip()
                 log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
-                vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result.strip()}"
+                log.info(f"Vision analysis preview: {vision_result[:200]}...")
+                vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
                 payload["vision_analysis"] = vision_analysis
+                # Also add a more prominent vision field for better LLM recognition
+                payload["visual_context"] = vision_result
             else:
                 log.warning("Z.AI MCP vision analysis returned empty response")
+                # Add a placeholder to indicate vision was attempted but failed
+                payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [No visual analysis available - MCP server error]"
 
         except Exception as e:
             log.warning(f"Z.AI MCP vision analysis failed: {e}")
             log.info(f"Vision client type: {type(zai_vision_client)}")
-            log.info(f"Vision client attributes: {dir(zai_vision_client)}")
+            # Provide a clear error message in the payload
+            payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Error - {str(e)}]"
+            # Only log debug info in debug mode to avoid spam
+            if log.isEnabledFor(logging.DEBUG):
+                log.info(f"Vision client attributes: {dir(zai_vision_client)}")
 
     # Build the user message with text and images
     image_parts_for_api = []
