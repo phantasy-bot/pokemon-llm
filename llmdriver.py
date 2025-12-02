@@ -233,8 +233,11 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         log.error(f"Invalid state_data structure: {type(state_data)}")
         return None, None, False
 
-    # Handle Z.AI vision processing using MCP server
+    # Handle Z.AI vision processing using MCP server with retry mechanism
     vision_analysis = ""
+    max_vision_retries = 3
+    vision_retry_delay = 2  # seconds
+
     if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path) and zai_vision_client:
         # Check if MCP server process is still alive
         if hasattr(zai_vision_client, 'mcp_process') and zai_vision_client.mcp_process:
@@ -247,54 +250,84 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     if zai_vision_client.is_connected:
                         log.info("MCP server restarted successfully")
                     else:
-                        log.warning("Failed to restart MCP server, skipping vision analysis")
-                        payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [MCP server restart failed]"
-                        vision_analysis = ""
+                        log.warning("Failed to restart MCP server, will retry vision analysis")
                 except Exception as restart_error:
                     log.error(f"Failed to restart MCP server: {restart_error}")
-                    payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [MCP server unavailable]"
-                    vision_analysis = ""
-        try:
-            log.info("Z.AI MCP vision server analyzing screenshot...")
 
-            # Use MCP client for vision analysis
-            vision_result = None
-            if hasattr(zai_vision_client, 'analyze_image_sync'):
-                # Use sync version for MCP client
-                vision_result = zai_vision_client.analyze_image_sync(
-                    screenshot_path,
-                    "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
-                )
-            elif hasattr(zai_vision_client, 'analyze_image'):
-                # Handle sync fallback client (ZAIVisionFallback)
-                vision_result = zai_vision_client.analyze_image(
-                    screenshot_path,
-                    "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
-                )
-            else:
-                log.warning("Z.AI vision client doesn't have analyze_image method")
+        # Retry vision analysis multiple times
+        for attempt in range(max_vision_retries):
+            if attempt > 0:
+                log.info(f"Vision retry attempt {attempt + 1}/{max_vision_retries} (waiting {vision_retry_delay}s first)...")
+                time.sleep(vision_retry_delay)
 
-            if vision_result:
-                vision_result = vision_result.strip()
-                log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
-                log.info(f"Vision analysis preview: {vision_result[:200]}...")
-                vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
-                payload["vision_analysis"] = vision_analysis
-                # Also add a more prominent vision field for better LLM recognition
-                payload["visual_context"] = vision_result
-            else:
-                log.warning("Z.AI MCP vision analysis returned empty response")
-                # Add a placeholder to indicate vision was attempted but failed
-                payload["vision_analysis"] = "Z.AI GLM-4.6 Vision Analysis: [No visual analysis available - MCP server error]"
+            try:
+                log.info(f"Z.AI MCP vision server analyzing screenshot (attempt {attempt + 1}/{max_vision_retries})...")
 
-        except Exception as e:
-            log.warning(f"Z.AI MCP vision analysis failed: {e}")
-            log.info(f"Vision client type: {type(zai_vision_client)}")
-            # Provide a clear error message in the payload
-            payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Error - {str(e)}]"
-            # Only log debug info in debug mode to avoid spam
-            if log.isEnabledFor(logging.DEBUG):
-                log.info(f"Vision client attributes: {dir(zai_vision_client)}")
+                # Use MCP client for vision analysis
+                vision_result = None
+                if hasattr(zai_vision_client, 'analyze_image_sync'):
+                    # Use sync version for MCP client
+                    vision_result = zai_vision_client.analyze_image_sync(
+                        screenshot_path,
+                        "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                    )
+                elif hasattr(zai_vision_client, 'analyze_image'):
+                    # Handle sync fallback client (ZAIVisionFallback)
+                    vision_result = zai_vision_client.analyze_image(
+                        screenshot_path,
+                        "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                    )
+                else:
+                    log.warning("Z.AI vision client doesn't have analyze_image method")
+
+                # Validate the vision result
+                if vision_result and len(vision_result.strip()) > 50:  # Minimum reasonable length
+                    vision_result = vision_result.strip()
+                    # Additional validation: check if it looks like actual analysis vs tools list
+                    invalid_indicators = [
+                        '"name": "analyze_image"',
+                        '"name": "analyze_video"',
+                        '"description": "Analyze an image',
+                        '"inputSchema"',
+                        'tools": [',
+                        '["name", "description"]'
+                    ]
+
+                    # Check if response contains MCP server metadata (wrong format)
+                    is_invalid_response = any(indicator in vision_result[:500] for indicator in invalid_indicators)
+
+                    if is_invalid_response:
+                        log.warning(f"Vision analysis attempt {attempt + 1} returned MCP metadata instead of analysis")
+                        log.warning(f"Response preview: {vision_result[:200]}...")
+                        continue  # Try again
+
+                    log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
+                    log.info(f"Vision analysis preview: {vision_result[:200]}...")
+                    vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
+                    payload["vision_analysis"] = vision_analysis
+                    # Also add a more prominent vision field for better LLM recognition
+                    payload["visual_context"] = vision_result
+                    break  # Success! Exit retry loop
+                else:
+                    log.warning(f"Vision analysis attempt {attempt + 1} failed: {'empty response' if not vision_result else f'too short ({len(vision_result)} chars)'}")
+                    if attempt == max_vision_retries - 1:  # Last attempt
+                        payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Failed after {max_vision_retries} attempts - no valid visual analysis available]"
+                        # Don't proceed without vision - this is critical
+                        log.error("CRITICAL: Unable to get vision analysis after multiple attempts. Agent cannot play without visual input.")
+                        return None, None, False
+
+            except Exception as e:
+                log.warning(f"Z.AI MCP vision analysis attempt {attempt + 1} failed: {e}")
+                if attempt == max_vision_retries - 1:  # Last attempt
+                    log.error(f"CRITICAL: All {max_vision_retries} vision analysis attempts failed: {e}")
+                    payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Failed after {max_vision_retries} attempts - {str(e)}]"
+                    # Don't proceed without vision - this is critical
+                    log.error("CRITICAL: Unable to get vision analysis after multiple attempts. Agent cannot play without visual input.")
+                    return None, None, False
+
+                # Brief delay before retry (except on last attempt)
+                if attempt < max_vision_retries - 1:
+                    time.sleep(1)
 
     # Build the user message with text and images
     image_parts_for_api = []
