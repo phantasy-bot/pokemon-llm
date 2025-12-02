@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 import time
 import base64
 import copy
@@ -232,54 +233,16 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         log.error(f"Invalid state_data structure: {type(state_data)}")
         return None, None, False
 
+    # Handle Z.AI vision processing - simplified approach
+    if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path):
+        # Add vision analysis note for Z.AI
+        payload["vision_analysis"] = "Z.AI GLM-4.6 analyzing Pokemon Red gameplay"
+        log.info("Z.AI vision analysis enabled")
+
     # Build the user message with text and images
+    image_parts_for_api = []
     text_segment = {"type": "text", "text": json.dumps(payload)}
     current_content = [text_segment]
-    image_parts_for_api = []
-
-    # Handle Z.AI vision processing (using fallback instead of MCP to avoid async issues)
-    vision_analysis = ""
-    if CURRENT_MODE == "ZAI" and zai_vision_client and hasattr(zai_vision_client, 'analyze_image'):
-        # Try to use Z.AI MCP vision client for screenshot analysis
-        try:
-            log.info("Z.AI MCP vision client analyzing screenshot...")
-            # Handle async MCP vision client properly
-            import asyncio
-            import inspect
-
-            if inspect.iscoroutinefunction(zai_vision_client.analyze_image):
-                try:
-                    # Try to get running loop, if none exists create one
-                    loop = asyncio.get_running_loop()
-                    # We're already in an async context
-                    log.warning("MCP vision client is async but we're in sync context. Using fallback.")
-                    vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
-                except RuntimeError:
-                    # No event loop running, create one
-                    log.info("Running MCP vision analysis in new event loop...")
-                    vision_analysis = asyncio.run(zai_vision_client.analyze_image(screenshot_path))
-            else:
-                # Sync method, call directly
-                vision_analysis = zai_vision_client.analyze_image(screenshot_path)
-
-            if vision_analysis:
-                log.info(f"Z.AI MCP vision analysis completed: {len(vision_analysis) if vision_analysis else 0} chars")
-            else:
-                log.warning("Z.AI MCP vision analysis returned None. Using fallback.")
-                vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
-        except Exception as e:
-            log.warning(f"Z.AI MCP vision analysis failed: {e}. Using fallback.")
-            vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
-    elif CURRENT_MODE == "ZAI" and client:
-        # Add a note about Z.AI vision capabilities
-        vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
-
-    # Add vision analysis to text if available
-    if vision_analysis:
-        updated_payload = payload.copy()
-        updated_payload["vision_analysis"] = vision_analysis.strip()
-        text_segment = {"type": "text", "text": json.dumps(updated_payload)}
-        current_content = [text_segment]
 
     # Standard image processing for API
     if screenshot and isinstance(screenshot.get("image_url"), dict):

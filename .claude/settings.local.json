@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "WebFetch(domain:docs.z.ai)",
+      "WebSearch",
+      "Bash(python:*)",
+      "Bash(ZAI_MODEL=glm-4.6 python:*)",
+      "Bash(POKEMON_ROM=test.gba python:*)",
+      "Bash(POKEMON_ROM=firered.gba python run.py:*)",
+      "Bash(POKEMON_ROM=subfolder/custom.gba python:*)",
+      "Bash(POKEMON_ROM=/absolute/path/rom.gba python:*)",
+      "Bash(POKEMON_ROM=custom.gba python:*)",
+      "Bash(unzip:*)",
+      "Bash(timeout:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:z.ai)",
+      "Bash(npx:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
