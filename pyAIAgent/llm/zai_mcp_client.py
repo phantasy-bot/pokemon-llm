@@ -31,6 +31,9 @@ class ZAIMCPClient:
 
         log.info("Z.AI MCP Client initialized")
 
+        # Start the MCP server synchronously
+        self._start_mcp_server_sync()
+
     async def start_mcp_server(self) -> bool:
         """
         Start the Z.AI MCP vision server
@@ -75,6 +78,47 @@ class ZAIMCPClient:
         except Exception as e:
             log.error(f"Failed to start Z.AI MCP server: {e}", exc_info=True)
             return False
+
+    def _start_mcp_server_sync(self):
+        """Start the MCP server synchronously"""
+        try:
+            import subprocess
+            import time
+
+            # Set up environment variables for MCP server
+            env = os.environ.copy()
+            env['Z_AI_API_KEY'] = self.api_key
+            env['Z_AI_MODE'] = self.mode
+
+            # Start MCP server using npx
+            cmd = [
+                'npx', '-y', '@z_ai/mcp-server'
+            ]
+
+            log.info("Starting Z.AI MCP vision server...")
+
+            # Start the subprocess
+            self.mcp_process = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                text=False  # Use bytes mode for proper MCP communication
+            )
+
+            # Give it a moment to start
+            time.sleep(2)
+
+            # Check if process is still running
+            if self.mcp_process.returncode is None:
+                self.is_connected = True
+                log.info("Z.AI MCP vision server started successfully")
+            else:
+                log.error(f"MCP server exited with code: {self.mcp_process.returncode}")
+
+        except Exception as e:
+            log.error(f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True)
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""
@@ -126,7 +170,6 @@ class ZAIMCPClient:
             # Send request to MCP server
             request_json = json.dumps(mcp_request) + '\n'
             self.mcp_process.stdin.write(request_json.encode())
-            await self.mcp_process.stdin.drain()
 
             # Read response
             response_line = await self.mcp_process.stdout.readline()
@@ -167,9 +210,21 @@ class ZAIVisionFallback:
             client: OpenAI-compatible client instance
             model: Model name to use
         """
-        self.client = client
+        # Use the same coding plan endpoint for vision to avoid rate limits
+        from openai import OpenAI
+        api_key = os.getenv("ZAI_API_KEY")
+        if api_key:
+            self.client = OpenAI(
+                base_url="https://api.z.ai/api/coding/paas/v4",  # Coding plan endpoint for vision
+                api_key=api_key,
+                timeout=30
+            )
+            log.info("Z.AI Vision fallback handler initialized with coding plan endpoint")
+        else:
+            # Fallback to provided client if no API key
+            self.client = client
+            log.warning("No ZAI_API_KEY found, using provided client for vision fallback")
         self.model = model
-        log.info("Z.AI Vision fallback handler initialized")
 
     def analyze_image(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
@@ -208,14 +263,39 @@ class ZAIVisionFallback:
                 }
             ]
 
-            # Make API call
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                max_tokens=1000
-            )
+            # Use raw HTTP request for coding plan API compatibility
+            import httpx
 
-            return response.choices[0].message.content
+            api_data = {
+                "model": self.model,
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+
+            headers = {
+                "Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}",
+                "Content-Type": "application/json"
+            }
+
+            with httpx.Client(timeout=30.0) as http_client:
+                response = http_client.post(
+                    "https://api.z.ai/api/coding/paas/v4/chat/completions",
+                    json=api_data,
+                    headers=headers
+                )
+
+                if response.status_code == 200:
+                    response_data = response.json()
+                    if 'choices' in response_data and response_data['choices']:
+                        return response_data['choices'][0]['message']['content']
+                    else:
+                        log.error(f"Vision API response missing choices: {response_data}")
+                        return None
+                else:
+                    log.error(f"Vision API HTTP request failed: {response.status_code}")
+                    log.error(f"Vision API response: {response.text}")
+                    return None
 
         except Exception as e:
             log.error(f"Fallback image analysis failed: {e}", exc_info=True)
