@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger('llm_client_setup')
 
 # --- Configuration Defaults ---
-DEFAULT_MODE = "ANTHOPIC" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC, ZAI
+DEFAULT_MODE = "ZAI" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC, ZAI
 DEFAULT_OPENAI_MODEL = "o3"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
 DEFAULT_OLLAMA_MODEL = "gemma3:27b-it-q4_K_M"
@@ -78,11 +78,16 @@ def parse_mode_arg(modes, default_mode=DEFAULT_MODE):
     mode = args.mode
 
     if not mode:
-        print("\nNo LLM mode specified via command line.")
-        print("Please choose the LLM mode from the list below:")
-        for i, m in enumerate(modes, start=1):
-            print(f"  {i}. {m}")
-        choice = input("Enter the number of your choice: ").strip()
+        print(f"\nNo LLM mode specified via command line.")
+        print(f"Using default mode: {default_mode}")
+        mode = default_mode
+        return mode
+
+        # For interactive mode, uncomment below:
+        # print("Please choose the LLM mode from the list below:")
+        # for i, m in enumerate(modes, start=1):
+        #     print(f"  {i}. {m}")
+        # choice = input("Enter the number of your choice: ").strip()
 
         try:
             choice_num = int(choice)

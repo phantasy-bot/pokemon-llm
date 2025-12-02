@@ -233,11 +233,40 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         log.error(f"Invalid state_data structure: {type(state_data)}")
         return None, None, False
 
-    # Handle Z.AI vision processing - simplified approach
-    if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path):
-        # Add vision analysis note for Z.AI
-        payload["vision_analysis"] = "Z.AI GLM-4.6 analyzing Pokemon Red gameplay"
-        log.info("Z.AI vision analysis enabled")
+    # Handle Z.AI vision processing using MCP server
+    vision_analysis = ""
+    if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path) and zai_vision_client:
+        try:
+            log.info("Z.AI MCP vision server analyzing screenshot...")
+
+            # Use MCP client for vision analysis
+            vision_result = None
+            if hasattr(zai_vision_client, 'analyze_image_sync'):
+                # Use sync version for MCP client
+                vision_result = zai_vision_client.analyze_image_sync(
+                    screenshot_path,
+                    "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                )
+            elif hasattr(zai_vision_client, 'analyze_image'):
+                # Handle sync fallback client (ZAIVisionFallback)
+                vision_result = zai_vision_client.analyze_image(
+                    screenshot_path,
+                    "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                )
+            else:
+                log.warning("Z.AI vision client doesn't have analyze_image method")
+
+            if vision_result:
+                log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
+                vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result.strip()}"
+                payload["vision_analysis"] = vision_analysis
+            else:
+                log.warning("Z.AI MCP vision analysis returned empty response")
+
+        except Exception as e:
+            log.warning(f"Z.AI MCP vision analysis failed: {e}")
+            log.info(f"Vision client type: {type(zai_vision_client)}")
+            log.info(f"Vision client attributes: {dir(zai_vision_client)}")
 
     # Build the user message with text and images
     image_parts_for_api = []
