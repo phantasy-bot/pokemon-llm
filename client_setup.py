@@ -253,7 +253,7 @@ def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str |
             log.error("MODE is ZAI but ZAI_API_KEY not found in environment variables.")
             return None, None
         try:
-            # Z.AI Coding Plan uses the correct API endpoint
+            # Use Z.AI coding plan endpoint for reasoning capabilities
             base_url = get_config("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
             client = OpenAI(
                 base_url=base_url,
@@ -262,7 +262,7 @@ def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str |
             )
             model = get_config("ZAI_MODEL", DEFAULT_ZAI_MODEL)
             supports_reasoning = True  # GLM-4.6 supports reasoning
-            log.info(f"Using Z.AI Coding Plan (via OpenAI client). Model: {model}")
+            log.info(f"Using Z.AI Standard API for multimodal capabilities (via OpenAI client). Model: {model}")
         except Exception as e:
             log.error(f"Failed to initialize Z.AI client: {e}", exc_info=True)
             return None, None

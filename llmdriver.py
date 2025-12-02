@@ -63,8 +63,9 @@ def set_current_mode(mode):
     zai_vision_client = None
     if CURRENT_MODE == "ZAI" and client:
         try:
+            # Use MCP=True to get the actual MCP vision server with image_analysis tool
             zai_vision_client = create_zai_vision_client(client, MODEL, use_mcp=True)
-            log.info("Z.AI vision client initialized")
+            log.info("Z.AI sync vision client initialized")
         except Exception as e:
             log.warning(f"Failed to initialize Z.AI vision client: {e}")
 
@@ -239,8 +240,36 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     # Handle Z.AI vision processing (using fallback instead of MCP to avoid async issues)
     vision_analysis = ""
     if CURRENT_MODE == "ZAI" and zai_vision_client and hasattr(zai_vision_client, 'analyze_image'):
-        # Skip MCP for now due to async/sync compatibility issues
-        log.info("Z.AI MCP available but using direct API for compatibility")
+        # Try to use Z.AI MCP vision client for screenshot analysis
+        try:
+            log.info("Z.AI MCP vision client analyzing screenshot...")
+            # Handle async MCP vision client properly
+            import asyncio
+            import inspect
+
+            if inspect.iscoroutinefunction(zai_vision_client.analyze_image):
+                try:
+                    # Try to get running loop, if none exists create one
+                    loop = asyncio.get_running_loop()
+                    # We're already in an async context
+                    log.warning("MCP vision client is async but we're in sync context. Using fallback.")
+                    vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
+                except RuntimeError:
+                    # No event loop running, create one
+                    log.info("Running MCP vision analysis in new event loop...")
+                    vision_analysis = asyncio.run(zai_vision_client.analyze_image(screenshot_path))
+            else:
+                # Sync method, call directly
+                vision_analysis = zai_vision_client.analyze_image(screenshot_path)
+
+            if vision_analysis:
+                log.info(f"Z.AI MCP vision analysis completed: {len(vision_analysis) if vision_analysis else 0} chars")
+            else:
+                log.warning("Z.AI MCP vision analysis returned None. Using fallback.")
+                vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
+        except Exception as e:
+            log.warning(f"Z.AI MCP vision analysis failed: {e}. Using fallback.")
+            vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
     elif CURRENT_MODE == "ZAI" and client:
         # Add a note about Z.AI vision capabilities
         vision_analysis = "\nNote: Using Z.AI GLM-4.6 for Pokemon Red game analysis\n"
@@ -345,22 +374,21 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     # Use raw HTTP request for Z.AI since OpenAI client is not compatible
                     import httpx
 
-                    # Prepare the request data in Z.AI format
-                    # Convert messages to text-only for Z.AI compatibility
+                    # Convert to text-only messages for Z.AI coding plan API compatibility
                     text_only_messages = []
                     for msg in zai_kwargs["messages"]:
                         if isinstance(msg.get("content"), list):
-                            # Handle multimodal content - extract only text
+                            # Extract only text content from multimodal messages
                             text_content = ""
                             for content_item in msg["content"]:
                                 if isinstance(content_item, dict) and content_item.get("type") == "text":
                                     text_content += content_item.get("text", "")
                                 elif isinstance(content_item, str):
                                     text_content += content_item
-                            if text_content:
+                            if text_content.strip():
                                 text_only_messages.append({
                                     "role": msg.get("role", "user"),
-                                    "content": text_content
+                                    "content": text_content.strip()
                                 })
                         else:
                             # Handle regular text content
@@ -380,7 +408,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     if "temperature" in zai_kwargs:
                         api_data["temperature"] = zai_kwargs["temperature"]
 
-                    log.info(f"Z.AI API call - Converted multimodal to text-only messages: {len(text_only_messages)} messages")
+                    log.info(f"Z.AI API call - Using text-only messages for coding API: {len(text_only_messages)} messages")
 
                     log.info(f"Z.AI API call - Making raw HTTP request to: {client.base_url}chat/completions")
                     log.info(f"Z.AI API call - Request data keys: {list(api_data.keys())}")
