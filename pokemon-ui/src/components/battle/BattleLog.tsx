@@ -26,6 +26,8 @@ export function BattleLog({
   memoryWrite,
   onMemoryWriteClear,
 }: BattleLogProps) {
+  // @ts-expect-error - Parameter not used yet
+  const _onMemoryWriteClear = onMemoryWriteClear;
   const [currentKeyart, setCurrentKeyart] = useState(0);
   const [persistedMemory, setPersistedMemory] = useState<string | null>(null);
 
@@ -48,7 +50,7 @@ export function BattleLog({
 
   // Filter for vision and response entries (important Pokemon analysis)
   const visionEntries = logs.filter((log) => log.is_vision).slice(0, 3);
-  const responseEntries = logs.filter((log) => log.is_response).slice(0, 2);
+  // const responseEntries = logs.filter((log) => log.is_response).slice(0, 2); // TODO: Use for response display
 
   // Get recent actions from last few entries
   const recentActions = logs

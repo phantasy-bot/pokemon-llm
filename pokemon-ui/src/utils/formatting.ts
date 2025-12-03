@@ -14,7 +14,7 @@ export function formatLogText(text: string): string {
     /(Action:\s*)([ABUDLRS][\s;ABUDLRS]*?)(?=[^ABUDLRS\s;]|$)/g;
   formattedText = formattedText.replace(
     actionSequenceRegex,
-    (fullMatch, prefix, sequence) => {
+    (_fullMatch, prefix, sequence) => {
       let cleanedSequence = sequence
         .replace(/;/g, "")
         .replace(/\s+/g, " ")
