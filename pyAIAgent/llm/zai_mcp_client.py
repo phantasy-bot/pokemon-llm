@@ -30,15 +30,17 @@ class ZAIMCPClient:
         self.mcp_process = None
         self.is_connected = False
 
-        # CRITICAL: Vision analysis retry state for robust error handling
-        self.vision_failure_count = 0
-        self.last_vision_failure_time = 0
-        self.vision_backoff_seconds = 60  # Start with 60 seconds backoff
-        self.max_vision_backoff_seconds = 300  # Max 5 minutes backoff
-        self.vision_temporarily_disabled = False
-        self.vision_retry_enabled = True
+        # CRITICAL: NEW RETRY SYSTEM - Agent should NOT continue without vision
+        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay
+        self.retries_in_current_phase = 0
+        self.max_retries_per_phase = 3
+        self.phase_delays = [0, 30, 60]  # seconds
+        self.last_retry_time = 0
+        self.vision_mandatory = True  # CRITICAL: Vision is required for operation
 
-        log.info("Z.AI MCP Client initialized with robust retry mechanism")
+        log.info("Z.AI MCP Client initialized with MANDATORY vision retry system")
+        log.info("Retry strategy: 3 immediate attempts, then 3 attempts after 30s, then 3 attempts after 60s")
+        log.info("Agent will NOT continue without successful vision analysis")
 
         # Start the MCP server synchronously
         self._start_mcp_server_sync()
@@ -138,105 +140,136 @@ class ZAIMCPClient:
 
     def should_attempt_vision_analysis(self) -> bool:
         """
-        Check if vision analysis should be attempted based on failure history and backoff timing
+        NEW RETRY SYSTEM: Check if vision analysis should be attempted
+        Agent will NOT continue without vision - mandatory retry system
 
         Returns:
-            True if vision analysis should be attempted, False if in backoff period
+            True if vision analysis should be attempted, False if waiting for retry delay
         """
         current_time = time.time()
 
-        # If vision is temporarily disabled, check if backoff period has elapsed
-        if self.vision_temporarily_disabled:
-            if current_time - self.last_vision_failure_time >= self.vision_backoff_seconds:
-                # Backoff period elapsed, re-enable vision with caution
-                log.info(f"Vision backoff period elapsed ({self.vision_backoff_seconds}s). Re-enabling vision analysis.")
-                self.vision_temporarily_disabled = False
-                return True
+        # Check if we need to wait for retry delay
+        if self.retries_in_current_phase >= self.max_retries_per_phase:
+            if self.retry_phase < len(self.phase_delays) - 1:
+                # Move to next phase with longer delay
+                self.retry_phase += 1
+                self.retries_in_current_phase = 0
+                self.last_retry_time = current_time
+                delay = self.phase_delays[self.retry_phase]
+                log.warning(f"Moving to retry phase {self.retry_phase} with {delay}s delay")
             else:
-                # Still in backoff period
-                remaining_time = self.vision_backoff_seconds - (current_time - self.last_vision_failure_time)
-                log.info(f"Vision analysis temporarily disabled. {remaining_time:.0f}s remaining in backoff period.")
+                # Exhausted all retry phases - this should never happen with mandatory vision
+                log.error("CRITICAL: All retry phases exhausted. Vision system failure.")
                 return False
 
-        # If not disabled, allow attempt
+        # Check if we need to wait for phase delay
+        if self.retry_phase > 0 and self.retries_in_current_phase == 0:
+            required_wait_time = self.last_retry_time + self.phase_delays[self.retry_phase]
+            if current_time < required_wait_time:
+                remaining_time = required_wait_time - current_time
+                log.info(f"Waiting {remaining_time:.0f}s before retry phase {self.retry_phase}")
+                return False
+
         return True
 
     def handle_vision_failure(self, error_message: str) -> None:
         """
-        Handle vision analysis failure by implementing exponential backoff
+        NEW RETRY SYSTEM: Handle vision analysis failure with mandatory retry logic
+        Agent will NOT continue without vision - this implements the user's requirements
 
         Args:
             error_message: Description of the error that occurred
         """
-        self.vision_failure_count += 1
-        self.last_vision_failure_time = time.time()
+        self.retries_in_current_phase += 1
+        total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
 
-        # Calculate exponential backoff: 60s, 120s, 240s, max 300s (5min)
-        if self.vision_failure_count == 1:
-            self.vision_backoff_seconds = 60
+        log.error(f"VISION FAILURE #{total_failures} (Phase {self.retry_phase + 1}, Attempt {self.retries_in_current_phase}/{self.max_retries_per_phase}): {error_message}")
+
+        if self.retries_in_current_phase < self.max_retries_per_phase:
+            # Can retry immediately in current phase (except phase 0 which has 0 delay)
+            if self.retry_phase == 0:
+                log.info(f"Retrying immediately (attempt {self.retries_in_current_phase + 1}/{self.max_retries_per_phase} in immediate phase)")
+            else:
+                # For phase 1+ we've already waited the delay, so we can retry
+                log.info(f"Retrying immediately (attempt {self.retries_in_current_phase + 1}/{self.max_retries_per_phase} in phase {self.retry_phase + 1})")
         else:
-            # Double the backoff time, but cap at max
-            self.vision_backoff_seconds = min(
-                self.vision_backoff_seconds * 2,
-                self.max_vision_backoff_seconds
-            )
-
-        # Disable vision temporarily
-        self.vision_temporarily_disabled = True
-
-        log.error(f"VISION FAILURE #{self.vision_failure_count}: {error_message}")
-        log.error(f"Vision analysis temporarily disabled for {self.vision_backoff_seconds} seconds (exponential backoff)")
-        log.error(f"This allows game state to continue updating while vision server recovers")
+            # Exhausted retries in current phase
+            if self.retry_phase < len(self.phase_delays) - 1:
+                next_delay = self.phase_delays[self.retry_phase + 1]
+                log.error(f"Exhausted immediate retries. Next retry phase will begin after {next_delay}s delay")
+            else:
+                log.error("CRITICAL: All retry phases exhausted. System cannot continue without vision.")
 
     def handle_vision_success(self) -> None:
         """
-        Reset failure counters after successful vision analysis
+        NEW RETRY SYSTEM: Reset failure counters after successful vision analysis
         """
-        if self.vision_failure_count > 0:
-            log.info(f"Vision analysis succeeded after {self.vision_failure_count} previous failures. Resetting failure counters.")
-            self.vision_failure_count = 0
-            self.vision_backoff_seconds = 60  # Reset to initial backoff
-            self.vision_temporarily_disabled = False
-            self.last_vision_failure_time = 0
+        total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
+        if total_failures > 0:
+            log.info(f"✅ VISION SUCCESS after {total_failures} previous failures! Resuming normal operation.")
+
+        # Reset all retry counters
+        self.retry_phase = 0
+        self.retries_in_current_phase = 0
+        self.last_retry_time = 0
 
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
-        Synchronous version of analyze_image for use in sync contexts with robust retry logic
+        CRITICAL: NEW MANDATORY RETRY SYSTEM - Agent will NOT continue without vision
+        This method blocks until vision analysis succeeds or all retry attempts are exhausted
 
         Args:
             image_path: Path to the image file
             prompt: Text prompt to accompany the image
 
         Returns:
-            Analysis result as string, or None if failed and in backoff period
+            Analysis result as string, or raises RuntimeError if all retries exhausted
         """
-        # CRITICAL: Check if we should attempt vision analysis based on failure history
-        if not self.should_attempt_vision_analysis():
-            # We're in a backoff period - return None to indicate vision unavailable
-            # This allows the game to continue without vision analysis
-            remaining_time = self.vision_backoff_seconds - (time.time() - self.last_vision_failure_time)
-            log.warning(f"Vision analysis skipped - in backoff period ({remaining_time:.0f}s remaining)")
-            return None
+        log.info("🔍 Starting MANDATORY vision analysis with aggressive retry system")
 
-        # Attempt vision analysis with try/catch for robust error handling
-        try:
-            result = asyncio.run(self.analyze_image(image_path, prompt))
+        while True:
+            # Check if we should attempt vision analysis based on retry phase
+            if not self.should_attempt_vision_analysis():
+                # Wait for retry delay
+                import time as time_module
+                wait_time = 1.0  # Check again in 1 second
+                time_module.sleep(wait_time)
+                continue
 
-            if result is not None:
-                # SUCCESS: Vision analysis completed successfully
-                self.handle_vision_success()
-                return result
-            else:
-                # FAILURE: Vision analysis returned None
-                self.handle_vision_failure("Vision analysis returned None/empty result")
-                return None
+            # Attempt vision analysis with try/catch for robust error handling
+            try:
+                log.info(f"🚀 Attempting vision analysis (Phase {self.retry_phase + 1}, Attempt {self.retries_in_current_phase + 1})")
+                result = asyncio.run(self.analyze_image(image_path, prompt))
 
-        except Exception as e:
-            # FAILURE: Exception occurred during vision analysis
-            error_msg = f"Vision analysis exception: {str(e)}"
-            self.handle_vision_failure(error_msg)
-            log.error(f"Vision analysis failed with exception: {e}", exc_info=True)
-            return None
+                if result is not None:
+                    # SUCCESS: Vision analysis completed successfully
+                    self.handle_vision_success()
+                    log.info("✅ Vision analysis completed successfully!")
+                    return result
+                else:
+                    # FAILURE: Vision analysis returned None
+                    self.handle_vision_failure("Vision analysis returned None/empty result")
+                    # Continue to next iteration for retry
+
+            except Exception as e:
+                # FAILURE: Exception occurred during vision analysis
+                error_msg = f"Vision analysis exception: {str(e)}"
+                self.handle_vision_failure(error_msg)
+                log.error(f"❌ Vision analysis failed with exception: {e}", exc_info=True)
+                # Continue to next iteration for retry
+
+            # Check if we've exhausted all retry attempts
+            total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
+            max_total_failures = len(self.phase_delays) * self.max_retries_per_phase
+
+            if total_failures >= max_total_failures:
+                # CRITICAL: All retry attempts exhausted
+                error_msg = f"CRITICAL SYSTEM FAILURE: Vision analysis failed after {max_total_failures} attempts across all retry phases. Agent cannot continue without vision."
+                log.error("🚨 " + "="*80)
+                log.error("🚨 " + error_msg)
+                log.error("🚨 This is a catastrophic failure - the agent requires vision to function.")
+                log.error("🚨 " + "="*80)
+                raise RuntimeError(error_msg)
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""

@@ -280,11 +280,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "**EFFICIENCY:** Always choose DEFAULT/PREMADE names over custom names to save time."
                 )
 
-                vision_result = zai_vision_client.analyze_image_sync(SAVED_SCREENSHOT_PATH, factual_prompt)
+              # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
+                try:
+                    vision_result = zai_vision_client.analyze_image_sync(SAVED_SCREENSHOT_PATH, factual_prompt)
 
-                if vision_result is not None:
-                    # SUCCESS: Vision analysis completed successfully
-                    log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
+                    # SUCCESS: Vision analysis completed successfully (this should always happen now)
+                    log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
                     log.info(f"Vision analysis preview: {vision_result[:200]}...")
 
                     vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
@@ -292,18 +293,27 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     payload["vision_analysis"] = vision_analysis
                     # Also add a more prominent vision field for better LLM recognition
                     payload["visual_context"] = vision_result
-                else:
-                    # FAILURE: Vision analysis returned None (likely due to backoff period or server issue)
-                    log.warning("Vision analysis returned None - likely in backoff period or server unavailable")
 
-                    # Check if we're in a backoff period
-                    if hasattr(zai_vision_client, 'vision_temporarily_disabled') and zai_vision_client.vision_temporarily_disabled:
-                        remaining_time = zai_vision_client.vision_backoff_seconds - (time.time() - zai_vision_client.last_vision_failure_time)
-                        payload["vision_analysis"] = f"[Vision temporarily disabled due to server failures - {remaining_time:.0f}s until retry]"
-                        log.warning(f"Vision analysis skipped due to backoff period. Game will continue without vision input.")
-                    else:
-                        payload["vision_analysis"] = "[Vision analysis unavailable - server issue or invalid response]"
-                        log.error("Vision analysis failed but not in backoff period - server or response issue")
+                except RuntimeError as e:
+                    # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
+                    log.error("🚨 " + "="*80)
+                    log.error("🚨 CRITICAL: Vision system completely failed! Agent cannot continue without vision.")
+                    log.error(f"🚨 Error: {e}")
+                    log.error("🚨 " + "="*80)
+
+                    # This is a catastrophic failure - the agent requires vision to function
+                    # We should either:
+                    # 1. Stop the agent completely, or
+                    # 2. Try to save the game and exit gracefully
+
+                    # For now, we'll set a critical error state and stop the main loop
+                    payload["critical_system_failure"] = True
+                    payload["vision_analysis"] = "CRITICAL SYSTEM FAILURE: Vision analysis completely failed after exhaustive retry attempts. Agent cannot continue without vision input."
+                    payload["system_halt"] = True
+
+                    # Trigger immediate shutdown
+                    log.critical("🛑 Halting agent operation due to catastrophic vision system failure")
+                    return None  # This will stop the main loop in the calling code
 
             elif hasattr(zai_vision_client, 'analyze_image'):
                 # Handle sync fallback client (ZAIVisionFallback)
@@ -937,6 +947,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 action_payload["log_entry"] = log_entry
 
         log.info(f"Log Entry #{log_id_counter}: {log_action_text} (Analysis included in state log)")
+
+        # CRITICAL: Check for system failure before broadcasting
+        if update_payload and update_payload.get("system_halt"):
+            log.critical("🛑 SYSTEM HALT DETECTED - Terminating agent operation immediately")
+            break  # Exit the main loop immediately
 
         if update_payload:
             log.info(f"Broadcasting {len(update_payload)} state updates: {list(update_payload.keys())}")
