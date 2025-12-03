@@ -39,7 +39,7 @@ function getLogTypeLabel(
     case "vision":
       return "Vision Analysis";
     case "response":
-      return "Battle Analysis";
+      return "LLM Analysis";
     case "action":
       return "Action";
     case "general":
