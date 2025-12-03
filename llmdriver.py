@@ -217,6 +217,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE
 
     summary_json = None
+    vision_analysis_for_ui = None  # Store raw vision analysis for UI display
     payload = copy.deepcopy(state_data)
     screenshot = payload.pop("screenshot", None)
     minimap = payload.pop("minimap", None)
@@ -304,6 +305,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
                     log.info(f"Vision analysis preview: {vision_result[:200]}...")
                     vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
+                    vision_analysis_for_ui = vision_result  # Store raw vision analysis for UI
                     payload["vision_analysis"] = vision_analysis
                     # Also add a more prominent vision field for better LLM recognition
                     payload["visual_context"] = vision_result
@@ -620,6 +622,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 parsed = json.loads(json_match.group(1))
                 act = parsed.get("action")
                 touch = parsed.get("touch")
+                vision_from_json = parsed.get("vision_analysis")
+
+                # Use vision analysis from JSON if provided, otherwise use the one we captured
+                if vision_from_json and isinstance(vision_from_json, str):
+                    vision_analysis_for_ui = vision_from_json
+
                 if isinstance(act, str) and ACTION_RE.match(act):
                     action = act
                 elif isinstance(touch, str) and COORD_RE.match(touch):
@@ -655,12 +663,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
     except Exception as e:
         log.error(f"Error during LLM interaction: {e}", exc_info=True)
-        return None, None, None
+        return None, None, None, None
 
     if action is None:
         log.error("No valid action extracted from LLM output.")
 
-    return action, analysis_text, summary_json
+    return action, analysis_text, summary_json, vision_analysis_for_ui
 
 
 
@@ -821,7 +829,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         log_id_counter = state.get("log_id_counter", 0) + 1
         state["log_id_counter"] = log_id_counter
 
-        action, game_analysis, summary_json = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
+        action, game_analysis, summary_json, vision_analysis = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
 
         if summary_json is not None:
             tmp = {"log_entry": {"id": log_id_counter, "text": "🔎 Chat history cleaned up."}}
@@ -846,6 +854,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             else:
                 logging.error(f"Expected summary_json to be dict, but got {type(summary_json).__name__!r}")
 
+        # Add vision analysis to the update payload if available
+        if vision_analysis:
+            update_payload["vision_analysis"] = vision_analysis
 
         action_to_send = None
         log_action_text = "No action taken (LLM failed)."
@@ -887,12 +898,32 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
 
 
-        analysis_log_part = f"{game_analysis.strip()}\n" if game_analysis and game_analysis.strip() else None
+        # Create three separate log entries: VISION, RESPONSE, ACTION
+        log_entries = []
 
-        if analysis_log_part:
-            update_payload["log_entry"] = { "id": log_id_counter, "text": analysis_log_part }
+        # Vision log entry
+        if vision_analysis:
+            vision_log = { "id": log_id_counter, "text": vision_analysis, "is_vision": True }
+            log_entries.append(vision_log)
+
+        # Response log entry (LLM reasoning)
+        if game_analysis and game_analysis.strip():
+            response_log = { "id": log_id_counter, "text": game_analysis.strip(), "is_response": True }
+            log_entries.append(response_log)
+
+        # Action log entry
         if action:
-            action_payload["log_entry"] = { "id": log_id_counter, "text": log_action_text }
+            action_log = { "id": log_id_counter, "text": log_action_text, "is_action": True }
+            log_entries.append(action_log)
+
+        # Add all log entries to update_payload with different keys to avoid overwriting
+        for i, log_entry in enumerate(log_entries):
+            if log_entry.get("is_vision"):
+                update_payload["vision_log"] = log_entry
+            elif log_entry.get("is_response"):
+                update_payload["response_log"] = log_entry
+            elif log_entry.get("is_action"):
+                action_payload["log_entry"] = log_entry
 
         log.info(f"Log Entry #{log_id_counter}: {log_action_text} (Analysis included in state log)")
 

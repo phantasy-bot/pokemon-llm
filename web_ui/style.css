@@ -666,3 +666,52 @@ html {
 	display: inline-block;
 	/* Ensures spacing works */
 }
+
+
+/* Log Entry Styling */
+.vision-entry {
+	background: linear-gradient(135deg, var(--bg-dark-secondary), rgba(255, 215, 0, 0.1));
+	border-left: 3px solid var(--accent-yellow);
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	border-radius: 4px;
+}
+
+.response-entry {
+	background: linear-gradient(135deg, var(--bg-dark-secondary), rgba(72, 187, 120, 0.1));
+	border-left: 3px solid var(--accent-green);
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	border-radius: 4px;
+}
+
+.action-entry {
+	background: linear-gradient(135deg, var(--bg-dark-secondary), rgba(156, 39, 176, 0.1));
+	border-left: 3px solid #9c27b0;
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	border-radius: 4px;
+}
+
+.log-prefix {
+	font-weight: bold;
+	margin-right: 8px;
+}
+
+.vision-entry .log-prefix {
+	color: var(--accent-yellow);
+}
+
+.response-entry .log-prefix {
+	color: var(--accent-green);
+}
+
+.action-entry .log-prefix {
+	color: #9c27b0;
+}
+
+.vision-entry strong:first-child {
+	color: var(--accent-yellow);
+	font-weight: bold;
+}
+
