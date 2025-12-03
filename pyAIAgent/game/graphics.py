@@ -311,16 +311,22 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, crop=None):
             left, right, top, bottom = 0, grid_w - 1, 0, grid_h - 1
 
         rows = []
+        # Debug logging for coordinate analysis
+        print(f"DEBUG: Player position pos={pos}", file=sys.stderr)
+        print(f"DEBUG: walkable_special coordinates: {sorted(list(walkable_special))}", file=sys.stderr)
+
         for y in range(top, bottom + 1):
             row_chars = []
             for x in range(left, right + 1):
                 # Player marker takes precedence
                 if pos and x == pos[0] and y == pos[1]:
+                    print(f"DEBUG: Placing player marker P at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
                     row_chars.append('P')
                 else:
                     is_special = (x, y) in walkable_special
                     is_walkable = grid_data[y][x]
                     if is_special:
+                        print(f"DEBUG: Placing orange tile O at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
                         row_chars.append('O')
                     elif is_walkable:
                         row_chars.append('W')
