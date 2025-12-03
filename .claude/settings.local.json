@@ -28,7 +28,8 @@
       "Bash(node:*)",
       "Bash(npm:*)",
       "Bash(gtimeout:*)",
-      "Bash(ZAI_MODE=9 python:*)"
+      "Bash(ZAI_MODE=9 python:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

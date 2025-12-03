@@ -1,18 +1,16 @@
 .pokemon-stream-overlay {
-  display: grid;
-  grid-template-columns: 2fr 1fr 3fr;  /* Left | Goals | Right */
-  grid-template-rows: auto 1fr; /* Header | Main Content */
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   background: var(--bg-root);
-  gap: 1px;
   overflow: hidden;
 }
 
 /* Pokemon Header Section */
 .pokemon-header {
-  grid-column: 1 / -1; /* Span all columns */
   display: flex;
-  gap: var(--space-lg);
+  justify-content: space-between;
+  align-items: center;
   padding: var(--space-md) var(--space-lg);
   background: linear-gradient(
     135deg,
@@ -20,13 +18,18 @@
     var(--bg-card) 100%
   );
   border-bottom: 2px solid var(--accent-primary);
-  align-items: center;
+  gap: var(--space-lg);
+  flex-shrink: 0;
 }
 
 .pokemon-header__stats {
   display: flex;
   gap: var(--space-lg);
   flex: 1;
+}
+
+.pokemon-header__title {
+  flex-shrink: 0;
 }
 
 .pokemon-stats-widget {
@@ -126,10 +129,9 @@
 
 /* Main Content Area */
 .pokemon-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr 3fr; /* Left | Goals | Right */
-  grid-template-rows: 1fr; /* Main content only */
-  height: 100%;
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 120px); /* Subtract header height */
   overflow: hidden;
   gap: 1px;
 }
@@ -137,6 +139,7 @@
 .pokemon-left-col {
   display: flex;
   flex-direction: column;
+  flex: 2; /* 2 parts of the space */
   padding: var(--space-md);
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -177,6 +180,7 @@
 .pokemon-goals {
   display: flex;
   flex-direction: column;
+  flex: 1; /* 1 part of the space */
   padding: var(--space-md);
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -235,9 +239,9 @@
 .pokemon-right-col {
   display: flex;
   flex-direction: column;
+  flex: 3; /* 3 parts of the space */
   padding: var(--space-md);
   background: var(--bg-panel);
-  border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
 }
 
