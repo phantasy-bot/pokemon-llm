@@ -8,6 +8,7 @@ import json
 import logging
 import subprocess
 import asyncio
+import time
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
@@ -29,7 +30,15 @@ class ZAIMCPClient:
         self.mcp_process = None
         self.is_connected = False
 
-        log.info("Z.AI MCP Client initialized")
+        # CRITICAL: Vision analysis retry state for robust error handling
+        self.vision_failure_count = 0
+        self.last_vision_failure_time = 0
+        self.vision_backoff_seconds = 60  # Start with 60 seconds backoff
+        self.max_vision_backoff_seconds = 300  # Max 5 minutes backoff
+        self.vision_temporarily_disabled = False
+        self.vision_retry_enabled = True
+
+        log.info("Z.AI MCP Client initialized with robust retry mechanism")
 
         # Start the MCP server synchronously
         self._start_mcp_server_sync()
@@ -127,22 +136,106 @@ class ZAIMCPClient:
         except Exception as e:
             log.error(f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True)
 
+    def should_attempt_vision_analysis(self) -> bool:
+        """
+        Check if vision analysis should be attempted based on failure history and backoff timing
+
+        Returns:
+            True if vision analysis should be attempted, False if in backoff period
+        """
+        current_time = time.time()
+
+        # If vision is temporarily disabled, check if backoff period has elapsed
+        if self.vision_temporarily_disabled:
+            if current_time - self.last_vision_failure_time >= self.vision_backoff_seconds:
+                # Backoff period elapsed, re-enable vision with caution
+                log.info(f"Vision backoff period elapsed ({self.vision_backoff_seconds}s). Re-enabling vision analysis.")
+                self.vision_temporarily_disabled = False
+                return True
+            else:
+                # Still in backoff period
+                remaining_time = self.vision_backoff_seconds - (current_time - self.last_vision_failure_time)
+                log.info(f"Vision analysis temporarily disabled. {remaining_time:.0f}s remaining in backoff period.")
+                return False
+
+        # If not disabled, allow attempt
+        return True
+
+    def handle_vision_failure(self, error_message: str) -> None:
+        """
+        Handle vision analysis failure by implementing exponential backoff
+
+        Args:
+            error_message: Description of the error that occurred
+        """
+        self.vision_failure_count += 1
+        self.last_vision_failure_time = time.time()
+
+        # Calculate exponential backoff: 60s, 120s, 240s, max 300s (5min)
+        if self.vision_failure_count == 1:
+            self.vision_backoff_seconds = 60
+        else:
+            # Double the backoff time, but cap at max
+            self.vision_backoff_seconds = min(
+                self.vision_backoff_seconds * 2,
+                self.max_vision_backoff_seconds
+            )
+
+        # Disable vision temporarily
+        self.vision_temporarily_disabled = True
+
+        log.error(f"VISION FAILURE #{self.vision_failure_count}: {error_message}")
+        log.error(f"Vision analysis temporarily disabled for {self.vision_backoff_seconds} seconds (exponential backoff)")
+        log.error(f"This allows game state to continue updating while vision server recovers")
+
+    def handle_vision_success(self) -> None:
+        """
+        Reset failure counters after successful vision analysis
+        """
+        if self.vision_failure_count > 0:
+            log.info(f"Vision analysis succeeded after {self.vision_failure_count} previous failures. Resetting failure counters.")
+            self.vision_failure_count = 0
+            self.vision_backoff_seconds = 60  # Reset to initial backoff
+            self.vision_temporarily_disabled = False
+            self.last_vision_failure_time = 0
+
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
-        Synchronous version of analyze_image for use in sync contexts
+        Synchronous version of analyze_image for use in sync contexts with robust retry logic
 
         Args:
             image_path: Path to the image file
             prompt: Text prompt to accompany the image
 
         Returns:
-            Analysis result as string, or None if failed
+            Analysis result as string, or None if failed and in backoff period
         """
-        # Use asyncio.run to call the async method
+        # CRITICAL: Check if we should attempt vision analysis based on failure history
+        if not self.should_attempt_vision_analysis():
+            # We're in a backoff period - return None to indicate vision unavailable
+            # This allows the game to continue without vision analysis
+            remaining_time = self.vision_backoff_seconds - (time.time() - self.last_vision_failure_time)
+            log.warning(f"Vision analysis skipped - in backoff period ({remaining_time:.0f}s remaining)")
+            return None
+
+        # Attempt vision analysis with try/catch for robust error handling
         try:
-            return asyncio.run(self.analyze_image(image_path, prompt))
+            result = asyncio.run(self.analyze_image(image_path, prompt))
+
+            if result is not None:
+                # SUCCESS: Vision analysis completed successfully
+                self.handle_vision_success()
+                return result
+            else:
+                # FAILURE: Vision analysis returned None
+                self.handle_vision_failure("Vision analysis returned None/empty result")
+                return None
+
         except Exception as e:
-            log.error(f"Sync image analysis failed: {e}", exc_info=True)
+            # FAILURE: Exception occurred during vision analysis
+            error_msg = f"Vision analysis exception: {str(e)}"
+            self.handle_vision_failure(error_msg)
+            log.error(f"Vision analysis failed with exception: {e}", exc_info=True)
             return None
 
     async def stop_mcp_server(self):
@@ -329,6 +422,7 @@ class ZAIMCPClient:
 class ZAIVisionFallback:
     """
     Fallback vision handler that uses Z.AI's direct API when MCP is not available
+    Includes robust retry logic with exponential backoff
     """
 
     def __init__(self, client, model: str):
@@ -355,17 +449,94 @@ class ZAIVisionFallback:
             log.warning("No ZAI_API_KEY found, using provided client for vision fallback")
         self.model = model
 
+        # CRITICAL: Add retry state for fallback client
+        self.fallback_failure_count = 0
+        self.last_fallback_failure_time = 0
+        self.fallback_backoff_seconds = 60  # Start with 60 seconds backoff
+        self.max_fallback_backoff_seconds = 300  # Max 5 minutes backoff
+        self.fallback_temporarily_disabled = False
+
+    def should_attempt_fallback_analysis(self) -> bool:
+        """
+        Check if fallback vision analysis should be attempted based on failure history and backoff timing
+
+        Returns:
+            True if fallback vision analysis should be attempted, False if in backoff period
+        """
+        current_time = time.time()
+
+        # If fallback is temporarily disabled, check if backoff period has elapsed
+        if self.fallback_temporarily_disabled:
+            if current_time - self.last_fallback_failure_time >= self.fallback_backoff_seconds:
+                # Backoff period elapsed, re-enable fallback with caution
+                log.info(f"Fallback vision backoff period elapsed ({self.fallback_backoff_seconds}s). Re-enabling fallback vision analysis.")
+                self.fallback_temporarily_disabled = False
+                return True
+            else:
+                # Still in backoff period
+                remaining_time = self.fallback_backoff_seconds - (current_time - self.last_fallback_failure_time)
+                log.info(f"Fallback vision analysis temporarily disabled. {remaining_time:.0f}s remaining in backoff period.")
+                return False
+
+        # If not disabled, allow attempt
+        return True
+
+    def handle_fallback_failure(self, error_message: str) -> None:
+        """
+        Handle fallback vision analysis failure by implementing exponential backoff
+
+        Args:
+            error_message: Description of the error that occurred
+        """
+        self.fallback_failure_count += 1
+        self.last_fallback_failure_time = time.time()
+
+        # Calculate exponential backoff: 60s, 120s, 240s, max 300s (5min)
+        if self.fallback_failure_count == 1:
+            self.fallback_backoff_seconds = 60
+        else:
+            # Double the backoff time, but cap at max
+            self.fallback_backoff_seconds = min(
+                self.fallback_backoff_seconds * 2,
+                self.max_fallback_backoff_seconds
+            )
+
+        # Disable fallback temporarily
+        self.fallback_temporarily_disabled = True
+
+        log.error(f"FALLBACK VISION FAILURE #{self.fallback_failure_count}: {error_message}")
+        log.error(f"Fallback vision analysis temporarily disabled for {self.fallback_backoff_seconds} seconds (exponential backoff)")
+
+    def handle_fallback_success(self) -> None:
+        """
+        Reset failure counters after successful fallback vision analysis
+        """
+        if self.fallback_failure_count > 0:
+            log.info(f"Fallback vision analysis succeeded after {self.fallback_failure_count} previous failures. Resetting failure counters.")
+            self.fallback_failure_count = 0
+            self.fallback_backoff_seconds = 60  # Reset to initial backoff
+            self.fallback_temporarily_disabled = False
+            self.last_fallback_failure_time = 0
+
     def analyze_image(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
-        Analyze image using direct API calls
+        Analyze image using direct API calls with robust retry logic
 
         Args:
             image_path: Path to image file
             prompt: Text prompt
 
         Returns:
-            Analysis result or None if failed
+            Analysis result or None if failed and in backoff period
         """
+        # CRITICAL: Check if we should attempt fallback vision analysis based on failure history
+        if not self.should_attempt_fallback_analysis():
+            # We're in a backoff period - return None to indicate vision unavailable
+            remaining_time = self.fallback_backoff_seconds - (time.time() - self.last_fallback_failure_time)
+            log.warning(f"Fallback vision analysis skipped - in backoff period ({remaining_time:.0f}s remaining)")
+            return None
+
+        # Attempt fallback vision analysis with try/catch for robust error handling
         try:
             # Read and encode image
             import base64
@@ -417,16 +588,28 @@ class ZAIVisionFallback:
                 if response.status_code == 200:
                     response_data = response.json()
                     if 'choices' in response_data and response_data['choices']:
-                        return response_data['choices'][0]['message']['content']
+                        result = response_data['choices'][0]['message']['content']
+
+                        # SUCCESS: Fallback vision analysis completed successfully
+                        self.handle_fallback_success()
+                        return result
                     else:
-                        log.error(f"Vision API response missing choices: {response_data}")
+                        # FAILURE: Invalid response format
+                        error_msg = f"Vision API response missing choices: {response_data}"
+                        self.handle_fallback_failure(error_msg)
+                        log.error(error_msg)
                         return None
                 else:
-                    log.error(f"Vision API HTTP request failed: {response.status_code}")
-                    log.error(f"Vision API response: {response.text}")
+                    # FAILURE: HTTP error
+                    error_msg = f"Vision API HTTP request failed: {response.status_code} - {response.text}"
+                    self.handle_fallback_failure(error_msg)
+                    log.error(error_msg)
                     return None
 
         except Exception as e:
+            # FAILURE: Exception occurred during fallback vision analysis
+            error_msg = f"Fallback vision analysis exception: {str(e)}"
+            self.handle_fallback_failure(error_msg)
             log.error(f"Fallback image analysis failed: {e}", exc_info=True)
             return None
 

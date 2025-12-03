@@ -45,12 +45,14 @@ export function BattleLog({
     }
   }, [memoryWrite]);
 
-  // Get the latest Pokemon-related entries (newest at start of array due to prepend)
-  const latestEntry = logs.length > 0 ? logs[0] : null;
-
-  // Filter for vision and response entries (important Pokemon analysis)
+  // Filter for different types of entries (important Pokemon analysis)
   const visionEntries = logs.filter((log) => log.is_vision).slice(0, 3);
-  // const responseEntries = logs.filter((log) => log.is_response).slice(0, 2); // TODO: Use for response display
+  const responseEntries = logs.filter((log) => log.is_response).slice(0, 3);
+
+  // Get the latest LLM response entry for main display, fallback to any latest entry
+  const latestResponseEntry =
+    responseEntries.length > 0 ? responseEntries[0] : null;
+  const latestEntry = latestResponseEntry || (logs.length > 0 ? logs[0] : null);
 
   // Get recent actions from last few entries
   const recentActions = logs

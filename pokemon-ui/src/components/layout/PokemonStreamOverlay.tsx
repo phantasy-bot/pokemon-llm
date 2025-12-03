@@ -105,11 +105,14 @@ export function PokemonStreamOverlay({
               </div>
             </div>
           </div>
+        </div>
+        <div className="pokemon-header__title">
           <div className="title">LLM PLAYS POKÉMON</div>
         </div>
+      </div>
 
-        {/* Main content area */}
-        <div className="pokemon-content">
+      {/* Main content area */}
+      <div className="pokemon-content">
           {/* Left Column - Battle Log */}
           <div className="pokemon-left-col">
             <div className="status">
