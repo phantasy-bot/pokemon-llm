@@ -26,6 +26,7 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "")
         - When in a menu or battle determine the position of your selection cursor.
         - When in a menu or battle avoid chaining inputs. It's important to verify the cursor each step.
         - On name entry screens with letter/symbol grids, look for: 1) A RIGHT-FACING TRIANGLE (▶) cursor - the item to its RIGHT is currently selected. 2) At the top (near 'YOUR NAME?', 'RIVAL'S NAME?', or (POKEMON'S) 'NAME?'), 7 underline slots with one lifted higher - this shows which character position is active for entry. 3) Report the current name being entered and which position is active. 4) When name is complete, press 'S' (START) to save instead of navigating to 'END'/'ED'.
+        - For character names and Pokémon nicknames, always prefer DEFAULT/PREMADE names instead of choosing 'NEW NAME' or custom nicknames. This saves time and keeps the game flowing efficiently.
         - Use the grid system to determine relative positions. Your character is always at [4,4] X,Y on the screen grid (TOP left cell is [0,0]).
         - List out all visible objects, NPCs, and terrain features in the screenshot. Translate them to world coordinates (based on your position).
         - Print any text that appears in the screenshot, including dialogue boxes, signs, or other text.
