@@ -234,13 +234,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         log.error(f"Invalid state_data structure: {type(state_data)}")
         return None, None, False
 
-    # Handle Z.AI vision processing using MCP server with retry mechanism
+    # CRITICAL: Handle Z.AI vision processing with robust retry and backoff mechanism
     vision_analysis = ""
-    max_vision_retries = 3
-    vision_retry_delay = 2  # seconds
+    vision_analysis_for_ui = None
 
     if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path) and zai_vision_client:
-        # Check if MCP server process is still alive
+        # Check if MCP server process is still alive before attempting analysis
         if hasattr(zai_vision_client, 'mcp_process') and zai_vision_client.mcp_process:
             if zai_vision_client.mcp_process.poll() is not None:
                 log.warning(f"MCP server process has terminated with code: {zai_vision_client.mcp_process.returncode}")
@@ -251,85 +250,96 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     if zai_vision_client.is_connected:
                         log.info("MCP server restarted successfully")
                     else:
-                        log.warning("Failed to restart MCP server, will retry vision analysis")
+                        log.warning("Failed to restart MCP server")
+                        zai_vision_client.handle_vision_failure("MCP server process terminated and restart failed")
                 except Exception as restart_error:
                     log.error(f"Failed to restart MCP server: {restart_error}")
+                    zai_vision_client.handle_vision_failure(f"MCP server restart failed: {str(restart_error)}")
 
-        # Retry vision analysis multiple times
-        for attempt in range(max_vision_retries):
-            if attempt > 0:
-                log.info(f"Vision retry attempt {attempt + 1}/{max_vision_retries} (waiting {vision_retry_delay}s first)...")
-                time.sleep(vision_retry_delay)
+        # CRITICAL: Use enhanced vision client with built-in retry and exponential backoff
+        try:
+            log.info("Z.AI MCP vision server analyzing screenshot with robust retry mechanism...")
 
-            try:
-                log.info(f"Z.AI MCP vision server analyzing screenshot (attempt {attempt + 1}/{max_vision_retries})...")
+            # Use enhanced sync version with built-in exponential backoff
+            if hasattr(zai_vision_client, 'analyze_image_sync'):
+                # CRITICAL: Updated prompt focused on factual content to prevent hallucinations
+                factual_prompt = (
+                    "Analyze this Pokemon Red game screenshot. Report ONLY what you can clearly see:\n"
+                    "1. READABLE TEXT: Any dialogue, menus, signs, or UI text that is clearly legible\n"
+                    "2. CHARACTER POSITION: Where the player character is located on screen\n"
+                    "3. VISIBLE NPCs: Any non-player characters you can clearly identify\n"
+                    "4. UI ELEMENTS: Health bars, menu cursors, battle interfaces, text boxes\n"
+                    "5. OBSTACLES: Objects, walls, trees, or barriers that are clearly visible\n"
+                    "**IMPORTANT:** Be strictly factual. If text is unclear or too small, say 'text unreadable'.\n"
+                    "Do not speculate about off-screen content or make assumptions about locations not visible.\n\n"
+                    "**NAME ENTRY SCREENS:** If you see a letter selection grid:\n"
+                    "- Look for RIGHT-FACING TRIANGLE CURSOR (▶) - item to its RIGHT is selected\n"
+                    "- At the top, find 7 underline slots where one is raised higher - that's the active position\n"
+                    "- Report current name being entered and which position is active\n"
+                    "- When name is complete, press 'S' (START) to confirm, not navigate to 'END'\n\n"
+                    "**EFFICIENCY:** Always choose DEFAULT/PREMADE names over custom names to save time."
+                )
 
-                # Use MCP client for vision analysis - use original screenshot without minimap
-                vision_result = None
-                if hasattr(zai_vision_client, 'analyze_image_sync'):
-                    # Use sync version for MCP client with original screenshot (no minimap overlay)
-                    vision_result = zai_vision_client.analyze_image_sync(
-                        SAVED_SCREENSHOT_PATH,
-                        "Analyze this Pokemon Red game screenshot. Focus ONLY on what you can clearly see in the image. Describe: 1) Any readable text on screen (dialogue boxes, menus, signs), 2) Character position and visible NPCs, 3) UI elements like health bars, menu cursors, or battle interfaces, 4) Obvious obstacles or interactive objects nearby. Be factual and avoid speculation about locations not clearly visible. If text is unclear or too small to read, say 'text unreadable' rather than guessing content.\n\n**IMPORTANT FOR NAME ENTRY SCREENS:** If you see a letter/symbol selection grid, identify: 1) Look for a RIGHT-FACING TRIANGLE CURSOR (▶) - the item to its RIGHT is currently selected. 2) At the top of the screen (near 'YOUR NAME?', 'RIVAL'S NAME?', or (POKEMON'S) 'NAME?'), look for 7 underline character slots where one slot is lifted up slightly higher than the others - this indicates which character position is currently active for entry. 3) Report the current name being entered and which position is active. 4) Note: When the name is complete, press 'S' (START) to confirm/save instead of navigating to 'END'/'ED'.\n\n**EFFICIENCY PREFERENCE:** For character names and Pokémon nicknames, always prefer selecting DEFAULT/PREMADE names instead of choosing 'NEW NAME' or custom nicknames. This saves time and keeps the game flowing."
-                    )
-                elif hasattr(zai_vision_client, 'analyze_image'):
-                    # Handle sync fallback client (ZAIVisionFallback) - use original screenshot
-                    vision_result = zai_vision_client.analyze_image(
-                        SAVED_SCREENSHOT_PATH,
-                        "Analyze this Pokemon Red game screenshot. Focus ONLY on what you can clearly see in the image. Describe: 1) Any readable text on screen (dialogue boxes, menus, signs), 2) Character position and visible NPCs, 3) UI elements like health bars, menu cursors, or battle interfaces, 4) Obvious obstacles or interactive objects nearby. Be factual and avoid speculation about locations not clearly visible. If text is unclear or too small to read, say 'text unreadable' rather than guessing content.\n\n**IMPORTANT FOR NAME ENTRY SCREENS:** If you see a letter/symbol selection grid, identify: 1) Look for a RIGHT-FACING TRIANGLE CURSOR (▶) - the item to its RIGHT is currently selected. 2) At the top of the screen (near 'YOUR NAME?', 'RIVAL'S NAME?', or (POKEMON'S) 'NAME?'), look for 7 underline character slots where one slot is lifted up slightly higher than the others - this indicates which character position is currently active for entry. 3) Report the current name being entered and which position is active. 4) Note: When the name is complete, press 'S' (START) to confirm/save instead of navigating to 'END'/'ED'.\n\n**EFFICIENCY PREFERENCE:** For character names and Pokémon nicknames, always prefer selecting DEFAULT/PREMADE names instead of choosing 'NEW NAME' or custom nicknames. This saves time and keeps the game flowing."
-                    )
-                else:
-                    log.warning("Z.AI vision client doesn't have analyze_image method")
+                vision_result = zai_vision_client.analyze_image_sync(SAVED_SCREENSHOT_PATH, factual_prompt)
 
-                # Validate the vision result
-                if vision_result and len(vision_result.strip()) > 50:  # Minimum reasonable length
-                    vision_result = vision_result.strip()
-                    # Additional validation: check if it looks like actual analysis vs tools list
-                    invalid_indicators = [
-                        '"name": "analyze_image"',
-                        '"name": "analyze_video"',
-                        '"description": "Analyze an image',
-                        '"inputSchema"',
-                        'tools": [',
-                        '["name", "description"]'
-                    ]
-
-                    # Check if response contains MCP server metadata (wrong format)
-                    is_invalid_response = any(indicator in vision_result[:500] for indicator in invalid_indicators)
-
-                    if is_invalid_response:
-                        log.warning(f"Vision analysis attempt {attempt + 1} returned MCP metadata instead of analysis")
-                        log.warning(f"Response preview: {vision_result[:200]}...")
-                        continue  # Try again
-
+                if vision_result is not None:
+                    # SUCCESS: Vision analysis completed successfully
                     log.info(f"Z.AI MCP vision analysis completed: {len(vision_result)} chars")
                     log.info(f"Vision analysis preview: {vision_result[:200]}...")
+
                     vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
                     vision_analysis_for_ui = vision_result  # Store raw vision analysis for UI
                     payload["vision_analysis"] = vision_analysis
                     # Also add a more prominent vision field for better LLM recognition
                     payload["visual_context"] = vision_result
-                    break  # Success! Exit retry loop
                 else:
-                    log.warning(f"Vision analysis attempt {attempt + 1} failed: {'empty response' if not vision_result else f'too short ({len(vision_result)} chars)'}")
-                    if attempt == max_vision_retries - 1:  # Last attempt
-                        payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Failed after {max_vision_retries} attempts - no valid visual analysis available]"
-                        # Don't proceed without vision - this is critical
-                        log.error("CRITICAL: Unable to get vision analysis after multiple attempts. Agent cannot play without visual input.")
-                        return None, None, False
+                    # FAILURE: Vision analysis returned None (likely due to backoff period or server issue)
+                    log.warning("Vision analysis returned None - likely in backoff period or server unavailable")
 
-            except Exception as e:
-                log.warning(f"Z.AI MCP vision analysis attempt {attempt + 1} failed: {e}")
-                if attempt == max_vision_retries - 1:  # Last attempt
-                    log.error(f"CRITICAL: All {max_vision_retries} vision analysis attempts failed: {e}")
-                    payload["vision_analysis"] = f"Z.AI GLM-4.6 Vision Analysis: [Failed after {max_vision_retries} attempts - {str(e)}]"
-                    # Don't proceed without vision - this is critical
-                    log.error("CRITICAL: Unable to get vision analysis after multiple attempts. Agent cannot play without visual input.")
-                    return None, None, False
+                    # Check if we're in a backoff period
+                    if hasattr(zai_vision_client, 'vision_temporarily_disabled') and zai_vision_client.vision_temporarily_disabled:
+                        remaining_time = zai_vision_client.vision_backoff_seconds - (time.time() - zai_vision_client.last_vision_failure_time)
+                        payload["vision_analysis"] = f"[Vision temporarily disabled due to server failures - {remaining_time:.0f}s until retry]"
+                        log.warning(f"Vision analysis skipped due to backoff period. Game will continue without vision input.")
+                    else:
+                        payload["vision_analysis"] = "[Vision analysis unavailable - server issue or invalid response]"
+                        log.error("Vision analysis failed but not in backoff period - server or response issue")
 
-                # Brief delay before retry (except on last attempt)
-                if attempt < max_vision_retries - 1:
-                    time.sleep(1)
+            elif hasattr(zai_vision_client, 'analyze_image'):
+                # Handle sync fallback client (ZAIVisionFallback)
+                log.warning("Using fallback vision client (ZAIVisionFallback)")
+                vision_result = zai_vision_client.analyze_image(SAVED_SCREENSHOT_PATH, factual_prompt)
+
+                if vision_result:
+                    vision_analysis = f"Z.AI Vision Analysis (Fallback): {vision_result}"
+                    vision_analysis_for_ui = vision_result
+                    payload["vision_analysis"] = vision_analysis
+                    payload["visual_context"] = vision_result
+                else:
+                    payload["vision_analysis"] = "[Fallback vision analysis failed]"
+                    log.warning("Fallback vision analysis failed")
+            else:
+                log.warning("Z.AI vision client doesn't have analyze_image method")
+                payload["vision_analysis"] = "[Vision client method unavailable]"
+
+        except Exception as e:
+            # CRITICAL: Handle vision analysis exception without crashing the app
+            error_msg = f"Vision analysis exception: {str(e)}"
+            log.error(f"CRITICAL VISION ERROR: {error_msg}", exc_info=True)
+
+            # Use the client's built-in failure handling if available
+            if hasattr(zai_vision_client, 'handle_vision_failure'):
+                zai_vision_client.handle_vision_failure(error_msg)
+
+            payload["vision_analysis"] = f"[Vision analysis failed: {error_msg}]"
+
+            # CRITICAL: DO NOT return None, None, False - continue without vision analysis
+            log.error("Vision analysis failed, but game will continue without visual input")
+
+    elif CURRENT_MODE == "ZAI":
+        # ZAI mode but no vision client available
+        log.warning("ZAI mode detected but no vision client available - continuing without vision analysis")
+        payload["vision_analysis"] = "[Vision client not initialized]"
 
     # Build the user message with text and images
     image_parts_for_api = []
@@ -907,8 +917,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log_entries.append(vision_log)
 
         # Response log entry (LLM reasoning)
-        if game_analysis and game_analysis.strip():
-            response_log = { "id": log_id_counter, "text": game_analysis.strip(), "is_response": True }
+        game_analysis_for_ui = analysis_text  # Store analysis_text for UI display
+        if analysis_text and analysis_text.strip():
+            response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
             log_entries.append(response_log)
 
         # Action log entry
