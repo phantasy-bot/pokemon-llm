@@ -30,11 +30,6 @@ const ActionLog: React.FC<ActionLogProps> = ({ logs }) => {
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString();
-  };
-
   return (
     <div className="action-log">
       <h2>Action Log</h2>
@@ -46,10 +41,20 @@ const ActionLog: React.FC<ActionLogProps> = ({ logs }) => {
         ) : (
           logs.map((log) => (
             <div
-              key={log.id ?? log.timestamp}
+              key={log.id ?? String(log.timestamp)}
               className={`log-entry ${getLogClassName(log.type)}`}
             >
-              <span className="log-time">{formatTimestamp(log.timestamp)}</span>
+              <span className="log-time">
+                {new Date(log.timestamp || new Date()).toLocaleTimeString(
+                  "en-US",
+                  {
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  },
+                )}
+              </span>
               <span className="log-message">{log.message}</span>
             </div>
           ))

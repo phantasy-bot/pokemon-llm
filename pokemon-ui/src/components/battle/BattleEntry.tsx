@@ -1,6 +1,4 @@
 import type { LogEntry } from "../../types/gameTypes";
-import { formatLogText } from "../../utils/formatting";
-import { ActionBadges } from "../thought-log/ActionBadges";
 import ReactMarkdown from "react-markdown";
 import "./BattleEntry.css";
 
@@ -203,7 +201,7 @@ function formatLogText(text: string): string {
     /(Action:\s*)([ABUDLRS][\s;ABUDLRS]*?)(?=[^ABUDLRS\s;]|$)/g;
   formattedText = formattedText.replace(
     actionSequenceRegex,
-    (fullMatch, prefix, sequence) => {
+    (_fullMatch, prefix, sequence) => {
       let cleanedSequence = sequence
         .replace(/;/g, "")
         .replace(/\s+/g, " ")
