@@ -283,6 +283,10 @@ class ZAIMCPClient:
                         else:
                             analysis = str(content)
                             log.warning(f"MCP content format unexpected, got: {type(content)}")
+                    elif 'tools' in result:
+                        # This is an INVALID response - MCP server returned tools list instead of analysis
+                        log.error(f"MCP server returned tools list instead of analysis. This indicates a server error. Response: {result}")
+                        return None
                     else:
                         # Fallback to other possible formats
                         analysis = result.get('description', result.get('analysis', str(result)))
@@ -291,6 +295,14 @@ class ZAIMCPClient:
                     analysis = result
                 else:
                     analysis = str(result)
+
+                # Additional validation: ensure analysis is not just tool descriptions
+                if analysis and isinstance(analysis, str):
+                    # Check if the analysis contains tool-like content instead of actual image analysis
+                    tool_keywords = ['analyze_image', 'analyze_video', 'inputSchema', 'maximum file size', 'supports both local files and remote URL']
+                    if any(keyword.lower() in analysis.lower() for keyword in tool_keywords):
+                        log.error(f"Analysis appears to contain tool descriptions instead of actual image analysis. Treating as invalid. Analysis preview: {analysis[:200]}...")
+                        return None
 
                 log.info(f"Successfully got analysis from {tool_name}")
                 return analysis
