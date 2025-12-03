@@ -18,6 +18,7 @@ interface BattleLogProps {
   isProcessing?: boolean;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
+  totalActions?: number;
 }
 
 export function BattleLog({
@@ -25,6 +26,7 @@ export function BattleLog({
   isProcessing = false,
   memoryWrite,
   onMemoryWriteClear,
+  totalActions = 0,
 }: BattleLogProps) {
   // @ts-expect-error - Parameter not used yet
   const _onMemoryWriteClear = onMemoryWriteClear;
@@ -58,11 +60,19 @@ export function BattleLog({
   const recentActions = logs
     .filter((log) => log.is_action && log.text)
     .slice(0, 5)
-    .map((log) => ({
-      id: log.id || `action-${Date.now()}`,
-      text: log.text || "",
-      actions: extractActions(log.text || ""),
-    }));
+    .map((log) => {
+      const actions = extractActions(log.text || "");
+      // Calculate action numbers by counting backwards from total actions
+      const actionCount = actions.length;
+      const startActionNumber = Math.max(1, totalActions - actionCount + 1);
+
+      return {
+        id: log.id || `action-${Date.now()}`,
+        text: log.text || "",
+        actions: actions,
+        actionNumbers: actions.map((_, idx) => startActionNumber + idx),
+      };
+    });
 
   return (
     <div className="battle-log-container">
@@ -128,6 +138,9 @@ export function BattleLog({
                     <div key={r.id} className="battle-log__action-row">
                       {r.actions.map((btn, idx) => (
                         <span key={idx} className="battle-log__action-btn">
+                          <span className="battle-log__action-number">
+                            #{r.actionNumbers?.[idx] || "?"}
+                          </span>
                           {btn}
                         </span>
                       ))}

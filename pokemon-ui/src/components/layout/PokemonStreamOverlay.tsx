@@ -113,55 +113,54 @@ export function PokemonStreamOverlay({
 
       {/* Main content area */}
       <div className="pokemon-content">
-          {/* Left Column - Battle Log */}
-          <div className="pokemon-left-col">
-            <div className="status">
-              <span>Game Status: {gameState.gameStatus}</span>
-              <span
-                className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
-              >
-                • {wsConnected ? "Connected" : "Disconnected"}
-              </span>
-            </div>
-
-            <div className="pokemon-battle-log">
-              <BattleLog logs={logs} />
-            </div>
+        {/* Left Column - Battle Log */}
+        <div className="pokemon-left-col">
+          <div className="status">
+            <span>Game Status: {gameState.gameStatus}</span>
+            <span
+              className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
+            >
+              • {wsConnected ? "Connected" : "Disconnected"}
+            </span>
           </div>
 
-          {/* Center Column - Goals */}
-          <div className="pokemon-goals">
-            <div className="goals-log">
-              <h3>Primary Goal</h3>
-              <p className="log-entry">{gameState.goals.primary}</p>
-              <h3>Secondary Goals</h3>
-              <ul>
-                <li className="log-entry">{gameState.goals.secondary}</li>
-              </ul>
-              <h3>Tertiary Goal</h3>
-              <p className="log-entry">{gameState.goals.tertiary}</p>
-              <h3>Other Notes</h3>
-              <p className="log-entry">{gameState.otherGoals}</p>
+          <div className="pokemon-battle-log">
+            <BattleLog logs={logs} totalActions={gameState.actions} />
+          </div>
+        </div>
+
+        {/* Center Column - Goals */}
+        <div className="pokemon-goals">
+          <div className="goals-log">
+            <h3>Primary Goal</h3>
+            <p className="log-entry">{gameState.goals.primary}</p>
+            <h3>Secondary Goals</h3>
+            <ul>
+              <li className="log-entry">{gameState.goals.secondary}</li>
+            </ul>
+            <h3>Tertiary Goal</h3>
+            <p className="log-entry">{gameState.goals.tertiary}</p>
+            <h3>Other Notes</h3>
+            <p className="log-entry">{gameState.otherGoals}</p>
+          </div>
+        </div>
+
+        {/* Right Column - Minimap and Team */}
+        <div className="pokemon-right-col">
+          <div className="pokemon-game-feed">
+            <div className="game-placeholder">
+              Pokemon Game Feed Placeholder
             </div>
+            <Minimap
+              location={location}
+              visible={gameState.minimapVisible}
+              className="pokemon-minimap"
+            />
           </div>
 
-          {/* Right Column - Minimap and Team */}
-          <div className="pokemon-right-col">
-            <div className="pokemon-game-feed">
-              <div className="game-placeholder">
-                Pokemon Game Feed Placeholder
-              </div>
-              <Minimap
-                location={location}
-                visible={gameState.minimapVisible}
-                className="pokemon-minimap"
-              />
-            </div>
-
-            {/* Pokemon Team Bar */}
-            <div className="pokemon-team-section">
-              <PokemonTeamBar pokemon={currentPokemon} />
-            </div>
+          {/* Pokemon Team Bar */}
+          <div className="pokemon-team-section">
+            <PokemonTeamBar pokemon={currentPokemon} />
           </div>
         </div>
       </div>
