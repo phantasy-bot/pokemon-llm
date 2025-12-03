@@ -57,20 +57,18 @@ export function BattleLog({
   const latestEntry = latestResponseEntry || (logs.length > 0 ? logs[0] : null);
 
   // Get recent actions from last few entries
+  let currentActionNumber = Math.max(1, totalActions - 4); // Show last 5 action numbers
   const recentActions = logs
     .filter((log) => log.is_action && log.text)
     .slice(0, 5)
     .map((log) => {
       const actions = extractActions(log.text || "");
-      // Calculate action numbers by counting backwards from total actions
-      const actionCount = actions.length;
-      const startActionNumber = Math.max(1, totalActions - actionCount + 1);
 
       return {
         id: log.id || `action-${Date.now()}`,
         text: log.text || "",
         actions: actions,
-        actionNumbers: actions.map((_, idx) => startActionNumber + idx),
+        actionNumber: currentActionNumber++, // Each log entry gets its own number
       };
     });
 
@@ -136,11 +134,11 @@ export function BattleLog({
                   .filter((r) => r.actions.length > 0)
                   .map((r) => (
                     <div key={r.id} className="battle-log__action-row">
+                      <span className="battle-log__action-number">
+                        #{r.actionNumber || "?"}
+                      </span>
                       {r.actions.map((btn, idx) => (
                         <span key={idx} className="battle-log__action-btn">
-                          <span className="battle-log__action-number">
-                            #{r.actionNumbers?.[idx] || "?"}
-                          </span>
                           {btn}
                         </span>
                       ))}
