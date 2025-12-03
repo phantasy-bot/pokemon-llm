@@ -1,0 +1,75 @@
+{
+  "sessions": [
+    {
+      "session_id": "05b7e2a2",
+      "start_time": "2025-11-26T18:37:35.891664",
+      "end_time": "2025-11-26T18:38:34.053395",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "7d9ed19f",
+      "start_time": "2025-11-26T18:38:34.053481",
+      "end_time": "2025-11-26T18:45:50.430210",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "955a4fb2",
+      "start_time": "2025-11-26T18:45:50.430493",
+      "end_time": "2025-11-26T18:52:24.342003",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "4f8cad34",
+      "start_time": "2025-11-26T18:52:24.342080",
+      "end_time": "2025-11-26T19:20:47.552387",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "dbaf50a1",
+      "start_time": "2025-11-26T19:20:47.552508",
+      "end_time": "2025-11-26T19:28:48.840231",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "23beb6aa",
+      "start_time": "2025-11-26T19:28:48.840465",
+      "end_time": "2025-11-26T19:55:54.678319",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "0a253097",
+      "start_time": "2025-11-26T19:55:54.678399",
+      "end_time": null,
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "active",
+      "screenshot_count": 0
+    }
+  ],
+  "last_updated": "2025-11-26T19:55:54.678495"
+}
