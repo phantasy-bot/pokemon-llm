@@ -917,7 +917,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log_entries.append(vision_log)
 
         # Response log entry (LLM reasoning)
-        game_analysis_for_ui = analysis_text  # Store analysis_text for UI display
+        analysis_text = game_analysis  # Use game_analysis from LLM response
         if analysis_text and analysis_text.strip():
             response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
             log_entries.append(response_log)
