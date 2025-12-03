@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger('llmdriver')
 
 
-ACTION_RE = re.compile(r'^[LRUDABS](?:;[LRUDABS])*(?:;)?$')
+ACTION_RE = re.compile(r'^[LRUDABSs](?:;[LRUDABSs])*(?:;)?$')
 COORD_RE = re.compile(r'^([0-9]),([0-8])$')
 ANALYSIS_RE = re.compile(r"<game_analysis>([\s\S]*?)</game_analysis>", re.IGNORECASE)
 IS_LOCAL = DEFAULT_MODE == "LMSTUDIO" or DEFAULT_MODE == "OLLAMA"
@@ -263,19 +263,19 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
             try:
                 log.info(f"Z.AI MCP vision server analyzing screenshot (attempt {attempt + 1}/{max_vision_retries})...")
 
-                # Use MCP client for vision analysis
+                # Use MCP client for vision analysis - use original screenshot without minimap
                 vision_result = None
                 if hasattr(zai_vision_client, 'analyze_image_sync'):
-                    # Use sync version for MCP client
+                    # Use sync version for MCP client with original screenshot (no minimap overlay)
                     vision_result = zai_vision_client.analyze_image_sync(
-                        screenshot_path,
-                        "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                        SAVED_SCREENSHOT_PATH,
+                        "Analyze this Pokemon Red game screenshot. Focus ONLY on what you can clearly see in the image. Describe: 1) Any readable text on screen (dialogue boxes, menus, signs), 2) Character position and visible NPCs, 3) UI elements like health bars, menu cursors, or battle interfaces, 4) Obvious obstacles or interactive objects nearby. Be factual and avoid speculation about locations not clearly visible. If text is unclear or too small to read, say 'text unreadable' rather than guessing content."
                     )
                 elif hasattr(zai_vision_client, 'analyze_image'):
-                    # Handle sync fallback client (ZAIVisionFallback)
+                    # Handle sync fallback client (ZAIVisionFallback) - use original screenshot
                     vision_result = zai_vision_client.analyze_image(
-                        screenshot_path,
-                        "Analyze this Pokemon Red game screenshot. Describe what you see: the current location, any UI elements, text on screen, character position, and what actions might be available."
+                        SAVED_SCREENSHOT_PATH,
+                        "Analyze this Pokemon Red game screenshot. Focus ONLY on what you can clearly see in the image. Describe: 1) Any readable text on screen (dialogue boxes, menus, signs), 2) Character position and visible NPCs, 3) UI elements like health bars, menu cursors, or battle interfaces, 4) Obvious obstacles or interactive objects nearby. Be factual and avoid speculation about locations not clearly visible. If text is unclear or too small to read, say 'text unreadable' rather than guessing content."
                     )
                 else:
                     log.warning("Z.AI vision client doesn't have analyze_image method")

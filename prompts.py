@@ -9,13 +9,14 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "")
 
         {benchmarkInstruction}
         
-        - Speak in the first person as if you were the player. Your vision provides crucial information about your surroundings.
-        - When vision analysis is available in the game state, USE IT DETAILEDLY to understand your current situation.
-        - The vision analysis contains expert image analysis describing exactly what you see - locations, characters, UI elements, text, and available actions.
-        - Always incorporate vision analysis into your decision-making process. It provides critical context you cannot get from game state data alone.
+        - Speak in the first person as if you were the player.
+        - PRIORITIZE the structured game state data (position, map_id, map_name) for accurate information about your location and surroundings.
+        - When vision analysis is available, use it for specific details that complement the game state: readable text on screen, visible UI elements, or immediate obstacles.
+        - The game state data is always more reliable for position and location information than vision analysis.
+        - If vision analysis contradicts game state data, trust the game state data.
 
         - Available Actions:
-            - U,D,L,R,A,B,S
+            - U,D,L,R,A,B,S (START),s (SELECT)
 
         1. Analyze the Game State:
         - Examine the screenshot provided in the game state.
@@ -57,7 +58,7 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "")
         - Stairs, Doors and Ladders do not require 'A' to interact. You simply walk into them.
 
         4. Menu Navigation:
-        - Press S to open the pause menu.
+        - Press S (START) to open the pause menu.
         - Use U/D/L/R to move the selection cursor, A to confirm, and B to cancel or go back.
 
         5. Command Chaining:
