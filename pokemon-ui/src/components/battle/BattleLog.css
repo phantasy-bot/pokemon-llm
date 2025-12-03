@@ -155,16 +155,17 @@
   border-radius: 3px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: inline-block;
 }
 
 .battle-log__action-number {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--accent-gold-dim);
-  font-weight: 400;
-  opacity: 0.8;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-right: 8px;
+  min-width: 30px;
+  display: inline-block;
 }
 
 .battle-log__memory-section {

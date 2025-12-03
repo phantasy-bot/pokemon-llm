@@ -95,7 +95,9 @@ export function BattleEntry({
       <div className="battle-entry__content">
         {/* Format log text with coordinate and action highlighting */}
         <div className="battle-entry__text">
-          <ReactMarkdown>{formatLogText(text)}</ReactMarkdown>
+          <ReactMarkdown allowDangerousHtml={true}>
+            {formatLogText(text)}
+          </ReactMarkdown>
         </div>
 
         {/* Special sections for vision analysis */}

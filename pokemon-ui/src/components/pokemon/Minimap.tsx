@@ -31,14 +31,14 @@ export function Minimap({
       // Set up polling interval
       intervalRef.current = setInterval(() => {
         // Force browser to re-fetch by adding cache-busting query parameter
-        const newSrc = `../minimap.png?t=${Date.now()}`;
+        const newSrc = `/minimap.png?t=${Date.now()}`;
         setMinimapSrc(newSrc);
         setIsLoading(true);
         setError(null);
       }, MINIMAP_POLL_INTERVAL);
 
       // Initial attempt
-      const initialSrc = `../minimap.png?t=${Date.now()}`;
+      const initialSrc = `/minimap.png?t=${Date.now()}`;
       setMinimapSrc(initialSrc);
       setIsLoading(true);
     };
