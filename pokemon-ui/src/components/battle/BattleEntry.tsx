@@ -1,5 +1,6 @@
 import type { LogEntry } from "../../types/gameTypes";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import "./BattleEntry.css";
 
 interface BattleEntryProps {
@@ -95,7 +96,7 @@ export function BattleEntry({
       <div className="battle-entry__content">
         {/* Format log text with coordinate and action highlighting */}
         <div className="battle-entry__text">
-          <ReactMarkdown allowDangerousHtml={true}>
+          <ReactMarkdown rehypePlugins={[rehypeRaw]}>
             {formatLogText(text)}
           </ReactMarkdown>
         </div>

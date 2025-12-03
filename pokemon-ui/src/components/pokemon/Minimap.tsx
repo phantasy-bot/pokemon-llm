@@ -106,15 +106,17 @@ export function Minimap({
           </div>
         )}
 
-        <img
-          ref={imageRef}
-          src={minimapSrc}
-          alt="Pokemon world minimap"
-          className={`minimap__image ${minimapVisible ? "minimap__image--visible" : "minimap__image--hidden"}`}
-          onLoad={handleMinimapLoad}
-          onError={handleMinimapError}
-          style={{ display: minimapVisible ? "block" : "none" }}
-        />
+        {minimapSrc && (
+          <img
+            ref={imageRef}
+            src={minimapSrc}
+            alt="Pokemon world minimap"
+            className={`minimap__image ${minimapVisible ? "minimap__image--visible" : "minimap__image--hidden"}`}
+            onLoad={handleMinimapLoad}
+            onError={handleMinimapError}
+            style={{ display: minimapVisible ? "block" : "none" }}
+          />
+        )}
 
         {!minimapVisible && !isLoading && !error && (
           <div className="minimap__placeholder">
