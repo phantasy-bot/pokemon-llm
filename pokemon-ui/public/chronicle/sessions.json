@@ -1,0 +1,115 @@
+{
+  "sessions": [
+    {
+      "session_id": "4f8cad34",
+      "start_time": "2025-11-26T18:52:24.342080",
+      "end_time": "2025-11-26T19:20:47.552387",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "dbaf50a1",
+      "start_time": "2025-11-26T19:20:47.552508",
+      "end_time": "2025-11-26T19:28:48.840231",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "23beb6aa",
+      "start_time": "2025-11-26T19:28:48.840465",
+      "end_time": "2025-11-26T19:55:54.678319",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "0a253097",
+      "start_time": "2025-11-26T19:55:54.678399",
+      "end_time": "2025-11-26T20:23:21.100598",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "49003f37",
+      "start_time": "2025-11-26T20:23:21.100677",
+      "end_time": "2025-11-26T21:15:43.888042",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "dabd20fd",
+      "start_time": "2025-11-26T21:15:43.888147",
+      "end_time": "2025-11-26T21:43:44.368636",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "793baea8",
+      "start_time": "2025-11-26T21:43:44.368729",
+      "end_time": "2025-11-26T21:44:53.301826",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "8c53bc6e",
+      "start_time": "2025-11-26T21:44:53.302057",
+      "end_time": "2025-11-26T22:03:07.892892",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 43,
+      "status": "completed",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "12bfbd99",
+      "start_time": "2025-11-26T22:19:04.360079",
+      "end_time": "2025-11-26T22:32:07.366362",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "ae6f5fa1",
+      "start_time": "2025-11-26T22:32:07.366452",
+      "end_time": "2025-11-26T22:38:11.832670",
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "interrupted",
+      "screenshot_count": 0
+    },
+    {
+      "session_id": "4c1c162e",
+      "start_time": "2025-11-26T22:38:11.833002",
+      "end_time": null,
+      "chapter_start": null,
+      "chapter_current": null,
+      "total_actions": 0,
+      "status": "active",
+      "screenshot_count": 0
+    }
+  ],
+  "last_updated": "2025-11-26T22:38:11.834380"
+}
