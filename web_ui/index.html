@@ -402,19 +402,35 @@
 
 					// --- Methods for Log Entry Types ---
 					getLogEntryClass(entry) {
-						if (entry.id.includes('vision-')) return 'vision-entry';
-						if (entry.id.includes('response-')) return 'response-entry';
+						// Check if entry has vision analysis text content
+						if (entry.text && typeof entry.text === 'string' &&
+							(entry.text.includes('Vision Analysis:') || entry.text.includes('Z.AI') ||
+							 entry.text.includes('vision analysis') || entry.text.includes('Analyzing'))) {
+							return 'vision-entry';
+						}
+						// Check for response content
+						if (entry.text && typeof entry.text === 'string' &&
+							(entry.text.includes('game_analysis') || entry.text.includes('Analysis included') ||
+							 entry.text.includes('continue pressing') || entry.text.includes('Since'))) {
+							return 'response-entry';
+						}
 						if (entry.is_action) return 'action-entry';
 						return '';
 					},
 					getLogPrefix(entry) {
-						if (entry.id.includes('vision-')) {
-							return `#${entry.id.split('-')[1]}: VISION: `;
-						} else if (entry.id.includes('response-')) {
-							return `#${entry.id.split('-')[1]}: RESPONSE: `;
-						} else {
-							return `#${entry.id}: `;
+						// Check if entry has vision analysis text content
+						if (entry.text && typeof entry.text === 'string' &&
+							(entry.text.includes('Vision Analysis:') || entry.text.includes('Z.AI') ||
+							 entry.text.includes('vision analysis') || entry.text.includes('Analyzing'))) {
+							return `#${entry.id}: VISION: `;
 						}
+						// Check for response content
+						if (entry.text && typeof entry.text === 'string' &&
+							(entry.text.includes('game_analysis') || entry.text.includes('Analysis included') ||
+							 entry.text.includes('continue pressing') || entry.text.includes('Since'))) {
+							return `#${entry.id}: RESPONSE: `;
+						}
+						return `#${entry.id}: `;
 					},
 
 					// --- New Methods for Minimap ---
