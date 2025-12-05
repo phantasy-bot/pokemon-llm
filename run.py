@@ -3,14 +3,6 @@ import subprocess
 import socket
 import time
 import os
-import sys
-import asyncio
-import logging
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
 # Environment detection and validation
 def ensure_python_environment():
     """Ensure we're running with correct Python environment and dependencies."""
@@ -31,6 +23,11 @@ def ensure_python_environment():
         import websockets
     except ImportError:
         missing_deps.append("websockets")
+
+    try:
+        import dotenv
+    except ImportError:
+        missing_deps.append("python-dotenv")
 
     # If all dependencies are available, we're good
     if not missing_deps:
@@ -77,6 +74,9 @@ def ensure_python_environment():
 # Ensure correct environment before importing other modules
 if not ensure_python_environment():
     sys.exit(1)
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from pyAIAgent.utils.misc import parse_max_loops_fn
 from pyAIAgent.utils.socket_utils import send_command
