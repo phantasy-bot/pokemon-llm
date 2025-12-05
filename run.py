@@ -7,6 +7,73 @@ import sys
 import asyncio
 import logging
 
+# Environment detection and validation
+def ensure_python_environment():
+    """Ensure we're running with correct Python environment and dependencies."""
+
+    # Try to import critical dependencies to verify environment
+    missing_deps = []
+    try:
+        from PIL import Image
+    except ImportError:
+        missing_deps.append("PIL (Pillow)")
+
+    try:
+        import openai
+    except ImportError:
+        missing_deps.append("openai")
+
+    try:
+        import websockets
+    except ImportError:
+        missing_deps.append("websockets")
+
+    # If all dependencies are available, we're good
+    if not missing_deps:
+        print("✅ Python environment validated successfully")
+        return True
+
+    # Dependencies missing, try to find and use conda environment
+    print(f"⚠️ Missing dependencies: {', '.join(missing_deps)}")
+
+    # Check if we're already in conda environment
+    conda_env = os.environ.get('CONDA_DEFAULT_ENV')
+    if conda_env:
+        print(f"Current conda environment: {conda_env}")
+        print("Dependencies may not be installed. Run: pip install -r requirements.txt")
+    else:
+        print("Not in a conda environment, searching for pokemon-llm environment...")
+
+    # Common conda installation paths
+    conda_paths = [
+        "/opt/homebrew/Caskroom/miniconda/base/envs/pokemon-llm/bin/python",
+        "/opt/miniconda3/envs/pokemon-llm/bin/python",
+        "/usr/local/miniconda3/envs/pokemon-llm/bin/python",
+        os.path.expanduser("~/miniconda3/envs/pokemon-llm/bin/python"),
+        os.path.expanduser("~/anaconda3/envs/pokemon-llm/bin/python"),
+    ]
+
+    for conda_python in conda_paths:
+        if os.path.exists(conda_python):
+            print(f"🔄 Found conda environment, switching to: {conda_python}")
+            # Re-exec this script with the correct python
+            os.execv(conda_python, [conda_python] + sys.argv)
+
+    # No conda environment found
+    print("❌ No suitable Python environment found.")
+    print("\nTo fix this issue:")
+    print("1. Create conda environment:")
+    print("   conda create -n pokemon-llm python=3.10")
+    print("   conda activate pokemon-llm")
+    print("2. Install dependencies:")
+    print("   pip install -r requirements.txt")
+    print("3. Run again: python run.py --auto")
+    return False
+
+# Ensure correct environment before importing other modules
+if not ensure_python_environment():
+    sys.exit(1)
+
 from pyAIAgent.utils.misc import parse_max_loops_fn
 from pyAIAgent.utils.socket_utils import send_command
 from pyAIAgent.game.state import DEFAULT_ROM, get_rom_path
@@ -32,8 +99,6 @@ state = {
     "currentTeam": [],
     "modelName": MODEL,
     "tokensUsed": 0,
-    "ggValue": 0,
-    "summaryValue": 0,
     "minimapLocation": "Unknown",
     "log_entries": []
 }

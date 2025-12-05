@@ -8,6 +8,7 @@ import asyncio
 import datetime
 import logging
 import socket
+import re
 import math
 import re
 import concurrent.futures
@@ -24,6 +25,7 @@ from client_setup import setup_llm_client, parse_mode_arg, MODES
 from benchmark import Benchmark
 from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
 from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
+from memory_storage import MemoryManager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -87,7 +89,7 @@ start_time = datetime.datetime.now()
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-LLM_TOTAL_TIMEOUT = STREAM_TIMEOUT + 10     # e.g. 70 s / 130 s
+LLM_TOTAL_TIMEOUT = STREAM_TIMEOUT + 30     # e.g. 90 s / 150 s
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 async def call_llm_with_timeout(state_data: dict,
@@ -107,7 +109,7 @@ async def call_llm_with_timeout(state_data: dict,
                                       timeout=total_timeout)
     except asyncio.TimeoutError:
         log.error(f"llm_stream_action exceeded {total_timeout}s – skipping cycle.")
-        return None, None, None
+        return None, None, None, None
 
 def summarize_and_reset(benchmark: Benchmark = None):
     """Condenses history, updates system prompt, resets history, accounts for tokens."""
@@ -266,18 +268,62 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 factual_prompt = (
                     "Analyze this Pokemon Red game screenshot. Report ONLY what you can clearly see:\n"
                     "1. READABLE TEXT: Any dialogue, menus, signs, or UI text that is clearly legible\n"
-                    "2. CHARACTER POSITION: Where the player character is located on screen\n"
-                    "3. VISIBLE NPCs: Any non-player characters you can clearly identify\n"
+                    "2. CHARACTER POSITION & SPATIAL AWARENESS: \n"
+                    "   - **OVERWORLD SCREENS**: The player character is ALWAYS the green sprite positioned in the CENTER-MIDDLE of the screen\n"
+                    "   - Describe what's visible around the player using DIRECTIONAL language (north, south, east, west, north-east, etc.)\n"
+                    "   - Report PROXIMITY to objects (e.g., 'tall grass patches 2 steps to the north-east', 'house directly to the south', 'trainer 3 steps west')\n"
+                    "   - Note NAVIGATION-RELEVANT features: tall grass, water, trees, doorways, paths, ledges, signposts\n"
+                    "   - **DO NOT** provide exact coordinates, use relative directional positioning instead\n"
+                    "3. VISIBLE NPCs: Any non-player characters you can clearly identify and their position relative to player\n"
                     "4. UI ELEMENTS: Health bars, menu cursors, battle interfaces, text boxes\n"
-                    "5. OBSTACLES: Objects, walls, trees, or barriers that are clearly visible\n"
+                    "5. OBSTACLES: Objects, walls, trees, or barriers that are clearly visible\n\n"
+
+                    "**BATTLE SCREEN ANALYSIS - CRITICAL PRIORITY:**\n"
+                    "If this is a Pokemon battle screen:\n"
+                    "- Player Pokemon appears at BOTTOM of screen (HP bar and values clearly visible)\n"
+                    "- RIVAL Pokemon appears at TOP of screen (HP may only show bars, not numbers)\n"
+                    "- FOCUS ON PLAYER HP: Report exact HP values and percentages shown for your Pokemon\n"
+                    "- Player HP shows both current/total values and visual bar - analyze both\n"
+                    "- HP BAR ASSESSMENT: Describe HP bar fill percentage and status (critical/wounded/healthy)\n"
+                    "- Rival analysis secondary: Focus only on what's clearly visible of the opponent\n"
+                    "- Report player Pokemon's status, move PP, and any visible stat changes\n"
+                    "- Note battle menu options and cursor position for strategic decisions\n\n"
+
+                    "**SCREEN TYPE IDENTIFICATION:**\n"
+                    "- Overworld: Player (green sprite) visible in center, buildings, paths, grass patches visible\n"
+                    "- Battle: HP bars at top/bottom, Pokemon sprites, move menu\n"
+                    "- Menu/Dialogue: Text boxes, selection cursors, often limited character sprites\n"
+                    "- Pokedex/Inventory: Grid layouts, item descriptions, status screens\n"
+
+                    "**GAME-SPECIFIC OBJECT DETECTION:**\n"
+                    "- **POKEBALLS**: Red/white spheres on counters, Pokéballs in Professor Oak's lab for starter selection\n"
+                    "- **TALL GRASS**: Light green patches that trigger random encounters (battle opportunities)\n"
+                    "- WATER SURFACES**: Blue surfaces where Pokemon can surf (typically requires HM03)\n"
+                    "- LEDGES/COUNTERS**: Special tiles that cannot be passed without specific HM or Cut trees\n"
+                    "- DOORS/ENTRANCES: House and building entrances with special interaction requirements\n"
+                    "- SIGNPOSTS**: Information signs that can be read (like gym names, shop names)\n"
+                    "- POKESTOP centers: Stores where items can be purchased\n"
+                    "- Move POKEMON CENTERS (Red/Blue/Green): Special healing locations\n"
+                    "                    \n"
+
+                    "Focus on describing what you can clearly see with SPATIAL RELATIONSHIPS for navigation assistance.\n\n"
+
                     "**IMPORTANT:** Be strictly factual. If text is unclear or too small, say 'text unreadable'.\n"
                     "Do not speculate about off-screen content or make assumptions about locations not visible.\n\n"
-                    "**NAME ENTRY SCREENS:** If you see a letter selection grid:\n"
-                    "- Look for RIGHT-FACING TRIANGLE CURSOR (▶) - item to its RIGHT is selected\n"
-                    "- At the top, find 7 underline slots where one is raised higher - that's the active position\n"
-                    "- Report current name being entered and which position is active\n"
-                    "- When name is complete, press 'S' (START) to confirm, not navigate to 'END'\n\n"
-                    "**EFFICIENCY:** Always choose DEFAULT/PREMADE names over custom names to save time."
+                    "**NAME ENTRY SCREENS:** There are TWO different types:\n\n"
+                    "**TYPE 1 - PRESET NAMES (Professor Oak naming):**\n"
+                    "- Shows a list of preset names to choose from (e.g., RED, BLUE, ASH, GARY)\n"
+                    "- Look for a selection cursor (arrow/pointer) next to name options\n"
+                    "- Report which name is currently selected and available options\n"
+                    "- Press A to select the highlighted name, then confirm\n\n"
+                    "**TYPE 2 - CUSTOM NAME ENTRY:**\n"
+                    "- Full-screen keyboard with letter grid (A-Z layout)\n"
+                    "- Look for RIGHT-FACING TRIANGLE CURSOR (▶) - letter to RIGHT is selected\n"
+                    "- At the top, see 7 underline slots with one raised higher = active position\n"
+                    "- Report current name being entered and which character position is active\n"
+                    "- When name is complete, press 'S' (START) to confirm, NOT navigate to 'END'\n"
+                    "- Use default names when available for speed\n\n"
+                    "**EFFICIENCY:** Choose DEFAULT/PREMADE names when available, but progress is more important than perfect names."
                 )
 
               # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
@@ -288,11 +334,21 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
                     log.info(f"Vision analysis preview: {vision_result[:200]}...")
 
-                    vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {vision_result}"
-                    vision_analysis_for_ui = vision_result  # Store raw vision analysis for UI
+                    # TEXT PROCESSING: Filter Japanese characters and truncate
+                    processed_vision_result = vision_result
+
+                    # Filter out Japanese characters and non-English text
+                    processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
+
+                    # Remove first 16 and last 14 characters as specified
+                    if len(processed_vision_result) > 30:
+                        processed_vision_result = processed_vision_result[16:-14]
+
+                    vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
+                    vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
                     payload["vision_analysis"] = vision_analysis
                     # Also add a more prominent vision field for better LLM recognition
-                    payload["visual_context"] = vision_result
+                    payload["visual_context"] = processed_vision_result
 
                 except RuntimeError as e:
                     # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
@@ -321,10 +377,20 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 vision_result = zai_vision_client.analyze_image(SAVED_SCREENSHOT_PATH, factual_prompt)
 
                 if vision_result:
-                    vision_analysis = f"Z.AI Vision Analysis (Fallback): {vision_result}"
-                    vision_analysis_for_ui = vision_result
+                    # TEXT PROCESSING: Filter Japanese characters and truncate
+                    processed_vision_result = vision_result
+
+                    # Filter out Japanese characters and non-English text
+                    processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
+
+                    # Remove first 16 and last 14 characters as specified
+                    if len(processed_vision_result) > 30:
+                        processed_vision_result = processed_vision_result[16:-14]
+
+                    vision_analysis = f"Z.AI Vision Analysis (Fallback): {processed_vision_result}"
+                    vision_analysis_for_ui = processed_vision_result
                     payload["vision_analysis"] = vision_analysis
-                    payload["visual_context"] = vision_result
+                    payload["visual_context"] = processed_vision_result
                 else:
                     payload["vision_analysis"] = "[Fallback vision analysis failed]"
                     log.warning("Fallback vision analysis failed")
@@ -634,6 +700,21 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         match = ANALYSIS_RE.search(full_output)
         if match:
             analysis_text = match.group(1).strip()
+        else:
+            # Fallback: if no game_analysis tags, try to extract content before action JSON
+            lines = full_output.strip().split('\n')
+            non_json_lines = []
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('{') and not line.endswith('}') and not line.startswith('"action"'):
+                    non_json_lines.append(line)
+
+            if non_json_lines:
+                analysis_text = '\n'.join(non_json_lines)
+                log.info(f"🔍 Using fallback analysis extraction: {analysis_text[:100]}...")
+            else:
+                log.warning(f"⚠️ No analysis text found in LLM output. Full output: {full_output[:200]}...")
+                analysis_text = "No analysis available"
 
         # Extract action JSON or fallback
         json_match = re.search(r'(\{[\s\S]*?\})\s*$', full_output)
@@ -707,6 +788,10 @@ def encode_image_base64(image_path: str) -> str | None:
 async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None):
     """Main async loop: Get state, call LLM, send action, update/broadcast state."""
     global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
+
+    # Initialize memory manager
+    memory_manager = MemoryManager()
+    log.info("Memory manager initialized for spatial learning")
 
     b64_mm = None
 
@@ -849,20 +934,20 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         log_id_counter = state.get("log_id_counter", 0) + 1
         state["log_id_counter"] = log_id_counter
 
-        action, game_analysis, summary_json, vision_analysis = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
+        action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
 
         if summary_json is not None:
             tmp = {"log_entry": {"id": log_id_counter, "text": "🔎 Chat history cleaned up."}}
             await broadcast_func(tmp)
 
-            required = ("primayGoal", "secondaryGoal", "tertiaryGoal", "otherNotes")
+            required = ("primaryGoal", "secondaryGoal", "tertiaryGoal", "otherNotes")
 
             if isinstance(summary_json, dict):
                 # summary_json is dict, safe to check for keys
                 missing = [k for k in required if k not in summary_json]
                 if not missing:
                     state["goals"] = {
-                        "primary":   summary_json["primayGoal"],
+                        "primary":   summary_json["primaryGoal"],
                         "secondary": summary_json["secondaryGoal"],
                         "tertiary":  summary_json["tertiaryGoal"],
                     }
@@ -875,8 +960,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 logging.error(f"Expected summary_json to be dict, but got {type(summary_json).__name__!r}")
 
         # Add vision analysis to the update payload if available
-        if vision_analysis:
-            update_payload["vision_analysis"] = vision_analysis
+        if vision_analysis_for_ui:
+            update_payload["vision_analysis"] = vision_analysis_for_ui
 
         action_to_send = None
         log_action_text = "No action taken (LLM failed)."
@@ -921,16 +1006,81 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # Create three separate log entries: VISION, RESPONSE, ACTION
         log_entries = []
 
-        # Vision log entry
-        if vision_analysis:
-            vision_log = { "id": log_id_counter, "text": vision_analysis, "is_vision": True }
-            log_entries.append(vision_log)
+        # Vision log entry - sync with screenshot timestamp
+        # Use raw vision analysis for UI
+        vision_text_to_show = vision_analysis_for_ui
+
+        # DEBUG: Force create a vision log entry for testing
+        cycle_timestamp = int((time.time() - 2) * 1000)  # Approximate when screenshot was taken
+        log.info(f"🔍 DEBUG: vision_analysis_for_ui exists: {vision_analysis_for_ui is not None}, length: {len(vision_analysis_for_ui) if vision_analysis_for_ui else 0}")
+
+        # ALWAYS create a vision log entry - FORCE IT
+        final_vision_text = vision_text_to_show if vision_text_to_show else f"VISION ANALYSIS AVAILABLE: Raw analysis length {len(vision_analysis_for_ui) if vision_analysis_for_ui else 0}"
+
+        vision_log = {
+            "id": log_id_counter,
+            "text": final_vision_text,
+            "is_vision": True,
+            "timestamp": cycle_timestamp  # Sync with screenshot capture time
+        }
+        log_entries.append(vision_log)
+        log.info(f"🔥 FORCED VISION LOG CREATED - is_vision: True, text length: {len(final_vision_text)}")
 
         # Response log entry (LLM reasoning)
         analysis_text = game_analysis  # Use game_analysis from LLM response
+        log.info(f"🧠 LLM Analysis received: {analysis_text[:100] if analysis_text else 'None'}...")
+
         if analysis_text and analysis_text.strip():
             response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
             log_entries.append(response_log)
+            log.info(f"✅ Response log created and added to entries")
+        else:
+            log.warning(f"⚠️ No analysis_text to send to frontend. game_analysis: {game_analysis}")
+
+            # Force memory recording for important location transitions
+            try:
+                # Always record location transitions
+                current_map = state.get('map_name', 'unknown')
+                current_pos = state.get('position', [])
+
+                # Simple spatial memory recording
+                if current_map != getattr(memory_manager, 'last_map', None):
+                    memory_manager.add_spatial_memory(
+                        location=current_map,
+                        coordinates=current_pos,
+                        description=f"Entered {current_map} at position {current_pos}",
+                        landmark_type="location_change"
+                    )
+                    memory_manager.last_map = current_map
+                    log.info(f"Recorded location memory: {current_map} at {current_pos}")
+
+                # Extract memories from LLM response and vision analysis
+                extracted_memories = memory_manager.extract_memories_from_response(
+                    analysis_text=analysis_text,
+                    game_state=state,
+                    vision_analysis=vision_analysis
+                )
+
+                if extracted_memories:
+                    log.info(f"Extracted {len(extracted_memories)} memories from LLM response")
+                    for memory in extracted_memories:
+                        log.debug(f"Memory: {memory.type} - {memory.description[:50]}...")
+
+                # Always get latest memory for broadcasting
+                latest_memory = memory_manager.get_latest_memory()
+                if latest_memory:
+                    # Add memory directly to update_payload for frontend compatibility
+                    update_payload["memory_write"] = {"text": latest_memory.description}
+                    log.info(f"Broadcasting latest memory: {latest_memory.description[:100]}...")
+
+                    # Also add to memory_updates array for potential future use
+                    if "memory_updates" not in update_payload:
+                        update_payload["memory_updates"] = []
+                    memory_payload = {"memory_write": {"text": latest_memory.description}}
+                    update_payload["memory_updates"].append(memory_payload)
+
+            except Exception as e:
+                log.error(f"Error extracting memories: {e}", exc_info=True)
 
         # Action log entry
         if action:
@@ -941,10 +1091,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         for i, log_entry in enumerate(log_entries):
             if log_entry.get("is_vision"):
                 update_payload["vision_log"] = log_entry
+                log.info(f"🖼️ Broadcasting vision log: {log_entry.get('text', '')[:50]}... with timestamp: {log_entry.get('timestamp')}")
             elif log_entry.get("is_response"):
                 update_payload["response_log"] = log_entry
+                log.info(f"💭 Broadcasting response log: {log_entry.get('text', '')[:50]}...")
             elif log_entry.get("is_action"):
                 action_payload["log_entry"] = log_entry
+                log.info(f"🎮 Broadcasting action log: {log_entry.get('text', '')[:50]}...")
 
         log.info(f"Log Entry #{log_id_counter}: {log_action_text} (Analysis included in state log)")
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import { BattleEntry } from "./BattleEntry";
+import { VisionScreenshot } from "../vision/VisionScreenshot";
 import "./BattleLog.css";
 
 const POKEMON_KEYART = [
@@ -47,28 +48,33 @@ export function BattleLog({
     }
   }, [memoryWrite]);
 
-  // Filter for different types of entries (important Pokemon analysis)
-  const visionEntries = logs.filter((log) => log.is_vision).slice(0, 3);
-  const responseEntries = logs.filter((log) => log.is_response).slice(0, 3);
+  // Filter for different types of entries (show only current/most recent)
+  const visionEntries = logs.filter((log) => log.is_vision).slice(0, 1);
+  const responseEntries = logs.filter((log) => log.is_response).slice(0, 1);
 
-  // Get the latest LLM response entry for main display, fallback to any latest entry
+  // Get the latest LLM response entry for main display - prioritize response over vision
   const latestResponseEntry =
     responseEntries.length > 0 ? responseEntries[0] : null;
-  const latestEntry = latestResponseEntry || (logs.length > 0 ? logs[0] : null);
+  const latestVisionEntry = visionEntries.length > 0 ? visionEntries[0] : null;
+  const latestEntry =
+    latestResponseEntry ||
+    latestVisionEntry ||
+    (logs.length > 0 ? logs[0] : null);
 
   // Get recent actions from last few entries
-  let currentActionNumber = Math.max(1, totalActions - 4); // Show last 5 action numbers
   const recentActions = logs
     .filter((log) => log.is_action && log.text)
-    .slice(0, 5)
-    .map((log) => {
+    .slice(0, 3)
+    .map((log, index) => {
       const actions = extractActions(log.text || "");
+      // Calculate action number: most recent gets totalActions, then count backwards
+      const actionNumber = Math.max(1, totalActions - (2 - index));
 
       return {
         id: log.id || `action-${Date.now()}`,
         text: log.text || "",
         actions: actions,
-        actionNumber: currentActionNumber++, // Each log entry gets its own number
+        actionNumber: actionNumber,
       };
     });
 
@@ -87,7 +93,7 @@ export function BattleLog({
           ) : (
             !isProcessing && (
               <div className="battle-log__empty">
-                Waiting for Pokemon battle analysis...
+                waiting for Pokemon LLM analysis...
               </div>
             )
           )}
@@ -109,28 +115,40 @@ export function BattleLog({
           )}
         </div>
 
-        {/* Pokemon Vision Analysis Section */}
-        {visionEntries.length > 0 && (
-          <div className="battle-log__vision-section">
-            <span className="battle-log__section-label">VISION ANALYSIS</span>
-            <div className="battle-log__vision-list">
-              {visionEntries.map((entry) => (
+        {/* Pokemon Vision Analysis Section - Always Show */}
+        <div className="battle-log__vision-section">
+          <span className="battle-log__section-label">VISION ANALYSIS</span>
+
+          {/* Always show screenshot area */}
+          <div className="battle-log__vision-screenshot-container">
+            <VisionScreenshot />
+          </div>
+
+          <div className="battle-log__vision-list">
+            {visionEntries.length > 0 ? (
+              visionEntries.map((entry) => (
                 <div key={entry.id} className="battle-log__vision-entry">
                   <BattleEntry entry={entry} compact />
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              <div className="battle-log__vision-placeholder">
+                <div className="battle-log__vision-placeholder-text">
+                  no vision analysis available yet
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Footer: Recent Actions + Memory */}
         <div className="battle-log__footer">
-          {/* Recent Actions */}
-          {recentActions.some((r) => r.actions.length > 0) && (
-            <div className="battle-log__actions-section">
-              <span className="battle-log__section-label">RECENT ACTIONS</span>
-              <div className="battle-log__action-list">
-                {recentActions
+          {/* Recent Actions - Always Show */}
+          <div className="battle-log__actions-section">
+            <span className="battle-log__section-label">RECENT ACTIONS</span>
+            <div className="battle-log__action-list">
+              {recentActions.some((r) => r.actions.length > 0) ? (
+                recentActions
                   .filter((r) => r.actions.length > 0)
                   .map((r) => (
                     <div key={r.id} className="battle-log__action-row">
@@ -143,16 +161,22 @@ export function BattleLog({
                         </span>
                       ))}
                     </div>
-                  ))}
-              </div>
+                  ))
+              ) : (
+                <div className="battle-log__actions-placeholder">
+                  <span className="battle-log__actions-placeholder-text">
+                    no recent actions
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Latest Memory - Persistent */}
           <div className="battle-log__memory-section">
             <span className="battle-log__section-label">LATEST MEMORY</span>
             <p className="battle-log__memory-text">
-              {persistedMemory || "No battle memories recorded yet"}
+              {persistedMemory || "no memories recorded yet"}
             </p>
           </div>
         </div>
