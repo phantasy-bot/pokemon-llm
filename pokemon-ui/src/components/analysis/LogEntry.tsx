@@ -95,17 +95,20 @@ export function LogEntryCard({
     <div
       className={`log-entry${isNew ? " log-entry--new" : ""} log-entry--${logType}`}
     >
-      <div className="log-entry__header">
-        <div className="log-entry__type-info">
-          <span className="log-entry__type-icon">{icon}</span>
-          <span className="log-entry__type-label">{label}</span>
+      {/* Header - Only show for Action and General types, hide for Vision/Response to reduce noise */}
+      {logType !== "vision" && logType !== "response" && (
+        <div className="log-entry__header">
+          <div className="log-entry__type-info">
+            <span className="log-entry__type-icon">{icon}</span>
+            <span className="log-entry__type-label">{label}</span>
+          </div>
+          {entry.timestamp && (
+            <span className="log-entry__timestamp">
+              {new Date(entry.timestamp).toLocaleTimeString()}
+            </span>
+          )}
         </div>
-        {entry.timestamp && (
-          <span className="log-entry__timestamp">
-            {new Date(entry.timestamp).toLocaleTimeString()}
-          </span>
-        )}
-      </div>
+      )}
 
       <div className="log-entry__content">
         {logType === "vision" ? (

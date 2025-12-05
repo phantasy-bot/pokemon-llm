@@ -138,7 +138,6 @@ export function PokemonStreamOverlay({
           <div className="pokemon-analysis-panel">
             <AnalysisPanel
             logs={logs}
-            totalActions={gameState.actions}
             memoryWrite={memoryWrite}
             onMemoryWriteClear={onMemoryWriteClear}
           />
