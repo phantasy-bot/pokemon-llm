@@ -78,9 +78,9 @@ export function VisionScreenshot({
         </div>
       )}
 
-      {error && (
-        <div className="vision-screenshot__error">
-          <div className="vision-screenshot__error-text">{error}</div>
+      {(error || (!isLoading && !screenshotSrc)) && (
+        <div className="vision-screenshot__placeholder-icon">
+          ?
         </div>
       )}
 
