@@ -265,66 +265,38 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
             # Use enhanced sync version with built-in exponential backoff
             if hasattr(zai_vision_client, 'analyze_image_sync'):
-                # CRITICAL: Updated prompt focused on factual content to prevent hallucinations
+                # CRITICAL: Updated prompt - JSON format, no styling, no emojis, no bullets
                 factual_prompt = (
-                    "Analyze this Pokemon Red game screenshot. Report ONLY what you can clearly see:\n"
-                    "1. READABLE TEXT: Any dialogue, menus, signs, or UI text that is clearly legible\n"
-                    "2. CHARACTER POSITION & SPATIAL AWARENESS: \n"
-                    "   - **OVERWORLD SCREENS**: The player character is ALWAYS the green sprite positioned in the CENTER-MIDDLE of the screen\n"
-                    "   - Describe what's visible around the player using DIRECTIONAL language (north, south, east, west, north-east, etc.)\n"
-                    "   - Report PROXIMITY to objects (e.g., 'tall grass patches 2 steps to the north-east', 'house directly to the south', 'trainer 3 steps west')\n"
-                    "   - Note NAVIGATION-RELEVANT features: tall grass, water, trees, doorways, paths, ledges, signposts\n"
-                    "   - **DO NOT** provide exact coordinates, use relative directional positioning instead\n"
-                    "3. VISIBLE NPCs: Any non-player characters you can clearly identify and their position relative to player\n"
-                    "4. UI ELEMENTS: Health bars, menu cursors, battle interfaces, text boxes\n"
-                    "5. OBSTACLES: Objects, walls, trees, or barriers that are clearly visible\n\n"
-
-                    "**BATTLE SCREEN ANALYSIS - CRITICAL PRIORITY:**\n"
-                    "If this is a Pokemon battle screen:\n"
-                    "- Player Pokemon appears at BOTTOM of screen (HP bar and values clearly visible)\n"
-                    "- RIVAL Pokemon appears at TOP of screen (HP may only show bars, not numbers)\n"
-                    "- FOCUS ON PLAYER HP: Report exact HP values and percentages shown for your Pokemon\n"
-                    "- Player HP shows both current/total values and visual bar - analyze both\n"
-                    "- HP BAR ASSESSMENT: Describe HP bar fill percentage and status (critical/wounded/healthy)\n"
-                    "- Rival analysis secondary: Focus only on what's clearly visible of the opponent\n"
-                    "- Report player Pokemon's status, move PP, and any visible stat changes\n"
-                    "- Note battle menu options and cursor position for strategic decisions\n\n"
-
-                    "**SCREEN TYPE IDENTIFICATION:**\n"
-                    "- Overworld: Player (green sprite) visible in center, buildings, paths, grass patches visible\n"
-                    "- Battle: HP bars at top/bottom, Pokemon sprites, move menu\n"
-                    "- Menu/Dialogue: Text boxes, selection cursors, often limited character sprites\n"
-                    "- Pokedex/Inventory: Grid layouts, item descriptions, status screens\n"
-
-                    "**GAME-SPECIFIC OBJECT DETECTION:**\n"
-                    "- **POKEBALLS**: Red/white spheres on counters, Pokéballs in Professor Oak's lab for starter selection\n"
-                    "- **TALL GRASS**: Light green patches that trigger random encounters (battle opportunities)\n"
-                    "- WATER SURFACES**: Blue surfaces where Pokemon can surf (typically requires HM03)\n"
-                    "- LEDGES/COUNTERS**: Special tiles that cannot be passed without specific HM or Cut trees\n"
-                    "- DOORS/ENTRANCES: House and building entrances with special interaction requirements\n"
-                    "- SIGNPOSTS**: Information signs that can be read (like gym names, shop names)\n"
-                    "- POKESTOP centers: Stores where items can be purchased\n"
-                    "- Move POKEMON CENTERS (Red/Blue/Green): Special healing locations\n"
-                    "                    \n"
-
-                    "Focus on describing what you can clearly see with SPATIAL RELATIONSHIPS for navigation assistance.\n\n"
-
-                    "**IMPORTANT:** Be strictly factual. If text is unclear or too small, say 'text unreadable'.\n"
-                    "Do not speculate about off-screen content or make assumptions about locations not visible.\n\n"
-                    "**NAME ENTRY SCREENS:** There are TWO different types:\n\n"
-                    "**TYPE 1 - PRESET NAMES (Professor Oak naming):**\n"
-                    "- Shows a list of preset names to choose from (e.g., RED, BLUE, ASH, GARY)\n"
-                    "- Look for a selection cursor (arrow/pointer) next to name options\n"
-                    "- Report which name is currently selected and available options\n"
-                    "- Press A to select the highlighted name, then confirm\n\n"
-                    "**TYPE 2 - CUSTOM NAME ENTRY:**\n"
-                    "- Full-screen keyboard with letter grid (A-Z layout)\n"
-                    "- Look for RIGHT-FACING TRIANGLE CURSOR (▶) - letter to RIGHT is selected\n"
-                    "- At the top, see 7 underline slots with one raised higher = active position\n"
-                    "- Report current name being entered and which character position is active\n"
-                    "- When name is complete, press 'S' (START) to confirm, NOT navigate to 'END'\n"
-                    "- Use default names when available for speed\n\n"
-                    "**EFFICIENCY:** Choose DEFAULT/PREMADE names when available, but progress is more important than perfect names."
+                    "Analyze this Pokemon Red game screenshot. Output as JSON with these fields:\n\n"
+                    "{\n"
+                    '  "screen_type": "title|overworld|battle|menu|dialogue|name_entry",\n'
+                    '  "readable_text": "any visible text, semicolon separated",\n'
+                    '  "player_position": "description using directional terms (north/south/east/west)",\n'
+                    '  "nearby_objects": "objects near player, semicolon separated",\n'
+                    '  "npcs": "visible NPCs and positions, semicolon separated",\n'
+                    '  "obstacles": "walls/trees/barriers, semicolon separated",\n'
+                    '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
+                    '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
+                    '  "menu_cursor": "if menu: which option is highlighted",\n'
+                    '  "navigation_notes": "doors/exits/paths visible"\n'
+                    "}\n\n"
+                    "RULES:\n"
+                    "- Output ONLY valid JSON, no markdown formatting\n"
+                    "- Do NOT use bullet points, use semicolons to separate list items\n"
+                    "- Do NOT use emojis\n"
+                    "- Do NOT use headers or bold text\n"
+                    "- Be factual - only report what is clearly visible\n"
+                    "- For positions, use relative terms (north, 2 steps east, directly south)\n"
+                    "- Player sprite is ALWAYS the green character in center of overworld screens\n"
+                    "- If text is unclear say 'unreadable'\n"
+                    "- Empty fields should be empty strings\n\n"
+                    "SCREEN TYPES:\n"
+                    "- title: Pokemon logo, copyright text, no gameplay\n"
+                    "- overworld: player sprite visible, walking around\n"
+                    "- battle: HP bars, pokemon sprites, move menu\n"
+                    "- menu: START menu, item list, pokemon list\n"
+                    "- dialogue: text box at bottom, NPC talking\n"
+                    "- name_entry: keyboard grid or preset name list"
                 )
 
               # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
@@ -717,21 +689,26 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 log.warning(f"⚠️ No analysis text found in LLM output. Full output: {full_output[:200]}...")
                 analysis_text = "No analysis available"
 
-        # Extract action JSON or fallback
-        json_match = re.search(r'(\{[\s\S]*?\})\s*$', full_output)
-        if json_match:
+        # Extract action JSON - search ANYWHERE in output (may be before closing tags)
+        action = None
+        parsed = None
+        
+        # Find all JSON-like blocks and try to parse them for action/touch
+        for json_match in re.finditer(r'\{[^{}]*\}', full_output):
             try:
-                parsed = json.loads(json_match.group(1))
+                parsed = json.loads(json_match.group())
                 act = parsed.get("action")
                 touch = parsed.get("touch")
                 vision_from_json = parsed.get("vision_analysis")
 
-                # Use vision analysis from JSON if provided, otherwise use the one we captured
+                # Use vision analysis from JSON if provided
                 if vision_from_json and isinstance(vision_from_json, str):
                     vision_analysis_for_ui = vision_from_json
 
                 if isinstance(act, str) and ACTION_RE.match(act):
                     action = act
+                    log.info(f"✅ Found action in JSON: {action}")
+                    break
                 elif isinstance(touch, str) and COORD_RE.match(touch):
                     # handle JSON-provided touch coords
                     x, y = state_data["position"]
@@ -741,8 +718,10 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                         [x, y],
                         coords
                     )
+                    log.info(f"✅ Found touch in JSON, converted to action: {action}")
+                    break
             except json.JSONDecodeError:
-                log.warning("Failed to parse trailing JSON for action.")
+                continue  # Try next JSON block
 
         # Fallback: last line matching ACTION_RE or COORD_RE
         if action is None:
@@ -1066,25 +1045,18 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # Create three separate log entries: VISION, RESPONSE, ACTION
         log_entries = []
 
-        # Vision log entry - sync with screenshot timestamp
-        # Use raw vision analysis for UI
-        vision_text_to_show = vision_analysis_for_ui
-
-        # DEBUG: Force create a vision log entry for testing
+        # Vision log entry - only create if we have actual vision analysis
         cycle_timestamp = int((time.time() - 2) * 1000)  # Approximate when screenshot was taken
-        log.info(f"🔍 DEBUG: vision_analysis_for_ui exists: {vision_analysis_for_ui is not None}, length: {len(vision_analysis_for_ui) if vision_analysis_for_ui else 0}")
-
-        # ALWAYS create a vision log entry - FORCE IT
-        final_vision_text = vision_text_to_show if vision_text_to_show else f"VISION ANALYSIS AVAILABLE: Raw analysis length {len(vision_analysis_for_ui) if vision_analysis_for_ui else 0}"
-
-        vision_log = {
-            "id": log_id_counter,
-            "text": final_vision_text,
-            "is_vision": True,
-            "timestamp": cycle_timestamp  # Sync with screenshot capture time
-        }
-        log_entries.append(vision_log)
-        log.info(f"🔥 FORCED VISION LOG CREATED - is_vision: True, text length: {len(final_vision_text)}")
+        
+        if vision_analysis_for_ui:
+            vision_log = {
+                "id": log_id_counter,
+                "text": vision_analysis_for_ui,
+                "is_vision": True,
+                "timestamp": cycle_timestamp
+            }
+            log_entries.append(vision_log)
+            log.info(f"📸 Vision log created: {len(vision_analysis_for_ui)} chars")
 
         # Response log entry (LLM reasoning)
         analysis_text = game_analysis  # Use game_analysis from LLM response

@@ -123,7 +123,9 @@ export function AnalysisPanel({
           <div className="battle-log__vision-row">
             {/* Screenshot column - 35% */}
             <div className="battle-log__vision-screenshot-column">
-              <VisionScreenshot />
+              <VisionScreenshot 
+                timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
+              />
             </div>
 
             {/* Vision content column - 65% */}

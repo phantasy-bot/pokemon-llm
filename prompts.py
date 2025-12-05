@@ -5,6 +5,11 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "")
 Previous actions: {actionSummary}
 {f"BENCHMARK GOAL: {benchmarkInstruction}" if benchmarkInstruction else ""}
 
+## TITLE SCREEN
+- If at title screen: Press START, then look for CONTINUE option
+- Choose CONTINUE if available (preserves progress), otherwise NEW GAME
+- Press A to confirm menu selections
+
 ## CONTROLS
 - Movement: U (up), D (down), L (left), R (right)
 - Actions: A (confirm/interact), B (cancel/back)
