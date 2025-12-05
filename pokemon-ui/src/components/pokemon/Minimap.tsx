@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface MinimapProps {
   location: string;
@@ -17,8 +17,30 @@ export function Minimap({
   const [minimapVisible, setMinimapVisible] = useState<boolean>(visible);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [hasSuccessfullyLoaded, setHasSuccessfullyLoaded] =
+    useState<boolean>(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  // Polling function that accesses latest state
+  const pollMinimap = useCallback(() => {
+    // Only show loading state if we haven't failed too many times or we've successfully loaded before
+    setFailedAttempts((current) => {
+      const shouldShowLoading = current < 3 || hasSuccessfullyLoaded;
+
+      // Force browser to re-fetch by adding cache-busting query parameter
+      const newSrc = `/minimap.png?t=${Date.now()}`;
+      setMinimapSrc(newSrc);
+
+      if (shouldShowLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      return current;
+    });
+  }, [hasSuccessfullyLoaded]);
 
   useEffect(() => {
     // Start polling when component mounts
@@ -29,13 +51,7 @@ export function Minimap({
       }
 
       // Set up polling interval
-      intervalRef.current = setInterval(() => {
-        // Force browser to re-fetch by adding cache-busting query parameter
-        const newSrc = `/minimap.png?t=${Date.now()}`;
-        setMinimapSrc(newSrc);
-        setIsLoading(true);
-        setError(null);
-      }, MINIMAP_POLL_INTERVAL);
+      intervalRef.current = setInterval(pollMinimap, MINIMAP_POLL_INTERVAL);
 
       // Initial attempt
       const initialSrc = `/minimap.png?t=${Date.now()}`;
@@ -53,7 +69,7 @@ export function Minimap({
         intervalRef.current = null;
       }
     };
-  }, []);
+  }, [pollMinimap]);
 
   // Handle successful image load
   const handleMinimapLoad = () => {
@@ -61,6 +77,8 @@ export function Minimap({
     setIsLoading(false);
     setError(null);
     setMinimapVisible(true);
+    setFailedAttempts(0);
+    setHasSuccessfullyLoaded(true);
   };
 
   // Handle image load error
@@ -71,6 +89,7 @@ export function Minimap({
     setIsLoading(false);
     setMinimapVisible(false);
     setError("Failed to load minimap");
+    setFailedAttempts((prev) => prev + 1);
 
     // Prevent broken image icon showing
     const img = event.target as HTMLImageElement;
@@ -82,12 +101,6 @@ export function Minimap({
       {/* Location header */}
       <div className="minimap__header">
         <span className="minimap__location">{location}</span>
-        {minimapVisible && (
-          <span className="minimap__status minimap__status--active">●</span>
-        )}
-        {error && (
-          <span className="minimap__status minimap__status--error">⚠</span>
-        )}
       </div>
 
       {/* Minimap body */}
@@ -124,14 +137,6 @@ export function Minimap({
             <span className="minimap__placeholder-text">No map data</span>
           </div>
         )}
-      </div>
-
-      {/* Map info */}
-      <div className="minimap__info">
-        <span className="minimap__update-time">
-          {minimapVisible ? "Live" : "Offline"}
-        </span>
-        <span className="minimap__poll-interval">Updates every 1s</span>
       </div>
     </div>
   );

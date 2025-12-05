@@ -19,13 +19,12 @@ export function VisionScreenshot({
   const [screenshotSrc, setScreenshotSrc] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState<number>(0);
 
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Generate cache-busting URL - always show the latest with current timestamp
+  // Generate cache-busting URL using provided timestamp from vision analysis
   const getScreenshotUrl = () => {
-    // Use provided timestamp from vision analysis, or current time
+    // Use provided timestamp from vision analysis, or current time as fallback
     const timestampParam = timestamp || Date.now().toString();
     return `/latest.png?t=${timestampParam}`;
   };
@@ -42,7 +41,6 @@ export function VisionScreenshot({
     img.onload = () => {
       setIsLoading(false);
       setError(null);
-      setRetryCount(0); // Reset retry count on success
     };
 
     img.onerror = () => {
@@ -54,7 +52,6 @@ export function VisionScreenshot({
       } else {
         setIsLoading(false);
         setError("Failed to load screenshot");
-        setRetryCount(0);
       }
     };
 
@@ -65,6 +62,9 @@ export function VisionScreenshot({
   useEffect(() => {
     loadScreenshot();
   }, [timestamp]);
+
+  // NOTE: Screenshot now uses the timestamp from vision analysis
+  // This ensures the displayed screenshot matches when the vision was analyzed
 
   return (
     <div
@@ -92,24 +92,7 @@ export function VisionScreenshot({
           className="vision-screenshot__image"
         />
       )}
-
-      {/* Debug info - can be removed later */}
-      {process.env.NODE_ENV === "development" && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "2px",
-            right: "2px",
-            fontSize: "8px",
-            color: "#666",
-            background: "rgba(255,255,255,0.8)",
-            padding: "1px 2px",
-            borderRadius: "2px",
-          }}
-        >
-          {timestamp ? `T:${timestamp.slice(-6)}` : "NO-TS"}
-        </div>
-      )}
     </div>
   );
 }
+

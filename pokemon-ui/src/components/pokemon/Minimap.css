@@ -6,7 +6,7 @@
   border-radius: 8px;
   overflow: hidden;
   transition: all var(--transition-fast);
-  max-width: 240px;
+  width: 100%;
 }
 
 .minimap:hover {
@@ -16,8 +16,8 @@
 
 .minimap__header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
   background: linear-gradient(
     135deg,
@@ -25,7 +25,7 @@
     var(--bg-card) 100%
   );
   border-bottom: 1px solid var(--border-subtle);
-  gap: var(--space-sm);
+  gap: 4px;
 }
 
 .minimap__location {
@@ -248,7 +248,7 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .minimap {
-    max-width: 200px;
+    width: 100%;
   }
 
   .minimap__body {

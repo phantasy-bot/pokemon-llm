@@ -5,10 +5,21 @@ import type {
   Pokemon,
 } from "../../types/gameTypes";
 import type { PokemonDisplay } from "../../types/display";
-import { BattleLog } from "../battle/BattleLog";
+import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { Minimap } from "../pokemon/Minimap";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
 import "./PokemonStreamOverlay.css";
+
+// Utility function to truncate large numbers
+const formatLargeNumber = (num: number): string => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+  }
+  return num.toString();
+};
 
 // Kanto gym badges with emoji mapping
 const KANTO_BADGES: Record<BadgeType, { emoji: string; name: string }> = {
@@ -26,12 +37,16 @@ interface PokemonStreamOverlayProps {
   gameState: PokemonGameState;
   wsConnected: boolean;
   logs: LogEntry[];
+  memoryWrite?: string | null;
+  onMemoryWriteClear?: () => void;
 }
 
 export function PokemonStreamOverlay({
   gameState,
   wsConnected,
   logs,
+  memoryWrite,
+  onMemoryWriteClear,
 }: PokemonStreamOverlayProps) {
   // Extract Pokemon data from game state
   const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
@@ -61,60 +76,97 @@ export function PokemonStreamOverlay({
     <div className="pokemon-stream-overlay">
       {/* Header with Pokemon theming */}
       <div className="pokemon-header">
-        <div className="pokemon-header__stats">
-          <div className="pokemon-stats-widget">
-            <div className="pokemon-stats-widget__actions-container">
-              <div className="widget-title">ACTIONS</div>
-              <div className="actions-count">
-                {gameState.actions.toLocaleString()}
-              </div>
-              <div className="subinfo">
-                <span>Model: {gameState.modelName}</span>
-                <span>Tokens: {gameState.tokensUsed.toLocaleString()}</span>
-                <span>
-                  GG: T-{gameState.ggValue !== null ? gameState.ggValue : "N/A"}{" "}
-                  | Summary: T-
-                  {gameState.summaryValue !== null
-                    ? gameState.summaryValue
-                    : "N/A"}
-                </span>
-              </div>
-            </div>
-            <div className="badges-widget">
-              <div className="widget-title">BADGES - {badges.length}/8</div>
-              <div className="badges">
-                {badges.map((badge, i) => {
-                  const badgeInfo = KANTO_BADGES[badge];
-                  return (
-                    <div
-                      key={`${badge}-${i}`}
-                      className="badge"
-                      title={badgeInfo?.name || badge}
-                    >
-                      <span className="badge-emoji">
-                        {badgeInfo?.emoji || "🔒"}
-                      </span>
-                    </div>
-                  );
-                })}
-                {Array.from({ length: Math.max(0, 8 - badges.length) }).map(
-                  (_, index) => (
-                    <div key={`empty-${index}`} className="badge empty"></div>
-                  ),
-                )}
-              </div>
+        {/* Left side - Title with Model Badge */}
+        <div className="pokemon-header__left">
+          <div className="title-section">
+            <div className="title">LLM PLAYS POKÉMON</div>
+            <div className="model-badge">{gameState.modelName}</div>
+          </div>
+        </div>
+
+        {/* Center - Badges */}
+        <div className="pokemon-header__center">
+          <div className="badges-widget">
+            <div className="widget-title">BADGES - {badges.length}/8</div>
+            <div className="badges">
+              {badges.map((badge, i) => {
+                const badgeInfo = KANTO_BADGES[badge];
+                return (
+                  <div
+                    key={`${badge}-${i}`}
+                    className="badge"
+                    title={badgeInfo?.name || badge}
+                  >
+                    <span className="badge-emoji">
+                      {badgeInfo?.emoji || "🔒"}
+                    </span>
+                  </div>
+                );
+              })}
+              {Array.from({ length: Math.max(0, 8 - badges.length) }).map(
+                (_, index) => (
+                  <div key={`empty-${index}`} className="badge empty"></div>
+                ),
+              )}
             </div>
           </div>
         </div>
-        <div className="pokemon-header__title">
-          <div className="title">LLM PLAYS POKÉMON</div>
+
+        {/* Right side - Tokens and Actions */}
+        <div className="pokemon-header__right">
+          <div className="stats-row">
+            <div className="stat-item">
+              <div className="stat-count">
+                {formatLargeNumber(gameState.tokensUsed)}
+              </div>
+              <div className="stat-label">TOKENS</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-count">
+                {gameState.actions.toLocaleString()}
+              </div>
+              <div className="stat-label">ACTIONS</div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Main content area */}
       <div className="pokemon-content">
-        {/* Left Column - Battle Log */}
+        {/* Left Column - Battle Log Only */}
         <div className="pokemon-left-col">
+          <div className="pokemon-battle-log">
+            <AnalysisPanel
+            logs={logs}
+            totalActions={gameState.actions}
+            memoryWrite={memoryWrite}
+            onMemoryWriteClear={onMemoryWriteClear}
+          />
+          </div>
+        </div>
+
+        {/* Center Column - Goals and Minimap */}
+        <div className="pokemon-goals">
+          <div className="goals-log">
+            <h3>Primary Goal</h3>
+            <p className="log-entry">{gameState.goals.primary}</p>
+            <h3>Secondary Goal</h3>
+            <p className="log-entry">{gameState.goals.secondary}</p>
+            <h3>Tertiary Goal</h3>
+            <p className="log-entry">{gameState.goals.tertiary}</p>
+            <h3>Other Notes</h3>
+            <p className="log-entry">{gameState.otherGoals}</p>
+          </div>
+          {/* Minimap Overlay */}
+          <Minimap
+            location={location}
+            visible={gameState.minimapVisible}
+            className="minimap-overlay"
+          />
+        </div>
+
+        {/* Right Column - Game Status, Game Feed and Team */}
+        <div className="pokemon-right-col">
           <div className="status">
             <span>Game Status: {gameState.gameStatus}</span>
             <span
@@ -124,38 +176,10 @@ export function PokemonStreamOverlay({
             </span>
           </div>
 
-          <div className="pokemon-battle-log">
-            <BattleLog logs={logs} totalActions={gameState.actions} />
-          </div>
-        </div>
-
-        {/* Center Column - Goals */}
-        <div className="pokemon-goals">
-          <div className="goals-log">
-            <h3>Primary Goal</h3>
-            <p className="log-entry">{gameState.goals.primary}</p>
-            <h3>Secondary Goals</h3>
-            <ul>
-              <li className="log-entry">{gameState.goals.secondary}</li>
-            </ul>
-            <h3>Tertiary Goal</h3>
-            <p className="log-entry">{gameState.goals.tertiary}</p>
-            <h3>Other Notes</h3>
-            <p className="log-entry">{gameState.otherGoals}</p>
-          </div>
-        </div>
-
-        {/* Right Column - Minimap and Team */}
-        <div className="pokemon-right-col">
           <div className="pokemon-game-feed">
             <div className="game-placeholder">
               Pokemon Game Feed Placeholder
             </div>
-            <Minimap
-              location={location}
-              visible={gameState.minimapVisible}
-              className="pokemon-minimap"
-            />
           </div>
 
           {/* Pokemon Team Bar */}

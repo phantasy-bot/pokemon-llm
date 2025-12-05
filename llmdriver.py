@@ -10,12 +10,11 @@ import logging
 import socket
 import re
 import math
-import re
 import concurrent.futures
 import functools
 
 from PIL import Image
-from token_coutner import count_tokens, calculate_prompt_tokens
+from token_counter import count_tokens, calculate_prompt_tokens
 
 from pyAIAgent.game.state import prep_llm
 from pyAIAgent.navigation import touch_controls_path_find
@@ -26,6 +25,8 @@ from benchmark import Benchmark
 from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
 from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
 from memory_storage import MemoryManager
+from battle_strategy import read_battle_state, choose_battle_action, get_battle_context
+from goal_tracker import GoalTracker, GoalPriority, GoalStatus
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -340,9 +341,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     # Filter out Japanese characters and non-English text
                     processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
 
-                    # Remove first 16 and last 14 characters as specified
-                    if len(processed_vision_result) > 30:
-                        processed_vision_result = processed_vision_result[16:-14]
+                    # Remove first 17 and last 14 characters as specified
+                    if len(processed_vision_result) > 31:
+                        processed_vision_result = processed_vision_result[17:-14]
 
                     vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
                     vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
@@ -383,9 +384,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     # Filter out Japanese characters and non-English text
                     processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
 
-                    # Remove first 16 and last 14 characters as specified
-                    if len(processed_vision_result) > 30:
-                        processed_vision_result = processed_vision_result[16:-14]
+                    # Remove first 17 and last 14 characters as specified
+                    if len(processed_vision_result) > 31:
+                        processed_vision_result = processed_vision_result[17:-14]
 
                     vision_analysis = f"Z.AI Vision Analysis (Fallback): {processed_vision_result}"
                     vision_analysis_for_ui = processed_vision_result
@@ -793,6 +794,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     memory_manager = MemoryManager()
     log.info("Memory manager initialized for spatial learning")
 
+    # Initialize goal tracker
+    goal_tracker = GoalTracker()
+    if not goal_tracker.goals:
+        goal_tracker.initialize_default_goals()
+    log.info("Goal tracker initialized")
+
+    # Position history for stuck detection
+    position_history = []
+    
+    # Track last action for failure replay
+    last_action = None
+    last_position = None
+
     b64_mm = None
 
     benchInstructions = ""
@@ -835,9 +849,52 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
             continue
 
-
         llm_input_state = copy.deepcopy(current_mGBA_state)
         state_update_start = time.time()
+        
+        # Track position for stuck detection
+        current_pos = current_mGBA_state.get('position')
+        current_map = current_mGBA_state.get('map_id')
+        if current_pos and current_map:
+            position_history.append((current_map, tuple(current_pos)))
+            # Keep only last 10 positions
+            position_history = position_history[-10:]
+            
+            # Check if stuck and record failure
+            stuck_info = memory_manager.detect_stuck(position_history)
+            if stuck_info["is_stuck"]:
+                log.warning(f"🔄 STUCK DETECTED: {stuck_info['suggestion']}")
+                llm_input_state["stuck_warning"] = stuck_info["suggestion"]
+                
+                # Record failure for replay context
+                if last_action and last_position:
+                    goal_tracker.record_failure(
+                        action=last_action,
+                        position=last_position,
+                        reason="Position unchanged - movement blocked"
+                    )
+        
+        # Add memory context to LLM input
+        map_name = current_mGBA_state.get('map_name', '')
+        memory_context = memory_manager.get_context_for_llm(map_name)
+        if memory_context:
+            llm_input_state["memory_context"] = memory_context
+            log.info(f"📝 Memory context: {memory_context[:100]}...")
+        
+        # Add battle context using game memory (more accurate than vision)
+        try:
+            battle_context = get_battle_context(sock)
+            if battle_context:
+                llm_input_state["battle_context"] = battle_context
+                log.info(f"⚔️ Battle detected: {battle_context[:80]}...")
+        except Exception as e:
+            log.debug(f"Battle context error (not in battle): {e}")
+        
+        # Add goal context
+        goal_context = goal_tracker.get_context_for_llm()
+        if goal_context:
+            llm_input_state["goal_context"] = goal_context
+            log.info(f"🎯 Goals: {goal_context[:80]}...")
 
 
         new_team = current_mGBA_state.get('party')
@@ -973,6 +1030,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             try:
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
                 log.info(f"Action '{action_to_send}' sent to mGBA.")
+                # Track for failure replay
+                last_action = action_to_send
+                last_position = current_pos
             except socket.error as se:
                 log.error(f"Socket error sending action '{action_to_send}': {se}. Stopping loop.")
                 break
@@ -1058,7 +1118,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 extracted_memories = memory_manager.extract_memories_from_response(
                     analysis_text=analysis_text,
                     game_state=state,
-                    vision_analysis=vision_analysis
+                    vision_analysis=vision_analysis_for_ui  # Fixed: was 'vision_analysis' which doesn't exist
                 )
 
                 if extracted_memories:

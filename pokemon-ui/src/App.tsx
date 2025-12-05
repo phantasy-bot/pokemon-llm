@@ -25,6 +25,7 @@ function App() {
     useState<PokemonGameState>(INITIAL_GAME_STATE);
   const [wsConnected, setWsConnected] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [memoryWrite, setMemoryWrite] = useState<string | null>(null);
   const [, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
@@ -34,7 +35,6 @@ function App() {
 
     websocket.onopen = () => {
       setWsConnected(true);
-      addLog("Connected to Pokemon LLM server", "system");
     };
 
     websocket.onmessage = (event) => {
@@ -48,7 +48,6 @@ function App() {
 
     websocket.onclose = () => {
       setWsConnected(false);
-      addLog("Disconnected from server", "system");
     };
 
     return () => {
@@ -128,7 +127,9 @@ function App() {
     if (data.vision_log && data.vision_log.text) {
       const newLog: LogEntry = {
         id: data.vision_log.id || `vision-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        timestamp: data.vision_log.timestamp
+          ? new Date(data.vision_log.timestamp).toISOString() // Convert ms timestamp to ISO string
+          : new Date().toISOString(), // Fallback to current time
         text: data.vision_log.text,
         is_vision: true,
         type: "vision",
@@ -146,6 +147,11 @@ function App() {
         type: "response",
       };
       setLogs((prev) => [newLog, ...prev].slice(0, 3000));
+    }
+
+    // Handle memory writes
+    if (data.memory_write && data.memory_write.text) {
+      setMemoryWrite(data.memory_write.text);
     }
 
     // Handle bulk logs
@@ -192,6 +198,8 @@ function App() {
       gameState={gameState}
       wsConnected={wsConnected}
       logs={logs}
+      memoryWrite={memoryWrite}
+      onMemoryWriteClear={() => setMemoryWrite(null)}
     />
   );
 }
