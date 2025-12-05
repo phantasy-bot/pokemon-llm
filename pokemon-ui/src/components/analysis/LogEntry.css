@@ -1,16 +1,15 @@
 .battle-entry {
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  padding: var(--space-md);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 2px 0; /* Minimal vertical padding */
   position: relative;
   transition: all var(--transition-fast);
+  border-bottom: 1px solid var(--border-subtle); /* Separator only */
 }
 
 .battle-entry:hover {
-  border-color: var(--border-accent);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .battle-entry--new {
@@ -32,25 +31,10 @@
 }
 
 /* Type-specific styling - Enhanced for better visibility */
-.battle-entry--vision {
-  border: 1px dashed var(--border-subtle);
-}
-
-.battle-entry--response {
-  /* No special styling - flat appearance */
-}
-
+/* Type-specific styling - Minimal/Flat */
 .battle-entry--action {
-  border-left: 4px solid #81c784; /* Green for action */
-  background: linear-gradient(
-    135deg,
-    rgba(129, 199, 132, 0.1) 0%,
-    var(--bg-card) 100%
-  );
-}
-
-.battle-entry--general {
-  border-left: 4px solid var(--border-default);
+  /* Minimal indication for action */
+  background: rgba(129, 199, 132, 0.05); /* Very subtle tint optional */
 }
 
 .battle-entry__header {
@@ -452,15 +436,14 @@
 }
 
 /* Numbered sections (1. CURRENT STATE) */
+/* Numbered sections (1. CURRENT STATE) */
 .log-numbered-section {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 6px 0 3px 0;
-  padding: 2px 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 3px;
-  border-left: 2px solid var(--accent-primary);
+  margin: 8px 0 2px 0;
+  padding: 0;
+  /* Removed background and borders for flat style */
 }
 
 .log-section-number {
@@ -473,10 +456,10 @@
 .log-section-title {
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
 }
 
 /* Bullet points */
@@ -488,18 +471,22 @@
 }
 
 /* Game analysis blocks */
+/* Game analysis blocks */
 .game-analysis-start {
-  margin: 4px 0;
-  padding: 2px 4px;
-  background: linear-gradient(90deg, rgba(100, 150, 255, 0.08) 0%, transparent 100%);
-  border-left: 2px solid #6496ff;
-  border-radius: 0 3px 3px 0;
+  margin: 12px 0 4px 0;
+  padding: 0 0 2px 0;
+  /* Removed background and blue border */
+  border-bottom: 1px solid var(--border-subtle);
+  
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  color: #6496ff;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .game-analysis-end {

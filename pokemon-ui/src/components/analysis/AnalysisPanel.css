@@ -91,29 +91,34 @@
   }
 }
 
+/* Vision Section - Always keep space */
 .battle-log__vision-section {
-  min-height: 300px; /* Fixed minimum height for vision section */
-  margin-top: var(--space-lg); /* More space above vision section */
+  flex-shrink: 0; /* Prevent collapsing */
+  /* Remove fixed min-height to allow content to dictate height, but keep some min */
+  min-height: 180px; 
+  margin-top: var(--space-md);
   border-top: 1px solid var(--border-subtle);
-  padding-top: var(--space-md); /* More padding for separation */
+  padding-top: var(--space-sm);
+  background: var(--bg-root); /* Ensure opaque background to prevent overlap */
+  z-index: 2; /* Sit above scrolling content if needed */
 }
 
 .battle-log__section-label {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: var(--space-sm); /* More space below label */
+  margin-bottom: var(--space-xs);
   display: block;
 }
 
 .battle-log__vision-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm); /* More space between entries */
-  min-height: 120px; /* Minimum height for vision entries */
+  gap: 0; /* No gap between vision entries for compactness */
+  height: 100%; /* Fill available height */
 }
 
 .battle-log__vision-entry {
@@ -131,7 +136,7 @@
   margin-top: auto;
   min-height: 200px; /* Fixed minimum height for footer */
 }
-}
+
 
 .battle-log__actions-section {
   display: flex;

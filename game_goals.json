@@ -31,49 +31,49 @@
   ],
   "failures": [
     {
-      "action": "S",
+      "action": "D;A",
       "position": [
-        3,
+        7,
         6
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T13:57:55.500092"
+      "timestamp": "2025-12-05T14:53:35.942172"
     },
     {
-      "action": "s",
+      "action": "U",
       "position": [
-        3,
-        6
+        7,
+        7
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T13:58:24.682962"
-    },
-    {
-      "action": "A",
-      "position": [
-        3,
-        6
-      ],
-      "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T13:58:39.243581"
+      "timestamp": "2025-12-05T14:53:58.310657"
     },
     {
       "action": "A",
       "position": [
-        3,
-        6
+        7,
+        7
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T13:58:57.356057"
+      "timestamp": "2025-12-05T15:00:11.132464"
     },
     {
-      "action": "D",
+      "action": "L",
       "position": [
-        3,
-        6
+        7,
+        7
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T13:59:32.077166"
+      "timestamp": "2025-12-05T15:00:57.243507"
+    },
+    {
+      "action": "R;R;R;R",
+      "position": [
+        2,
+        7
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T15:12:30.064658"
     }
   ]
 }

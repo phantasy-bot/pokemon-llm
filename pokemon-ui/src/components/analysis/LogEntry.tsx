@@ -241,7 +241,9 @@ function formatLogText(text: string): string {
   if (
     text.includes("Readable Text:") ||
     text.includes("Character Position:") ||
-    text.includes("Visible NPCs:")
+    text.includes("Visible NPCs:") ||
+    // Check for JSON format keys
+    (text.includes("screen_type") && text.includes("player_position"))
   ) {
     return formatVisionAnalysisAsList(formattedText);
   }
