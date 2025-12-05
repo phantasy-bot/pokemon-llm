@@ -17,6 +17,7 @@ const ROTATION_INTERVAL = 15000;
 interface AnalysisPanelProps {
   logs: LogEntry[];
   isProcessing?: boolean;
+  totalActions?: number;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
 }
@@ -24,6 +25,7 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({
   logs,
   isProcessing = false,
+  totalActions = 0,
   memoryWrite,
   onMemoryWriteClear,
 }: AnalysisPanelProps) {
@@ -73,6 +75,21 @@ export function AnalysisPanel({
     );
   };
 
+  const getActionLetter = (text: string): string => {
+    const cleanText = text.replace("Action:", "").trim();
+    if (cleanText.includes(";")) {
+      // Return the first action character if multiple
+      const parts = cleanText.split(";");
+      const first = parts[0].trim().toUpperCase();
+      return first.charAt(0);
+    }
+    // Handle single words (Up, Down, etc)
+    const upper = cleanText.toUpperCase();
+    if (upper === "START") return "S";
+    if (upper === "SELECT") return "s";
+    return upper.charAt(0);
+  };
+
   return (
     <div className="analysis-panel-container">
       <div
@@ -113,25 +130,19 @@ export function AnalysisPanel({
             <span className="analysis-panel__section-label">RECENT ACTIONS</span>
             <div className="analysis-panel__actions-list">
               {actionEntries.map((action, index) => {
-                // effective index = totalActions - index
-                // Since actionEntries is sliced from filtered list (latest first)
-                // Wait. logs are typically latest first?
-                // If logs are [Latest, ..., Oldest]
-                // filtered actions are [LatestAction, ..., OldestAction]
-                // So the latest action is at index 0.
-                // If we want total count, we need the total count of actions.
-                // The number for action at index i should be Total - i.
-                const totalActions = logs.filter(l => l.is_action).length;
+                // effective number = totalActions - index (since we're iterating from latest back in the sliced array)
+                // If the total actions is 100, and this is the first item in the list of latest 3, it is #100.
                 const number = totalActions - index;
+                const actionLetter = getActionLetter(action.text || action.message || "");
                 
                 return (
                   <div key={action.id} className="analysis-panel__action-item">
-                    <span className="analysis-panel__action-number" style={{ opacity: 0.5, marginRight: 4, fontFamily: 'var(--font-mono)' }}>
+                    <span className="analysis-panel__action-number" style={{ opacity: 0.5, marginRight: 8, fontFamily: 'var(--font-mono)' }}>
                       #{number}
                     </span>
-                    <span className="analysis-panel__action-text">
-                      {action.text}
-                    </span>
+                    <div className="analysis-panel__action-square">
+                      {actionLetter}
+                    </div>
                   </div>
                 );
               })}

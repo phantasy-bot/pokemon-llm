@@ -32,6 +32,7 @@ Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
 - NPCs/signs: Move orthogonally adjacent, face them, press A
 - Cannot interact diagonally
 - **DIALOG BOXES**: If a text box is visible (usually bottom of screen), press A or B to advance text. DO NOT ATTEMPT TO MOVE while text is open.
+- **DIALOG LOOPS**: If you find yourself in a repeating dialog loop, press 'B' at least 4 times (e.g., "action":"B;B;B;B;") to fully back out, then try moving in a different direction (UP/DOWN/LEFT/RIGHT) to break the cycle.
 - Close menus/dialogues completely before moving
 - Game never auto-triggers events - YOU must walk into transitions
 

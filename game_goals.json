@@ -31,31 +31,31 @@
   ],
   "failures": [
     {
-      "action": "U;",
+      "action": "A;S;A;S;",
       "position": [
         5,
         5
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T17:35:26.127306"
+      "timestamp": "2025-12-05T17:53:34.047007"
     },
     {
-      "action": "A;",
+      "action": "R;R;D;",
       "position": [
         5,
         5
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T17:35:48.983195"
+      "timestamp": "2025-12-05T17:54:05.182374"
     },
     {
-      "action": "B;",
+      "action": "A;A;A;A;",
       "position": [
         5,
         5
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T17:36:33.275344"
+      "timestamp": "2025-12-05T17:54:56.743323"
     },
     {
       "action": "A",
@@ -64,16 +64,16 @@
         5
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T17:36:48.911579"
+      "timestamp": "2025-12-05T17:55:11.570737"
     },
     {
-      "action": "S",
+      "action": "A",
       "position": [
         5,
         5
       ],
       "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T17:37:21.242537"
+      "timestamp": "2025-12-05T17:55:36.853658"
     }
   ]
 }
