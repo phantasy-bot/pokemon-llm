@@ -455,6 +455,70 @@
   text-align: center;
 }
 
+.analysis-panel__empty {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.analysis-panel__action-square {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-highlight);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Ensure Vision Grid layout works nicely */
+/* We target the container where dangerous HTML is injected */
+.log-entry__compact-vision {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+/* Ensure formatting is clean */
+.log-entry__compact-vision .formatted-log-content {
+  display: contents; /* Let children participate in grid */
+}
+
+/* If html rendering wraps in a div, we ensure that div uses grid */
+.vision-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* Allow truncation */
+}
+
+.vision-category {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vision-content {
+  font-size: 11px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .analysis-panel__actions-placeholder {
   display: flex;
   justify-content: center;
