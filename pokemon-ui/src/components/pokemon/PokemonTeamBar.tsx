@@ -104,26 +104,19 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
           </span>
         </div>
 
-        {/* Static 3x2 Grid */}
         <div className="pokemon-team-bar__grid">
-          {pokemon.length > 0 ? (
-            <>
-              {transformedPokemon.map((p) => (
-                <div key={p.id} className="pokemon-team-grid-item">
-                  <PokemonCard pokemon={p} />
-                </div>
-              ))}
-              {/* Empty slots to show 6 total */}
-              {Array.from({ length: Math.max(0, 6 - pokemon.length) }).map(
-                (_, index) => (
-                  <div key={`empty-${index}`} className="pokemon-empty-slot">
-                    <span className="pokemon-empty-slot__text">EMPTY</span>
-                  </div>
-                ),
-              )}
-            </>
-          ) : (
-            <div className="pokemon-team-bar__empty">No Pokemon in team</div>
+          {transformedPokemon.map((p) => (
+            <div key={p.id} className="pokemon-team-grid-item">
+              <PokemonCard pokemon={p} />
+            </div>
+          ))}
+          {/* Empty slots to show 6 total */}
+          {Array.from({ length: Math.max(0, 6 - pokemon.length) }).map(
+            (_, index) => (
+              <div key={`empty-${index}`} className="pokemon-empty-slot">
+                <span className="pokemon-empty-slot__text">EMPTY</span>
+              </div>
+            ),
           )}
         </div>
       </div>
