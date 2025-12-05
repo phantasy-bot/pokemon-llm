@@ -1,75 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 interface MinimapProps {
   location: string;
   visible?: boolean;
   className?: string;
+  timestamp?: string; // Add timestamp prop
 }
 
-const MINIMAP_POLL_INTERVAL = 1000; // 1 second (matches Vue app)
+// Removed MINIMAP_POLL_INTERVAL
 
 export function Minimap({
   location,
   visible = true,
   className = "",
+  timestamp,
 }: MinimapProps) {
   const [minimapSrc, setMinimapSrc] = useState<string>("");
   const [minimapVisible, setMinimapVisible] = useState<boolean>(visible);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [failedAttempts, setFailedAttempts] = useState<number>(0);
-  const [hasSuccessfullyLoaded, setHasSuccessfullyLoaded] =
-    useState<boolean>(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
 
-  // Polling function that accesses latest state
-  const pollMinimap = useCallback(() => {
-    // Only show loading state if we haven't failed too many times or we've successfully loaded before
-    setFailedAttempts((current) => {
-      const shouldShowLoading = current < 3 || hasSuccessfullyLoaded;
-
-      // Force browser to re-fetch by adding cache-busting query parameter
-      const newSrc = `/minimap.png?t=${Date.now()}`;
-      setMinimapSrc(newSrc);
-
-      if (shouldShowLoading) {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      return current;
-    });
-  }, [hasSuccessfullyLoaded]);
-
+  // Load minimap when timestamp changes
   useEffect(() => {
-    // Start polling when component mounts
-    const startPolling = () => {
-      // Clear any existing interval
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-
-      // Set up polling interval
-      intervalRef.current = setInterval(pollMinimap, MINIMAP_POLL_INTERVAL);
-
-      // Initial attempt
-      const initialSrc = `/minimap.png?t=${Date.now()}`;
-      setMinimapSrc(initialSrc);
-      setIsLoading(true);
-    };
-
-    // Start polling
-    startPolling();
-
-    // Cleanup on unmount
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [pollMinimap]);
+    const ts = timestamp || Date.now().toString();
+    const newSrc = `/minimap.png?t=${ts}`;
+    
+    setMinimapSrc(newSrc);
+    setIsLoading(true);
+    setError(null);
+  }, [timestamp, location]); // Reload on timestamp or location change
 
   // Handle successful image load
   const handleMinimapLoad = () => {
@@ -77,8 +36,6 @@ export function Minimap({
     setIsLoading(false);
     setError(null);
     setMinimapVisible(true);
-    setFailedAttempts(0);
-    setHasSuccessfullyLoaded(true);
   };
 
   // Handle image load error
@@ -89,7 +46,6 @@ export function Minimap({
     setIsLoading(false);
     setMinimapVisible(false);
     setError("Failed to load minimap");
-    setFailedAttempts((prev) => prev + 1);
 
     // Prevent broken image icon showing
     const img = event.target as HTMLImageElement;
@@ -121,7 +77,6 @@ export function Minimap({
 
         {minimapSrc && (
           <img
-            ref={imageRef}
             src={minimapSrc}
             alt="Pokemon world minimap"
             className={`minimap__image ${minimapVisible ? "minimap__image--visible" : "minimap__image--hidden"}`}
