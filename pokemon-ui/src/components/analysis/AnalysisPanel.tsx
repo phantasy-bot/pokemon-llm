@@ -71,6 +71,7 @@ export function AnalysisPanel({
         
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
         <div className="analysis-panel__history">
+          <span className="analysis-panel__section-label">LLM ANALYSIS</span>
           <div className="analysis-panel__list">
             {/* Show only current entry or waiting state */}
             {latestEntry ? (

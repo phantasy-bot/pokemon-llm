@@ -50,6 +50,8 @@
 
 /* Shared TUI Box Styling Pattern (Applied to sections) */
 /* Scroll area for history - TUI Box */
+/* Shared TUI Box Styling Pattern (Applied to sections) */
+/* Scroll area for history - TUI Box */
 .analysis-panel__history {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -58,11 +60,11 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-md);
+  padding-top: var(--space-lg); /* Space for sheared label */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
-  /* Ensure mask is removed */
 }
 
 .analysis-panel__list {
@@ -70,12 +72,6 @@
   flex-direction: column;
   flex: 1; /* Ensure list fills height so empty state can center */
 }
-
-/* Add a pseudo-element or class for the LLM title if it exists, 
-   but currently it relies on the 'current thought' or just being the list.
-   If we need a sheared title here, we'd need to add markup. 
-   For now, just the border as requested. */
-
 
 /* Vision Section Container */
 .analysis-panel__vision-section {
@@ -93,16 +89,16 @@
   flex-direction: row; /* Side by side */
   gap: var(--space-md);
   min-width: 0;
-  align-items: stretch;
+  align-items: flex-start; /* Prevent stretching height, fixes bottom whitespace */
 }
 
-/* Screenshot Column - Fixed Width, Small */
+/* Screenshot Column - Fixed Width, Larger */
 .analysis-panel__vision-col-screenshot {
-  flex: 0 0 140px; /* Small fixed width */
-  max-width: 140px;
+  flex: 0 0 180px; /* Increased from 140px */
+  max-width: 180px;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* Center image vertically if needed */
+  justify-content: center;
 }
 
 /* Vision Content Column - The TUI Box */
@@ -143,11 +139,20 @@
   margin-bottom: var(--space-sm);
   padding: var(--space-md);
   padding-top: var(--space-lg);
-  background: transparent; /* Remove rgba background to match clean TUI look */
+  background: transparent;
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
+}
+
+/* Updated memory text size */
+.analysis-panel__memory-text {
+  font-family: var(--font-mono);
+  font-size: 10px; /* Reduced from 11px */
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 .analysis-panel__section-label {
