@@ -31,111 +31,21 @@
   position: relative;
   z-index: 1; /* Above keyart */
   overflow: hidden; /* Prevent outer scroll */
-  padding: var(--space-md);
-  padding-bottom: 0; /* Vision section handles bottom padding */
+  padding: 0 var(--space-md); /* Horizontal padding only */
   overflow-x: hidden; /* Prevent horizontal scroll at root */
 }
 
-/* Current thought section (top) */
-.analysis-panel__current {
-  flex-shrink: 0; /* Never shrink */
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-md);
-  min-height: 60px; /* Force minimum space for thought */
-  max-width: 100%; /* Ensure it fits */
-}
-
-.analysis-panel__empty {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-align: center;
-  padding: var(--space-xl);
-  border: 1px dashed var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.1);
-  animation: pulse-border 2s infinite;
-  
-  /* Fill available space */
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-}
-
-@keyframes pulse-border {
-  0% {
-    border-color: var(--border-subtle);
-  }
-  50% {
-    border-color: var(--text-muted);
-  }
-  100% {
-    border-color: var(--border-subtle);
-  }
-}
-
-.analysis-panel__thinking {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.analysis-panel__thinking-text {
-  display: flex;
-  gap: 2px;
-}
-
-.analysis-panel__thinking-char {
-  animation: thinking-pulse 1.4s ease-in-out infinite;
-  color: var(--accent-primary);
-}
-
-@keyframes thinking-pulse {
-  0%, 80%, 100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  40% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-}
-
-
-/* Scroll area for history */
-.analysis-panel__history {
-  flex: 1 1 auto; /* Grow to fill space, but allow shrink */
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding-right: var(--space-sm);
-  margin-right: calc(var(--space-sm) * -1);
-}
-
-.analysis-panel__list {
-  display: flex;
-  flex-direction: column;
-  flex: 1; /* Ensure list fills height so empty state can center */
-}
+/* ... existing styles ... */
 
 /* Vision Section - Fixed position above memory */
 .analysis-panel__vision-section {
   flex-shrink: 0;
-  margin-top: auto; /* Push to bottom if history is short */
-  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-md); /* Added gap */
   padding-top: var(--space-sm);
   background: var(--bg-panel);
   z-index: 2;
   position: relative;
+  /* Removed border-top here, will apply to content column */
 }
 
 /* Persistent Memory Section - Anchored to bottom */
@@ -147,6 +57,25 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+}
+
+.analysis-panel__memory-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.analysis-panel__section-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-xs);
 }
 
 /* Thinking Animation Overlay */
@@ -210,6 +139,17 @@
   gap: var(--space-xs);
 }
 
+.analysis-panel__vision-col-content {
+  flex: 1; /* Take remaining space */
+  min-width: 0; /* Allow flex shrink */
+  display: flex;
+  flex-direction: column;
+  /* Dotted border for "sheared" title effect */
+  border-top: 1px dotted var(--border-subtle);
+  position: relative;
+  padding-top: var(--space-sm);
+}
+
 .analysis-panel__vision-title-internal {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -220,49 +160,20 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  
+  /* Sheared position on top of border */
+  position: absolute;
+  top: -8px; /* Half height of text approx to center on border line */
+  left: 0;
+  background: var(--bg-panel); /* Mask the border behind text */
+  padding-right: var(--space-xs); /* Space for mask */
 }
 
+/* Remove the blue dot */
 .analysis-panel__vision-title-internal::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  background: var(--accent-primary);
-  border-radius: 50%;
+  display: none;
 }
 
-.analysis-panel__vision-col-content {
-  flex: 1; /* Take remaining space */
-  min-width: 0; /* Allow flex shrink */
-  display: flex;
-  flex-direction: column;
-}
-
-/* Actions Summary Section (Bottom) */
-.analysis-panel__actions-section {
-  flex-shrink: 0;
-  margin-top: var(--space-md);
-  padding-top: var(--space-sm);
-  border-top: 1px dashed var(--border-subtle);
-  display: none; /* Hidden for now to simplify UI */
-}
-
-.analysis-panel__actions-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-
-.analysis-panel__action-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 2px 6px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

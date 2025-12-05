@@ -94,18 +94,19 @@ export function AnalysisPanel({
         {/* 2. Vision Section (Fixed Height, Row Layout) */}
         <div className="analysis-panel__vision-section">
           <div className="analysis-panel__vision-row">
-            {/* Column 1: Title + Screenshot */}
+            {/* Column 1: Screenshot Only */}
             <div className="analysis-panel__vision-col-screenshot">
-              <div className="analysis-panel__vision-title-internal">
-                VISION ANALYSIS
-              </div>
               <VisionScreenshot 
                 timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
               />
             </div>
 
-            {/* Column 2: Content */}
+            {/* Column 2: Content with Sheared Title */}
             <div className="analysis-panel__vision-col-content">
+              <div className="analysis-panel__vision-title-internal">
+                VISION ANALYSIS
+              </div>
+              
               {visionEntries.length > 0 ? (
                 visionEntries.map((entry) => (
                   <div key={entry.id} className="analysis-panel__vision-entry">
