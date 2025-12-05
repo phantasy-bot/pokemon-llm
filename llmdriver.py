@@ -288,7 +288,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- Do NOT use headers or bold text\n"
                     "- Be factual - only report what is clearly visible\n"
                     "- For positions, use relative terms (north, 2 steps east, directly south)\n"
-                    "- Player sprite is ALWAYS the green character in center of overworld screens\n"
+                    "- Player sprite is ALWAYS the red human character with a hat in center of overworld screens\n"
                     "- If text is unclear say 'unreadable'. DO NOT GUESS TEXT.\n"
                     "- Text must be EXACT pixel-for-pixel match. If partially cut off, do not infer words.\n"
                     "- Empty fields should be empty strings\n\n"
@@ -1071,22 +1071,43 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         else:
             log.warning(f"⚠️ No analysis_text to send to frontend. game_analysis: {game_analysis}")
 
-            # Force memory recording for important location transitions
+                # Force memory recording for important location transitions
             try:
-                # Always record location transitions
+                # MAP TRANSITION LOGIC
+                # Track transitions to verification
                 current_map = state.get('map_name', 'unknown')
+                current_map_id = state.get('map_id', -1)
                 current_pos = state.get('position', [])
 
-                # Simple spatial memory recording
-                if current_map != getattr(memory_manager, 'last_map', None):
-                    memory_manager.add_spatial_memory(
-                        location=current_map,
-                        coordinates=current_pos,
-                        description=f"Entered {current_map} at position {current_pos}",
-                        landmark_type="location_change"
-                    )
-                    memory_manager.last_map = current_map
-                    log.info(f"Recorded location memory: {current_map} at {current_pos}")
+                # We need to track the PREVIOUS map/pos to record a link
+                # use attributes on memory_manager to persist across loops efficiently
+                last_map = getattr(memory_manager, 'last_map', None)
+                last_map_id = getattr(memory_manager, 'last_map_id', None)
+                last_pos = getattr(memory_manager, 'last_pos', None)
+
+                # Check if map changed (and neither is unknown)
+                if (current_map != 'unknown' and last_map != 'unknown' and 
+                    current_map_id != -1 and last_map_id != -1 and
+                    (current_map != last_map or current_map_id != last_map_id)):
+                    
+                    # We moved between maps! exact position we left FROM is last_pos
+                    # exact position we arrived AT is current_pos
+                    
+                    if last_pos and current_pos:
+                        new_links = memory_manager.record_transition(
+                            from_map=last_map,
+                            from_pos=last_pos,
+                            to_map=current_map,
+                            to_pos=current_pos
+                        )
+                        if new_links:
+                             log.info(f"🔗 VERIFIED TRANSITION RECORDED: {last_map} -> {current_map}")
+                             update_payload["memory_write"] = {"text": f"Mapped connection: {last_map} -> {current_map}"}
+                
+                # Update history for next loop
+                memory_manager.last_map = current_map
+                memory_manager.last_map_id = current_map_id
+                memory_manager.last_pos = current_pos
 
                 # Extract memories from LLM response and vision analysis
                 extracted_memories = memory_manager.extract_memories_from_response(

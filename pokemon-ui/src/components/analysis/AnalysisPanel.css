@@ -88,11 +88,53 @@
 }
 
 /* Thinking Animation */
+.analysis-panel__thinking {
+  /* Position absolute at bottom center */
+  position: absolute;
+  bottom: 8px; /* Close to bottom */
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.analysis-panel__thinking.active {
+  opacity: 1;
+}
+
+.analysis-panel__thinking-spinner {
+    /* Optional: Remove spinner if text is enough, or keep it subtle */
+    display: none; 
+}
+
+.analysis-panel__thinking-text {
+  font-family: var(--font-mono);
+  font-size: 10px; /* Smaller */
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  display: flex;
+  gap: 1px;
+}
+
 .analysis-panel__thinking-text span {
   display: inline-block;
-  animation: thinking-lift 1.5s infinite ease-in-out;
+  /* Short animation duration, long pause implied by delay staggering? 
+     Actually, for sequential wave, we want the animation to run once per cycle per char.
+     If cycle is 2s.
+     Char 1: 0-10% lift.
+     Char 2: 10-20% lift.
+     ...
+  */
+  animation: thinking-wave 2s infinite ease-in-out;
   position: relative;
   color: var(--text-normal);
+  transform-origin: bottom;
 }
 
 .analysis-panel__thinking-text span::after {
@@ -102,25 +144,37 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%);
-  background-size: 200% 100%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, transparent 100%);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  animation: thinking-shine 2s infinite linear;
-  pointer-events: none;
-  opacity: 0.7;
+  opacity: 0; 
+  /* We can animate opacity with the wave */
 }
 
-@keyframes thinking-lift {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+@keyframes thinking-wave {
+  0%, 100% { 
+      transform: translateY(0); 
+  }
+  5% { 
+      transform: translateY(-3px); 
+      color: var(--accent-gold-bright);
+  }
+  10% { 
+      transform: translateY(0); 
+      color: var(--text-normal);
+  }
 }
 
-@keyframes thinking-shine {
-  0% { background-position: -100% 0; }
-  100% { background-position: 200% 0; }
-}
+/* 
+   We will rely on inline style animationDelay to stagger the 5% spike 
+   across the 2s duration.
+   11 chars. 
+   If delay is 0.1s steps:
+   Char 0 puts spike at 0-0.2s (normalized).
+   Char 1 (delayed 0.1s) puts spike at 0.1-0.3s.
+   This creates the wave.
+*/
 
 /* Recent Actions Section */
 .analysis-panel__actions-section {
@@ -135,9 +189,10 @@
 }
 
 .analysis-panel__actions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  width: 100%;
 }
 
 .analysis-panel__action-item {
@@ -145,8 +200,10 @@
   font-size: 11px;
   color: var(--text-secondary);
   display: flex;
+  flex-direction: column; /* Stack number above buttons for cleaner column layout */
   align-items: center;
-  gap: var(--space-sm);
+  gap: 4px;
+  min-width: 0;
 }
 
 .analysis-panel__action-icon {
@@ -468,19 +525,34 @@
   min-height: 200px;
 }
 
+.analysis-panel__action-group {
+  display: flex;
+  gap: 4px;
+}
+
 .analysis-panel__action-square {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--border-color);
+  width: 20px; /* Slightly smaller for multi-action */
+  height: 20px;
+  border-radius: 6px; /* Rounded/cute */
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--text-highlight);
-  background: rgba(255, 255, 255, 0.05);
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent-primary-bright);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2); /* cute 3d effect */
 }
+
+.analysis-panel__action-square.empty {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  color: transparent;
+  box-shadow: none;
+}
+
 
 /* Ensure Vision Grid layout works nicely */
 /* We target the container where dangerous HTML is injected */
