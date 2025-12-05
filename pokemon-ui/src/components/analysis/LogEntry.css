@@ -80,18 +80,16 @@
 
 .battle-entry__text {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 10px; /* Exact match to vision analysis */
   line-height: 1.4;
   color: var(--text-primary);
+  /* Ensure text wraps to prevent scroll */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-/* Enhanced text for vision and response entries */
-.battle-entry--vision .battle-entry__text,
-.battle-entry--response .battle-entry__text {
-  font-size: 13px; /* Slightly larger for better readability */
-  line-height: 1.5;
-  color: var(--text-primary);
-}
+/* Removed 13px override for vision/response */
+/* .battle-entry--vision .battle-entry__text, ... removed */
 
 /* Text highlighting styles */
 .battle-entry__text :global(.coordinate) {
