@@ -49,6 +49,7 @@ export function AnalysisPanel({
   // Filter for different types of entries (show only current/most recent)
   const visionEntries = logs.filter((log) => log.is_vision).slice(0, 1);
   const responseEntries = logs.filter((log) => log.is_response).slice(0, 1);
+  const actionEntries = logs.filter((log) => log.is_action).slice(0, 3);
 
   // Get the latest LLM response entry for main display - prioritize response over vision
   const latestResponseEntry =
@@ -59,6 +60,18 @@ export function AnalysisPanel({
     latestVisionEntry ||
     (logs.length > 0 ? logs[0] : null);
 
+  const renderThinkingText = () => {
+    const text = "THINKING...";
+    return (
+      <span className="analysis-panel__thinking-text">
+        {text.split("").map((char, i) => (
+          <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>
+            {char}
+          </span>
+        ))}
+      </span>
+    );
+  };
 
   return (
     <div className="analysis-panel-container">
@@ -70,29 +83,46 @@ export function AnalysisPanel({
       <div className="analysis-panel">
         
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
-        <div className="analysis-panel__history">
+        <div className="analysis-panel__history-wrapper">
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
-          <div className="analysis-panel__list">
-            {/* Show only current entry or waiting state */}
-            {latestEntry ? (
-              <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
-            ) : (
-              !isProcessing && (
-                <div className="analysis-panel__empty">
-                  waiting for Pokemon LLM analysis...
-                </div>
-              )
-            )}
-            
-            {/* Thinking Animation Overlay */}
-            <div className={`analysis-panel__thinking ${isProcessing ? 'active' : ''}`}>
-              <div className="analysis-panel__thinking-spinner" />
-              <span className="analysis-panel__thinking-text">THINKING...</span>
+          <div className="analysis-panel__history-scroll">
+            <div className="analysis-panel__list">
+              {/* Show only current entry or waiting state */}
+              {latestEntry ? (
+                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
+              ) : (
+                !isProcessing && (
+                  <div className="analysis-panel__empty">
+                    waiting for Pokemon LLM analysis...
+                  </div>
+                )
+              )}
+              
+              {/* Thinking Animation Overlay */}
+              <div className={`analysis-panel__thinking ${isProcessing ? 'active' : ''}`}>
+                <div className="analysis-panel__thinking-spinner" />
+                {renderThinkingText()}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 2. Vision Section (Fixed Height, Row Layout) */}
+        {/* 2. Recent Actions Section */}
+        {actionEntries.length > 0 && (
+          <div className="analysis-panel__actions-section">
+            <span className="analysis-panel__section-label">RECENT ACTIONS</span>
+            <div className="analysis-panel__actions-list">
+              {actionEntries.map((action) => (
+                <div key={action.id} className="analysis-panel__action-item">
+                  <span className="analysis-panel__action-icon">🎮</span>
+                  {action.text}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Vision Section (Fixed Height, Row Layout) */}
         <div className="analysis-panel__vision-section">
           <div className="analysis-panel__vision-row">
             {/* Column 1: Screenshot Only */}
@@ -125,7 +155,7 @@ export function AnalysisPanel({
           </div>
         </div>
 
-        {/* 3. Latest Memory Section (Bottom Anchor) */}
+        {/* 4. Latest Memory Section (Bottom Anchor) */}
         <div className="analysis-panel__memory-section">
           <span className="analysis-panel__section-label">LATEST MEMORY</span>
           <p className="analysis-panel__memory-text">
