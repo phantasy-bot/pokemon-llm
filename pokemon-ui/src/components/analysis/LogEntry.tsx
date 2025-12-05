@@ -316,6 +316,51 @@ function formatLogText(text: string): string {
 
 // Format vision analysis as a structured list
 function formatVisionAnalysisAsList(text: string): string {
+  // 1. Try to parse as JSON first (new format)
+  try {
+    // Extract JSON substring if wrapped in extra text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const jsonText = jsonMatch[0];
+      const data = JSON.parse(jsonText);
+      let htmlItems: string[] = [];
+      
+      // Helper to split semicolon lists and join with commas
+      const formatList = (str: string) => {
+        if (!str || str === "unreadable") return "";
+        return str.split(';').map(s => s.trim()).filter(Boolean).join(', ');
+      };
+
+      // Helper to add item
+      const addItem = (label: string, value: string) => {
+        if (!value || value === "unreadable" || value === "none") return;
+        htmlItems.push(`<div class="vision-item">
+          <span class="vision-category">${label}</span>
+          <span class="vision-content">${value}</span>
+        </div>`);
+      };
+
+      // Map fields to UI
+      if (data.screen_type) addItem("SCREEN", data.screen_type.toUpperCase());
+      if (data.readable_text) addItem("TEXT", formatList(data.readable_text));
+      if (data.player_position) addItem("POSITION", data.player_position);
+      if (data.nearby_objects) addItem("NEARBY", formatList(data.nearby_objects));
+      if (data.npcs) addItem("NPCs", formatList(data.npcs));
+      if (data.obstacles) addItem("OBSTACLES", formatList(data.obstacles));
+      if (data.ui_elements) addItem("UI", formatList(data.ui_elements));
+      if (data.battle_info) addItem("BATTLE", formatList(data.battle_info));
+      if (data.menu_cursor) addItem("CURSOR", data.menu_cursor);
+      if (data.navigation_notes) addItem("NAV", formatList(data.navigation_notes));
+
+      if (htmlItems.length > 0) {
+        return htmlItems.join("");
+      }
+    }
+  } catch (e) {
+    // Not valid JSON, fall back to string parsing
+  }
+
+  // 2. Fallback to old string parsing if not JSON
   // Split by double newlines or by category headers
   const sections = text
     .split(/\n\s*(?=[A-Z][a-zA-Z\s]*:)/)
@@ -338,63 +383,17 @@ function formatVisionAnalysisAsList(text: string): string {
 
     if (!content) return;
 
-    // Format based on category type
-    switch (category) {
-      case "Readable Text":
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">💬 Dialogue:</span>
-          <span class="vision-content">"${content}"</span>
-        </div>`);
-        break;
-
-      case "Character Position":
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">📍 Location:</span>
-          <span class="vision-content">${content}</span>
-        </div>`);
-        break;
-
-      case "Visible NPCs":
-        // Split NPCs by semicolons or numbered lists
-        const npcs = content.split(/;\s*|\d+\.\s*/).filter((npc) => npc.trim());
-        if (npcs.length > 0) {
-          htmlItems.push(`<div class="vision-item">
-            <span class="vision-category">👥 NPCs:</span>
-            <div class="vision-npc-list">
-              ${npcs.map((npc) => `<div class="vision-npc">• ${npc.trim()}</div>`).join("")}
-            </div>
-          </div>`);
-        }
-        break;
-
-      case "UI Elements":
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">🖥️ UI:</span>
-          <span class="vision-content">${content}</span>
-        </div>`);
-        break;
-
-      case "Obstacles":
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">🚧 Obstacles:</span>
-          <span class="vision-content">${content}</span>
-        </div>`);
-        break;
-
-      case "Grid Analysis":
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">🗺️ Grid:</span>
-          <span class="vision-content">${content}</span>
-        </div>`);
-        break;
-
-      default:
-        htmlItems.push(`<div class="vision-item">
-          <span class="vision-category">${category}:</span>
-          <span class="vision-content">${content}</span>
-        </div>`);
-        break;
-    }
+    // Map old categories to new simple labels without emojis
+    let simpleLabel = category.toUpperCase();
+    if (simpleLabel === "READABLE TEXT") simpleLabel = "TEXT";
+    if (simpleLabel === "CHARACTER POSITION") simpleLabel = "POSITION";
+    if (simpleLabel === "VISIBLE NPCS") simpleLabel = "NPCs";
+    if (simpleLabel === "UI ELEMENTS") simpleLabel = "UI";
+    
+    htmlItems.push(`<div class="vision-item">
+      <span class="vision-category">${simpleLabel}</span>
+      <span class="vision-content">${content.replace(/•/g, '').replace(/;\s*/g, ', ')}</span>
+    </div>`);
   });
 
   return htmlItems.join("");

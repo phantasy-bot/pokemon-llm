@@ -66,7 +66,11 @@ async def _actual_handler_code(websocket, current_app_state):
     except websockets.exceptions.ConnectionClosedOK:
         log.info(f"WS: Client {websocket.remote_address} disconnected gracefully.")
     except websockets.exceptions.ConnectionClosedError as e:
-        log.warning(f"WS: Client {websocket.remote_address} connection closed with error: {e}")
+        # Suppress noisy errors from page refresh/HMR (no close frame)
+        if "no close frame" in str(e).lower():
+            log.debug(f"WS: Client {websocket.remote_address} disconnected abruptly (likely page refresh)")
+        else:
+            log.warning(f"WS: Client {websocket.remote_address} connection closed with error: {e}")
     except Exception as e:
         log.error(f"WS: Error in handler for {websocket.remote_address}: {e}", exc_info=True)
     finally:
