@@ -400,6 +400,34 @@
   margin: 1px 0;
 }
 
+/* Compact Vision Items (JSON parsed) */
+.vision-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2px;
+}
+
+.vision-category {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent-primary-bright);
+  text-transform: uppercase;
+  margin-bottom: 0px; /* Zero gap */
+  line-height: 1;
+}
+
+.vision-content {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.vision-item:last-child {
+  margin-bottom: 0;
+}
+
 /* Markdown section headers */
 .log-section-header {
   font-family: var(--font-mono);

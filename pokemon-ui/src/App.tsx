@@ -169,29 +169,7 @@ function App() {
     }
   };
 
-  const addLog = (
-    message: string,
-    type:
-      | "action"
-      | "battle"
-      | "system"
-      | "error"
-      | "ai"
-      | "combat"
-      | "movement"
-      | "info"
-      | "vision"
-      | "response" = "info",
-  ) => {
-    // Include all log types for Pokemon (vision, response logs are important)
-    const newLog: LogEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      text: message, // Use 'text' instead of 'message' for consistency
-      type,
-    };
-    setLogs((prev) => [newLog, ...prev].slice(0, 3000)); // Match Vue app limit
-  };
+
 
   return (
     <PokemonStreamOverlay
