@@ -54,34 +54,110 @@
 /* Scroll area for history - TUI Box */
 /* Shared TUI Box Styling Pattern (Applied to sections) */
 /* Scroll area for history - TUI Box */
-.analysis-panel__history {
+/* Wrapper for History to handle border/label without clipping */
+.analysis-panel__history-wrapper {
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for sheared label */
   /* Add top margin to prevent label cutoff by parent overflow */
   margin-top: var(--space-md);
-  margin-bottom: 8px; /* Requested specific margin */
+  margin-bottom: 12px; /* Increased from 8px */
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+  position: relative;
+  min-height: 0;
+}
+
+/* Inner scroll area for history */
+.analysis-panel__history-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Update list to fit in scroll */
+.analysis-panel__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1; 
+}
+
+/* Thinking Animation */
+.analysis-panel__thinking-text span {
+  display: inline-block;
+  animation: thinking-lift 1.5s infinite ease-in-out;
+  position: relative;
+  color: var(--text-normal);
+}
+
+.analysis-panel__thinking-text span::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: thinking-shine 2s infinite linear;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@keyframes thinking-lift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes thinking-shine {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Recent Actions Section */
+.analysis-panel__actions-section {
+  flex-shrink: 0;
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  padding-top: var(--space-lg);
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
 }
 
-.analysis-panel__list {
+.analysis-panel__actions-list {
   display: flex;
   flex-direction: column;
-  flex: 1; /* Ensure list fills height so empty state can center */
+  gap: 4px;
 }
+
+.analysis-panel__action-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.analysis-panel__action-icon {
+  opacity: 0.7;
+}
+
 
 /* Vision Section Container */
 .analysis-panel__vision-section {
   flex-shrink: 0;
-  margin-top: 0; /* Gap handled by margin-bottom of history */
+  margin-top: 0; /* Gap handled by margin-bottom of history/actions */
   padding-top: 0;
   background: var(--bg-panel);
   z-index: 2;
@@ -118,7 +194,48 @@
   position: relative;
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for title */
+  /* Ensure height matches screenshot mostly */
+  /* We allow it to expand but the content inside controls layout */
 }
+
+/* Vision Grid Layout for compact view */
+.log-entry__compact-vision .formatted-log-content {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  align-items: start;
+}
+
+/* Handle generic markdown paragraphs in grid */
+.log-entry__compact-vision .formatted-log-content > p {
+  display: contents; /* Strip p wrappers so items fall into grid */
+}
+
+/* Vision items in grid */
+.vision-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+  padding-bottom: 4px;
+}
+
+.vision-category {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vision-content {
+  font-size: 11px;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .analysis-panel__vision-title-internal {
   font-family: var(--font-mono);
@@ -209,12 +326,24 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 80px;
+  flex: 1; /* Fill available height */
   padding: var(--space-md);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed var(--border-subtle);
-  border-radius: 6px;
-  margin: var(--space-sm) 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  width: 100%;
+  min-height: 150px; /* Fallback minimum height */
+}
+
+.analysis-panel__vision-placeholder-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  text-align: center;
 }
 
 .analysis-panel__vision-placeholder-row {
