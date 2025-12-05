@@ -70,11 +70,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    135deg,
-    var(--bg-card) 0%,
-    var(--bg-panel) 100%
-  );
+  background: var(--bg-panel); /* Flat color as requested */
   border: 1px dashed var(--border-subtle);
   border-radius: 8px;
   opacity: 0.5;

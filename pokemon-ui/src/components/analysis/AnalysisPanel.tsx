@@ -112,12 +112,29 @@ export function AnalysisPanel({
           <div className="analysis-panel__actions-section">
             <span className="analysis-panel__section-label">RECENT ACTIONS</span>
             <div className="analysis-panel__actions-list">
-              {actionEntries.map((action) => (
-                <div key={action.id} className="analysis-panel__action-item">
-                  <span className="analysis-panel__action-icon">🎮</span>
-                  {action.text}
-                </div>
-              ))}
+              {actionEntries.map((action, index) => {
+                // effective index = totalActions - index
+                // Since actionEntries is sliced from filtered list (latest first)
+                // Wait. logs are typically latest first?
+                // If logs are [Latest, ..., Oldest]
+                // filtered actions are [LatestAction, ..., OldestAction]
+                // So the latest action is at index 0.
+                // If we want total count, we need the total count of actions.
+                // The number for action at index i should be Total - i.
+                const totalActions = logs.filter(l => l.is_action).length;
+                const number = totalActions - index;
+                
+                return (
+                  <div key={action.id} className="analysis-panel__action-item">
+                    <span className="analysis-panel__action-number" style={{ opacity: 0.5, marginRight: 4, fontFamily: 'var(--font-mono)' }}>
+                      #{number}
+                    </span>
+                    <span className="analysis-panel__action-text">
+                      {action.text}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

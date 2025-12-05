@@ -70,11 +70,7 @@ export function LogEntryCard({
     if (logType === "vision") {
       return (
         <div className="log-entry log-entry--compact log-entry--vision log-entry--vision-full">
-          <div className="log-entry__compact-vision">
-            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-              {formatLogText(text)}
-            </ReactMarkdown>
-          </div>
+      <div className="log-entry__compact-vision" dangerouslySetInnerHTML={{ __html: formatLogText(text) }} />
         </div>
       );
     }
