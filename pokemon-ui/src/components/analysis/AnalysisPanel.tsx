@@ -19,7 +19,6 @@ interface AnalysisPanelProps {
   isProcessing?: boolean;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
-  totalActions?: number;
 }
 
 export function AnalysisPanel({
@@ -27,7 +26,6 @@ export function AnalysisPanel({
   isProcessing = false,
   memoryWrite,
   onMemoryWriteClear,
-  totalActions = 0,
 }: AnalysisPanelProps) {
   // @ts-expect-error - Parameter not used yet
   const _onMemoryWriteClear = onMemoryWriteClear;
@@ -61,22 +59,6 @@ export function AnalysisPanel({
     latestVisionEntry ||
     (logs.length > 0 ? logs[0] : null);
 
-  // Get recent actions from last few entries
-  const recentActions = logs
-    .filter((log) => log.is_action && log.text)
-    .slice(0, 3)
-    .map((log, index) => {
-      const actions = extractActions(log.text || "");
-      // Calculate action number: most recent gets totalActions, then count backwards
-      const actionNumber = Math.max(1, totalActions - (2 - index));
-
-      return {
-        id: log.id || `action-${Date.now()}`,
-        text: log.text || "",
-        actions: actions,
-        actionNumber: actionNumber,
-      };
-    });
 
   return (
     <div className="analysis-panel-container">
@@ -86,130 +68,71 @@ export function AnalysisPanel({
         style={{ backgroundImage: `url(${POKEMON_KEYART[currentKeyart]})` }}
       />
       <div className="analysis-panel">
-        {/* Current AI Thought - Single, Centered */}
-        <div className="analysis-panel__current">
-          {latestEntry ? (
-            <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
-          ) : (
-            !isProcessing && (
-              <div className="analysis-panel__empty">
-                waiting for Pokemon LLM analysis...
-              </div>
-            )
-          )}
-
-          {isProcessing && (
-            <div className="analysis-panel__thinking">
-              <span className="analysis-panel__thinking-text">
-                {"Analyzing...".split("").map((char, i) => (
-                  <span
-                    key={i}
-                    className="analysis-panel__thinking-char"
-                    style={{ animationDelay: `${i * 0.12}s` }}
-                  >
-                    {char}
-                  </span>
-                ))}
-              </span>
+        
+        {/* 1. History / LLM Analysis Section (Flex Grow) */}
+        <div className="analysis-panel__history">
+          <div className="analysis-panel__list">
+            {/* Show only current entry or waiting state */}
+            {latestEntry ? (
+              <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
+            ) : (
+              !isProcessing && (
+                <div className="analysis-panel__empty">
+                  waiting for Pokemon LLM analysis...
+                </div>
+              )
+            )}
+            
+            {/* Thinking Animation Overlay */}
+            <div className={`analysis-panel__thinking ${isProcessing ? 'active' : ''}`}>
+              <div className="analysis-panel__thinking-spinner" />
+              <span className="analysis-panel__thinking-text">THINKING...</span>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Pokemon Vision Analysis Section - Always Show */}
+        {/* 2. Vision Section (Fixed Height, Row Layout) */}
         <div className="analysis-panel__vision-section">
-          <span className="analysis-panel__section-label">VISION ANALYSIS</span>
-
-          {/* Two-column layout: screenshot on left, vision content on right */}
           <div className="analysis-panel__vision-row">
-            {/* Screenshot column - 35% */}
-            <div className="analysis-panel__vision-screenshot-column">
+            {/* Column 1: Title + Screenshot */}
+            <div className="analysis-panel__vision-col-screenshot">
+              <div className="analysis-panel__vision-title-internal">
+                VISION ANALYSIS
+              </div>
               <VisionScreenshot 
                 timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
               />
             </div>
 
-            {/* Vision content column - 65% */}
-            <div className="analysis-panel__vision-content-column">
-              <div className="analysis-panel__vision-list">
-                {visionEntries.length > 0 ? (
-                  visionEntries.map((entry) => (
-                    <div key={entry.id} className="analysis-panel__vision-entry">
-                      <LogEntryCard entry={entry} compact />
-                    </div>
-                  ))
-                ) : (
-                  <div className="analysis-panel__vision-placeholder">
-                    <div className="analysis-panel__vision-placeholder-text">
-                      no vision analysis available yet
-                    </div>
+            {/* Column 2: Content */}
+            <div className="analysis-panel__vision-col-content">
+              {visionEntries.length > 0 ? (
+                visionEntries.map((entry) => (
+                  <div key={entry.id} className="analysis-panel__vision-entry">
+                    <LogEntryCard entry={entry} compact />
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer: Recent Actions + Memory */}
-        <div className="analysis-panel__footer">
-          {/* Recent Actions - Always Show */}
-          <div className="analysis-panel__actions-section">
-            <span className="analysis-panel__section-label">RECENT ACTIONS</span>
-            <div className="analysis-panel__action-list">
-              {recentActions.some((r) => r.actions.length > 0) ? (
-                recentActions
-                  .filter((r) => r.actions.length > 0)
-                  .map((r) => (
-                    <div key={r.id} className="analysis-panel__action-row">
-                      <span className="analysis-panel__action-number">
-                        #{r.actionNumber || "?"}
-                      </span>
-                      {r.actions.map((btn, idx) => (
-                        <span key={idx} className="analysis-panel__action-btn">
-                          {btn}
-                        </span>
-                      ))}
-                    </div>
-                  ))
+                ))
               ) : (
-                <div className="analysis-panel__actions-placeholder">
-                  <span className="analysis-panel__actions-placeholder-text">
-                    no recent actions
+                <div className="analysis-panel__vision-placeholder">
+                  <span className="analysis-panel__vision-placeholder-text">
+                    waiting for vision input...
                   </span>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Latest Memory - Persistent */}
-          <div className="analysis-panel__memory-section">
-            <span className="analysis-panel__section-label">LATEST MEMORY</span>
-            <p className="analysis-panel__memory-text">
-              {persistedMemory || "no memories recorded yet"}
-            </p>
-          </div>
         </div>
+
+        {/* 3. Latest Memory Section (Bottom Anchor) */}
+        <div className="analysis-panel__memory-section">
+          <span className="analysis-panel__section-label">LATEST MEMORY</span>
+          <p className="analysis-panel__memory-text">
+            {persistedMemory || "no memories recorded yet"}
+          </p>
+        </div>
+
       </div>
     </div>
   );
 }
 
-// Helper function to extract actions from text (adapted from Vue app)
-function extractActions(text: string): string[] {
-  const actionSequenceRegex =
-    /(Action:\s*)([ABUDLRS][\s;ABUDLRS]*?)(?=[^ABUDLRS\s;]|$)/g;
-  const actions: string[] = [];
-
-  let match;
-  while ((match = actionSequenceRegex.exec(text)) !== null) {
-    const sequence = match[2];
-    const cleanedActions = sequence
-      .replace(/;/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split("");
-
-    actions.push(...cleanedActions);
-  }
-
-  return actions;
-}

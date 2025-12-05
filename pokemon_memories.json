@@ -41,6 +41,20 @@
       },
       "destination": null,
       "landmark_type": "location_change"
+    },
+    {
+      "type": "spatial",
+      "location": "unknown",
+      "description": "Entered unknown at position []",
+      "coordinates": [],
+      "timestamp": "2025-12-05T16:07:00.963368",
+      "importance": 1.0,
+      "context": {
+        "destination": null,
+        "landmark_type": "location_change"
+      },
+      "destination": null,
+      "landmark_type": "location_change"
     }
   ],
   "gameplay": [],
