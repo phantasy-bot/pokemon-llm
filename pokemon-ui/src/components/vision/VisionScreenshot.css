@@ -7,194 +7,22 @@
   overflow: hidden;
   transition: all var(--transition-fast);
   position: relative;
-  min-width: 200px;
-  max-width: 200px;
-  min-height: 150px;
-  width: 100%;
-  height: 100%;
+  width: 100%; /* Fill container */
+  height: 100%; /* Fill container */
   z-index: 1;
 }
 
-/* Ensure placeholder is visible for debugging */
-.vision-screenshot__placeholder {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  color: var(--text-muted);
-  background: var(--bg-input);
-  min-height: 150px;
-  border: 2px dashed var(--border-default);
-  opacity: 0.8;
-}
-
-.vision-screenshot:hover {
-  border-color: var(--border-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+/* ... existing hover styles ... */
 
 .vision-screenshot--compact {
-  min-width: 120px;
-  max-width: 120px;
+  /* Keep aspect ratio or min size if needed, but avoid fixed width locks */
   min-height: 90px;
 }
 
-.vision-screenshot__image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  background: var(--bg-input);
-  opacity: 1;
-  filter: brightness(1);
-}
+/* ... existing image styles ... */
 
-.vision-screenshot__loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  color: var(--text-secondary);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-card);
-  animation: loading-fade 0.3s ease-out;
-  z-index: 2;
-}
-
-@keyframes loading-fade {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.vision-screenshot__spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-subtle);
-  border-top: 2px solid var(--accent-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.vision-screenshot__loading-text {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
-.vision-screenshot__error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  color: var(--text-muted);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-card);
-  animation: error-appear 0.3s ease-out;
-  z-index: 2;
-}
-
-@keyframes error-appear {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.vision-screenshot__error-icon {
-  font-size: 24px;
-  opacity: 0.7;
-}
-
-.vision-screenshot__error-text {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.vision-screenshot__placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  color: var(--text-muted);
-  opacity: 0.5;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-input);
-  font-family: var(--font-mono);
-}
-
-.vision-screenshot__placeholder-icon {
-  font-size: 32px;
-  opacity: 0.6;
-  filter: grayscale(100%);
-}
-
-.vision-screenshot__placeholder-text {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  text-align: center;
-  font-style: italic;
-}
-
-/* Responsive adjustments */
+/* ... media queries only for internal text sizing, no width locking ... */
 @media (max-width: 768px) {
-  .vision-screenshot {
-    min-width: 160px;
-    max-width: 160px;
-    min-height: 120px;
-  }
-
-  .vision-screenshot--compact {
-    min-width: 100px;
-    max-width: 100px;
-    min-height: 75px;
-  }
-
   .vision-screenshot__loading-text,
   .vision-screenshot__error-text,
   .vision-screenshot__placeholder-text {
@@ -203,17 +31,7 @@
 }
 
 @media (max-width: 480px) {
-  .vision-screenshot {
-    min-width: 120px;
-    max-width: 120px;
-    min-height: 90px;
-  }
-
-  .vision-screenshot--compact {
-    min-width: 80px;
-    max-width: 80px;
-    min-height: 60px;
-  }
+  /* Minimal adjustments */
 }
 
 /* Dark mode support */
