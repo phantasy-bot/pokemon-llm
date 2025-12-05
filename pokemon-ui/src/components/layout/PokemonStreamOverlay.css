@@ -247,7 +247,7 @@
   color: var(--type-fire);
 }
 
-.pokemon-battle-log {
+.pokemon-analysis-panel {
   flex: 1;
   overflow-y: auto;
   padding: 0;

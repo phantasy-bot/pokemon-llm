@@ -1,24 +1,24 @@
-.battle-entry {
+.log-entry {
   background: transparent;
   border: none;
   border-radius: 0;
   padding: 2px 0; /* Minimal vertical padding */
   position: relative;
   transition: all var(--transition-fast);
-  border-bottom: 1px solid var(--border-subtle); /* Separator only */
+  /* Removed border-bottom as requested */
 }
 
 /* Hover effect for interactive entries map only - disable for vision */
-.battle-entry:not(.battle-entry--vision):hover {
+.log-entry:not(.log-entry--vision):hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.battle-entry--new {
-  animation: battle-entry-new 0.5s ease-out;
+.log-entry--new {
+  animation: log-entry-new 0.5s ease-out;
   border-color: var(--accent-primary);
 }
 
-@keyframes battle-entry-new {
+@keyframes log-entry-new {
   0% {
     transform: translateY(-10px);
     opacity: 0;
@@ -33,12 +33,12 @@
 
 /* Type-specific styling - Enhanced for better visibility */
 /* Type-specific styling - Minimal/Flat */
-.battle-entry--action {
+.log-entry--action {
   /* Minimal indication for action */
   background: rgba(129, 199, 132, 0.05); /* Very subtle tint optional */
 }
 
-.battle-entry__header {
+.log-entry__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -46,18 +46,18 @@
   gap: var(--space-sm);
 }
 
-.battle-entry__type-info {
+.log-entry__type-info {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
 }
 
-.battle-entry__type-icon {
+.log-entry__type-icon {
   font-size: 14px;
   line-height: 1;
 }
 
-.battle-entry__type-label {
+.log-entry__type-label {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
@@ -66,20 +66,20 @@
   letter-spacing: 0.05em;
 }
 
-.battle-entry__timestamp {
+.log-entry__timestamp {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-muted);
   opacity: 0.7;
 }
 
-.battle-entry__content {
+.log-entry__content {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
 }
 
-.battle-entry__text {
+.log-entry__text {
   font-family: var(--font-mono);
   font-size: 10px; /* Exact match to vision analysis */
   line-height: 1.4;
@@ -93,7 +93,7 @@
 /* .battle-entry--vision .battle-entry__text, ... removed */
 
 /* Text highlighting styles */
-.battle-entry__text :global(.coordinate) {
+.log-entry__text :global(.coordinate) {
   background: rgba(0, 255, 255, 0.2);
   color: #00bcd4;
   padding: 1px 3px;
@@ -101,7 +101,7 @@
   font-weight: 600;
 }
 
-.battle-entry__text :global(.action-type-button) {
+.log-entry__text :global(.action-type-button) {
   background: rgba(255, 82, 82, 0.8);
   color: white;
   padding: 1px 4px;
@@ -111,7 +111,7 @@
   margin: 0 1px;
 }
 
-.battle-entry__text :global(.action-type-direction) {
+.log-entry__text :global(.action-type-direction) {
   background: rgba(82, 82, 255, 0.8);
   color: white;
   padding: 1px 4px;
@@ -122,15 +122,15 @@
 }
 
 /* Vision-specific indicators */
-.battle-entry__vision-details {
+.log-entry__vision-details {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   margin-top: var(--space-sm);
 }
 
-.battle-entry__pokemon-indicator,
-.battle-entry__coordinate-indicator {
+.log-entry__pokemon-indicator,
+.log-entry__coordinate-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -139,28 +139,28 @@
   color: var(--text-secondary);
 }
 
-.battle-entry__pokemon-icon,
-.battle-entry__coordinate-icon {
+.log-entry__pokemon-icon,
+.log-entry__coordinate-icon {
   font-size: 12px;
 }
 
-.battle-entry__pokemon-text,
-.battle-entry__coordinate-text {
+.log-entry__pokemon-text,
+.log-entry__coordinate-text {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 /* Response-specific indicators */
-.battle-entry__response-details {
+.log-entry__response-details {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   margin-top: var(--space-sm);
 }
 
-.battle-entry__battle-indicator,
-.battle-entry__item-indicator {
+.log-entry__battle-indicator,
+.log-entry__item-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -169,27 +169,27 @@
   color: var(--text-secondary);
 }
 
-.battle-entry__battle-icon,
-.battle-entry__item-icon {
+.log-entry__battle-icon,
+.log-entry__item-icon {
   font-size: 12px;
 }
 
-.battle-entry__battle-text,
-.battle-entry__item-text {
+.log-entry__battle-text,
+.log-entry__item-text {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 /* Action entries */
-.battle-entry__actions {
+.log-entry__actions {
   display: flex;
   gap: var(--space-xs);
   margin-top: var(--space-sm);
   flex-wrap: wrap;
 }
 
-.battle-entry__action {
+.log-entry__action {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
@@ -199,18 +199,18 @@
   letter-spacing: 0.02em;
 }
 
-.battle-entry__action--button {
+.log-entry__action--button {
   background: rgba(255, 82, 82, 0.9);
   color: white;
 }
 
-.battle-entry__action--direction {
+.log-entry__action--direction {
   background: rgba(82, 82, 255, 0.9);
   color: white;
 }
 
 /* Compact mode */
-.battle-entry--compact {
+.log-entry--compact {
   padding: var(--space-sm);
   margin-bottom: var(--space-xs);
   display: flex;
@@ -219,12 +219,12 @@
   min-height: auto;
 }
 
-.battle-entry--compact .battle-entry__compact-icon {
+.log-entry--compact .log-entry__compact-icon {
   font-size: 12px;
   flex-shrink: 0;
 }
 
-.battle-entry--compact .battle-entry__compact-text {
+.log-entry--compact .log-entry__compact-text {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
@@ -238,7 +238,7 @@
 }
 
 /* Remove line clamping for vision entries to show full analysis */
-.battle-entry--vision-full .battle-entry__compact-text {
+.log-entry--vision-full .log-entry__compact-text {
   -webkit-line-clamp: unset;
   max-height: none;
   display: block;
@@ -246,7 +246,7 @@
   text-overflow: unset;
 }
 
-.battle-entry--compact:hover {
+.log-entry--compact:hover {
   transform: translateY(-1px);
 }
 
@@ -295,7 +295,7 @@
 }
 
 /* Vision Container Layout - Screenshot alongside Analysis */
-.battle-entry__vision-container {
+.log-entry__vision-container {
   display: flex;
   gap: var(--space-md);
   align-items: flex-start;
@@ -303,14 +303,14 @@
   min-height: 150px; /* Ensure minimum height for screenshot */
 }
 
-.battle-entry__vision-screenshot {
+.log-entry__vision-screenshot {
   flex: 0 0 200px; /* Fixed width for screenshot */
   max-width: 200px;
   min-width: 200px;
   height: 150px; /* Fixed height to match screenshot component */
 }
 
-.battle-entry__vision-content {
+.log-entry__vision-content {
   flex: 1;
   min-width: 0; /* Prevent flex overflow */
   display: flex;
@@ -320,64 +320,64 @@
 
 /* Responsive adjustments for vision container */
 @media (max-width: 768px) {
-  .battle-entry__vision-container {
+  .log-entry__vision-container {
     flex-direction: column;
     gap: var(--space-sm);
   }
 
-  .battle-entry__vision-screenshot {
+  .log-entry__vision-screenshot {
     flex: 0 0 auto;
     max-width: 160px;
     min-width: 160px;
     align-self: center;
   }
 
-  .battle-entry__vision-content {
+  .log-entry__vision-content {
     width: 100%;
   }
 }
 
 @media (max-width: 480px) {
-  .battle-entry__vision-screenshot {
+  .log-entry__vision-screenshot {
     max-width: 120px;
     min-width: 120px;
   }
 }
 
 /* Compact Vision with Markdown Support */
-.battle-entry__compact-vision {
+.log-entry__compact-vision {
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 1.25;
   color: var(--text-secondary);
 }
 
-.battle-entry__compact-vision h4,
-.battle-entry__compact-vision .log-section-header {
+.log-entry__compact-vision h4,
+.log-entry__compact-vision .log-section-header {
   font-size: 10px;
   margin: 3px 0 1px 0;
   padding-bottom: 1px;
   color: var(--accent-primary-bright);
 }
 
-.battle-entry__compact-vision strong {
+.log-entry__compact-vision strong {
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.battle-entry__compact-vision .log-bullet {
+.log-entry__compact-vision .log-bullet {
   padding-left: 6px;
   margin: 1px 0;
   font-size: 10px;
 }
 
-.battle-entry__compact-vision .log-numbered-section {
+.log-entry__compact-vision .log-numbered-section {
   margin: 3px 0;
   padding: 2px 4px;
   font-size: 10px;
 }
 
-.battle-entry__compact-vision br {
+.log-entry__compact-vision br {
   display: block;
   content: "";
   margin: 1px 0;
@@ -405,6 +405,7 @@
   font-size: 10px;
   color: var(--text-secondary);
   line-height: 1.2;
+  white-space: pre-wrap;
 }
 
 .vision-item:last-child {

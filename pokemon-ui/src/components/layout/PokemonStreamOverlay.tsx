@@ -135,7 +135,7 @@ export function PokemonStreamOverlay({
       <div className="pokemon-content">
         {/* Left Column - Battle Log Only */}
         <div className="pokemon-left-col">
-          <div className="pokemon-battle-log">
+          <div className="pokemon-analysis-panel">
             <AnalysisPanel
             logs={logs}
             totalActions={gameState.actions}
