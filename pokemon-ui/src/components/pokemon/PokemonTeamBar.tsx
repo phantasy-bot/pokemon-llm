@@ -104,11 +104,14 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
           </span>
         </div>
 
-        <div className="pokemon-team-bar__scroll" ref={scrollRef}>
+        {/* Static 3x2 Grid */}
+        <div className="pokemon-team-bar__grid">
           {pokemon.length > 0 ? (
             <>
               {transformedPokemon.map((p) => (
-                <PokemonCard key={p.id} pokemon={p} />
+                <div key={p.id} className="pokemon-team-grid-item">
+                  <PokemonCard pokemon={p} />
+                </div>
               ))}
               {/* Empty slots to show 6 total */}
               {Array.from({ length: Math.max(0, 6 - pokemon.length) }).map(

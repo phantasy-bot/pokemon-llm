@@ -149,10 +149,12 @@ function App() {
       setLogs((prev) => [newLog, ...prev].slice(0, 3000));
     }
 
-    // Handle memory writes
+    // Handle memory writes - Fixed to ensure UI updates
     if (data.memory_write && data.memory_write.text) {
       setMemoryWrite(data.memory_write.text);
     }
+
+
 
     // Handle bulk logs
     if (data.logs && Array.isArray(data.logs)) {

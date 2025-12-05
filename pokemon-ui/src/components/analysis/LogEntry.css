@@ -8,7 +8,8 @@
   border-bottom: 1px solid var(--border-subtle); /* Separator only */
 }
 
-.battle-entry:hover {
+/* Hover effect for interactive entries map only - disable for vision */
+.battle-entry:not(.battle-entry--vision):hover {
   background: rgba(255, 255, 255, 0.02);
 }
 

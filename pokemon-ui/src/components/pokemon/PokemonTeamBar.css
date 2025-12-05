@@ -36,11 +36,17 @@
   font-weight: 500;
 }
 
-.pokemon-team-bar__scroll {
-  display: flex;
+/* Grid layout for team */
+.pokemon-team-bar__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns */
   gap: var(--space-sm);
-  overflow-x: hidden;
-  padding: var(--space-xs) 0;
+  width: 100%;
+}
+
+.pokemon-team-grid-item {
+  width: 100%;
+  min-width: 0;
 }
 
 .pokemon-team-bar__empty {
@@ -56,10 +62,11 @@
   letter-spacing: 0.05em;
 }
 
-/* Empty slot styling */
+/* Empty slot styling - adapted for grid */
 .pokemon-empty-slot {
-  min-width: 200px;
+  width: 100%;
   height: 80px;
+  /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;
   justify-content: center;
