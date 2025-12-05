@@ -1,0 +1,79 @@
+{
+  "goals": {
+    "goal_1_1764955891": {
+      "id": "goal_1_1764955891",
+      "description": "Complete Pokemon Red - Become Champion",
+      "priority": 4,
+      "status": "pending",
+      "created_at": "2025-12-05T12:31:31.231309",
+      "completed_at": null,
+      "parent_id": null,
+      "context": {
+        "type": "main_quest"
+      }
+    },
+    "goal_2_1764955891": {
+      "id": "goal_2_1764955891",
+      "description": "Get first Pokemon and start journey",
+      "priority": 2,
+      "status": "pending",
+      "created_at": "2025-12-05T12:31:31.231607",
+      "completed_at": null,
+      "parent_id": "goal_1_1764955891",
+      "context": {
+        "type": "milestone"
+      }
+    }
+  },
+  "stack": [
+    "goal_2_1764955891",
+    "goal_1_1764955891"
+  ],
+  "failures": [
+    {
+      "action": "A",
+      "position": [
+        6,
+        2
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T12:38:47.592723"
+    },
+    {
+      "action": "A",
+      "position": [
+        6,
+        2
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T12:39:02.602285"
+    },
+    {
+      "action": "A",
+      "position": [
+        6,
+        2
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T12:39:21.758483"
+    },
+    {
+      "action": "A",
+      "position": [
+        6,
+        2
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T12:39:37.398703"
+    },
+    {
+      "action": "A",
+      "position": [
+        6,
+        2
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T12:40:04.391061"
+    }
+  ]
+}

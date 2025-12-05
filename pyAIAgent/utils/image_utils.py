@@ -40,15 +40,16 @@ def capture(sock, filename: str = "latest.png", cell_size: int = 16) -> None:
     # build image from raw data
     img = Image.frombytes("RGBA", size, bytes(data), "raw", "ARGB")
 
-    # draw the 16×16 grid
-    draw = ImageDraw.Draw(img)
-    w, h = img.size
-    grid_color = (255, 0, 0, 128)  # semi-transparent red
+    # NOTE: Grid overlay disabled to prevent coordinate confusion
+    # The minimap shows world coordinates while screen coordinates are relative
+    # draw = ImageDraw.Draw(img)
+    # w, h = img.size
+    # grid_color = (255, 0, 0, 128)  # semi-transparent red
 
-    for x in range(0, w + 1, cell_size):
-        draw.line(((x, 0), (x, h)), fill=grid_color)
-    for y in range(0, h + 1, cell_size):
-        draw.line(((0, y), (w, y)), fill=grid_color)
+    # for x in range(0, w + 1, cell_size):
+    #     draw.line(((x, 0), (x, h)), fill=grid_color)
+    # for y in range(0, h + 1, cell_size):
+    #     draw.line(((0, y), (w, y)), fill=grid_color)
 
     # save
     path = pathlib.Path(filename)

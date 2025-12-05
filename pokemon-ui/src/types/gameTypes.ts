@@ -164,8 +164,6 @@ export interface PokemonGameState {
   gameStatus: string;
   modelName: string;
   tokensUsed: number;
-  ggValue?: number | null;
-  summaryValue?: number | null;
 
   // UI State
   inMenu?: boolean;

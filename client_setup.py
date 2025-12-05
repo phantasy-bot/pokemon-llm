@@ -81,25 +81,6 @@ def parse_mode_arg(modes, default_mode=DEFAULT_MODE):
         print(f"\nNo LLM mode specified via command line.")
         print(f"Using default mode: {default_mode}")
         mode = default_mode
-        return mode
-
-        # For interactive mode, uncomment below:
-        # print("Please choose the LLM mode from the list below:")
-        # for i, m in enumerate(modes, start=1):
-        #     print(f"  {i}. {m}")
-        # choice = input("Enter the number of your choice: ").strip()
-
-        try:
-            choice_num = int(choice)
-            if 1 <= choice_num <= len(modes):
-                mode = modes[choice_num - 1]
-                print(f"Great! You selected: {mode}")
-            else:
-                print(f"Invalid choice. Defaulting to '{default_mode}'.")
-                mode = default_mode
-        except ValueError:
-            print(f"Invalid input. Defaulting to '{default_mode}'.")
-            mode = default_mode
     else:
         print(f"LLM mode specified via command line: {mode}")
 

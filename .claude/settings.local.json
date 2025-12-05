@@ -29,7 +29,22 @@
       "Bash(npm:*)",
       "Bash(gtimeout:*)",
       "Bash(ZAI_MODE=9 python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(kill:*)",
+      "Bash(ls:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(conda info:*)",
+      "Bash(echo:*)",
+      "Bash(conda activate:*)",
+      "Bash(source:*)",
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/envs/pokemon-llm/bin/python:*)",
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/envs/venv/bin/python:*)",
+      "Bash(conda:*)",
+      "Bash(/opt/homebrew/Caskroom/miniconda/base/bin/conda:*)",
+      "Bash(chmod:*)",
+      "Bash(/opt/homebrew/bin/python:*)"
     ],
     "deny": [],
     "ask": []

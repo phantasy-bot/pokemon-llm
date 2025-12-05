@@ -13,26 +13,34 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--space-md) var(--space-lg);
-  background: linear-gradient(
-    135deg,
-    var(--bg-panel) 0%,
-    var(--bg-card) 100%
-  );
-  border-bottom: 2px solid var(--accent-primary);
+  background: var(--bg-panel);
   gap: var(--space-lg);
   flex-shrink: 0;
   height: auto;
   min-height: 80px;
 }
 
-.pokemon-header__stats {
+.pokemon-header__left {
   display: flex;
-  gap: var(--space-lg);
+  align-items: center;
   flex: 1;
+  min-width: 0;
 }
 
-.pokemon-header__title {
-  flex-shrink: 0;
+.pokemon-header__center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.pokemon-header__right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .pokemon-stats-widget {
@@ -45,11 +53,77 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  padding: var(--space-sm);
-  min-width: 200px;
+  background: transparent; /* Remove card background */
+  border: none; /* Remove borders for flat appearance */
+  border-radius: 0;
+  padding: 0;
+  min-width: auto; /* Remove fixed width */
+}
+
+/* Title section with model badge */
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.model-badge {
+  background: var(--accent-primary-bright);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Stats row layout */
+.stats-row {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.stat-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-primary-bright);
+  font-family: var(--font-mono);
+  line-height: 1;
+  text-align: right;
+}
+
+.stat-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  line-height: 1;
+  text-align: right;
+}
+
+/* Compact subinfo for GG and Summary */
+.subinfo-compact {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .widget-title {
@@ -60,6 +134,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: var(--space-xs);
+  text-align: center;
 }
 
 .actions-count {
@@ -121,13 +196,12 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: center;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Main Content Area */
@@ -203,7 +277,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -213,7 +287,7 @@
   font-size: 11px;
   line-height: 1.4;
   color: var(--text-secondary);
-  margin: 0 0 var(--space-md);
+  margin: 0 0 var(--space-xs);
 }
 
 .goals-log ul {
@@ -248,6 +322,7 @@
 }
 
 .pokemon-game-feed {
+  position: relative; /* Required for absolute positioning of children */
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -258,7 +333,8 @@
   background: var(--bg-input);
   border: 1px dashed var(--border-subtle);
   border-radius: 8px;
-  height: 200px;
+  flex: 1;
+  min-height: 400px; /* Increased from fixed 200px to allow full height */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -271,6 +347,15 @@
 
 .pokemon-minimap {
   align-self: flex-start;
+}
+
+/* Minimap Overlay Styles */
+.minimap-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin: var(--space-md) 0 0 0;
 }
 
 .pokemon-team-section {
@@ -295,6 +380,24 @@
 @media (max-width: 1200px) {
   .pokemon-content {
     grid-template-columns: 1.5fr 1fr 2fr;
+  }
+
+  
+  .model-badge {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .stats-row {
+    gap: var(--space-md);
+  }
+
+  .stat-count {
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 11px;
   }
 }
 
@@ -321,23 +424,55 @@
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
   }
-}
+
+  }
 
 @media (max-width: 480px) {
-  .pokemon-header__stats {
+  .pokemon-header {
     flex-direction: column;
-    align-items: stretch;
+    gap: var(--space-sm);
+    min-height: auto;
+  }
+
+  .pokemon-header__left,
+  .pokemon-header__center,
+  .pokemon-header__right {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .title-section {
+    flex-direction: column;
+    gap: var(--space-xs);
+    text-align: center;
+  }
+
+  .model-badge {
+    align-self: center;
+  }
+
+  .stats-row {
     gap: var(--space-md);
+    justify-content: center;
+  }
+
+  .subinfo-compact {
+    justify-content: center;
+    text-align: center;
+  }
+    padding: 0;
   }
 
   .pokemon-stats-widget {
     width: 100%;
+    justify-content: center;
   }
 
   .title {
     font-size: 20px;
   }
-}
+
+  }
 
 /* Pokemon type color gradients */
 .pokemon-card {

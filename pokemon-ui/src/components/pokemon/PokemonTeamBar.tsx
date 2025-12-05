@@ -129,25 +129,27 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
         <div className="pokemon-team-bar__sponsor-header">
           <span className="pokemon-team-bar__sponsor-label">Presented By</span>
           <a
-            href="https://phantasy.bot"
+            href="https://mysterygift.fun"
             target="_blank"
             rel="noopener noreferrer"
             className="pokemon-team-bar__sponsor-link"
           >
-            phantasy.bot
+            mysterygift.fun
           </a>
         </div>
         <div className="pokemon-team-bar__sponsor-card">
           <div className="pokemon-team-bar__sponsor-portrait">
             <img
-              src="/portraits/phantasy.png"
-              alt="Phantasy"
+              src="/portraits/mystery-gift.png"
+              alt="Mystery Gift"
               className="pokemon-team-bar__sponsor-portrait-img"
             />
           </div>
           <div className="pokemon-team-bar__sponsor-info">
             <div className="pokemon-team-bar__sponsor-header">
-              <span className="pokemon-team-bar__sponsor-name">Phantasy</span>
+              <span className="pokemon-team-bar__sponsor-name">
+                Mystery Gift
+              </span>
               <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
             </div>
             <div className="pokemon-team-bar__sponsor-hp">
@@ -158,12 +160,12 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
             </div>
             <div className="pokemon-team-bar__sponsor-class">
               <img
-                src="/sprites/classes/sponsor.gif"
-                alt="Sponsor"
+                src="/sprites/classes/mystery-gift.gif"
+                alt="Mystery Gift"
                 className="pokemon-team-bar__sponsor-sprite"
               />
               <span className="pokemon-team-bar__sponsor-class-name">
-                Sponsor
+                Mystery Gift
               </span>
             </div>
           </div>
