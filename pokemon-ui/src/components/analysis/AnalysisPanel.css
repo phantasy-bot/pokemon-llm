@@ -1,67 +1,77 @@
-.battle-log-container {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-}
-
-.battle-log__keyart {
-  position: absolute;
-  inset: 0;
-  background-size: contain;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  opacity: 0.1;
-  pointer-events: none;
-  animation: keyart-fade-in 2s ease-out;
-}
-
-@keyframes keyart-fade-in {
-  0% {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  100% {
-    opacity: 0.1;
-    transform: translateX(0);
-  }
-}
-
-.battle-log {
-  position: relative;
+/* Layout container */
+.analysis-panel-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
   height: 100%;
-  overflow-y: auto;
-  padding: var(--space-sm) 0;
-  z-index: 1;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  position: relative;
+  background: var(--bg-panel);
+  overflow: hidden; /* Contain children */
 }
 
-.battle-log::-webkit-scrollbar {
-  display: none;
+/* Keyart background */
+.analysis-panel__keyart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.05;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transition: background-image 1s ease-in-out;
+  mix-blend-mode: luminosity; /* Make it blend nicely */
 }
 
-.battle-log__current {
-  flex: 1;
+.analysis-panel {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
+  flex-direction: column;
+  height: 100%; /* Fill container */
+  position: relative;
+  z-index: 1; /* Above keyart */
+  overflow: hidden; /* Prevent outer scroll */
+  padding: var(--space-md);
+  padding-bottom: 0; /* Vision section handles bottom padding */
+  overflow-x: hidden; /* Prevent horizontal scroll at root */
 }
 
-.battle-log__empty {
-  font-family: var(--font-mono);
-  font-size: 14px;
+/* Current thought section (top) */
+.analysis-panel__current {
+  flex-shrink: 0; /* Never shrink */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  min-height: 60px; /* Force minimum space for thought */
+  max-width: 100%; /* Ensure it fits */
+}
+
+.analysis-panel__empty {
   color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
   text-align: center;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  padding: var(--space-xl);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.1);
+  animation: pulse-border 2s infinite;
 }
 
-.battle-log__thinking {
+@keyframes pulse-border {
+  0% {
+    border-color: var(--border-subtle);
+  }
+  50% {
+    border-color: var(--text-muted);
+  }
+  100% {
+    border-color: var(--border-subtle);
+  }
+}
+
+.analysis-panel__thinking {
   font-family: var(--font-mono);
   font-size: 14px;
   color: var(--text-secondary);
@@ -70,12 +80,12 @@
   gap: var(--space-sm);
 }
 
-.battle-log__thinking-text {
+.analysis-panel__thinking-text {
   display: flex;
   gap: 2px;
 }
 
-.battle-log__thinking-char {
+.analysis-panel__thinking-char {
   animation: thinking-pulse 1.4s ease-in-out infinite;
   color: var(--accent-primary);
 }
@@ -91,101 +101,180 @@
   }
 }
 
+/* Scroll area for history */
+.analysis-panel__history {
+  flex: 1; /* Take remaining space */
+  overflow-y: auto; /* Allow scrolling */
+  overflow-x: hidden; /* No horizontal scroll */
+  min-height: 0; /* Allow flex shrinking */
+  padding-right: var(--space-sm); /* Space for scrollbar */
+  margin-right: calc(var(--space-sm) * -1); /* Offset padding */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 10px,
+    black 95%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 10px,
+    black 95%,
+    transparent
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* Log entries have their own padding/borders */
+}
+
+/* Scrollbar styling */
+.analysis-panel__history::-webkit-scrollbar {
+  width: 4px;
+}
+
+.analysis-panel__history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.analysis-panel__history::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 2px;
+}
+
+.analysis-panel__history::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.analysis-panel__list {
+  display: flex;
+  flex-direction: column;
+  /* Removed gap to allow border-bottom to work as dividers */
+}
+
+.analysis-panel__list > * {
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Persistent Memory Section */
+.analysis-panel__memory-section {
+  flex-shrink: 0;
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-md); /* Space before vision */
+}
+
+.analysis-panel__memory-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: var(--space-xs) 0 0 0;
+  /* Limit lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.analysis-panel__memory-section:hover .analysis-panel__memory-text {
+  -webkit-line-clamp: unset;
+  color: var(--text-primary);
+  transform: scale(1.02);
+}
+
 /* Vision Section - Always keep space */
-.battle-log__vision-section {
+.analysis-panel__vision-section {
   flex-shrink: 0; /* Prevent collapsing */
   /* Remove fixed min-height to allow content to dictate height, but keep some min */
   min-height: 180px; 
   margin-top: var(--space-md);
   border-top: 1px solid var(--border-subtle);
   padding-top: var(--space-sm);
-  background: var(--bg-root); /* Ensure opaque background to prevent overlap */
+  background: var(--bg-panel); /* Ensure opaque background to prevent overlap */
   z-index: 2; /* Sit above scrolling content if needed */
 }
 
-.battle-log__section-label {
+.analysis-panel__section-label {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: var(--space-xs);
-  display: block;
-}
-
-.battle-log__vision-list {
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-sm);
   display: flex;
-  flex-direction: column;
-  gap: 0; /* No gap between vision entries for compactness */
-  height: 100%; /* Fill available height */
+  align-items: center;
+  gap: var(--space-xs);
 }
 
-.battle-log__vision-entry {
-  opacity: 1; /* Full opacity for better visibility */
-  transform: scale(1.02); /* Slightly larger for emphasis */
-  margin-bottom: var(--space-md); /* More space for full vision analysis */
+.analysis-panel__section-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  opacity: 0.5;
 }
 
-.battle-log__footer {
+.analysis-panel__vision-row {
   display: flex;
-  flex-direction: column;
   gap: var(--space-md);
-  border-top: 1px solid var(--border-subtle);
-  padding-top: var(--space-md);
-  margin-top: auto;
-  min-height: 200px; /* Fixed minimum height for footer */
+  /* Ensure it doesn't overflow horizontally */
+  min-width: 0;
+  box-sizing: border-box;
 }
 
+.analysis-panel__vision-col-screenshot {
+  flex: 0 0 160px; /* Fixed width */
+  min-width: 0; /* Allow flex shrink if absolutely needed */
+}
 
-.battle-log__actions-section {
+.analysis-panel__vision-col-content {
+  flex: 1; /* Take remaining space */
+  min-width: 0; /* Allow flex shrink */
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
 }
 
-.battle-log__action-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+/* Actions Summary Section (Bottom) */
+.analysis-panel__actions-section {
+  flex-shrink: 0;
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px dashed var(--border-subtle);
+  display: none; /* Hidden for now to simplify UI */
 }
 
-.battle-log__action-row {
+.analysis-panel__actions-list {
   display: flex;
-  gap: var(--space-xs);
   flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 
-.battle-log__action-btn {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: white;
-  background: var(--accent-primary-bright);
-  padding: 2px 6px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  display: inline-block;
-}
-
-.battle-log__action-number {
-  font-size: 10px;
-  color: var(--accent-gold-dim);
-  font-weight: 600;
-  opacity: 0.9;
-  margin-right: 8px;
-  min-width: 30px;
-  display: inline-block;
-}
-
-.battle-log__memory-section {
+.analysis-panel__action-item {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-xs);
-}
+  padding: 2px 6px;
 
-.battle-log__memory-text {
+.analysis-panel__memory-text {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
@@ -196,26 +285,26 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .battle-log__current {
+  .analysis-panel__current {
     min-height: 150px;
   }
 
-  .battle-log__thinking {
+  .analysis-panel__thinking {
     font-size: 12px;
   }
 
-  .battle-log__empty {
+  .analysis-panel__empty {
     font-size: 12px;
   }
 }
 
 /* Vision Section Styling */
-.battle-log__vision-section {
+.analysis-panel__vision-section {
   min-height: auto;
 }
 
 /* Vision and Actions Placeholder Styling */
-.battle-log__vision-placeholder {
+.analysis-panel__vision-placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -227,7 +316,7 @@
   margin: var(--space-sm) 0;
 }
 
-.battle-log__vision-placeholder-row {
+.analysis-panel__vision-placeholder-row {
   display: flex;
   gap: var(--space-md);
   align-items: center;
@@ -235,7 +324,7 @@
 }
 
 /* Vision Section Two-Column Layout */
-.battle-log__vision-row {
+.analysis-panel__vision-row {
   display: flex;
   gap: var(--space-md);
   align-items: stretch; /* Make both columns same height */
@@ -243,7 +332,7 @@
   min-height: 180px;
 }
 
-.battle-log__vision-screenshot-column {
+.analysis-panel__vision-screenshot-column {
   flex: 0 0 35%; /* 35% width for screenshot */
   max-width: 220px;
   min-width: 200px;
@@ -252,14 +341,14 @@
   align-items: flex-start;
 }
 
-.battle-log__vision-content-column {
+.analysis-panel__vision-content-column {
   flex: 1; /* 65% width for vision content */
   min-width: 0; /* Prevent flex overflow */
   display: flex;
   flex-direction: column;
 }
 
-.battle-log__vision-list {
+.analysis-panel__vision-list {
   flex: 1; /* Make the list fill the available height */
   display: flex;
   flex-direction: column;
@@ -267,31 +356,31 @@
 
 /* Responsive adjustments for vision layout */
 @media (max-width: 768px) {
-  .battle-log__vision-row {
+  .analysis-panel__vision-row {
     flex-direction: column;
     gap: var(--space-sm);
   }
 
-  .battle-log__vision-screenshot-column {
+  .analysis-panel__vision-screenshot-column {
     flex: 0 0 auto;
     max-width: 180px;
     min-width: 160px;
     align-self: center;
   }
 
-  .battle-log__vision-content-column {
+  .analysis-panel__vision-content-column {
     width: 100%;
   }
 }
 
 @media (max-width: 480px) {
-  .battle-log__vision-screenshot-column {
+  .analysis-panel__vision-screenshot-column {
     max-width: 140px;
     min-width: 120px;
   }
 }
 
-.battle-log__screenshot-placeholder {
+.analysis-panel__screenshot-placeholder {
   flex: 0 0 200px;
   max-width: 200px;
   height: 150px;
@@ -303,7 +392,7 @@
   border-radius: 4px;
 }
 
-.battle-log__screenshot-placeholder-text {
+.analysis-panel__screenshot-placeholder-text {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
@@ -312,7 +401,7 @@
   opacity: 0.8;
 }
 
-.battle-log__vision-placeholder {
+.analysis-panel__vision-placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -326,7 +415,7 @@
   min-height: 150px; /* Fallback minimum height */
 }
 
-.battle-log__vision-placeholder-text {
+.analysis-panel__vision-placeholder-text {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
@@ -336,7 +425,7 @@
   text-align: center;
 }
 
-.battle-log__actions-placeholder {
+.analysis-panel__actions-placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -347,7 +436,7 @@
   border-radius: 4px;
 }
 
-.battle-log__actions-placeholder-text {
+.analysis-panel__actions-placeholder-text {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-muted);

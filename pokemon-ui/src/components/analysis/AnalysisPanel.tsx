@@ -79,32 +79,32 @@ export function AnalysisPanel({
     });
 
   return (
-    <div className="battle-log-container">
+    <div className="analysis-panel-container">
       <div
         key={currentKeyart}
-        className="battle-log__keyart"
+        className="analysis-panel__keyart"
         style={{ backgroundImage: `url(${POKEMON_KEYART[currentKeyart]})` }}
       />
-      <div className="battle-log">
+      <div className="analysis-panel">
         {/* Current AI Thought - Single, Centered */}
-        <div className="battle-log__current">
+        <div className="analysis-panel__current">
           {latestEntry ? (
             <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
           ) : (
             !isProcessing && (
-              <div className="battle-log__empty">
+              <div className="analysis-panel__empty">
                 waiting for Pokemon LLM analysis...
               </div>
             )
           )}
 
           {isProcessing && (
-            <div className="battle-log__thinking">
-              <span className="battle-log__thinking-text">
+            <div className="analysis-panel__thinking">
+              <span className="analysis-panel__thinking-text">
                 {"Analyzing...".split("").map((char, i) => (
                   <span
                     key={i}
-                    className="battle-log__thinking-char"
+                    className="analysis-panel__thinking-char"
                     style={{ animationDelay: `${i * 0.12}s` }}
                   >
                     {char}
@@ -116,30 +116,30 @@ export function AnalysisPanel({
         </div>
 
         {/* Pokemon Vision Analysis Section - Always Show */}
-        <div className="battle-log__vision-section">
-          <span className="battle-log__section-label">VISION ANALYSIS</span>
+        <div className="analysis-panel__vision-section">
+          <span className="analysis-panel__section-label">VISION ANALYSIS</span>
 
           {/* Two-column layout: screenshot on left, vision content on right */}
-          <div className="battle-log__vision-row">
+          <div className="analysis-panel__vision-row">
             {/* Screenshot column - 35% */}
-            <div className="battle-log__vision-screenshot-column">
+            <div className="analysis-panel__vision-screenshot-column">
               <VisionScreenshot 
                 timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
               />
             </div>
 
             {/* Vision content column - 65% */}
-            <div className="battle-log__vision-content-column">
-              <div className="battle-log__vision-list">
+            <div className="analysis-panel__vision-content-column">
+              <div className="analysis-panel__vision-list">
                 {visionEntries.length > 0 ? (
                   visionEntries.map((entry) => (
-                    <div key={entry.id} className="battle-log__vision-entry">
+                    <div key={entry.id} className="analysis-panel__vision-entry">
                       <LogEntryCard entry={entry} compact />
                     </div>
                   ))
                 ) : (
-                  <div className="battle-log__vision-placeholder">
-                    <div className="battle-log__vision-placeholder-text">
+                  <div className="analysis-panel__vision-placeholder">
+                    <div className="analysis-panel__vision-placeholder-text">
                       no vision analysis available yet
                     </div>
                   </div>
@@ -150,29 +150,29 @@ export function AnalysisPanel({
         </div>
 
         {/* Footer: Recent Actions + Memory */}
-        <div className="battle-log__footer">
+        <div className="analysis-panel__footer">
           {/* Recent Actions - Always Show */}
-          <div className="battle-log__actions-section">
-            <span className="battle-log__section-label">RECENT ACTIONS</span>
-            <div className="battle-log__action-list">
+          <div className="analysis-panel__actions-section">
+            <span className="analysis-panel__section-label">RECENT ACTIONS</span>
+            <div className="analysis-panel__action-list">
               {recentActions.some((r) => r.actions.length > 0) ? (
                 recentActions
                   .filter((r) => r.actions.length > 0)
                   .map((r) => (
-                    <div key={r.id} className="battle-log__action-row">
-                      <span className="battle-log__action-number">
+                    <div key={r.id} className="analysis-panel__action-row">
+                      <span className="analysis-panel__action-number">
                         #{r.actionNumber || "?"}
                       </span>
                       {r.actions.map((btn, idx) => (
-                        <span key={idx} className="battle-log__action-btn">
+                        <span key={idx} className="analysis-panel__action-btn">
                           {btn}
                         </span>
                       ))}
                     </div>
                   ))
               ) : (
-                <div className="battle-log__actions-placeholder">
-                  <span className="battle-log__actions-placeholder-text">
+                <div className="analysis-panel__actions-placeholder">
+                  <span className="analysis-panel__actions-placeholder-text">
                     no recent actions
                   </span>
                 </div>
@@ -181,9 +181,9 @@ export function AnalysisPanel({
           </div>
 
           {/* Latest Memory - Persistent */}
-          <div className="battle-log__memory-section">
-            <span className="battle-log__section-label">LATEST MEMORY</span>
-            <p className="battle-log__memory-text">
+          <div className="analysis-panel__memory-section">
+            <span className="analysis-panel__section-label">LATEST MEMORY</span>
+            <p className="analysis-panel__memory-text">
               {persistedMemory || "no memories recorded yet"}
             </p>
           </div>

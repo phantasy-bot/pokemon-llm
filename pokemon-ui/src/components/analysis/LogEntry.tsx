@@ -69,8 +69,8 @@ export function LogEntryCard({
     // For vision entries, render with markdown formatting
     if (logType === "vision") {
       return (
-        <div className="battle-entry battle-entry--compact battle-entry--vision battle-entry--vision-full">
-          <div className="battle-entry__compact-vision">
+        <div className="log-entry log-entry--compact log-entry--vision log-entry--vision-full">
+          <div className="log-entry__compact-vision">
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>
               {formatLogText(text)}
             </ReactMarkdown>
@@ -82,9 +82,9 @@ export function LogEntryCard({
     // For other types, use simple truncation
     const charLimit = 100;
     return (
-      <div className={`battle-entry battle-entry--compact battle-entry--${logType}`}>
-        <span className="battle-entry__compact-icon">{icon}</span>
-        <span className="battle-entry__compact-text">
+      <div className={`log-entry log-entry--compact log-entry--${logType}`}>
+        <span className="log-entry__compact-icon">{icon}</span>
+        <span className="log-entry__compact-text">
           {truncateText(text, charLimit)}
         </span>
       </div>
@@ -93,25 +93,25 @@ export function LogEntryCard({
 
   return (
     <div
-      className={`battle-entry${isNew ? " battle-entry--new" : ""} battle-entry--${logType}`}
+      className={`log-entry${isNew ? " log-entry--new" : ""} log-entry--${logType}`}
     >
-      <div className="battle-entry__header">
-        <div className="battle-entry__type-info">
-          <span className="battle-entry__type-icon">{icon}</span>
-          <span className="battle-entry__type-label">{label}</span>
+      <div className="log-entry__header">
+        <div className="log-entry__type-info">
+          <span className="log-entry__type-icon">{icon}</span>
+          <span className="log-entry__type-label">{label}</span>
         </div>
         {entry.timestamp && (
-          <span className="battle-entry__timestamp">
+          <span className="log-entry__timestamp">
             {new Date(entry.timestamp).toLocaleTimeString()}
           </span>
         )}
       </div>
 
-      <div className="battle-entry__content">
+      <div className="log-entry__content">
         {logType === "vision" ? (
-          <div className="battle-entry__vision-container">
+          <div className="log-entry__vision-container">
             {/* Screenshot on the left */}
-            <div className="battle-entry__vision-screenshot">
+            <div className="log-entry__vision-screenshot">
               <VisionScreenshot
                 timestamp={entry.timestamp || Date.now().toString()}
                 compact={compact}
@@ -119,28 +119,28 @@ export function LogEntryCard({
             </div>
 
             {/* Vision analysis text and details on the right */}
-            <div className="battle-entry__vision-content">
+            <div className="log-entry__vision-content">
               {/* Format log text with coordinate and action highlighting */}
-              <div className="battle-entry__text">
+              <div className="log-entry__text">
                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                   {formatLogText(text)}
                 </ReactMarkdown>
               </div>
 
               {/* Special sections for vision analysis */}
-              <div className="battle-entry__vision-details">
+              <div className="log-entry__vision-details">
                 {text.includes("Pokemon") && (
-                  <div className="battle-entry__pokemon-indicator">
-                    <span className="battle-entry__pokemon-icon">⚡</span>
-                    <span className="battle-entry__pokemon-text">
+                  <div className="log-entry__pokemon-indicator">
+                    <span className="log-entry__pokemon-icon">⚡</span>
+                    <span className="log-entry__pokemon-text">
                       Pokemon detected
                     </span>
                   </div>
                 )}
                 {text.includes("[") && text.includes("]") && (
-                  <div className="battle-entry__coordinate-indicator">
-                    <span className="battle-entry__coordinate-icon">📍</span>
-                    <span className="battle-entry__coordinate-text">
+                  <div className="log-entry__coordinate-indicator">
+                    <span className="log-entry__coordinate-icon">📍</span>
+                    <span className="log-entry__coordinate-text">
                       Location data
                     </span>
                   </div>
@@ -151,7 +151,7 @@ export function LogEntryCard({
         ) : (
           /* For non-vision entries, show text only */
           <>
-            <div className="battle-entry__text">
+            <div className="log-entry__text">
               <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                 {formatLogText(text)}
               </ReactMarkdown>
@@ -159,19 +159,19 @@ export function LogEntryCard({
 
             {/* Special sections for response analysis */}
             {logType === "response" && (
-              <div className="battle-entry__response-details">
+              <div className="log-entry__response-details">
                 {text.toLowerCase().includes("battle") && (
-                  <div className="battle-entry__battle-indicator">
-                    <span className="battle-entry__battle-icon">⚔️</span>
-                    <span className="battle-entry__battle-text">
+                  <div className="log-entry__battle-indicator">
+                    <span className="log-entry__battle-icon">⚔️</span>
+                    <span className="log-entry__battle-text">
                       Battle strategy
                     </span>
                   </div>
                 )}
                 {text.toLowerCase().includes("item") && (
-                  <div className="battle-entry__item-indicator">
-                    <span className="battle-entry__item-icon">🎒</span>
-                    <span className="battle-entry__item-text">
+                  <div className="log-entry__item-indicator">
+                    <span className="log-entry__item-icon">🎒</span>
+                    <span className="log-entry__item-text">
                       Item management
                     </span>
                   </div>
@@ -181,7 +181,7 @@ export function LogEntryCard({
 
             {/* Special sections for action entries */}
             {logType === "action" && (
-              <div className="battle-entry__actions">
+              <div className="log-entry__actions">
                 {extractActions(text).map((action, index) => {
                   const actionType = /[AB]/.test(action)
                     ? "button"
@@ -189,7 +189,7 @@ export function LogEntryCard({
                   return (
                     <span
                       key={index}
-                      className={`battle-entry__action battle-entry__action--${actionType}`}
+                      className={`log-entry__action log-entry__action--${actionType}`}
                     >
                       {action}
                     </span>
