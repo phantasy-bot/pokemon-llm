@@ -75,20 +75,7 @@ export function AnalysisPanel({
     );
   };
 
-  const getActionLetter = (text: string): string => {
-    const cleanText = text.replace("Action:", "").trim();
-    if (cleanText.includes(";")) {
-      // Return the first action character if multiple
-      const parts = cleanText.split(";");
-      const first = parts[0].trim().toUpperCase();
-      return first.charAt(0);
-    }
-    // Handle single words (Up, Down, etc)
-    const upper = cleanText.toUpperCase();
-    if (upper === "START") return "S";
-    if (upper === "SELECT") return "s";
-    return upper.charAt(0);
-  };
+
 
   return (
     <div className="analysis-panel-container">
@@ -124,31 +111,102 @@ export function AnalysisPanel({
           </div>
         </div>
 
-        {/* 2. Recent Actions Section */}
-        {actionEntries.length > 0 && (
-          <div className="analysis-panel__actions-section">
-            <span className="analysis-panel__section-label">RECENT ACTIONS</span>
-            <div className="analysis-panel__actions-list">
-              {actionEntries.map((action, index) => {
-                // effective number = totalActions - index (since we're iterating from latest back in the sliced array)
-                // If the total actions is 100, and this is the first item in the list of latest 3, it is #100.
-                const number = totalActions - index;
-                const actionLetter = getActionLetter(action.text || action.message || "");
+        {/* 2. Recent Actions Section (Show last 3 entries, chronological left-to-right) */}
+        <div className="analysis-panel__actions-section">
+          <span className="analysis-panel__section-label">RECENT ACTIONS</span>
+          <div className="analysis-panel__actions-list">
+            {(() => {
+                // We want the last 3 entries, but displayed chronological: #189, #190, #191
+                // actionEntries is [Latest(#191), Prev(#190), Prev(#189), ...]
                 
-                return (
-                  <div key={action.id} className="analysis-panel__action-item">
-                    <span className="analysis-panel__action-number" style={{ opacity: 0.5, marginRight: 8, fontFamily: 'var(--font-mono)' }}>
-                      #{number}
-                    </span>
-                    <div className="analysis-panel__action-square">
-                      {actionLetter}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                // 1. Take top 3 latest
+                const top3 = actionEntries.slice(0, 3);
+                
+                // 2. Reverse them so they are [Oldest, Middle, Newest]
+                // Note: If we have fewer than 3, we still want them to fill from the left or right?
+                // User wants "#189, #190, #191" -> suggests filling left-to-right with oldest first.
+                // If we only have 1 action (#1), it should probably be on the right or left?
+                // "at the end of the container" -> Newest is at the end (right).
+                
+                // Let's ensure we always render 3 slots.
+                // If we have [A_191, A_190], top3 is [A_191, A_190].
+                // Reversed: [A_190, A_191].
+                // We need to pad this to 3 items.
+                // Should the empty slots be at the start (left) or end (right)?
+                // "Latest action being the highest number at the end of the container"
+                // So #191 is at slot 3 (right).
+                // So we need [Empty/Oldest, Middle, Latest].
+                // If we have 2 actions: [Empty, #190, #191].
+                
+                // Construct the display array of length 3
+                // We prefer to fill from the right (Latest is index 2).
+                
+                const displayItems = new Array(3).fill(null);
+                
+                // Fill backwards from the end
+                // displayItems[2] = top3[0] (Latest)
+                // displayItems[1] = top3[1]
+                // displayItems[0] = top3[2]
+                
+                top3.forEach((action, i) => {
+                    const targetIndex = 2 - i; // 0->2, 1->1, 2->0
+                    if (targetIndex >= 0) {
+                        displayItems[targetIndex] = action;
+                    }
+                });
+
+                return displayItems.map((action, i) => {
+                     // i is 0, 1, 2 (Left to Right)
+                     
+                     if (action) {
+                         // We need the ID for this action.
+                         // We know 'action' came from top3.
+                         // Find its index in top3 to deduce number?
+                         // top3[0] is #Total.
+                         // top3[1] is #Total-1.
+                         const originalIndex = actionEntries.indexOf(action); // Find its original index in actionEntries
+                         const number = totalActions - originalIndex;
+                         
+                         const rawText = action.text || action.message || "";
+                         const cleanText = rawText.replace("Action:", "").trim();
+                         const keys = cleanText.split(";").map((k: string) => k.trim()).filter((k: string) => k).map((k: string) => {
+                            const upper = k.toUpperCase();
+                            if (upper === "START") return "S";
+                            if (upper === "SELECT") return "SEL";
+                            return upper;
+                         });
+                         if (keys.length === 0 && cleanText) keys.push(cleanText.charAt(0));
+
+                         return (
+                            <div key={action.id} className="analysis-panel__action-item">
+                                <span className="analysis-panel__action-number" style={{ opacity: 0.5, fontFamily: 'var(--font-mono)' }}>
+                                #{number}
+                                </span>
+                                <div className="analysis-panel__action-group">
+                                {keys.map((k: string, idx: number) => (
+                                    <div key={idx} className="analysis-panel__action-square">
+                                    {k}
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        );
+                     } else {
+                         return (
+                            <div key={`empty-${i}`} className="analysis-panel__action-item">
+                                <span className="analysis-panel__action-number" style={{ opacity: 0.2, fontFamily: 'var(--font-mono)' }}>
+                                #--
+                                </span>
+                                <div className="analysis-panel__action-group">
+                                <div className="analysis-panel__action-square empty" />
+                                </div>
+                            </div>
+                        );
+                     }
+                });
+            })()}
           </div>
-        )}
+        </div>
 
         {/* 3. Vision Section (Fixed Height, Row Layout) */}
         <div className="analysis-panel__vision-section">

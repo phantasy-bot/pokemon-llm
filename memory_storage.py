@@ -114,6 +114,58 @@ class MemoryManager:
         self._save_memories()
         return memory
 
+    def record_transition(
+        self,
+        from_map: str,
+        from_pos: List[int],
+        to_map: str,
+        to_pos: List[int]
+    ) -> List[SpatialMemory]:
+        """
+        Record a verified transition between two maps.
+        Creates bidirectional memories with high importance.
+        """
+        created = []
+        if not from_map or not to_map or from_map == to_map:
+            return created
+
+        # Memory 1: Exit from A -> B
+        mem1 = SpatialMemory(
+            type="spatial",
+            location=from_map,
+            description=f"Verified Exit: Path at {from_pos} leads to {to_map}",
+            coordinates=from_pos,
+            destination=to_map,
+            landmark_type="exit",
+            timestamp=datetime.now().isoformat(),
+            importance=3.0, # High importance for verified transitions
+            context={"source": "verified_transition", "target_pos": to_pos}
+        )
+        if not self._is_duplicate_memory(mem1, self.memories["spatial"]):
+            self.memories["spatial"].append(mem1)
+            created.append(mem1)
+
+        # Memory 2: Entrance at B from A
+        mem2 = SpatialMemory(
+            type="spatial",
+            location=to_map,
+            description=f"Verified Entrance: Arrived from {from_map} at {to_pos}",
+            coordinates=to_pos,
+            destination=from_map, # Logic implies going back leads to A
+            landmark_type="entrance",
+            timestamp=datetime.now().isoformat(),
+            importance=3.0,
+            context={"source": "verified_transition", "origin_pos": from_pos}
+        )
+        if not self._is_duplicate_memory(mem2, self.memories["spatial"]):
+            self.memories["spatial"].append(mem2)
+            created.append(mem2)
+        
+        if created:
+            self._save_memories()
+            
+        return created
+
     def extract_memories_from_response(
         self,
         analysis_text: str,
@@ -125,6 +177,14 @@ class MemoryManager:
         extracted_memories = []
         current_location = game_state.get('map_name', 'unknown')
         current_position = game_state.get('position', [])
+
+        # Attempt to extract location from text if unknown
+        if current_location == 'unknown' and analysis_text:
+            loc_match = re.search(r'Location:\s*([A-Z][a-zA-Z\s]+?)(?:\sat|\n|$)', analysis_text)
+            if loc_match:
+                extracted_name = loc_match.group(1).strip()
+                if self._is_valid_destination(extracted_name):
+                    current_location = extracted_name
 
         # Extract spatial memories
         spatial_memories = self._extract_spatial_memories(
@@ -142,11 +202,11 @@ class MemoryManager:
         # This ensures the UI always shows something
         if not extracted_memories and current_location and current_location != 'unknown':
             # Create a simple "visited location" memory
-            summary = analysis_text[:100] if analysis_text else "Exploring area"
+            summary = analysis_text[:100] if analysis_text else "Exploring area..."
             fallback_memory = SpatialMemory(
                 type="spatial",
-                location=current_location,
-                description=f"At {current_location}: {summary}...",
+                location=current_location if current_location != "unknown" else "Unknown Area",
+                description=f"Exploring {current_location if current_location != 'unknown' else 'unknown area'}...",
                 landmark_type="exploration",
                 direction=None,
                 destination=None,
@@ -560,11 +620,18 @@ class MemoryManager:
         spatial_here = [m for m in self.memories["spatial"] 
                        if m.location and current_location.lower() in m.location.lower()]
         if spatial_here:
-            exits = [f"[{m.coordinates}]->{m.destination}" 
-                    for m in spatial_here[-limit:] 
-                    if m.coordinates and m.destination]
-            if exits:
-                context_parts.append(f"Known exits: {', '.join(exits)}")
+            # Prioritize verified exits
+            verified = [m for m in spatial_here if m.importance >= 3.0 and m.landmark_type in ("exit", "entrance")]
+            others = [m for m in spatial_here if m not in verified]
+            
+            if verified:
+                exits = [f"[Verified Exit] {m.coordinates} -> {m.destination}" for m in verified]
+                context_parts.append(f"MAP CONNECTIONS: {', '.join(exits)}")
+            
+            if others:
+                # Show other landmarks
+                landmarks = [f"{m.description}" for m in others[-limit:]]
+                context_parts.append(f"Notes: {'; '.join(landmarks)}")
         
         # Get recent gameplay events  
         gameplay = self.memories["gameplay"][-3:]
@@ -572,7 +639,7 @@ class MemoryManager:
             events = [m.description for m in gameplay]
             context_parts.append(f"Recent events: {'; '.join(events)}")
         
-        return " | ".join(context_parts) if context_parts else ""
+        return "\n".join(context_parts) if context_parts else ""
 
     def detect_stuck(self, position_history: List[tuple], threshold: int = 5) -> dict:
         """

@@ -67,16 +67,27 @@ Use this structure in <game_analysis> tags:
 OR for navigation:
 {{"touch":"6,3"}}
 
-## CRITICAL RULES
-- NEVER idle - always output an action or touch
-- Use touch for open-area navigation, actions for menus/NPCs/exits
-- If position unchanged after 3+ attempts: CHANGE STRATEGY
-- Trust game state data over vision when they conflict
-- Buildings: cannot touch-exit, must walk into O tile
-- Prefer DEFAULT names on naming screens (press S to confirm)
+## CRITICAL AUTHORITY HIERARCHY
+1. **GAME STATE (Map & Position)**: TRUST ABSOLUTELY. If state says you are at [4,4], you ARE at [4,4].
+2. **MEMORY CONTEXT**: Use "Verified Exits" found in memory. They are tested paths.
+3. **VISION ANALYSIS**: Use for general context but BEWARE HALLUCINATIONS. Do not trust vision for coordinates.
 
-If "stuck_warning" appears in state, IMMEDIATELY try a different approach.
-If "memory_context" appears, use those remembered locations.
+## MINIMAP NAVIGATION
+- The `minimap_2d` grid shows the TRUE layout.
+- **W** = Walkable, **B** = Blocked/Wall
+- **O** = **TESTED EXIT**. Walking into an Orange 'O' tile GUARANTEES a transition.
+- **P** = You.
+- **Goal**: Navigate 'P' into 'O' tiles to explore.
+- **IMPORTANT**: When you reach an 'O' tile, **submit the same move again** to walk *through* it.
+  - Example: If you moved 'R' to reach 'O', move 'R' once more to exit.
+
+## CRITICAL RULES
+- **NEVER IDLE**: Always output an action.
+- **TRUST EXITS**: If Memory Context lists a "Verified Exit" at specific coords, GO THERE.
+- **AVOID LOOPS**: If "stuck_warning" appears, move RANDOMLY to break free.
+- **VISION SKEPTICISM**: If Vision says "door nearby" but Minimap says "Wall (B)", trust the Minimap.
+
+If "memory_context" appears, USE IT. It contains the map of the world you are building.
 
 Now analyze the game state and decide your next action:
 """
