@@ -270,7 +270,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "Analyze this Pokemon Red game screenshot. Output as JSON with these fields:\n\n"
                     "{\n"
                     '  "screen_type": "title|overworld|battle|menu|dialogue|name_entry",\n'
-                    '  "readable_text": "any visible text, semicolon separated",\n'
+                    '  "readable_text": "any visible text, semicolon separated. ONLY what is perfectly legible.",\n'
                     '  "player_position": "description using directional terms (north/south/east/west)",\n'
                     '  "nearby_objects": "objects near player, semicolon separated",\n'
                     '  "npcs": "visible NPCs and positions, semicolon separated",\n'
@@ -278,7 +278,8 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
                     '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
                     '  "menu_cursor": "if menu: which option is highlighted",\n'
-                    '  "navigation_notes": "doors/exits/paths visible"\n'
+                    '  "navigation_notes": "doors/exits/paths visible",\n'
+                    '  "black_space": "list any large black cut-off areas (e.g. east side, bottom half)"\n'
                     "}\n\n"
                     "RULES:\n"
                     "- Output ONLY valid JSON, no markdown formatting\n"
@@ -288,7 +289,8 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- Be factual - only report what is clearly visible\n"
                     "- For positions, use relative terms (north, 2 steps east, directly south)\n"
                     "- Player sprite is ALWAYS the green character in center of overworld screens\n"
-                    "- If text is unclear say 'unreadable'\n"
+                    "- If text is unclear say 'unreadable'. DO NOT GUESS TEXT.\n"
+                    "- Text must be EXACT pixel-for-pixel match. If partially cut off, do not infer words.\n"
                     "- Empty fields should be empty strings\n\n"
                     "SCREEN TYPES:\n"
                     "- title: Pokemon logo, copyright text, no gameplay\n"
