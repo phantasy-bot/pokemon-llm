@@ -31,7 +31,8 @@ Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
 ## INTERACTION RULES
 - NPCs/signs: Move orthogonally adjacent, face them, press A
 - Cannot interact diagonally
-- Close menus/dialogues before moving
+- **DIALOG BOXES**: If a text box is visible (usually bottom of screen), press A or B to advance text. DO NOT ATTEMPT TO MOVE while text is open.
+- Close menus/dialogues completely before moving
 - Game never auto-triggers events - YOU must walk into transitions
 
 ## ANALYSIS TEMPLATE
