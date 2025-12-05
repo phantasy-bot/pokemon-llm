@@ -57,6 +57,13 @@
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.1);
   animation: pulse-border 2s infinite;
+  
+  /* Fill available space */
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 @keyframes pulse-border {
@@ -102,7 +109,7 @@
 }
 
 
-/* Scroll areas */
+/* Scroll area for history */
 .analysis-panel__history {
   flex: 1 1 auto; /* Grow to fill space, but allow shrink */
   overflow-y: auto;
@@ -115,6 +122,12 @@
   /* Use mask for fade effect at top only */
   mask-image: linear-gradient(to bottom, transparent, black 20px);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 20px);
+}
+
+.analysis-panel__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Ensure list fills height so empty state can center */
 }
 
 /* Vision Section - Fixed position above memory */

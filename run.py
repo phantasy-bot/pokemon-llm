@@ -6,6 +6,10 @@ import os
 import sys
 import asyncio
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Environment detection and validation
 def ensure_python_environment():
