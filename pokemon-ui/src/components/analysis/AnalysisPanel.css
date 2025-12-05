@@ -48,19 +48,105 @@
   /* Removed border-top here, will apply to content column */
 }
 
-/* Persistent Memory Section - Anchored to bottom */
+/* Shared TUI Box Styling Pattern (Applied to sections) */
+/* Scroll area for history - TUI Box */
+.analysis-panel__history {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-md);
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+  position: relative;
+  /* Ensure mask is removed */
+}
+
+.analysis-panel__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Ensure list fills height so empty state can center */
+}
+
+/* Add a pseudo-element or class for the LLM title if it exists, 
+   but currently it relies on the 'current thought' or just being the list.
+   If we need a sheared title here, we'd need to add markup. 
+   For now, just the border as requested. */
+
+
+/* Vision Section Container */
+.analysis-panel__vision-section {
+  flex-shrink: 0;
+  margin-top: 0; /* Gap handled by margin-bottom of history */
+  padding-top: 0;
+  background: var(--bg-panel);
+  z-index: 2;
+  position: relative;
+}
+
+/* Vision Row - Horizontal again */
+.analysis-panel__vision-row {
+  display: flex;
+  flex-direction: row; /* Side by side */
+  gap: var(--space-md);
+  min-width: 0;
+  align-items: stretch;
+}
+
+/* Screenshot Column - Fixed Width, Small */
+.analysis-panel__vision-col-screenshot {
+  flex: 0 0 140px; /* Small fixed width */
+  max-width: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Center image vertically if needed */
+}
+
+/* Vision Content Column - The TUI Box */
+.analysis-panel__vision-col-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+  position: relative;
+  padding: var(--space-md);
+  padding-top: var(--space-lg); /* Space for title */
+}
+
+.analysis-panel__vision-title-internal {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on top border */
+  position: absolute;
+  top: -8px; 
+  left: var(--space-md); /* Indent slightly */
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
+/* Persistent Memory Section - TUI Box */
 .analysis-panel__memory-section {
   flex-shrink: 0;
-  margin-top: var(--space-sm);
+  margin-top: var(--space-md);
   margin-bottom: var(--space-sm);
   padding: var(--space-md);
-  padding-top: var(--space-lg); /* More space for sheared title */
-  background: rgba(255, 255, 255, 0.03);
-  /* Dotted border for "sheared" title effect */
-  border-top: 1px dotted var(--border-subtle);
-  border-bottom: 0;
-  border-left: 0;
-  border-right: 0;
+  padding-top: var(--space-lg);
+  background: transparent; /* Remove rgba background to match clean TUI look */
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
   position: relative;
 }
 
@@ -73,58 +159,13 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   
-  /* Sheared position on top of border */
+  /* Sheared position on top border */
   position: absolute;
-  top: -8px; /* Center on border line */
-  left: 0;
+  top: -8px;
+  left: var(--space-md); /* Indent matching vision */
   background: var(--bg-panel);
-  padding-right: var(--space-xs);
-}
-
-/* ... existing thinking styles ... */
-
-/* Vision Column Layout */
-.analysis-panel__vision-row {
-  display: flex;
-  flex-direction: column; /* Stack vertically as requested */
-  gap: var(--space-sm);
-  min-width: 0;
-}
-
-.analysis-panel__vision-col-screenshot {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.analysis-panel__vision-col-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  /* Dotted border for "sheared" title effect */
-  border-top: 1px dotted var(--border-subtle);
-  position: relative;
-  padding-top: var(--space-md);
-}
-
-.analysis-panel__vision-title-internal {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  
-  /* Sheared position on top of border */
-  position: absolute;
-  top: -8px; /* Half height of text approx to center on border line */
-  left: 0;
-  background: var(--bg-panel); /* Mask the border behind text */
-  padding-right: var(--space-xs); /* Space for mask */
+  padding: 0 6px;
+  z-index: 2;
 }
 
 /* Remove the blue dot */
