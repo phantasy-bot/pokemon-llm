@@ -99,11 +99,10 @@ export function PokemonStreamOverlay({
                   <div
                     key={badgeType}
                     className={`badge ${isEarned ? 'earned' : 'unearned'}`}
-                    title={badgeInfo.name}
                   >
                     <img 
                       src={badgeInfo.image} 
-                      alt={badgeInfo.name}
+                      alt=""
                       className="badge-image"
                     />
                   </div>
