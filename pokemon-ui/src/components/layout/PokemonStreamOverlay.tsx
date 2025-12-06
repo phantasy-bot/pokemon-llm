@@ -170,7 +170,7 @@ export function PokemonStreamOverlay({
             location={location}
             visible={gameState.minimapVisible}
             className="minimap-overlay"
-            timestamp={logs.length > 0 ? (logs[0].timestamp || Date.now()).toString() : Date.now().toString()}
+            timestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
           />
         </div>
 

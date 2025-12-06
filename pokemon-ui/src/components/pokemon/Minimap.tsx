@@ -80,7 +80,6 @@ export function Minimap({
 
         {error && (
           <div className="minimap__error">
-            <span className="minimap__error-icon">🗺️</span>
             <span className="minimap__error-text">Map unavailable</span>
           </div>
         )}
@@ -98,7 +97,6 @@ export function Minimap({
 
         {!minimapVisible && !isLoading && !error && (
           <div className="minimap__placeholder">
-            <span className="minimap__placeholder-icon">🗺️</span>
             <span className="minimap__placeholder-text">No map data</span>
           </div>
         )}
