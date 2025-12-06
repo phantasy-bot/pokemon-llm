@@ -31,18 +31,21 @@ class ZAIMCPClient:
         self.is_connected = False
 
         # CRITICAL: NEW RETRY SYSTEM - Agent should NOT continue without vision
-        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay, 3: 90s delay
+        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay, 3: 90s delay, 4: 120s delay
         self.retries_in_current_phase = 0
         self.max_retries_per_phase = 3
-        self.phase_delays = [0, 30, 60, 90]  # seconds - 4 phases total
+        self.phase_delays = [0, 30, 60, 90, 120]  # seconds - 5 phases total (+30s pattern)
         self.last_retry_time = 0
         self.vision_mandatory = True  # CRITICAL: Vision is required for operation
+        
+        # Status tracking for UI updates
+        self.current_status = "INITIALIZING"  # Will be updated during analysis
         
         # CRITICAL FIX: Use unique incrementing request IDs to prevent response mismatch
         self._request_id_counter = 0
 
         log.info("Z.AI MCP Client initialized with MANDATORY vision retry system")
-        log.info("Retry strategy: 3 immediate attempts, then 3 attempts after 30s, then 3 after 60s, then 3 after 90s")
+        log.info("Retry strategy: 5 phases (0s, 30s, 60s, 90s, 120s delay), 3 attempts each = 15 total attempts")
         log.info("Agent will continue retrying indefinitely - never crash on vision failure")
 
         # Start the MCP server synchronously

@@ -17,6 +17,7 @@ const ROTATION_INTERVAL = 15000;
 interface AnalysisPanelProps {
   logs: LogEntry[];
   isProcessing?: boolean;
+  processingStatus?: string; // Dynamic status text: "ANALYZING VISION...", "THINKING...", etc.
   totalActions?: number;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
@@ -25,6 +26,7 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({
   logs,
   isProcessing = false,
+  processingStatus = "",
   totalActions = 0,
   memoryWrite,
   onMemoryWriteClear,
@@ -64,7 +66,8 @@ export function AnalysisPanel({
     (logs.length > 0 ? logs[0] : null);
 
   const renderThinkingText = () => {
-    const text = "THINKING...";
+    // Use dynamic processingStatus if available, otherwise default to "THINKING..."
+    const text = processingStatus || "THINKING...";
     return (
       <span className="analysis-panel__thinking-text">
         {text.split("").map((char, i) => (
