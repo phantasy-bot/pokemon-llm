@@ -396,6 +396,7 @@ class RunPersistence:
                 )
                 conn.commit()
                 log.debug(f"Updated save state hash for run #{run_id}")
+                return new_hash
             finally:
                 conn.close()
 

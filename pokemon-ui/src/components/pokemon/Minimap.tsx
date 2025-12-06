@@ -97,7 +97,12 @@ export function Minimap({
 
         {!minimapVisible && !isLoading && !error && (
           <div className="minimap__placeholder">
-            <span className="minimap__placeholder-text">No map data</span>
+            <img 
+              src="/minimap-placeholder.png" 
+              alt="No map data" 
+              className="minimap__placeholder-image"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
         )}
       </div>

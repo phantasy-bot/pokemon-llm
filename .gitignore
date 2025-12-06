@@ -1,2 +1,12 @@
 .env
 __pycache__
+
+# Runtime Data
+*.db
+*.ss1
+*.sav
+*.log
+ui.log
+snapshots/
+latest.png
+minimap.png

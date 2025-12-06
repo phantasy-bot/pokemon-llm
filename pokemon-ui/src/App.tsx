@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./styles/base.css";
 import { PokemonStreamOverlay } from "./components/layout/PokemonStreamOverlay";
 import type { PokemonGameState, LogEntry, Pokemon } from "./types/gameTypes";
@@ -27,31 +27,62 @@ function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [memoryWrite, setMemoryWrite] = useState<string | null>(null);
   const [, setWs] = useState<WebSocket | null>(null);
+  
+  // Track if we have established an initial connection to detect reconnections
+  const initialConnectionMade = useRef(false);
 
   useEffect(() => {
-    // Connect to WebSocket server for real-time updates
-    const websocket = new WebSocket("ws://localhost:8765");
-    setWs(websocket);
+    let websocket: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
 
-    websocket.onopen = () => {
-      setWsConnected(true);
+    const connectWebSocket = () => {
+      websocket = new WebSocket("ws://localhost:8765");
+      setWs(websocket);
+
+      websocket.onopen = () => {
+        console.log("WS Connected");
+        setWsConnected(true);
+        
+        if (initialConnectionMade.current) {
+          // If we've connected before and are reconnecting, reload the page
+          // to ensure a clean state from the fresh backend process.
+          window.location.reload();
+        } else {
+          initialConnectionMade.current = true;
+        }
+      };
+
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleGameUpdate(data);
+        } catch {
+          // Silently ignore malformed messages
+        }
+      };
+
+      websocket.onclose = () => {
+        console.log("WS Closed - attempting reconnect in 3s...");
+        setWsConnected(false);
+        // Try to reconnect
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
+
+      websocket.onerror = (err) => {
+        console.error("WS Error:", err);
+        websocket?.close();
+      };
     };
 
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleGameUpdate(data);
-      } catch {
-        // Silently ignore malformed messages
-      }
-    };
-
-    websocket.onclose = () => {
-      setWsConnected(false);
-    };
+    connectWebSocket();
 
     return () => {
-      websocket.close();
+      if (websocket) {
+        // Remove listener to prevent auto-reconnect loop on unmount
+        websocket.onclose = null; 
+        websocket.close();
+      }
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, []);
 

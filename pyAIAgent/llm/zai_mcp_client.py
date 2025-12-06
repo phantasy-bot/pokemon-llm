@@ -442,7 +442,7 @@ class ZAIMCPClient:
 
             # Read response, draining any stale responses
             log.info(f"Waiting for MCP server response for {tool_name}...")
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=30.0)
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=90.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")

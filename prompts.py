@@ -169,7 +169,8 @@ def get_base_prompt() -> str:
 - The raw minimap string represents the 21x21 Minimap Grid.
 - Semicolon-separated rows (Row 0 to Row 20).
 - Example: "BBB...;...WPW...;...OWW..."
-- **CRITICAL**: 'O' coordinates in the analysis MUST use the [10,10] center reference.
+- **CRITICAL**: Use 0-based indexing for coordinates (e.g., Column 0 is first char).
+- 'O' coordinates in the analysis MUST use the [10,10] center reference.
 - Walk INTO orange O tiles to use doors/exits (no A press needed).
 
 ## INTERACTION RULES
