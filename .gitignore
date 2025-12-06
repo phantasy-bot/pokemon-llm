@@ -1,12 +1,22 @@
 .env
 __pycache__
 
-# Runtime Data
+# Runtime Data - Generated/Ephemeral Files
 *.db
 *.ss1
 *.sav
 *.log
 ui.log
 snapshots/
+
+# Runtime Screenshots
 latest.png
 minimap.png
+latest_with_minimap.png
+
+# Runtime State Files (regenerated on start)
+pokemon_memories.json
+game_goals.json
+
+# Web UI build artifacts (if not needed in repo)
+web_ui/*.png
