@@ -149,7 +149,12 @@ def graceful_save_and_exit(sock, signum=None, frame=None):
                     rom_dir = os.path.dirname(rom_path)
                     rom_name = os.path.splitext(os.path.basename(rom_path))[0]
                     save_path = os.path.join(rom_dir, f"{rom_name}.ss1")
-                    _global_persistence.update_save_state_hash(_global_run_state.run_id, save_path)
+                    new_hash = _global_persistence.update_save_state_hash(_global_run_state.run_id, save_path)
+                    log.info(f"Updated hash result: {new_hash}")
+                    if new_hash:
+                        _global_run_state.save_state_hash = new_hash
+                    else:
+                        log.warning(f"Failed to get new hash for {save_path}")
                     _global_persistence.save_run_state(_global_run_state)
                     log.info("✅ Run state persisted to database!")
             else:

@@ -1205,6 +1205,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
         else:
             log.error("No valid action from LLM. Cannot send command.")
+            # User request: Stay on same cycle number if failure occurs
+            cycle_count -= 1
+            log.info("Decremented cycle count to retry same cycle number on next attempt.")
 
         # Count each individual button press, not just action groups
         # 'action' is like "U;U;R;A;" - count the actual button presses
