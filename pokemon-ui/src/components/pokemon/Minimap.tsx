@@ -20,11 +20,21 @@ export function Minimap({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load minimap when timestamp changes
+  // Load minimap only when a valid timestamp is provided from backend
+  // This prevents loading stale minimap files when app restarts
   useEffect(() => {
-    const ts = timestamp || Date.now().toString();
-    const newSrc = `/minimap.png?t=${ts}`;
+    // Only load if we have a valid timestamp from the backend
+    // Don't auto-load on mount with Date.now() - wait for actual update
+    if (!timestamp) {
+      // No timestamp yet - stay in placeholder state
+      setMinimapSrc("");
+      setMinimapVisible(false);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     
+    const newSrc = `/minimap.png?t=${timestamp}`;
     setMinimapSrc(newSrc);
     setIsLoading(true);
     setError(null);

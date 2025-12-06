@@ -141,7 +141,7 @@
   );
   border: 1px solid var(--border-default);
   position: relative;
-  min-width: 180px; /* Slight reduction */
+  width: 100%; /* Full width to container */
   border-radius: 8px;
 }
 
