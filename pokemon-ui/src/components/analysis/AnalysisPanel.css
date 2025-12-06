@@ -94,7 +94,7 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 0;
   margin-top: auto; /* Push to bottom */
   pointer-events: none;
   opacity: 0;
@@ -105,7 +105,7 @@
 
 .analysis-panel__thinking-bottom.active {
   opacity: 1;
-  color: #FFFFFF; /* Ensure text is visible light color */
+  color: var(--accent-primary); /* Use bright accent red color */
 }
 
 /* Legacy thinking overlay - keep for compatibility */
