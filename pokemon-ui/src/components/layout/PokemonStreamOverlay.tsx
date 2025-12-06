@@ -185,14 +185,11 @@ export function PokemonStreamOverlay({
         {/* Right Column - Goals and Minimap (was center) */}
         <div className="pokemon-goals">
           <div className="goals-log">
-            <h3>Primary Goal</h3>
-            <p className="log-entry">{gameState.goals.primary}</p>
-            <h3>Secondary Goal</h3>
-            <p className="log-entry">{gameState.goals.secondary}</p>
-            <h3>Tertiary Goal</h3>
-            <p className="log-entry">{gameState.goals.tertiary}</p>
-            <h3>Other Notes</h3>
-            <p className="log-entry">{gameState.otherGoals}</p>
+            <h3>Goals</h3>
+            <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
+            <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
+            <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
+            <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
           </div>
           {/* Minimap Overlay */}
           <Minimap
