@@ -29,6 +29,7 @@ from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
 from memory_storage import MemoryManager
 from battle_strategy import read_battle_state, choose_battle_action, get_battle_context
 from goal_tracker import GoalTracker, GoalPriority, GoalStatus
+from exploration_tracker import ExplorationTracker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -896,6 +897,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         goal_tracker.initialize_default_goals()
     log.info("Goal tracker initialized")
 
+    # Initialize exploration tracker - persist when continuing a run
+    exploration_tracker = ExplorationTracker(reset_on_start=not is_continuing_run)
+    if is_continuing_run:
+        log.info(f"🗺️ Exploration tracker: Loaded existing data ({len(exploration_tracker.maps)} maps)")
+    else:
+        log.info("🗺️ Exploration tracker: Fresh start")
+
     # Position history for stuck detection
     position_history = []
     
@@ -1010,6 +1018,23 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         if memory_context:
             llm_input_state["memory_context"] = memory_context
             log.info(f"📝 Memory context: {memory_context[:100]}...")
+        
+        # Track exploration and add context
+        map_id = current_mGBA_state.get('map_id', 0)
+        pos = current_mGBA_state.get('position', [0, 0])
+        minimap_2d = current_mGBA_state.get('minimap_2d', '')
+        
+        if pos and len(pos) >= 2:
+            # Record this tile as visited
+            exploration_tracker.record_visit(map_id, map_name, pos[0], pos[1])
+            
+            # Add exploration context to LLM input
+            exploration_context = exploration_tracker.get_context_for_llm(
+                map_id, map_name, pos[0], pos[1], minimap_2d
+            )
+            if exploration_context:
+                llm_input_state["exploration_context"] = exploration_context
+                log.info(f"🗺️ Exploration: {exploration_context.split(chr(10))[0]}")
         
         # Add battle context using game memory (more accurate than vision)
         try:
