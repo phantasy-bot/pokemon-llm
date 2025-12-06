@@ -937,6 +937,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             update_payload['minimapLocation'] = state['minimapLocation']
             log.info(f"State Update: minimapLocation -> {loc_str}")
 
+        # Default: Analysis uses the clean snapshot unless combined
+        ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
+        UI_IMAGE_PATH = SCREENSHOT_PATH
+
         if ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
             try:
                 # Load images
@@ -961,25 +965,35 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 # VALIDATION: Derive combined path from atomic snapshot path to keep it unique per cycle
                 combined_path = os.path.splitext(SCREENSHOT_PATH)[0] + '_with_minimap.png'
                 combined.save(combined_path)
-                SCREENSHOT_PATH = combined_path
+                
+                # CRITICAL: AI gets the combined image, but UI gets the clean original
+                ANALYSIS_IMAGE_PATH = combined_path
+                # UI_IMAGE_PATH remains SCREENSHOT_PATH (the clean snapshot)
 
                 log.info(f"Combined screenshot + minimap saved to {combined_path}")
             except Exception as e:
                 log.error(f"Failed to combine minimap: {e}")
+                # Fallback: Analysis path remains SCREENSHOT_PATH
 
         # Handle image processing based on provider
         if CURRENT_MODE == "ZAI" and zai_vision_client:
-            # For Z.AI, store image paths for MCP processing
-            llm_input_state["screenshot_path"] = SCREENSHOT_PATH
+            # For Z.AI, use the ANALYSIS path for MCP processing
+            llm_input_state["screenshot_path"] = ANALYSIS_IMAGE_PATH
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 llm_input_state["minimap_path"] = MINIMAP_PATH
 
             # Also create base64 versions for fallback
-            b64_ss = encode_image_base64(SCREENSHOT_PATH)
+            # CRITICAL: Encode the UI_IMAGE_PATH (clean snapshot) for the frontend
+            b64_ss = encode_image_base64(UI_IMAGE_PATH)
             if b64_ss:
+                # Note: We send the CLEAN screenshot to the LLM's vision input here as valid base64
+                # But the MCP tool will use 'screenshot_path' (ANALYSIS_IMAGE_PATH)
                 llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
             else:
                 llm_input_state["screenshot"] = None
+            
+            # Note: Explicitly attaching the clean screenshot base64 for the UI later
+            # This happens in the log creation step using 'b64_ss'
 
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 b64_mm = encode_image_base64(MINIMAP_PATH)
@@ -987,9 +1001,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                     llm_input_state["minimap"] = {"image_url": {"url": f"data:image/png;base64,{b64_mm}", "detail": IMAGE_DETAIL}}
         else:
             # Standard base64 image processing for other providers
-            b64_ss = encode_image_base64(SCREENSHOT_PATH)
-            if b64_ss:
-                llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
+            # Use ANALYSIS path for standard models if they can't handle separate tools?
+            # Actually, standard models viewing the image directly should probably see the combined one if enabled.
+            # But the user specifically asked for "render the cycle not the one with the minimap" on the UI.
+            # So we must differentiate what we send to LLM vs what we send to UI.
+            
+            # For standard LLM input (e.g. GPT-4o), we want it to see the Minimap if enabled.
+            b64_llm = encode_image_base64(ANALYSIS_IMAGE_PATH)
+            
+            # But for UI, we want clean.
+            b64_ss = encode_image_base64(UI_IMAGE_PATH)
+
+            if b64_llm:
+                llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_llm}", "detail": IMAGE_DETAIL}}
             else:
                 llm_input_state["screenshot"] = None
 
