@@ -379,6 +379,24 @@
   z-index: 2;
 }
 
+.analysis-panel__section-label-bottom-right {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on bottom border */
+  position: absolute;
+  bottom: -8px;
+  right: var(--space-md);
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
 /* Remove the blue dot */
 .analysis-panel__vision-title-internal::before {
   display: none;
