@@ -91,19 +91,19 @@ export function PokemonStreamOverlay({
         <div className="pokemon-header__center">
           <div className="badges-widget">
             <div className="widget-title">BADGES - {badges.length}/8</div>
-            <div className="badges">
+            <div className="gym-badges">
               {ALL_BADGE_TYPES.map((badgeType) => {
                 const badgeInfo = KANTO_BADGES[badgeType];
                 const isEarned = badges.includes(badgeType);
                 return (
                   <div
                     key={badgeType}
-                    className={`badge ${isEarned ? 'earned' : 'unearned'}`}
+                    className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
                   >
                     <img 
                       src={badgeInfo.image} 
                       alt=""
-                      className="badge-image"
+                      className="gym-badge-image"
                     />
                   </div>
                 );

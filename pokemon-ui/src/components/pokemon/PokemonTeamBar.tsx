@@ -156,7 +156,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
             </div>
             <div className="pokemon-team-bar__sponsor-class">
               <img
-                src="/sprites/classes/mystery-gift.gif"
+                src="/sponsors/mystery-gift.png"
                 alt="Mystery Gift"
                 className="pokemon-team-bar__sponsor-sprite"
               />
@@ -190,7 +190,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
             </div>
             <div className="pokemon-team-bar__sponsor-class">
               <img
-                src="/sprites/classes/mystery-gift.gif"
+                src="/sponsors/mystery-gift.png"
                 alt="Mystery Gift"
                 className="pokemon-team-bar__sponsor-sprite"
               />
