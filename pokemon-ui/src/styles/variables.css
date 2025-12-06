@@ -17,9 +17,9 @@
   --bg-input: #e8e3e2;
 
   /* Accent - Pokemon themed */
-  --accent-primary: #3b4cca; /* Pokemon blue */
+  --accent-primary: #ff6b6b; /* Pokemon red - main accent */
   --accent-primary-bright: #ff6b6b; /* Pokemon red */
-  --accent-primary-dim: #2a3787;
+  --accent-primary-dim: #cc5555;
 
   /* Text - Dark on light */
   --text-primary: #2d2a26;
