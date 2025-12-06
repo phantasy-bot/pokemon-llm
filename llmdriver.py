@@ -680,7 +680,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 chunk = None
             except TimeoutError:
                 log.warning(f"TIMEOUT waiting for first chunk after {timeout}s.")
-                return None, None, None
+                return None, None, None, None
 
             if chunk:
                 # Process first chunk
@@ -714,7 +714,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
         if not full_output:
             log.error("LLM call resulted in empty output.")
-            return None, None, None
+            return None, None, None, None
 
         log.info(f"LLM raw output length: {len(full_output)} chars")
 
