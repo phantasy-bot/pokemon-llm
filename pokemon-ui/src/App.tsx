@@ -111,6 +111,22 @@ function App() {
       });
     }
 
+    // Handle full state history (initial load or reconnect)
+    if (data.log_history && Array.isArray(data.log_history)) {
+       const historyLogs = data.log_history.map((log: any) => ({
+         id: log.id || `hist-${Date.now()}-${Math.random()}`,
+         timestamp: log.timestamp ? new Date(log.timestamp).toISOString() : new Date().toISOString(),
+         text: log.text,
+         is_action: log.is_action,
+         is_vision: log.is_vision,
+         is_response: log.is_response,
+         type: log.is_vision ? "vision" : log.is_response ? "response" : "action",
+       }));
+       // Replace logs entirely on initial history load to avoid dupes? 
+       // Or prepend? Usually this comes once. Let's set it.
+       setLogs(historyLogs);
+    }
+
     // Handle log entries
     if (data.log_entry && data.log_entry.text) {
       const newLog: LogEntry = {

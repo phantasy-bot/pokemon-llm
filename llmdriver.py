@@ -1143,7 +1143,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log_entries.append(action_log)
 
         # Add all log entries to update_payload with different keys to avoid overwriting
+        # Add all log entries to update_payload with different keys to avoid overwriting
+        # Also persist to state["log_history"] for new connections
+        if "log_history" not in state:
+            state["log_history"] = []
+
         for i, log_entry in enumerate(log_entries):
+            # Add timestamp if missing
+            if "timestamp" not in log_entry:
+                log_entry["timestamp"] = int(time.time() * 1000)
+
+            # Add to persistent history (keep last 50)
+            state["log_history"].insert(0, log_entry)
+            
             if log_entry.get("is_vision"):
                 update_payload["vision_log"] = log_entry
                 log.info(f"🖼️ Broadcasting vision log: {log_entry.get('text', '')[:50]}... with timestamp: {log_entry.get('timestamp')}")
@@ -1153,6 +1165,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             elif log_entry.get("is_action"):
                 action_payload["log_entry"] = log_entry
                 log.info(f"🎮 Broadcasting action log: {log_entry.get('text', '')[:50]}...")
+
+        # Trim history
+        state["log_history"] = state["log_history"][:50]
+        # Important: Add logs to update_payload so websocket_service sends them if needed? 
+        # Actually websocket_service sends full state on connect.
+        # But we might want to send 'logs' bulk update if we wanted to sync, but individual updates are fine.
 
         log.info(f"Log Entry #{log_id_counter}: {log_action_text} (Analysis included in state log)")
 

@@ -166,6 +166,40 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
             </div>
           </div>
         </div>
+        {/* Duplicated Sponsor Card as requested */}
+        <div className="pokemon-team-bar__sponsor-card">
+          <div className="pokemon-team-bar__sponsor-portrait">
+            <img
+              src="/portraits/mystery-gift.png"
+              alt="Mystery Gift"
+              className="pokemon-team-bar__sponsor-portrait-img"
+            />
+          </div>
+          <div className="pokemon-team-bar__sponsor-info">
+            <div className="pokemon-team-bar__sponsor-header">
+              <span className="pokemon-team-bar__sponsor-name">
+                Mystery Gift
+              </span>
+              <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
+            </div>
+            <div className="pokemon-team-bar__sponsor-hp">
+              <div className="pokemon-team-bar__sponsor-hp-track">
+                <div className="pokemon-team-bar__sponsor-hp-fill" />
+              </div>
+              <span className="pokemon-team-bar__sponsor-hp-text">∞/∞</span>
+            </div>
+            <div className="pokemon-team-bar__sponsor-class">
+              <img
+                src="/sprites/classes/mystery-gift.gif"
+                alt="Mystery Gift"
+                className="pokemon-team-bar__sponsor-sprite"
+              />
+              <span className="pokemon-team-bar__sponsor-class-name">
+                Mystery Gift
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

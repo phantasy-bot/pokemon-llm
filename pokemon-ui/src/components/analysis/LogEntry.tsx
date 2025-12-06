@@ -228,6 +228,19 @@ function extractActions(text: string): string[] {
 
 // Format log text with highlighting and proper markdown parsing
 function formatLogText(text: string): string {
+  // Try to extract and format structured analysis JSON first
+  const analysisMatch = text.match(/<game_analysis>([\s\S]*?)<\/game_analysis>/);
+  if (analysisMatch) {
+    try {
+      const jsonContent = analysisMatch[1].trim();
+      const analysisData = JSON.parse(jsonContent);
+      return formatStructuredAnalysis(analysisData);
+    } catch (e) {
+      // Failed to parse JSON, fallback to standard formatting
+      console.warn("Failed to parse analysis JSON:", e);
+    }
+  }
+
   let formattedText = text;
 
   // Filter out box tokens before other processing
@@ -264,7 +277,7 @@ function formatLogText(text: string): string {
     '<div class="log-numbered-section"><span class="log-section-number">$1.</span> <span class="log-section-title">$2</span></div>'
   );
   
-  // Highlight game_analysis tags as section separators (but don't remove them)
+  // Highlight game_analysis tags as section separators (if not parsed as JSON above)
   formattedText = formattedText.replace(
     /<game_analysis>/gi,
     '<div class="game-analysis-start">📊 Analysis</div>'
@@ -313,6 +326,64 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/\n/g, '<br/>');
 
   return `<div class="formatted-log-content">${formattedText}</div>`;
+}
+
+// Render structured analysis JSON
+function formatStructuredAnalysis(data: any): string {
+  let html = `<div class="structured-analysis">`;
+
+  // Helper for sections
+  const renderSection = (title: string, content: string | any) => {
+    if (!content) return "";
+    let contentHtml = "";
+    
+    if (Array.isArray(content)) {
+      contentHtml = content.map(item => `<div class="log-bullet">• ${item}</div>`).join("");
+    } else if (typeof content === "object") {
+       // Flatten object keys
+       contentHtml = Object.entries(content).map(([k, v]) => 
+         `<div class="log-bullet">• <strong style="text-transform:uppercase; font-size:9px; opacity:0.8">${k.replace(/_/g, ' ')}:</strong> ${v}</div>`
+       ).join("");
+    } else {
+      contentHtml = `<div class="log-text">${content}</div>`;
+    }
+
+    return `
+      <div class="analysis-section">
+        <h4 class="log-section-header">${title}</h4>
+        ${contentHtml}
+      </div>
+    `;
+  };
+
+  if (data.current_state) {
+     html += renderSection("📍 Current State", data.current_state);
+  }
+  
+  if (data.stuck_check) {
+      if (data.stuck_check.stuck) {
+           html += `<div class="analysis-alert alert-danger">⚠️ STUCK: ${data.stuck_check.reason}</div>`;
+      }
+  }
+
+  if (data.goal_and_plan) {
+    if (data.goal_and_plan.primary_goal) {
+        html += renderSection("🎯 Goal", data.goal_and_plan.primary_goal);
+    }
+    if (data.goal_and_plan.path) {
+        html += renderSection("👣 Path", data.goal_and_plan.path);
+    }
+    if (data.goal_and_plan.fallback) {
+        html += renderSection("🔄 Fallback", data.goal_and_plan.fallback);
+    }
+  }
+
+  if (data.reasoning) {
+     html += renderSection("🧠 Reasoning", data.reasoning);
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 // Format vision analysis as a structured list

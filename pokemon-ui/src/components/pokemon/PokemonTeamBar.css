@@ -10,6 +10,8 @@
   flex: 1;
   min-width: 0;
   padding-right: var(--space-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 .pokemon-team-bar__header {
@@ -42,6 +44,8 @@
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
   gap: var(--space-sm);
   width: 100%;
+  flex: 1; /* Fill remaining height */
+  align-content: space-between; /* Push rows to top and bottom */
 }
 
 .pokemon-team-grid-item {
@@ -93,6 +97,7 @@
   padding-left: var(--space-lg);
   border-left: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  gap: var(--space-sm); /* Added gap for stacked sponsors */
 }
 
 .pokemon-team-bar__sponsor-header {
@@ -127,8 +132,8 @@
 
 .pokemon-team-bar__sponsor-card {
   display: flex;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: var(--space-sm); /* Reduced gap */
+  padding: var(--space-sm); /* Reduced padding */
   background: linear-gradient(
     135deg,
     var(--bg-card) 0%,
@@ -136,7 +141,7 @@
   );
   border: 1px solid var(--border-default);
   position: relative;
-  min-width: 200px;
+  min-width: 180px; /* Slight reduction */
   border-radius: 8px;
 }
 
@@ -152,8 +157,8 @@
 }
 
 .pokemon-team-bar__sponsor-portrait {
-  width: 96px;
-  height: 80px;
+  width: 60px; /* Reduced from 96px */
+  height: 50px; /* Reduced from 80px */
   flex-shrink: 0;
   background: var(--bg-input);
   border-radius: 6px;

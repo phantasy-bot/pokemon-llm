@@ -81,7 +81,7 @@
 
 .log-entry__text {
   font-family: var(--font-mono);
-  font-size: 10px; /* Exact match to vision analysis */
+  font-size: 11px; /* Increased from 10px */
   line-height: 1.4;
   color: var(--text-primary);
   /* Ensure text wraps to prevent scroll */
@@ -510,4 +510,43 @@
 .formatted-log-content strong {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* Structured JSON Analysis Styling */
+.structured-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0,0,0,0.1);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analysis-section .log-section-header {
+  margin: 0 0 2px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 2px;
+}
+
+.analysis-alert {
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid var(--type-fire);
+  color: var(--type-fire);
+  padding: 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.log-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.4;
 }

@@ -36,30 +36,28 @@ Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
 - Close menus/dialogues completely before moving
 - Game never auto-triggers events - YOU must walk into transitions
 
-## ANALYSIS TEMPLATE
-Use this structure in <game_analysis> tags:
+## ANALYSIS FORMAT (STRICT JSON)
+Inside <game_analysis> tags, you must provide a valid JSON object with the following structure.
+Do NOT use hyphens or bullet points. Use JSON arrays.
 
-1. CURRENT STATE
-   - Location: [map_name] at position [x,y]
-   - Facing: [direction]
-   - Screen shows: [key elements]
-
-2. STUCK CHECK
-   - Am I in same position as last turn? [yes/no]
-   - Have I tried this approach before? [yes/no]
-   - If stuck: try different direction or touch command
-
-3. GOAL & PLAN
-   - Immediate goal: [specific objective]
-   - Path: [sequence of directions to reach it]
-   - Fallback if blocked: [alternative]
-
-4. ACTION DECISION
-   - Chosen action/touch and why
-
-## OUTPUT FORMAT
 <game_analysis>
-[Your analysis following the template above]
+{
+  "current_state": {
+    "location": "Map Name at [x,y]",
+    "facing": "direction",
+    "screen_content": "Description of what is visible"
+  },
+  "stuck_check": {
+    "stuck": false,
+    "reason": "Moved successfully"
+  },
+  "goal_and_plan": {
+    "primary_goal": "Goal description",
+    "path": ["Step 1", "Step 2"],
+    "fallback": "Plan B if blocked"
+  },
+  "reasoning": "Brief explanation of chosen action"
+}
 </game_analysis>
 
 {{"action":"U;R;A;"}}
@@ -67,25 +65,37 @@ Use this structure in <game_analysis> tags:
 OR for navigation:
 {{"touch":"6,3"}}
 
-## CRITICAL AUTHORITY HIERARCHY
-1. **GAME STATE (Map & Position)**: TRUST ABSOLUTELY. If state says you are at [4,4], you ARE at [4,4].
-2. **MEMORY CONTEXT**: Use "Verified Exits" found in memory. They are tested paths.
-3. **VISION ANALYSIS**: Use for general context but BEWARE HALLUCINATIONS. Do not trust vision for coordinates.
+### BUTTON USAGE
+- **A Button**: Interact, Confirm choices (YES), Talk to NPCs facing you.
+- **B Button**: Cancel, Back, Run (hold), **ESCAPE DIALOG LOOPS**, Select 'NO'.
+- **Start**: Open Menu. (Avoid in dialogs).
 
-## MINIMAP NAVIGATION
-- The `minimap_2d` grid shows the TRUE layout.
-- **W** = Walkable, **B** = Blocked/Wall
-- **O** = **TESTED EXIT**. Walking into an Orange 'O' tile GUARANTEES a transition.
-- **P** = You.
-- **Goal**: Navigate 'P' into 'O' tiles to explore.
-- **IMPORTANT**: When you reach an 'O' tile, **submit the same move again** to walk *through* it.
-  - Example: If you moved 'R' to reach 'O', move 'R' once more to exit.
+### 🛑 CRITICAL: ESCAPING DIALOG LOOPS
+If you are pressing 'A' and the same text repeats, or you are stuck in a loop:
+1. **STOP PRESSING A**.
+2. **PRESS 'B' REPEATEDLY** to close the window.
+3. **MOVE AWAY** (Left/Right/Up/Down) immediately after pressing 'B'.
+   - Do NOT press 'Start' or 'A' again until you have moved.
+   - Movement confirms you have escaped the tile triggering the dialog.
+4. **EXCEPTION**: If a YES/NO box is visible, use 'A' to select YES, or 'B' to select NO.
+   - If 'A' selects YES and loops, try 'B' to select NO.
+   - If invisible dialog loop: **spam 'B' + Direction**.
 
-## CRITICAL RULES
-- **NEVER IDLE**: Always output an action.
-- **TRUST EXITS**: If Memory Context lists a "Verified Exit" at specific coords, GO THERE.
-- **AVOID LOOPS**: If "stuck_warning" appears, move RANDOMLY to break free.
-- **VISION SKEPTICISM**: If Vision says "door nearby" but Minimap says "Wall (B)", trust the Minimap.
+### 🗺️ NAVIGATION & MEMORY AUTHORITY
+1. **GAME STATE (Minimap)** is the SUPREME TRUTH.
+   - If `minimap_2d` shows you at [6, 19], YOU ARE AT [6, 19].
+   - If 'O' tiles are adjacent, they are EXITS. Use them.
+   - **FOLLOW THROUGH**: When moving into an Exit ('O'), **SUBMIT THE MOVE AGAIN** to ensure transition.
+     - Example: If exiting UP to a door, keep pressing UP until map changes.
+2. **MEMORY** is the SECOND Truth.
+   - Use `[Verified Exit]` memories to know where doors lead.
+3. **VISION** is the LEAST reliable.
+   - Text reading can be wrong. Rely on Minimap for position.
+
+### ⚠️ SAFETY PROTOCOLS
+- **Never spam the same button** without checking `stuck_check`.
+- **If Screen is UNKNOWN**: Do NOT move blindly. Press 'Start' to refresh screen or check menu.
+- **Save Often**: But not inside a dialog loop.
 
 If "memory_context" appears, USE IT. It contains the map of the world you are building.
 
