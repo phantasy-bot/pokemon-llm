@@ -148,12 +148,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
               </span>
               <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
             </div>
-            <div className="pokemon-team-bar__sponsor-hp">
-              <div className="pokemon-team-bar__sponsor-hp-track">
-                <div className="pokemon-team-bar__sponsor-hp-fill" />
-              </div>
-              <span className="pokemon-team-bar__sponsor-hp-text">∞/∞</span>
-            </div>
+
             <div className="pokemon-team-bar__sponsor-class">
               <img
                 src="/sponsors/mystery-gift.png"
@@ -182,12 +177,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
               </span>
               <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
             </div>
-            <div className="pokemon-team-bar__sponsor-hp">
-              <div className="pokemon-team-bar__sponsor-hp-track">
-                <div className="pokemon-team-bar__sponsor-hp-fill" />
-              </div>
-              <span className="pokemon-team-bar__sponsor-hp-text">∞/∞</span>
-            </div>
+
             <div className="pokemon-team-bar__sponsor-class">
               <img
                 src="/sponsors/mystery-gift.png"

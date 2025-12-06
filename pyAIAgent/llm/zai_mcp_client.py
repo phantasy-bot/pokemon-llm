@@ -31,10 +31,10 @@ class ZAIMCPClient:
         self.is_connected = False
 
         # CRITICAL: NEW RETRY SYSTEM - Agent should NOT continue without vision
-        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay
+        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay, 3: 90s delay
         self.retries_in_current_phase = 0
         self.max_retries_per_phase = 3
-        self.phase_delays = [0, 30, 60]  # seconds
+        self.phase_delays = [0, 30, 60, 90]  # seconds - 4 phases total
         self.last_retry_time = 0
         self.vision_mandatory = True  # CRITICAL: Vision is required for operation
         
@@ -42,8 +42,8 @@ class ZAIMCPClient:
         self._request_id_counter = 0
 
         log.info("Z.AI MCP Client initialized with MANDATORY vision retry system")
-        log.info("Retry strategy: 3 immediate attempts, then 3 attempts after 30s, then 3 attempts after 60s")
-        log.info("Agent will NOT continue without successful vision analysis")
+        log.info("Retry strategy: 3 immediate attempts, then 3 attempts after 30s, then 3 after 60s, then 3 after 90s")
+        log.info("Agent will continue retrying indefinitely - never crash on vision failure")
 
         # Start the MCP server synchronously
         self._start_mcp_server_sync()
@@ -328,13 +328,20 @@ class ZAIMCPClient:
             max_total_failures = len(self.phase_delays) * self.max_retries_per_phase
 
             if total_failures >= max_total_failures:
-                # CRITICAL: All retry attempts exhausted
-                error_msg = f"CRITICAL SYSTEM FAILURE: Vision analysis failed after {max_total_failures} attempts across all retry phases. Agent cannot continue without vision."
-                log.error("🚨 " + "="*80)
-                log.error("🚨 " + error_msg)
-                log.error("🚨 This is a catastrophic failure - the agent requires vision to function.")
-                log.error("🚨 " + "="*80)
-                raise RuntimeError(error_msg)
+                # All retry attempts exhausted - reset and return None
+                # The agent will continue to the next cycle and try again
+                log.warning("🔄 " + "="*80)
+                log.warning(f"🔄 Vision analysis failed after {max_total_failures} attempts across all retry phases.")
+                log.warning("🔄 Resetting retry counters and returning None - agent will retry on next cycle.")
+                log.warning("🔄 " + "="*80)
+                
+                # Reset retry counters so next cycle starts fresh
+                self.retry_phase = 0
+                self.retries_in_current_phase = 0
+                self.last_retry_time = 0
+                
+                # Return None instead of crashing - llmdriver will handle gracefully
+                return None
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""
