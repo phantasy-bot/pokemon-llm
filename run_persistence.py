@@ -188,9 +188,12 @@ class RunPersistence:
         Get existing run or create new one based on save state.
         
         Logic:
-        1. If save state exists, hash it and look for matching run
-        2. If found, continue that run
-        3. If not found or no save state, create new run
+        1. If save state exists, continue the most recent run (save state = resuming progress)
+        2. If no save state, create new run (fresh start)
+        
+        Note: We don't match by save state hash because the hash changes every time
+        the game saves. Instead, the presence of a save state indicates we should
+        continue the most recent run.
         """
         conn = self._get_conn()
         try:
@@ -201,51 +204,50 @@ class RunPersistence:
             if save_state_exists and save_state_path:
                 save_hash = self._hash_save_state(save_state_path)
                 
-                if save_hash:
-                    # Look for existing run with this save state hash
-                    cursor.execute("""
-                        SELECT r.id as run_id, r.created_at, r.last_active, r.save_state_hash,
-                               s.cycle_count, s.action_count, s.tokens_used, s.elapsed_seconds,
-                               s.goals_json, s.other_goals, s.chat_history_json,
-                               s.latest_memory, s.recent_actions_json
-                        FROM runs r
-                        LEFT JOIN run_state s ON r.id = s.run_id
-                        WHERE r.save_state_hash = ?
-                        ORDER BY r.last_active DESC
-                        LIMIT 1
-                    """, (save_hash,))
+                # Save state exists = we're resuming, find the most recent run
+                cursor.execute("""
+                    SELECT r.id as run_id, r.created_at, r.last_active, r.save_state_hash,
+                           s.cycle_count, s.action_count, s.tokens_used, s.elapsed_seconds,
+                           s.goals_json, s.other_goals, s.chat_history_json,
+                           s.latest_memory, s.recent_actions_json
+                    FROM runs r
+                    LEFT JOIN run_state s ON r.id = s.run_id
+                    ORDER BY r.last_active DESC
+                    LIMIT 1
+                """)
+                
+                row = cursor.fetchone()
+                if row:
+                    # Found existing run - restore it
+                    row_dict = dict(row)
                     
-                    row = cursor.fetchone()
-                    if row:
-                        # Found existing run - restore it
-                        row_dict = dict(row)
-                        
-                        # Parse chat history
-                        chat_history = []
-                        if row_dict.get("chat_history_json"):
-                            try:
-                                chat_history = json.loads(row_dict["chat_history_json"])
-                            except:
-                                pass
-                        
-                        # Parse recent actions
-                        recent_actions = []
-                        if row_dict.get("recent_actions_json"):
-                            try:
-                                recent_actions = json.loads(row_dict["recent_actions_json"])
-                            except:
-                                pass
-                        
-                        # Update last_active
-                        cursor.execute(
-                            "UPDATE runs SET last_active = ? WHERE id = ?",
-                            (now, row_dict["run_id"])
-                        )
-                        conn.commit()
-                        
-                        run_state = RunState.from_row(row_dict, chat_history, recent_actions)
-                        log.info(f"🔄 Continuing run #{run_state.run_id} (cycle: {run_state.cycle_count}, actions: {run_state.action_count})")
-                        return run_state
+                    # Parse chat history
+                    chat_history = []
+                    if row_dict.get("chat_history_json"):
+                        try:
+                            chat_history = json.loads(row_dict["chat_history_json"])
+                        except:
+                            pass
+                    
+                    # Parse recent actions
+                    recent_actions = []
+                    if row_dict.get("recent_actions_json"):
+                        try:
+                            recent_actions = json.loads(row_dict["recent_actions_json"])
+                        except:
+                            pass
+                    
+                    # Update last_active and save state hash
+                    cursor.execute(
+                        "UPDATE runs SET last_active = ?, save_state_hash = ? WHERE id = ?",
+                        (now, save_hash, row_dict["run_id"])
+                    )
+                    conn.commit()
+                    
+                    run_state = RunState.from_row(row_dict, chat_history, recent_actions)
+                    run_state.save_state_hash = save_hash  # Update with current hash
+                    log.info(f"🔄 Continuing run #{run_state.run_id} (cycle: {run_state.cycle_count}, actions: {run_state.action_count})")
+                    return run_state
             
             # Create new run
             cursor.execute(

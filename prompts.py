@@ -151,7 +151,8 @@ def get_base_prompt() -> str:
 - Actions: A (confirm/interact), B (cancel/back)
 - Menu: S (START), s (SELECT)
 - Chain with semicolons: U;U;R;A;
-- MAX 4 ACTIONS PER TURN - verify position between moves
+- **USE 2-4 ACTIONS PER TURN** - chain directions to move efficiently!
+- Single actions waste time. Always chain when moving: U;U;U; or D;D;R;
 
 ## COORDINATE SYSTEMS
 1. **SCREEN GRID (Visuals)**:
@@ -164,10 +165,13 @@ def get_base_prompt() -> str:
    - Player Position: [10,10] (Center of minimap)
    - Use for: Pathfinding, locating 'O' exits/entrances
    - Symbols: P=Player, O=Entrance/Exit, W=Walkable, B=Blocked
+   - **ROW 0 = TOP, ROW 20 = BOTTOM** (standard screen coordinates)
+   - **To reach a LOWER row number, move UP (U)**
+   - **To reach a HIGHER row number, move DOWN (D)**
 
 ## MINIMAP FORMAT (Raw String)
 - The raw minimap string represents the 21x21 Minimap Grid.
-- Semicolon-separated rows (Row 0 to Row 20).
+- Semicolon-separated rows (Row 0 to Row 20, TOP to BOTTOM).
 - Example: "BBB...;...WPW...;...OWW..."
 - **CRITICAL**: Use 0-based indexing for coordinates (e.g., Column 0 is first char).
 - 'O' coordinates in the analysis MUST use the [10,10] center reference.
@@ -218,7 +222,8 @@ Use this structure in <game_analysis> tags:
    - Fallback if blocked: [alternative plan]
 
 5. ACTION DECISION
-   - Chosen action and why
+   - Chosen action(s): **CHAIN 2-4 MOVES** (e.g., U;U;U; or D;R;R;A;)
+   - Why: [brief reasoning]
 
 6. COMMENTARY
    - Lass persona: Bubbly, funny, SHORT reaction to current game moment.
@@ -274,6 +279,16 @@ Use this structure in <game_analysis> tags:
 - Move toward it with 2-3 repeated moves: U;U;U; or D;D;D;
 - If blocked directly, approach from the side
 - NEVER give up after 1 attempt
+
+**⚠️ CRITICAL - WHEN STANDING ON 'O' TILE (You're at 'P' but minimap shows 'O' at your position):**
+- Standing on the exit tile is NOT enough - you MUST STEP through!
+- **Interior exits (leaving buildings)**: Step DOWN (D;) to exit through floor mats/doors
+- **Exterior entrances (entering buildings)**: Step UP (U;) to enter doors
+- **Side entrances**: Step in the direction the door faces
+- If you're on an 'O' and nothing happened, you haven't stepped through yet!
+- Action pattern when ON exit tile: D; (try down first for interior exits)
+- If D doesn't work, try: U; then L; then R;
+
 
 If "memory_context" appears, USE IT for navigation.
 

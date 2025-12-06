@@ -1,5 +1,146 @@
 {
-  "spatial": [],
+  "spatial": [
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_2F",
+      "description": "Verified Exit: Path at [7, 3] leads to PLAYERS_HOUSE_1F",
+      "coordinates": [
+        7,
+        3
+      ],
+      "timestamp": "2025-12-06T16:39:11.011341",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "target_pos": [
+          7,
+          1
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "exit"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_2F at [7, 1]",
+      "coordinates": [
+        7,
+        1
+      ],
+      "timestamp": "2025-12-06T16:39:11.011396",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          7,
+          3
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_2F",
+      "landmark_type": "entrance"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Verified Exit: Path at [2, 7] leads to PALLET_TOWN",
+      "coordinates": [
+        2,
+        7
+      ],
+      "timestamp": "2025-12-06T16:46:31.620432",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "target_pos": [
+          5,
+          6
+        ]
+      },
+      "destination": "PALLET_TOWN",
+      "landmark_type": "exit"
+    },
+    {
+      "type": "spatial",
+      "location": "PALLET_TOWN",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_1F at [5, 6]",
+      "coordinates": [
+        5,
+        6
+      ],
+      "timestamp": "2025-12-06T16:46:31.620519",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          2,
+          7
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "entrance"
+    },
+    {
+      "type": "spatial",
+      "location": "PALLET_TOWN",
+      "description": "Verified Exit: Path at [4, 6] leads to PLAYERS_HOUSE_1F",
+      "coordinates": [
+        4,
+        6
+      ],
+      "timestamp": "2025-12-06T16:48:12.894221",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "target_pos": [
+          2,
+          7
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "exit"
+    },
+    {
+      "type": "spatial",
+      "location": "PALLET_TOWN",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_1F at [5, 7]",
+      "coordinates": [
+        5,
+        7
+      ],
+      "timestamp": "2025-12-06T16:48:48.304557",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          2,
+          7
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "entrance"
+    },
+    {
+      "type": "spatial",
+      "location": "PALLET_TOWN",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_1F at [7, 6]",
+      "coordinates": [
+        7,
+        6
+      ],
+      "timestamp": "2025-12-06T16:50:20.795493",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          2,
+          7
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "entrance"
+    }
+  ],
   "gameplay": [],
   "narrative": [],
   "tactical": []
