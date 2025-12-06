@@ -1136,13 +1136,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
 
         # Response log entry (LLM reasoning)
+        # CRITICAL: Only create response_log if vision_log was also created to prevent desync
         analysis_text = game_analysis  # Use game_analysis from LLM response
         log.info(f"🧠 LLM Analysis received: {analysis_text[:100] if analysis_text else 'None'}...")
 
-        if analysis_text and analysis_text.strip():
+        if vision_analysis_for_ui and analysis_text and analysis_text.strip():
             response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
             log_entries.append(response_log)
             log.info(f"✅ Response log created and added to entries")
+        elif not vision_analysis_for_ui:
+            log.warning(f"⚠️ Skipping response_log creation - no vision analysis (keeping sync)")
         else:
             log.warning(f"⚠️ No analysis_text to send to frontend. game_analysis: {game_analysis}")
 
@@ -1235,7 +1238,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
 
         # Action log entry - include action range for UI display
-        if action:
+        # CRITICAL: Only create action_log if vision was successful to keep all logs in sync
+        if action and vision_analysis_for_ui:
             action_log = { 
                 "id": log_id_counter, 
                 "text": log_action_text, 
