@@ -156,7 +156,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
                 className="pokemon-team-bar__sponsor-sprite"
               />
               <span className="pokemon-team-bar__sponsor-class-name">
-                Mystery Gift
+                SPONSOR
               </span>
             </div>
           </div>
@@ -173,7 +173,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
           <div className="pokemon-team-bar__sponsor-info">
             <div className="pokemon-team-bar__sponsor-header">
               <span className="pokemon-team-bar__sponsor-name">
-                Mystery Gift
+                SPONSOR
               </span>
               <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
             </div>
@@ -185,7 +185,7 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
                 className="pokemon-team-bar__sponsor-sprite"
               />
               <span className="pokemon-team-bar__sponsor-class-name">
-                Mystery Gift
+                SPONSOR
               </span>
             </div>
           </div>
