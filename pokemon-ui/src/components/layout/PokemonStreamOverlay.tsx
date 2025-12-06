@@ -138,7 +138,12 @@ export function PokemonStreamOverlay({
           <div className="pokemon-analysis-panel">
             <AnalysisPanel
             logs={logs}
-            isProcessing={gameState.gameStatus === "Thinking..." || gameState.gameStatus === "Processing..."}
+            isProcessing={
+              gameState.gameStatus === "Thinking..." || 
+              gameState.gameStatus === "Processing..." ||
+              gameState.gameStatus === "Running..." ||
+              gameState.gameStatus.includes("Auto")
+            }
             totalActions={gameState.actions}
             memoryWrite={memoryWrite}
             onMemoryWriteClear={onMemoryWriteClear}

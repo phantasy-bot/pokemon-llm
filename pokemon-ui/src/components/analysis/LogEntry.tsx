@@ -272,9 +272,11 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/^- (.+)$/gm, '<div class="log-bullet">• $1</div>');
   
   // Add section dividers for numbered sections (1. CURRENT STATE, etc.)
+  // Unified Numbered Section Styling (Base Default Style as requested)
+  // Matches "1. Title" and makes it bold, removing complex flex layouts
   formattedText = formattedText.replace(
-    /^(\d+)\.\s*([A-Z][A-Z\s&]+)$/gm, 
-    '<div class="log-numbered-section"><span class="log-section-number">$1.</span> <span class="log-section-title">$2</span></div>'
+    /^\s*(\d+)\.\s*([A-Za-z0-9][A-Za-z0-9\s&:\-]+?)\s*$/gm, 
+    '<div class="log-section-simple"><span class="log-section-title">$1. $2</span></div>'
   );
   
   // Remove game_analysis tags completely - content is displayed directly
@@ -318,6 +320,11 @@ function formatLogText(text: string): string {
   // Convert newlines to proper breaks for better formatting
   formattedText = formattedText.replace(/\n\n/g, '</p><p>');
   formattedText = formattedText.replace(/\n/g, '<br/>');
+
+  // CLEANUP: Remove <br/> that immediately follows a div (like numbered sections or bullets)
+  formattedText = formattedText.replace(/<\/div><br\/>/g, '</div>');
+  // Also cleanup double brs
+  formattedText = formattedText.replace(/<br\/><br\/>/g, '<br/>');
 
   return `<div class="formatted-log-content">${formattedText}</div>`;
 }

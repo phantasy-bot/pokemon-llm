@@ -20,14 +20,10 @@
 
 @keyframes log-entry-new {
   0% {
-    transform: translateY(-10px);
     opacity: 0;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   }
   100% {
-    transform: translateY(0);
     opacity: 1;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -79,11 +75,22 @@
   gap: var(--space-sm);
 }
 
+/* Increased to 12px and removed bold as requested */
+.formatted-log-content {
+  font-family: var(--font-mono);
+  font-size: 12px; /* Increased from 11px */
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.85); /* Darker text for visibility */
+  /* Ensure text wraps to prevent scroll */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .log-entry__text {
   font-family: var(--font-mono);
-  font-size: 11px; /* Increased from 10px */
+  font-size: 12px; /* Increased from 11px */
   line-height: 1.4;
-  color: var(--text-primary);
+  color: rgba(0, 0, 0, 0.85); /* Darker text for visibility */
   /* Ensure text wraps to prevent scroll */
   white-space: pre-wrap;
   word-break: break-word;
@@ -438,14 +445,17 @@
 }
 
 /* Numbered sections (1. CURRENT STATE) */
-/* Numbered sections (1. CURRENT STATE) */
-/* Numbered sections (1. CURRENT STATE) */
-.log-numbered-section {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 4px 0 1px 0; /* Reduced from 8px 0 2px 0 */
-  padding: 0;
+/* Unified Simple Section (Base styling) */
+.log-section-simple {
+  margin: 12px 0 4px 0;
+}
+
+.log-section-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.85); /* Match content color */
+  text-transform: uppercase;
 }
 
 .log-section-number {
@@ -455,20 +465,14 @@
   color: var(--accent-primary-bright);
 }
 
-.log-section-title {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+
 
 /* Bullet points - tight against headers */
 .log-bullet {
   padding-left: 0px;
-  margin: 0 0 1px 0; /* Minimal margin for tight grouping */
+  margin: 0; /* Removed bottom margin completely */
   font-size: 10px;
+  line-height: 1.25; /* Tighter line height */
   color: var(--text-secondary);
   display: flex;
   gap: 4px;
@@ -478,7 +482,7 @@
 
 /* Formatted log content wrapper */
 .formatted-log-content {
-  line-height: 1.3;
+  line-height: 1;
 }
 
 .formatted-log-content p {
