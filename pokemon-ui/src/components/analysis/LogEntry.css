@@ -422,7 +422,7 @@
   color: var(--accent-primary-bright);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  margin: 4px 0 2px 0;
+  margin: 12px 0 2px 0; /* More space ABOVE (12px), tight below (2px) */
   padding-bottom: 2px;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -464,10 +464,10 @@
   letter-spacing: 0.05em;
 }
 
-/* Bullet points */
+/* Bullet points - tight against headers */
 .log-bullet {
-  padding-left: 0px; /* Reduced from 8px */
-  margin: 1px 0;
+  padding-left: 0px;
+  margin: 0 0 1px 0; /* Minimal margin for tight grouping */
   font-size: 10px;
   color: var(--text-secondary);
   display: flex;
@@ -525,7 +525,8 @@
 .analysis-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0; /* Tight gap within section */
+  margin-bottom: 12px; /* Add gap BETWEEN sections */
 }
 
 .analysis-section .log-section-header {

@@ -1023,7 +1023,22 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         else:
             log.error("No valid action from LLM. Cannot send command.")
 
-        action_count = current_cycle
+        # Count each individual button press, not just action groups
+        # 'action' is like "U;U;R;A;" - count the actual button presses
+        if action:
+            # Remove semicolons and whitespace, count remaining characters
+            action_buttons = [c for c in action.replace(';', '').replace(' ', '') if c in 'UDLRABSs']
+            buttons_in_action = len(action_buttons)
+            action_start = action_count + 1
+            action_count += buttons_in_action
+            action_end = action_count
+            log.info(f"📊 Actions #{action_start}-#{action_end} ({buttons_in_action} buttons)")
+        else:
+            # No action this cycle
+            action_start = action_count
+            action_end = action_count
+            buttons_in_action = 0
+        
         if state.get('actions') != action_count:
              state['actions'] = action_count
              update_payload['actions'] = action_count
@@ -1159,9 +1174,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log.error(f"Error extracting memories: {e}", exc_info=True)
 
 
-        # Action log entry
+        # Action log entry - include action range for UI display
         if action:
-            action_log = { "id": log_id_counter, "text": log_action_text, "is_action": True }
+            action_log = { 
+                "id": log_id_counter, 
+                "text": log_action_text, 
+                "is_action": True,
+                "action_start": action_start,  # First action number in this group
+                "action_end": action_end,      # Last action number in this group
+                "button_count": buttons_in_action
+            }
             log_entries.append(action_log)
 
         # Add all log entries to update_payload with different keys to avoid overwriting
