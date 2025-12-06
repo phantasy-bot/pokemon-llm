@@ -33,6 +33,7 @@ class RunState:
     created_at: str
     last_active: str
     save_state_hash: Optional[str]
+    cycle_count: int = 0
     action_count: int = 0
     tokens_used: int = 0
     elapsed_seconds: float = 0.0
@@ -64,6 +65,7 @@ class RunState:
             created_at=row.get("created_at", ""),
             last_active=row.get("last_active", ""),
             save_state_hash=row.get("save_state_hash"),
+            cycle_count=row.get("cycle_count", 0) or 0,
             action_count=row.get("action_count", 0) or 0,
             tokens_used=row.get("tokens_used", 0) or 0,
             elapsed_seconds=row.get("elapsed_seconds", 0.0) or 0.0,
@@ -129,6 +131,16 @@ class RunPersistence:
                     FOREIGN KEY (run_id) REFERENCES runs(id)
                 )
             """)
+
+            # Migration: Add cycle_count if missing
+            try:
+                cursor.execute("ALTER TABLE run_state ADD COLUMN cycle_count INTEGER DEFAULT 0")
+                log.info("ℹ️ Migrated database: Added cycle_count column to run_state")
+            except sqlite3.OperationalError:
+                # Column likely already exists
+                pass
+            
+            # Action log table - per-action logging
             
             # Action log table - per-action logging
             cursor.execute("""
@@ -193,7 +205,7 @@ class RunPersistence:
                     # Look for existing run with this save state hash
                     cursor.execute("""
                         SELECT r.id as run_id, r.created_at, r.last_active, r.save_state_hash,
-                               s.action_count, s.tokens_used, s.elapsed_seconds,
+                               s.cycle_count, s.action_count, s.tokens_used, s.elapsed_seconds,
                                s.goals_json, s.other_goals, s.chat_history_json,
                                s.latest_memory, s.recent_actions_json
                         FROM runs r
@@ -232,7 +244,7 @@ class RunPersistence:
                         conn.commit()
                         
                         run_state = RunState.from_row(row_dict, chat_history, recent_actions)
-                        log.info(f"🔄 Continuing run #{run_state.run_id} (actions: {run_state.action_count}, tokens: {run_state.tokens_used})")
+                        log.info(f"🔄 Continuing run #{run_state.run_id} (cycle: {run_state.cycle_count}, actions: {run_state.action_count})")
                         return run_state
             
             # Create new run
@@ -278,6 +290,7 @@ class RunPersistence:
             # Update run_state table
             cursor.execute("""
                 UPDATE run_state SET
+                    cycle_count = ?,
                     action_count = ?,
                     tokens_used = ?,
                     elapsed_seconds = ?,
@@ -288,6 +301,7 @@ class RunPersistence:
                     recent_actions_json = ?
                 WHERE run_id = ?
             """, (
+                run_state.cycle_count,
                 run_state.action_count,
                 run_state.tokens_used,
                 run_state.elapsed_seconds,

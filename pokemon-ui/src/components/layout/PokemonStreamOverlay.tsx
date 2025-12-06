@@ -127,6 +127,12 @@ export function PokemonStreamOverlay({
               </div>
               <div className="stat-label">ACTIONS</div>
             </div>
+            <div className="stat-item">
+              <div className="stat-count">
+                {gameState.cycle || 0}
+              </div>
+              <div className="stat-label">CYCLE</div>
+            </div>
           </div>
         </div>
       </div>
