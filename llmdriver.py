@@ -1071,71 +1071,93 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         else:
             log.warning(f"⚠️ No analysis_text to send to frontend. game_analysis: {game_analysis}")
 
-                # Force memory recording for important location transitions
-            try:
-                # MAP TRANSITION LOGIC
-                # Track transitions to verification
-                current_map = state.get('map_name', 'unknown')
-                current_map_id = state.get('map_id', -1)
-                current_pos = state.get('position', [])
+        # Force memory recording for important location transitions
+        # IMPORTANT: This runs ALWAYS, not just when analysis_text is empty
+        try:
+            # MAP TRANSITION LOGIC - use current_mGBA_state which has correct keys
+            current_map = current_mGBA_state.get('map_name', 'unknown')
+            current_map_id = current_mGBA_state.get('map_id', -1)
+            current_pos = current_mGBA_state.get('position', [])
 
-                # We need to track the PREVIOUS map/pos to record a link
-                # use attributes on memory_manager to persist across loops efficiently
-                last_map = getattr(memory_manager, 'last_map', None)
-                last_map_id = getattr(memory_manager, 'last_map_id', None)
-                last_pos = getattr(memory_manager, 'last_pos', None)
+            # We need to track the PREVIOUS map/pos to record a link
+            # use attributes on memory_manager to persist across loops efficiently
+            last_map = getattr(memory_manager, 'last_map', None)
+            last_map_id = getattr(memory_manager, 'last_map_id', None)
+            last_pos = getattr(memory_manager, 'last_pos', None)
 
-                # Check if map changed (and neither is unknown)
-                if (current_map != 'unknown' and last_map != 'unknown' and 
-                    current_map_id != -1 and last_map_id != -1 and
-                    (current_map != last_map or current_map_id != last_map_id)):
-                    
-                    # We moved between maps! exact position we left FROM is last_pos
-                    # exact position we arrived AT is current_pos
-                    
-                    if last_pos and current_pos:
-                        new_links = memory_manager.record_transition(
-                            from_map=last_map,
-                            from_pos=last_pos,
-                            to_map=current_map,
-                            to_pos=current_pos
-                        )
-                        if new_links:
-                             log.info(f"🔗 VERIFIED TRANSITION RECORDED: {last_map} -> {current_map}")
-                             update_payload["memory_write"] = {"text": f"Mapped connection: {last_map} -> {current_map}"}
+            # Check if map changed (and neither is unknown)
+            if (current_map != 'unknown' and last_map != 'unknown' and 
+                current_map_id != -1 and last_map_id != -1 and
+                (current_map != last_map or current_map_id != last_map_id)):
                 
-                # Update history for next loop
-                memory_manager.last_map = current_map
-                memory_manager.last_map_id = current_map_id
-                memory_manager.last_pos = current_pos
+                # We moved between maps! exact position we left FROM is last_pos
+                # exact position we arrived AT is current_pos
+                
+                if last_pos and current_pos:
+                    new_links = memory_manager.record_transition(
+                        from_map=last_map,
+                        from_pos=list(last_pos) if isinstance(last_pos, tuple) else last_pos,
+                        to_map=current_map,
+                        to_pos=list(current_pos) if isinstance(current_pos, tuple) else current_pos
+                    )
+                    if new_links:
+                         log.info(f"🔗 VERIFIED TRANSITION RECORDED: {last_map} -> {current_map}")
+                         update_payload["memory_write"] = {"text": f"Mapped connection: {last_map} -> {current_map}"}
+            
+            # Update history for next loop
+            memory_manager.last_map = current_map
+            memory_manager.last_map_id = current_map_id
+            memory_manager.last_pos = current_pos
 
-                # Extract memories from LLM response and vision analysis
-                extracted_memories = memory_manager.extract_memories_from_response(
-                    analysis_text=analysis_text,
-                    game_state=state,
-                    vision_analysis=vision_analysis_for_ui  # Fixed: was 'vision_analysis' which doesn't exist
-                )
+            # Extract memories from LLM response and vision analysis
+            # CRITICAL FIX: Use current_mGBA_state which has map_name and position keys
+            extracted_memories = memory_manager.extract_memories_from_response(
+                analysis_text=analysis_text,
+                game_state=current_mGBA_state,  # Fixed: was 'state' which has different keys
+                vision_analysis=vision_analysis_for_ui
+            )
 
-                if extracted_memories:
-                    log.info(f"Extracted {len(extracted_memories)} memories from LLM response")
-                    for memory in extracted_memories:
-                        log.debug(f"Memory: {memory.type} - {memory.description[:50]}...")
+            if extracted_memories:
+                log.info(f"📝 Extracted {len(extracted_memories)} memories from LLM response")
+                for memory in extracted_memories:
+                    log.debug(f"Memory: {memory.type} - {memory.description[:50]}...")
 
-                # Always get latest memory for broadcasting
-                latest_memory = memory_manager.get_latest_memory()
-                if latest_memory:
-                    # Add memory directly to update_payload for frontend compatibility
-                    update_payload["memory_write"] = {"text": latest_memory.description}
-                    log.info(f"Broadcasting latest memory: {latest_memory.description[:100]}...")
+            # Verify pending vision claims against minimap data
+            minimap_2d = current_mGBA_state.get('minimap_2d', '')
+            if minimap_2d and current_pos:
+                unverified_claims = memory_manager.get_unverified_claims(limit=3)
+                for claim in unverified_claims:
+                    was_correct = memory_manager.verify_vision_claim(
+                        claim=claim,
+                        minimap_2d=minimap_2d,
+                        player_pos=list(current_pos) if current_pos else []
+                    )
+                    if was_correct:
+                        log.info(f"✅ Vision claim VERIFIED: {claim.description}")
+                    else:
+                        log.warning(f"❌ Vision claim WRONG: {claim.description}")
+                
+                # Log vision accuracy periodically
+                vision_stats = memory_manager.get_vision_accuracy()
+                if vision_stats.get("verified", 0) > 0 and vision_stats.get("verified", 0) % 5 == 0:
+                    log.info(f"👁️ {vision_stats['message']}")
 
-                    # Also add to memory_updates array for potential future use
-                    if "memory_updates" not in update_payload:
-                        update_payload["memory_updates"] = []
-                    memory_payload = {"memory_write": {"text": latest_memory.description}}
-                    update_payload["memory_updates"].append(memory_payload)
+            # Always get latest memory for broadcasting
+            latest_memory = memory_manager.get_latest_memory()
+            if latest_memory:
+                # Add memory directly to update_payload for frontend compatibility
+                update_payload["memory_write"] = {"text": latest_memory.description}
+                log.info(f"Broadcasting latest memory: {latest_memory.description[:100]}...")
 
-            except Exception as e:
-                log.error(f"Error extracting memories: {e}", exc_info=True)
+                # Also add to memory_updates array for potential future use
+                if "memory_updates" not in update_payload:
+                    update_payload["memory_updates"] = []
+                memory_payload = {"memory_write": {"text": latest_memory.description}}
+                update_payload["memory_updates"].append(memory_payload)
+
+        except Exception as e:
+            log.error(f"Error extracting memories: {e}", exc_info=True)
+
 
         # Action log entry
         if action:

@@ -40,6 +40,26 @@ class GameplayMemory(Memory):
     pokemon_involved: Optional[List[str]] = None
 
 
+@dataclass
+class VisionClaim:
+    """
+    Track unverified claims from vision analysis that need verification.
+    These are things the vision model claims to see (doors, exits) that should
+    be verified against minimap data before being trusted.
+    """
+    claim_type: str  # "door", "exit", "npc", "item"
+    description: str
+    location: str
+    coordinates: Optional[List[int]]
+    direction: Optional[str]  # Direction from player (north, south, etc.)
+    timestamp: str
+    verified: bool = False
+    verification_result: Optional[bool] = None  # True=correct, False=wrong, None=unverified
+    confidence: float = 0.5  # How confident we are in this claim
+    context: Optional[Dict[str, Any]] = None
+
+
+
 class MemoryManager:
     """Comprehensive memory management system for Pokemon LLM agent"""
 
@@ -50,6 +70,15 @@ class MemoryManager:
             "gameplay": [],
             "narrative": [],
             "tactical": []
+        }
+        # Track vision claims that need verification
+        self.vision_claims: List[VisionClaim] = []
+        # Track vision accuracy statistics
+        self.vision_stats = {
+            "total_claims": 0,
+            "verified_correct": 0,
+            "verified_wrong": 0,
+            "unverified": 0
         }
         self.load_memories()
 
@@ -166,6 +195,174 @@ class MemoryManager:
             
         return created
 
+    def record_vision_claim(
+        self,
+        claim_type: str,
+        description: str,
+        location: str,
+        coordinates: Optional[List[int]] = None,
+        direction: Optional[str] = None,
+        confidence: float = 0.5
+    ) -> VisionClaim:
+        """
+        Record a claim from vision analysis that needs verification.
+        These are things like "I see a door to the north" that may or may not be accurate.
+        """
+        claim = VisionClaim(
+            claim_type=claim_type,
+            description=description,
+            location=location,
+            coordinates=coordinates,
+            direction=direction,
+            timestamp=datetime.now().isoformat(),
+            verified=False,
+            verification_result=None,
+            confidence=confidence,
+            context={}
+        )
+        self.vision_claims.append(claim)
+        self.vision_stats["total_claims"] += 1
+        self.vision_stats["unverified"] += 1
+        return claim
+
+    def verify_vision_claim(
+        self,
+        claim: VisionClaim,
+        minimap_2d: str,
+        player_pos: List[int],
+        is_correct: Optional[bool] = None
+    ) -> bool:
+        """
+        Verify a vision claim against minimap data.
+        
+        Args:
+            claim: The vision claim to verify
+            minimap_2d: The 2D minimap string from game state
+            player_pos: Current player [x, y] position
+            is_correct: Override for manual verification. If None, auto-check minimap.
+        
+        Returns:
+            True if claim was verified, False otherwise
+        """
+        if claim.verified:
+            return claim.verification_result
+        
+        # If manual verification provided
+        if is_correct is not None:
+            claim.verified = True
+            claim.verification_result = is_correct
+        else:
+            # Auto-check: Look for exit tiles in the claimed direction
+            result = self._check_minimap_for_exit(minimap_2d, player_pos, claim.direction)
+            claim.verified = True
+            claim.verification_result = result
+        
+        # Update stats
+        self.vision_stats["unverified"] -= 1
+        if claim.verification_result:
+            self.vision_stats["verified_correct"] += 1
+        else:
+            self.vision_stats["verified_wrong"] += 1
+        
+        # If claim was correct, increase confidence for future similar claims
+        # If wrong, decrease confidence
+        claim.confidence = 0.8 if claim.verification_result else 0.2
+        
+        return claim.verification_result
+
+    def _check_minimap_for_exit(
+        self,
+        minimap_2d: str,
+        player_pos: List[int],
+        claimed_direction: Optional[str]
+    ) -> bool:
+        """
+        Check if there's an exit tile in the claimed direction on the minimap.
+        
+        Minimap 2D format uses characters like:
+        - 'X' or '@' for player position
+        - 'O' or 'o' for open tiles
+        - '#' or similar for walls
+        - 'D' for doors/exits
+        """
+        if not minimap_2d or not claimed_direction:
+            return False  # Can't verify without data
+        
+        lines = minimap_2d.strip().split('\n')
+        if not lines:
+            return False
+        
+        # Find player position in minimap (usually center or marked with X/@)
+        player_row, player_col = None, None
+        for row_idx, line in enumerate(lines):
+            for col_idx, char in enumerate(line):
+                if char in ['X', '@', 'P']:
+                    player_row, player_col = row_idx, col_idx
+                    break
+            if player_row is not None:
+                break
+        
+        if player_row is None:
+            # Assume center if not marked
+            player_row = len(lines) // 2
+            player_col = len(lines[0]) // 2 if lines else 0
+        
+        # Define direction offsets
+        direction_offsets = {
+            'north': (-1, 0), 'up': (-1, 0),
+            'south': (1, 0), 'down': (1, 0),
+            'west': (0, -1), 'left': (0, -1),
+            'east': (0, 1), 'right': (0, 1),
+        }
+        
+        direction_lower = claimed_direction.lower()
+        if direction_lower not in direction_offsets:
+            return False
+        
+        dr, dc = direction_offsets[direction_lower]
+        
+        # Check tiles in that direction (up to 3 tiles)
+        for distance in range(1, 4):
+            check_row = player_row + (dr * distance)
+            check_col = player_col + (dc * distance)
+            
+            if 0 <= check_row < len(lines) and 0 <= check_col < len(lines[check_row]):
+                tile = lines[check_row][check_col]
+                # Exit tiles are typically 'D', 'E', '>', '<', 'v', '^' or similar
+                if tile in ['D', 'E', '>', '<', 'v', '^', 'O', 'o']:
+                    return True
+                # Wall blocks further checking
+                if tile in ['#', 'W', '█', '▓']:
+                    return False
+        
+        return False
+
+    def get_vision_accuracy(self) -> Dict[str, Any]:
+        """Get vision accuracy statistics."""
+        total = self.vision_stats["total_claims"]
+        if total == 0:
+            return {"accuracy": 0.0, "total": 0, "message": "No vision claims recorded yet"}
+        
+        verified = self.vision_stats["verified_correct"] + self.vision_stats["verified_wrong"]
+        if verified == 0:
+            return {"accuracy": 0.0, "total": total, "message": f"{total} claims pending verification"}
+        
+        accuracy = self.vision_stats["verified_correct"] / verified
+        return {
+            "accuracy": accuracy,
+            "total": total,
+            "verified": verified,
+            "correct": self.vision_stats["verified_correct"],
+            "wrong": self.vision_stats["verified_wrong"],
+            "pending": self.vision_stats["unverified"],
+            "message": f"Vision accuracy: {accuracy:.1%} ({self.vision_stats['verified_correct']}/{verified})"
+        }
+
+    def get_unverified_claims(self, limit: int = 5) -> List[VisionClaim]:
+        """Get pending vision claims that need verification."""
+        return [c for c in self.vision_claims if not c.verified][:limit]
+
+
     def extract_memories_from_response(
         self,
         analysis_text: str,
@@ -205,16 +402,14 @@ class MemoryManager:
             summary = analysis_text[:100] if analysis_text else "Exploring area..."
             fallback_memory = SpatialMemory(
                 type="spatial",
-                location=current_location if current_location != "unknown" else "Unknown Area",
-                description=f"Exploring {current_location if current_location != 'unknown' else 'unknown area'}...",
-                landmark_type="exploration",
-                direction=None,
-                destination=None,
+                location=current_location,
+                description=f"Visited {current_location}: {summary}",
                 coordinates=list(current_position) if current_position else [],
-                related_location=None,
+                destination=None,
+                landmark_type="exploration",
                 timestamp=datetime.now().isoformat(),
                 importance=1.0,
-                context={"source": "fallback"}
+                context={"source": "fallback", "summary": summary}
             )
             extracted_memories.append(fallback_memory)
 
@@ -353,6 +548,30 @@ class MemoryManager:
                     
                     if not self._is_duplicate_memory(memory, memories):
                         memories.append(memory)
+            
+            # Extract door/exit vision claims for verification
+            # These are claims that should be verified against minimap before trusting
+            door_exit_patterns = [
+                (r'(?:see|spot|notice|visible)\s+(?:a\s+)?(?:door|exit|entrance)\s+(?:to\s+the\s+)?(\w+)', 'door'),
+                (r'(\w+)\s+(?:door|exit|entrance)', 'door'),
+                (r'(?:door|exit)\s+(?:on\s+the\s+)?(\w+)', 'door'),
+                (r'(?:path|route|way)\s+(?:leads?|goes?)\s+(\w+)', 'path'),
+            ]
+            
+            for pattern, claim_type in door_exit_patterns:
+                matches = re.finditer(pattern, vision_analysis, re.IGNORECASE)
+                for match in matches:
+                    direction = match.group(1).strip().lower()
+                    # Filter out non-direction words
+                    if direction in ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']:
+                        self.record_vision_claim(
+                            claim_type=claim_type,
+                            description=f"Vision claims {claim_type} to the {direction}",
+                            location=current_location,
+                            coordinates=current_position if current_position else None,
+                            direction=direction,
+                            confidence=0.5  # Start with low confidence
+                        )
 
         return memories
 
