@@ -128,16 +128,39 @@ export function AnalysisPanel({
                     }
                 });
 
-                return displayItems.map((action, i) => {
-                     if (action) {
-                         // Use action_start and action_end from the log entry
-                         const startNum = action.action_start;
-                         const endNum = action.action_end;
+                // Calculate sequential button numbers
+                // Start from the first action in our display and count buttons
+                let buttonOffset = 1;
+                const numberedItems: Array<{action: any, startNum: number, endNum: number} | null> = [];
+                
+                // Traverse in display order (left to right = oldest to newest)
+                for (let i = 0; i < displayItems.length; i++) {
+                    const action = displayItems[i];
+                    if (action) {
+                        // Count buttons in this action group
+                        const rawText = action.text || action.message || "";
+                        const cleanText = rawText.replace("Action:", "").trim();
+                        const buttons = cleanText.split(";").filter((k: string) => k.trim()).length;
+                        const buttonCount = buttons > 0 ? buttons : 1;
+                        
+                        const startNum = buttonOffset;
+                        const endNum = buttonOffset + buttonCount - 1;
+                        buttonOffset = endNum + 1;
+                        
+                        numberedItems.push({ action, startNum, endNum });
+                    } else {
+                        numberedItems.push(null);
+                    }
+                }
+
+                return numberedItems.map((item, i) => {
+                     if (item) {
+                         const { action, startNum, endNum } = item;
                          
                          // Format as range if multiple buttons, single number otherwise
-                         const numberLabel = (startNum && endNum && startNum !== endNum)
-                           ? `#${startNum} - #${endNum}`
-                           : `#${endNum || startNum || totalActions}`;
+                         const numberLabel = (startNum !== endNum)
+                           ? `#${startNum}-${endNum}`
+                           : `#${startNum}`;
                          
                          const rawText = action.text || action.message || "";
                          const cleanText = rawText.replace("Action:", "").trim();

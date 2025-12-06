@@ -674,7 +674,8 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         # Extract analysis section
         match = ANALYSIS_RE.search(full_output)
         if match:
-            analysis_text = match.group(1).strip()
+            # Include the full tags so frontend can parse the JSON structure
+            analysis_text = f"<game_analysis>{match.group(1).strip()}</game_analysis>"
         else:
             # Fallback: if no game_analysis tags, try to extract content before action JSON
             lines = full_output.strip().split('\n')

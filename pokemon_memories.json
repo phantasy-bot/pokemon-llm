@@ -1,5 +1,23 @@
 {
-  "spatial": [],
+  "spatial": [
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: {\n  \"current_state\": {\n    \"location\": \"Menu Screen\",\n    \"facing\": \"unknown\",\n    \"screen_content\":",
+      "coordinates": [
+        2,
+        3
+      ],
+      "timestamp": "2025-12-05T19:43:49.738294",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "{\n  \"current_state\": {\n    \"location\": \"Menu Screen\",\n    \"facing\": \"unknown\",\n    \"screen_content\":"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    }
+  ],
   "gameplay": [],
   "narrative": [],
   "tactical": []
