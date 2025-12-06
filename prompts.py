@@ -202,6 +202,7 @@ Use this structure in <game_analysis> tags:
 1. CURRENT STATE
    - Location: [map_name] at [x,y] (Game Coordinates)
    - Visuals: [describe visible objects using SCREEN coordinates]
+   - **PLAYER IDENTITY CHECK**: If vision mentions 'NPC in red clothing' at screen center, that is YOU (the player RED), NOT an NPC!
    - Facing: [direction]
 
 2. MINIMAP ANALYSIS
