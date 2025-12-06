@@ -128,24 +128,38 @@ export function AnalysisPanel({
                     }
                 });
 
-                // Calculate sequential button numbers
-                // Start from the first action in our display and count buttons
-                let buttonOffset = 1;
+                // Calculate action numbers based on totalActions
+                // The newest action (rightmost) ends at totalActions
+                // Count backwards from there
+                
+                // First, count total buttons in all displayed actions (newest to oldest)
+                const buttonCounts: number[] = [];
+                for (let i = 0; i < displayItems.length; i++) {
+                    const action = displayItems[i];
+                    if (action) {
+                        const rawText = action.text || action.message || "";
+                        const cleanText = rawText.replace("Action:", "").trim();
+                        const buttons = cleanText.split(";").filter((k: string) => k.trim()).length;
+                        buttonCounts.push(buttons > 0 ? buttons : 1);
+                    } else {
+                        buttonCounts.push(0);
+                    }
+                }
+                
+                // Calculate starting number - work backwards from totalActions
+                const totalButtonsDisplayed = buttonCounts.reduce((a, b) => a + b, 0);
+                let currentNum = totalActions - totalButtonsDisplayed + 1;
+                
                 const numberedItems: Array<{action: any, startNum: number, endNum: number} | null> = [];
                 
                 // Traverse in display order (left to right = oldest to newest)
                 for (let i = 0; i < displayItems.length; i++) {
                     const action = displayItems[i];
                     if (action) {
-                        // Count buttons in this action group
-                        const rawText = action.text || action.message || "";
-                        const cleanText = rawText.replace("Action:", "").trim();
-                        const buttons = cleanText.split(";").filter((k: string) => k.trim()).length;
-                        const buttonCount = buttons > 0 ? buttons : 1;
-                        
-                        const startNum = buttonOffset;
-                        const endNum = buttonOffset + buttonCount - 1;
-                        buttonOffset = endNum + 1;
+                        const buttonCount = buttonCounts[i];
+                        const startNum = currentNum;
+                        const endNum = currentNum + buttonCount - 1;
+                        currentNum = endNum + 1;
                         
                         numberedItems.push({ action, startNum, endNum });
                     } else {
