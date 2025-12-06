@@ -9,5 +9,6 @@ export default defineConfig({
       allow: [".."], // Allow serving files from parent directory (project root)
     },
   },
-  publicDir: "../", // Set public directory to project root for latest.png access
+  // Use default publicDir ("public") for static assets like badges and sponsors
+  // Access project root files via relative paths from fs.allow
 });
