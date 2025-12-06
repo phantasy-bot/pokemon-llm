@@ -1190,11 +1190,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
             # Extract memories from LLM response and vision analysis
             # CRITICAL FIX: Use current_mGBA_state which has map_name and position keys
-            extracted_memories = memory_manager.extract_memories_from_response(
-                analysis_text=analysis_text,
-                game_state=current_mGBA_state,  # Fixed: was 'state' which has different keys
-                vision_analysis=vision_analysis_for_ui
-            )
+            # Also guard against None analysis_text (occurs when vision fails)
+            extracted_memories = []
+            if analysis_text:
+                extracted_memories = memory_manager.extract_memories_from_response(
+                    analysis_text=analysis_text,
+                    game_state=current_mGBA_state,  # Fixed: was 'state' which has different keys
+                    vision_analysis=vision_analysis_for_ui
+                )
 
             if extracted_memories:
                 log.info(f"📝 Extracted {len(extracted_memories)} memories from LLM response")
