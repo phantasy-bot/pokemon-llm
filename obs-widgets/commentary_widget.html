@@ -18,108 +18,42 @@
         }
 
         .widget-container {
-            display: flex;
-            align-items: flex-end;
-            gap: 12px;
-            padding: 20px;
+            padding: 16px 20px;
             max-width: 600px;
         }
 
-        .character {
-            flex-shrink: 0;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            border: 4px solid #fff;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        .speech-bubble {
-            position: relative;
-            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 20px;
-            padding: 16px 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            max-width: 450px;
-            min-height: 60px;
+        .commentary-text {
+            color: #ffffff;
+            font-size: 20px;
+            line-height: 1.5;
+            font-weight: 600;
+            text-shadow: 
+                2px 2px 4px rgba(0,0,0,0.8),
+                -1px -1px 2px rgba(0,0,0,0.5);
             animation: fadeIn 0.3s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .speech-bubble::before {
-            content: '';
-            position: absolute;
-            left: -12px;
-            bottom: 20px;
-            border-width: 10px;
-            border-style: solid;
-            border-color: transparent #ffffff transparent transparent;
-            filter: drop-shadow(-3px 2px 3px rgba(0,0,0,0.1));
-        }
-
-        .commentary-text {
-            color: #2d3436;
-            font-size: 18px;
-            line-height: 1.5;
-            font-weight: 500;
-        }
-
         .commentary-text.empty {
-            color: #b2bec3;
+            color: rgba(255,255,255,0.5);
             font-style: italic;
         }
 
-        .typing-indicator {
+        /* Hidden connection status - uncomment to show */
+        .status-dot {
             display: none;
-        }
-
-        .typing-indicator.active {
-            display: inline-flex;
-            gap: 4px;
-            padding: 8px 0;
-        }
-
-        .typing-indicator span {
+            /* position: fixed;
+            top: 5px;
+            right: 5px;
             width: 8px;
             height: 8px;
-            background: #636e72;
-            border-radius: 50%;
-            animation: typing 1.4s infinite ease-in-out;
-        }
-
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-8px); }
-        }
-
-        /* Connection status */
-        .status-dot {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 10px;
-            height: 10px;
             border-radius: 50%;
             background: #e74c3c;
-            transition: background 0.3s;
+            transition: background 0.3s; */
         }
 
         .status-dot.connected {
@@ -131,19 +65,12 @@
     <div class="status-dot" id="statusDot"></div>
     
     <div class="widget-container">
-        <div class="character">👧</div>
-        <div class="speech-bubble">
-            <div class="typing-indicator" id="typingIndicator">
-                <span></span><span></span><span></span>
-            </div>
-            <p class="commentary-text" id="commentaryText">Waiting for Lass...</p>
-        </div>
+        <p class="commentary-text" id="commentaryText"></p>
     </div>
 
     <script>
         const WS_URL = 'ws://localhost:8765';
         const commentaryText = document.getElementById('commentaryText');
-        const typingIndicator = document.getElementById('typingIndicator');
         const statusDot = document.getElementById('statusDot');
 
         let ws = null;
@@ -154,7 +81,6 @@
             if (!text) return null;
             
             // Look for COMMENTARY section (section 9 in the analysis)
-            // Pattern: "9. COMMENTARY" or "COMMENTARY" followed by content
             const patterns = [
                 /(?:9\.|8\.)\s*COMMENTARY[:\s]*[-–]\s*(.+?)(?=\n\d+\.|$)/is,
                 /COMMENTARY[:\s]*[-–]\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
@@ -182,19 +108,12 @@
                 lastCommentary = text;
                 commentaryText.classList.remove('empty');
                 commentaryText.textContent = text;
-                typingIndicator.classList.remove('active');
                 
                 // Re-trigger animation
-                const bubble = document.querySelector('.speech-bubble');
-                bubble.style.animation = 'none';
-                bubble.offsetHeight; // Trigger reflow
-                bubble.style.animation = 'fadeIn 0.3s ease-out';
+                commentaryText.style.animation = 'none';
+                commentaryText.offsetHeight; // Trigger reflow
+                commentaryText.style.animation = 'fadeIn 0.3s ease-out';
             }
-        }
-
-        function showTyping() {
-            typingIndicator.classList.add('active');
-            commentaryText.textContent = '';
         }
 
         function connect() {
@@ -210,11 +129,6 @@
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    
-                    // Check for processingStatus (typing indicator)
-                    if (data.processingStatus) {
-                        showTyping();
-                    }
                     
                     // Check for response_log (contains analysis with commentary)
                     if (data.response_log && data.response_log.text) {
