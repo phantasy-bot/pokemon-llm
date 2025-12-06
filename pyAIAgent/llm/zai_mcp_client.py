@@ -221,6 +221,63 @@ class ZAIMCPClient:
         self._request_id_counter += 1
         return self._request_id_counter
 
+    def _read_response_with_id_match(self, expected_id: int, timeout: float = 30.0) -> Optional[dict]:
+        """
+        Read responses from MCP server until we get one with the matching ID.
+        This drains any stale responses that may be buffered from previous cycles.
+        
+        Args:
+            expected_id: The request ID we're looking for
+            timeout: Maximum time to wait for matching response
+            
+        Returns:
+            The response dict if found, None if timeout or error
+        """
+        import select
+        import time as time_module
+        
+        start_time = time_module.time()
+        stale_count = 0
+        
+        while True:
+            elapsed = time_module.time() - start_time
+            remaining_timeout = timeout - elapsed
+            
+            if remaining_timeout <= 0:
+                log.error(f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses")
+                return None
+            
+            # Wait for data with remaining timeout
+            if hasattr(select, 'select'):
+                ready, _, _ = select.select([self.mcp_process.stdout], [], [], min(remaining_timeout, 5.0))
+                if not ready:
+                    if remaining_timeout <= 5.0:
+                        log.error(f"Timeout waiting for response id={expected_id}")
+                        return None
+                    continue  # Try again with remaining timeout
+            
+            response_line = self.mcp_process.stdout.readline()
+            if not response_line:
+                log.error("No response from MCP server (empty readline)")
+                return None
+            
+            try:
+                response_data = json.loads(response_line.decode())
+                response_id = response_data.get('id')
+                
+                if response_id == expected_id:
+                    if stale_count > 0:
+                        log.info(f"✅ Found matching response id={expected_id} after draining {stale_count} stale responses")
+                    return response_data
+                else:
+                    stale_count += 1
+                    log.warning(f"⏭️ Draining stale response id={response_id} (looking for id={expected_id}, drained {stale_count} so far)")
+                    # Continue loop to read next response
+                    
+            except json.JSONDecodeError as e:
+                log.error(f"Failed to parse MCP response: {e}")
+                return None
+
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
         CRITICAL: NEW MANDATORY RETRY SYSTEM - Agent will NOT continue without vision
@@ -330,36 +387,19 @@ class ZAIMCPClient:
             self.mcp_process.stdin.write(list_tools_json.encode())
             self.mcp_process.stdin.flush()
 
-            # Read tools list response
-            import time
-            import select
-
-            if hasattr(select, 'select'):
-                ready, _, _ = select.select([self.mcp_process.stdout], [], [], 10.0)
-                if not ready:
-                    log.error("Timeout waiting for tools list")
-                    return None
-
-            tools_response = self.mcp_process.stdout.readline()
-            if tools_response:
-                tools_data = json.loads(tools_response.decode())
+            # Read tools list response, draining any stale responses
+            tools_data = self._read_response_with_id_match(tools_list_id, timeout=15.0)
+            if tools_data is None:
+                log.error("Failed to get tools list response")
+                return None
                 
-                # CRITICAL FIX: Validate response ID matches our request
-                response_id = tools_data.get('id')
-                if response_id != tools_list_id:
-                    log.error(f"RESPONSE ID MISMATCH! Expected id={tools_list_id}, got id={response_id}. This indicates out-of-order responses.")
-                    log.error(f"Discarding mismatched response and retrying...")
-                    return None
-                
-                log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
+            log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
 
-                if 'result' in tools_data and 'tools' in tools_data['result']:
-                    available_tools = tools_data['result']['tools']
-                    log.info(f"Found {len(available_tools)} available tools")
-                    for tool in available_tools:
-                        log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
-            else:
-                log.error("No response for tools list")
+            if 'result' in tools_data and 'tools' in tools_data['result']:
+                available_tools = tools_data['result']['tools']
+                log.info(f"Found {len(available_tools)} available tools")
+                for tool in available_tools:
+                    log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
 
             # Use the correct tool name and parameters from the schema
             tool_name = "analyze_image"
@@ -389,42 +429,18 @@ class ZAIMCPClient:
             self.mcp_process.stdin.write(request_json.encode())
             self.mcp_process.stdin.flush()
 
-                # Read response with timeout using sync approach since process was started with Popen
-            try:
-                log.info(f"Waiting for MCP server response for {tool_name}...")
-
-                # Use select for timeout on subprocess stdout
-                if hasattr(select, 'select'):
-                    ready, _, _ = select.select([self.mcp_process.stdout], [], [], 30.0)
-                    if not ready:
-                        log.error(f"MCP server response timeout for {tool_name}")
-                        return None
-
-                response_line = self.mcp_process.stdout.readline()
-                if not response_line:
-                    log.error(f"No response from MCP server for {tool_name}")
-                    # Check if server is still running
-                    if self.mcp_process.poll() is not None:
-                        log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
-                        # Read stderr to see what went wrong
-                        if self.mcp_process.stderr:
-                            stderr_output = self.mcp_process.stderr.read().decode()
-                            log.error(f"MCP server stderr: {stderr_output}")
-                    return None
-
-                log.info(f"Raw MCP response for {tool_name}: {response_line.decode().strip()}")
-                response_data = json.loads(response_line.decode())
-                
-                # CRITICAL FIX: Validate response ID matches our request
-                response_id = response_data.get('id')
-                if response_id != analyze_request_id:
-                    log.error(f"RESPONSE ID MISMATCH for analysis! Expected id={analyze_request_id}, got id={response_id}")
-                    log.error(f"Discarding mismatched response to prevent desync...")
-                    return None
-                    
-            except Exception as read_error:
-                log.error(f"MCP server communication error for {tool_name}: {read_error}")
+            # Read response, draining any stale responses
+            log.info(f"Waiting for MCP server response for {tool_name}...")
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=30.0)
+            
+            if response_data is None:
+                log.error(f"Failed to get {tool_name} response")
+                # Check if server is still running
+                if self.mcp_process.poll() is not None:
+                    log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
                 return None
+                
+            log.info(f"Got MCP response for {tool_name}: id={response_data.get('id')}")
 
             if 'result' in response_data:
                 result = response_data['result']
