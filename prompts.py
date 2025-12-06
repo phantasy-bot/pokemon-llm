@@ -153,15 +153,24 @@ def get_base_prompt() -> str:
 - Chain with semicolons: U;U;R;A;
 - MAX 4 ACTIONS PER TURN - verify position between moves
 
-## COORDINATE SYSTEM
-- Screen grid: 10x9 cells, [0,0] = top-left, YOU are always at [4,4]
-- Movement: U decreases y, D increases y, L decreases x, R increases x
+## COORDINATE SYSTEMS
+1. **SCREEN GRID (Visuals)**:
+   - Size: 10x9 tiles (visible screen area)
+   - Player Position: [4,4] (Center of screen)
+   - Use for: Object identification, text location, nearby interactions
 
-## MINIMAP FORMAT
-Semicolon-separated rows: B=blocked, W=walkable, O=exit/door/stairs, P=player
-Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
-- Walk INTO orange O tiles to use doors/exits (no A press needed)
-- Must be DIRECTLY on O tile, not diagonal
+2. **MINIMAP GRID (Navigation)**:
+   - Size: 21x21 cells (larger area around player)
+   - Player Position: [10,10] (Center of minimap)
+   - Use for: Pathfinding, locating 'O' exits/entrances
+   - Symbols: P=Player, O=Entrance/Exit, W=Walkable, B=Blocked
+
+## MINIMAP FORMAT (Raw String)
+- The raw minimap string represents the 21x21 Minimap Grid.
+- Semicolon-separated rows (Row 0 to Row 20).
+- Example: "BBB...;...WPW...;...OWW..."
+- **CRITICAL**: 'O' coordinates in the analysis MUST use the [10,10] center reference.
+- Walk INTO orange O tiles to use doors/exits (no A press needed).
 
 ## INTERACTION RULES
 - NPCs/signs: Move orthogonally adjacent, face them, press A
@@ -186,16 +195,16 @@ Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
 Use this structure in <game_analysis> tags:
 
 1. CURRENT STATE
-   - Location: [map_name] at position [x,y]
+   - Location: [map_name] at [x,y] (Game Coordinates)
+   - Visuals: [describe visible objects using SCREEN coordinates]
    - Facing: [direction]
-   - Screen shows: [key elements visible]
-   - Nearby objects: [doors, NPCs, items]
 
 2. MINIMAP ANALYSIS
-   - My Position: [4,4] (Center) - Symbol 'P'
-   - Visible Exits ('O'): List coordinates relative to [4,4]
+   - Raw Minimap: [Insert the exact minimap_2d string from input here]
+   - My Position: [10,10] (Minimap Center)
+   - Visible Exits ('O'): List exact [x,y] coordinates on the 21x21 grid
    - Immediate surroundings: NORTH/SOUTH/EAST/WEST [Blocked/Walkable]
-   - Path to Goal: [Describe path using 'W' cells]
+   - Path to Goal: [Describe path relative to [10,10]]
 
 3. STUCK & BACKTRACK CHECK
    - Am I in same position as last turn? [yes/no]
