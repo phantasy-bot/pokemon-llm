@@ -110,7 +110,7 @@ def get_location(sock) -> tuple[int, int, int, str] | None:
 def prep_llm(sock) -> dict:
     _flush_socket(sock)
     capture(sock, "latest.png")
-    time.sleep(0.1)
+    time.sleep(0.5) # Increased wait to ensure FS sync
     _flush_socket(sock)
     loc = get_location(sock)
     mid = None

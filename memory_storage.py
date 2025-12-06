@@ -10,7 +10,12 @@ import os
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+import logging
 from dataclasses import dataclass, asdict
+
+# Setup logger
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("memory_storage")
 
 
 @dataclass
@@ -401,27 +406,32 @@ class MemoryManager:
         )
         extracted_memories.extend(gameplay_memories)
         
-        # FALLBACK: If no memories extracted, create a simple location memory
-        # This ensures the UI always shows something
-        if not extracted_memories and current_location and current_location != 'unknown':
-            # Create a simple "visited location" memory
-            summary = analysis_text[:100] if analysis_text else "Exploring area..."
-            fallback_memory = SpatialMemory(
-                type="spatial",
-                location=current_location,
-                description=f"Visited {current_location}: {summary}",
-                coordinates=list(current_position) if current_position else [],
-                destination=None,
-                landmark_type="exploration",
-                timestamp=datetime.now().isoformat(),
-                importance=1.0,
-                context={"source": "fallback", "summary": summary}
-            )
-            extracted_memories.append(fallback_memory)
-
-        # Save all extracted memories
+        # NOTE: Fallback memories disabled - they create too many duplicates
+        # Only record significant events like verified transitions, battles, items
+        
+        # Deduplicate before saving - check if similar memory already exists
         for memory in extracted_memories:
-            self.memories[memory.type].append(memory)
+            # Check for duplicates
+            is_duplicate = False
+            existing_memories = self.memories.get(memory.type, [])
+            
+            for existing in existing_memories[-20:]:  # Only check recent memories
+                # Consider duplicate if same location, same landmark_type/event_type, and similar coordinates
+                if hasattr(memory, 'landmark_type') and hasattr(existing, 'landmark_type'):
+                    if (existing.location == memory.location and 
+                        existing.landmark_type == memory.landmark_type and
+                        existing.landmark_type == "exploration"):  # Only dedupe exploration
+                        is_duplicate = True
+                        break
+                elif hasattr(memory, 'event_type') and hasattr(existing, 'event_type'):
+                    if (existing.location == memory.location and 
+                        existing.event_type == memory.event_type and
+                        existing.description == memory.description):
+                        is_duplicate = True
+                        break
+            
+            if not is_duplicate:
+                self.memories[memory.type].append(memory)
 
         if extracted_memories:
             self._save_memories()
@@ -591,63 +601,70 @@ class MemoryManager:
         """Extract gameplay memories from analysis text"""
 
         memories = []
+        
+        # Known Pokemon items (must match these specifically)
+        KNOWN_ITEMS = {
+            "potion", "super_potion", "hyper_potion", "max_potion", "revive", "max_revive",
+            "pokeball", "great_ball", "ultra_ball", "master_ball", "antidote", "paralyze_heal",
+            "awakening", "burn_heal", "ice_heal", "full_heal", "ether", "max_ether", "elixir",
+            "max_elixir", "escape_rope", "repel", "super_repel", "max_repel", "rare_candy",
+            "pp_up", "tm", "hm", "moon_stone", "fire_stone", "thunder_stone", "water_stone",
+            "leaf_stone", "nugget", "pearl", "big_pearl", "stardust", "star_piece",
+            "bicycle", "town_map", "pokedex", "old_rod", "good_rod", "super_rod",
+        }
+        
+        # Words that should NEVER be extracted as items
+        ITEM_STOP_WORDS = {
+            "stuck", "it", "a", "the", "this", "that", "here", "there", "up", "down",
+            "left", "right", "one", "two", "nothing", "something", "anything", "position",
+            "movement", "door", "exit", "wall", "path", "route", "s", "t", "d", "m",
+            "access", "control", "ability", "permission", "victory", "defeat", "battle",
+        }
 
-        # Battle patterns
+        # Battle patterns - only if very clear
         battle_patterns = [
-            r'(battle|fight|combat).*?(won|lost|victory|defeat)',
-            r'(defeated|beat)\s+(\w+)',
-            r'(wild|trainer).*?(\w+)',
-            r'pokemon.*?(\w+).*?(fainted|defeated)'
+            r'(defeated|beat)\s+(?:wild\s+)?([A-Z][a-z]+)(?:\s|,|\.)',  # "defeated Rattata"
+            r'won\s+(?:the\s+)?battle\s+against\s+([A-Z][a-z]+)',  # "won battle against Trainer"
         ]
 
-        # Item patterns
-        item_patterns = [
-            r'(found|obtained|got|received)\s+(\w+)',
-            r'item.*?(\w+)',
-            r'(potion|pokeball|berry|tm|hm)'
-        ]
-
-        # Level up patterns
-        level_patterns = [
-            r'level\s+up',
-            r'reached\s+level\s+(\d+)',
-            r'(\w+)\s+leveled\s+up'
-        ]
-
-        # Extract battle memories
+        # Extract clear battle memories only
         for pattern in battle_patterns:
-            matches = re.finditer(pattern, analysis_text, re.IGNORECASE)
-
+            matches = re.finditer(pattern, analysis_text)
             for match in matches:
-                outcome = match.group(2) if len(match.groups()) >= 2 else match.group(1)
-                pokemon_name = match.group(1) if len(match.groups()) >= 2 else None
+                pokemon_name = match.group(2) if len(match.groups()) >= 2 else match.group(1)
+                if pokemon_name and len(pokemon_name) > 2:
+                    memory = GameplayMemory(
+                        type="gameplay",
+                        location=current_location,
+                        description=f"Defeated {pokemon_name}",
+                        event_type="battle",
+                        outcome="victory",
+                        coordinates=current_position,
+                        pokemon_involved=[pokemon_name],
+                        timestamp=datetime.now().isoformat(),
+                        importance=2.0,
+                        context={"source": "analysis_extraction"}
+                    )
+                    memories.append(memory)
 
+        # Item patterns - very strict, only match known items
+        item_pattern = r'(?:found|obtained|got|received|picked\s+up)\s+(?:a\s+)?(\w+(?:\s+\w+)?)'
+        matches = re.finditer(item_pattern, analysis_text, re.IGNORECASE)
+        
+        for match in matches:
+            item_name = match.group(1).lower().strip()
+            
+            # Skip short words and stop words
+            if len(item_name) < 3 or item_name in ITEM_STOP_WORDS:
+                continue
+            
+            # Only record if it looks like a real item
+            item_normalized = item_name.replace(" ", "_").replace("-", "_")
+            if item_normalized in KNOWN_ITEMS or any(known in item_name for known in ["potion", "ball", "tm", "hm"]):
                 memory = GameplayMemory(
                     type="gameplay",
                     location=current_location,
-                    description=f"Battle outcome: {outcome}",
-                    event_type="battle",
-                    outcome=outcome,
-                    coordinates=current_position,
-                    pokemon_involved=[pokemon_name] if pokemon_name else None,
-                    timestamp=datetime.now().isoformat(),
-                    importance=2.0,
-                    context={"source": "analysis_extraction"}
-                )
-
-                memories.append(memory)
-
-        # Extract item memories
-        for pattern in item_patterns:
-            matches = re.finditer(pattern, analysis_text, re.IGNORECASE)
-
-            for match in matches:
-                item_name = match.group(2) if len(match.groups()) >= 2 else match.group(1)
-
-                memory = GameplayMemory(
-                    type="gameplay",
-                    location=current_location,
-                    description=f"Found item: {item_name}",
+                    description=f"Found {item_name.title()}",
                     event_type="item_found",
                     outcome="obtained",
                     coordinates=current_position,
@@ -655,7 +672,6 @@ class MemoryManager:
                     importance=1.5,
                     context={"source": "analysis_extraction", "item": item_name}
                 )
-
                 memories.append(memory)
 
         return memories

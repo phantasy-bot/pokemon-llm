@@ -93,16 +93,19 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
-  padding: 8px;
+  gap: 8px;
+  padding: 12px;
   margin-top: auto; /* Push to bottom */
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s ease;
+  z-index: 10;
+  min-height: 40px;
 }
 
 .analysis-panel__thinking-bottom.active {
   opacity: 1;
+  color: #FFFFFF; /* Ensure text is visible light color */
 }
 
 /* Legacy thinking overlay - keep for compatibility */
@@ -343,13 +346,19 @@
   position: relative;
 }
 
-/* Updated memory text size */
+/* Updated memory text size - single line with truncation */
 .analysis-panel__memory-text {
   font-family: var(--font-mono);
   font-size: 10px; /* Reduced from 11px */
   line-height: 1.4;
   color: var(--text-secondary);
   margin: 0;
+  
+  /* Single line truncation */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .analysis-panel__section-label {

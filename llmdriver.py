@@ -235,7 +235,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
     if not isinstance(payload, dict):
         log.error(f"Invalid state_data structure: {type(state_data)}")
-        return None, None, False
+        return None, None, None, None
 
     # CRITICAL: Handle Z.AI vision processing with robust retry and backoff mechanism
     vision_analysis = ""
@@ -291,13 +291,15 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- Player sprite is ALWAYS the red human character with a hat in center of overworld screens\n"
                     "- If text is unclear say 'unreadable'. DO NOT GUESS TEXT.\n"
                     "- Text must be EXACT pixel-for-pixel match. If partially cut off, do not infer words.\n"
-                    "- Empty fields should be empty strings\n\n"
+                    "- Empty fields should be empty strings\n"
+                    "- **CRITICAL**: Do NOT report text if there is no visible text box. Verify white box with black borders.\n"
+                    "- **CRITICAL**: Do NOT hallucinate 'Welcome to Pokemon Center' unless you clearly see it.\n\n"
                     "SCREEN TYPES:\n"
                     "- title: Pokemon logo, copyright text, no gameplay\n"
                     "- overworld: player sprite visible, walking around\n"
                     "- battle: HP bars, pokemon sprites, move menu\n"
                     "- menu: START menu, item list, pokemon list\n"
-                    "- dialogue: text box at bottom, NPC talking\n"
+                    "- dialogue: REQUIRE visible text box at bottom. If no box, it is NOT dialogue.\n"
                     "- name_entry: keyboard grid or preset name list"
                 )
 
@@ -1071,7 +1073,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 "id": log_id_counter,
                 "text": vision_analysis_for_ui,
                 "is_vision": True,
-                "timestamp": cycle_timestamp
+                "timestamp": cycle_timestamp,
+                "screenshot_base64": b64_ss  # Explicitly attach the image used for this analysis
             }
             log_entries.append(vision_log)
             log.info(f"📸 Vision log created: {len(vision_analysis_for_ui)} chars")
