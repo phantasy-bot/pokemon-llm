@@ -95,6 +95,9 @@
                     commentary = commentary.replace(/^[-–•]\s*/, '');
                     // Remove any trailing section markers
                     commentary = commentary.replace(/\n.*$/, '');
+                    // Remove any XML-style tags (like </game_analysis>)
+                    commentary = commentary.replace(/<\/?[^>]+>/g, '');
+                    commentary = commentary.trim();
                     if (commentary.length > 5) {
                         return commentary;
                     }
