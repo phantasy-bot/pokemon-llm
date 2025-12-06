@@ -37,6 +37,9 @@ class ZAIMCPClient:
         self.phase_delays = [0, 30, 60]  # seconds
         self.last_retry_time = 0
         self.vision_mandatory = True  # CRITICAL: Vision is required for operation
+        
+        # CRITICAL FIX: Use unique incrementing request IDs to prevent response mismatch
+        self._request_id_counter = 0
 
         log.info("Z.AI MCP Client initialized with MANDATORY vision retry system")
         log.info("Retry strategy: 3 immediate attempts, then 3 attempts after 30s, then 3 attempts after 60s")
@@ -213,6 +216,11 @@ class ZAIMCPClient:
         self.retries_in_current_phase = 0
         self.last_retry_time = 0
 
+    def _get_next_request_id(self) -> int:
+        """Get the next unique request ID for MCP communication"""
+        self._request_id_counter += 1
+        return self._request_id_counter
+
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
         CRITICAL: NEW MANDATORY RETRY SYSTEM - Agent will NOT continue without vision
@@ -304,10 +312,13 @@ class ZAIMCPClient:
             return None
 
         try:
+            # CRITICAL FIX: Use unique request IDs to prevent cross-cycle response mismatch
+            tools_list_id = self._get_next_request_id()
+            
             # First, try to list available tools
             list_tools_request = {
                 "jsonrpc": "2.0",
-                "id": 1,
+                "id": tools_list_id,
                 "method": "tools/list",
                 "params": {}
             }
@@ -332,6 +343,14 @@ class ZAIMCPClient:
             tools_response = self.mcp_process.stdout.readline()
             if tools_response:
                 tools_data = json.loads(tools_response.decode())
+                
+                # CRITICAL FIX: Validate response ID matches our request
+                response_id = tools_data.get('id')
+                if response_id != tools_list_id:
+                    log.error(f"RESPONSE ID MISMATCH! Expected id={tools_list_id}, got id={response_id}. This indicates out-of-order responses.")
+                    log.error(f"Discarding mismatched response and retrying...")
+                    return None
+                
                 log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
 
                 if 'result' in tools_data and 'tools' in tools_data['result']:
@@ -346,10 +365,13 @@ class ZAIMCPClient:
             tool_name = "analyze_image"
             log.info(f"Using tool: {tool_name}")
 
+            # CRITICAL FIX: Use unique request ID for analysis request
+            analyze_request_id = self._get_next_request_id()
+            
             # Create MCP request for image analysis with correct schema
             mcp_request = {
                 "jsonrpc": "2.0",
-                "id": 2,
+                "id": analyze_request_id,
                 "method": "tools/call",
                 "params": {
                     "name": tool_name,
@@ -392,6 +414,14 @@ class ZAIMCPClient:
 
                 log.info(f"Raw MCP response for {tool_name}: {response_line.decode().strip()}")
                 response_data = json.loads(response_line.decode())
+                
+                # CRITICAL FIX: Validate response ID matches our request
+                response_id = response_data.get('id')
+                if response_id != analyze_request_id:
+                    log.error(f"RESPONSE ID MISMATCH for analysis! Expected id={analyze_request_id}, got id={response_id}")
+                    log.error(f"Discarding mismatched response to prevent desync...")
+                    return None
+                    
             except Exception as read_error:
                 log.error(f"MCP server communication error for {tool_name}: {read_error}")
                 return None

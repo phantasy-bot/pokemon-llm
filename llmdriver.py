@@ -301,7 +301,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- battle: HP bars, pokemon sprites, move menu\n"
                     "- menu: START menu, item list, pokemon list\n"
                     "- dialogue: REQUIRE visible text box at bottom. If no box, it is NOT dialogue.\n"
-                    "- name_entry: keyboard grid or preset name list"
+                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters."
                 )
 
               # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
@@ -977,8 +977,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
         # Handle image processing based on provider
         if CURRENT_MODE == "ZAI" and zai_vision_client:
-            # For Z.AI, use the ANALYSIS path for MCP processing
-            llm_input_state["screenshot_path"] = ANALYSIS_IMAGE_PATH
+            # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
+            # The minimap context is no longer sent to vision - user prefers clean image
+            llm_input_state["screenshot_path"] = UI_IMAGE_PATH
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 llm_input_state["minimap_path"] = MINIMAP_PATH
 
