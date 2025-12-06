@@ -41,23 +41,23 @@ Inside <game_analysis> tags, you must provide a valid JSON object with the follo
 Do NOT use hyphens or bullet points. Use JSON arrays.
 
 <game_analysis>
-{
-  "current_state": {
+{{
+  "current_state": {{
     "location": "Map Name at [x,y]",
     "facing": "direction",
     "screen_content": "Description of what is visible"
-  },
-  "stuck_check": {
+  }},
+  "stuck_check": {{
     "stuck": false,
     "reason": "Moved successfully"
-  },
-  "goal_and_plan": {
+  }},
+  "goal_and_plan": {{
     "primary_goal": "Goal description",
     "path": ["Step 1", "Step 2"],
     "fallback": "Plan B if blocked"
-  },
+  }},
   "reasoning": "Brief explanation of chosen action"
-}
+}}
 </game_analysis>
 
 {{"action":"U;R;A;"}}
