@@ -224,6 +224,7 @@ export function AnalysisPanel({
             <div className="analysis-panel__vision-col-screenshot">
               <VisionScreenshot 
                 timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
+                base64Data={latestVisionEntry?.screenshot_base64}
               />
             </div>
 

@@ -3,6 +3,7 @@ import json
 import sys
 import time
 import base64
+import shutil
 import copy
 import asyncio
 import datetime
@@ -305,7 +306,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
               # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
                 try:
-                    vision_result = zai_vision_client.analyze_image_sync(SAVED_SCREENSHOT_PATH, factual_prompt)
+                    # Use the snapshot path if available, otherwise fallback (though snapshot should always be there now)
+                    target_image_path = screenshot_path if screenshot_path else SAVED_SCREENSHOT_PATH
+                    vision_result = zai_vision_client.analyze_image_sync(target_image_path, factual_prompt)
 
                     # SUCCESS: Vision analysis completed successfully (this should always happen now)
                     log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
@@ -822,6 +825,31 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
                 continue
             log.info("Received game state from mGBA.")
+            
+            # --- ATOMIC SNAPSHOT LOGIC ---
+            # Create a unique snapshot for this cycle to prevent race conditions (Vision vs UI sync)
+            os.makedirs("snapshots", exist_ok=True)
+            snapshot_path = f"snapshots/cycle_{current_cycle}.png"
+            # Ensure we are copying the fresh capture
+            try:
+                shutil.copyfile(SAVED_SCREENSHOT_PATH, snapshot_path)
+                SCREENSHOT_PATH = snapshot_path
+                log.info(f"🔒 Atomic snapshot locked: {snapshot_path}")
+                
+                # Cleanup previous cycle's snapshot to prevent disk bloat
+                prev_snapshot = f"snapshots/cycle_{current_cycle - 1}.png"
+                if os.path.exists(prev_snapshot):
+                    try:
+                        os.remove(prev_snapshot)
+                         # Also try to remove the combined version if it exists
+                        prev_combined = f"snapshots/cycle_{current_cycle - 1}_with_minimap.png"
+                        if os.path.exists(prev_combined):
+                            os.remove(prev_combined)
+                    except OSError:
+                        pass
+            except Exception as e:
+                log.error(f"Failed to create atomic snapshot: {e}. Falling back to global path.")
+                SCREENSHOT_PATH = SAVED_SCREENSHOT_PATH
         except socket.timeout:
              log.error("Socket timeout getting state from mGBA. Stopping loop.")
              break
@@ -912,7 +940,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         if ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
             try:
                 # Load images
-                ss_img = Image.open(SAVED_SCREENSHOT_PATH)
+                # VALIDATION: Use SCREENSHOT_PATH (the atomic snapshot) instead of global SAVED_SCREENSHOT_PATH
+                ss_img = Image.open(SCREENSHOT_PATH)
                 mm_img = Image.open(SAVED_MINIMAP_PATH)
 
                 # Resize minimap to match screenshot height
@@ -929,7 +958,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 combined.paste(mm_img, (ss_img.width, 0))
 
                 # Save combined image and override SCREENSHOT_PATH
-                combined_path = os.path.splitext(SAVED_SCREENSHOT_PATH)[0] + '_with_minimap.png'
+                # VALIDATION: Derive combined path from atomic snapshot path to keep it unique per cycle
+                combined_path = os.path.splitext(SCREENSHOT_PATH)[0] + '_with_minimap.png'
                 combined.save(combined_path)
                 SCREENSHOT_PATH = combined_path
 

@@ -3,6 +3,7 @@ import "./VisionScreenshot.css";
 
 interface VisionScreenshotProps {
   timestamp?: string;
+  base64Data?: string; // New prop for strict sync
   compact?: boolean;
   className?: string;
 }
@@ -13,6 +14,7 @@ const MAX_RETRIES = 3;
 
 export function VisionScreenshot({
   timestamp = "",
+  base64Data,
   compact = false,
   className = "",
 }: VisionScreenshotProps) {
@@ -31,6 +33,14 @@ export function VisionScreenshot({
 
   // Load screenshot with retry mechanism
   const loadScreenshot = (retryAttempt = 0) => {
+    if (base64Data) {
+      // PREFERRED: Use the strictly synchronized base64 data if available
+      setScreenshotSrc(`data:image/png;base64,${base64Data}`);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     const url = getScreenshotUrl();
     setScreenshotSrc(url);
     setIsLoading(true);
@@ -58,10 +68,10 @@ export function VisionScreenshot({
     img.src = url;
   };
 
-  // Load screenshot when component mounts or timestamp changes
+  // Load screenshot when component mounts or dependencies change
   useEffect(() => {
     loadScreenshot();
-  }, [timestamp]);
+  }, [timestamp, base64Data]);
 
   // NOTE: Screenshot now uses the timestamp from vision analysis
   // This ensures the displayed screenshot matches when the vision was analyzed

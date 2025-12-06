@@ -206,6 +206,8 @@ export interface LogEntry {
   action_start?: number;
   action_end?: number;
   button_count?: number;
+  // Strictly synchronized screenshot data
+  screenshot_base64?: string;
 }
 
 export interface PokemonLogEntry extends LogEntry {
