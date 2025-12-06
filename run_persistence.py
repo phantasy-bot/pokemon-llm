@@ -162,6 +162,22 @@ class RunPersistence:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_action_log_run ON action_log(run_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_runs_hash ON runs(save_state_hash)")
             
+            # Migrations for action_log table columns (for existing databases)
+            action_log_columns = [
+                ("screenshot_b64", "TEXT"),
+                ("llm_analysis", "TEXT"),
+                ("vision_analysis", "TEXT"),
+                ("position_json", "TEXT"),
+                ("map_name", "TEXT"),
+            ]
+            for col_name, col_type in action_log_columns:
+                try:
+                    cursor.execute(f"ALTER TABLE action_log ADD COLUMN {col_name} {col_type}")
+                    log.info(f"ℹ️ Migrated database: Added {col_name} column to action_log")
+                except sqlite3.OperationalError:
+                    # Column already exists
+                    pass
+            
             conn.commit()
             log.info(f"📁 Database initialized: {self.db_path}")
         finally:
