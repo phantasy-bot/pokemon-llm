@@ -230,6 +230,14 @@ Use this structure in <game_analysis> tags:
      * If you've entered the same building 2+ times without progress: BLACKLIST it, explore elsewhere
    - EXPLORATION PRIORITY: Go toward UNEXPLORED 'O' tiles, not familiar ones
    - If stuck: FORCE a completely different direction, try the opposite side of the map
+   
+   **STUCK RECOVERY - EXPLORATION FALLBACK**:
+   - If you're stuck or making no progress on your current goal:
+     * PIVOT TO EXPLORATION GOAL: "Let me increase my map exploration % to find new areas"
+     * Find and enter UNKNOWN exits ('O' tiles not in memory_context)
+     * Walk toward unexplored areas shown in exploration_context
+     * New areas often trigger story events, NPCs with hints, or paths to your goal
+   - Exploration is NEVER wasted - it reveals map connections and may unblock progress
 
 5. GOAL & PLAN
    - Immediate goal: [specific objective]
