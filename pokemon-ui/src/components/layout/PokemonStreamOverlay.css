@@ -215,7 +215,7 @@
 .pokemon-left-col {
   display: flex;
   flex-direction: column;
-  flex: 2; /* 2 parts of the space */
+  flex: 2; /* 40% approx with 2:1:2 ratio */
   padding: 0 var(--space-md); /* Horizontal padding only */
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -256,7 +256,7 @@
 .pokemon-goals {
   display: flex;
   flex-direction: column;
-  flex: 1; /* 1 part of the space */
+  flex: 1; /* 20% */
   padding: var(--space-md);
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
@@ -315,7 +315,7 @@
 .pokemon-right-col {
   display: flex;
   flex-direction: column;
-  flex: 3; /* 3 parts of the space */
+  flex: 2; /* 40% */
   padding: var(--space-md);
   background: var(--bg-panel);
   overflow-y: auto;
@@ -332,7 +332,7 @@
 .game-placeholder {
   background: var(--bg-input);
   border: 1px dashed var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 0; /* Removed rounded corners as requested */
   flex: 1;
   min-height: 400px; /* Increased from fixed 200px to allow full height */
   display: flex;
