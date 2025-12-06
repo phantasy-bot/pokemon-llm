@@ -301,7 +301,15 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- battle: HP bars, pokemon sprites, move menu\n"
                     "- menu: START menu, item list, pokemon list\n"
                     "- dialogue: REQUIRE visible text box at bottom. If no box, it is NOT dialogue.\n"
-                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters."
+                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters.\n"
+                    "\nNAME ENTRY KEYBOARD LAYOUT (if needed):\n"
+                    "Row 1: A B C D E F G H I\n"
+                    "Row 2: J K L M N O P Q R\n"
+                    "Row 3: S T U V W X Y Z (space)\n"
+                    "Row 4: x ( ) : ; [ ] PK MN\n"
+                    "Row 5: - ? ! (boy) (girl) / . , ED\n"
+                    "Row 6: (case toggle)\n"
+                    "PREFER selecting preset names like RED or BLUE over typing custom names."
                 )
 
               # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision

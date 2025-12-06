@@ -171,27 +171,32 @@
 }
 
 .badge {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(
-    135deg,
-    var(--bg-card) 0%,
-    var(--type-normal-bg) 100%
-  );
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  line-height: 1;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.badge.empty {
-  background: var(--bg-input);
-  border: 1px dashed var(--border-subtle);
-  opacity: 0.3;
-  font-size: 10px;
+.badge-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* Earned badges - full color */
+.badge.earned .badge-image {
+  filter: none;
+  opacity: 1;
+}
+
+/* Unearned badges - silhouette (grayscale + dark) */
+.badge.unearned .badge-image {
+  filter: grayscale(100%) brightness(0.3);
+  opacity: 0.5;
 }
 
 .title {
