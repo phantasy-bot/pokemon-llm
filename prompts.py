@@ -246,6 +246,9 @@ Use this structure in <game_analysis> tags:
 
 6. ACTION DECISION
    - Chosen action(s): **CHAIN 2-4 MOVES** (e.g., U;U;U; or D;R;R;A;)
+   - **DIALOGUE EXCEPTION**: If vision shows "dialogue" screen_type, use ONLY ONE action (A; or B;)
+     * During dialogue, pressing multiple buttons risks skipping important text or making wrong choices
+     * Single actions allow you to read and react to each text box
    - Why: [brief reasoning]
 
 8. EXPLORATION STATUS (Check "exploration_context" field)
