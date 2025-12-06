@@ -159,28 +159,7 @@ export function PokemonStreamOverlay({
           </div>
         </div>
 
-        {/* Center Column - Goals and Minimap */}
-        <div className="pokemon-goals">
-          <div className="goals-log">
-            <h3>Primary Goal</h3>
-            <p className="log-entry">{gameState.goals.primary}</p>
-            <h3>Secondary Goal</h3>
-            <p className="log-entry">{gameState.goals.secondary}</p>
-            <h3>Tertiary Goal</h3>
-            <p className="log-entry">{gameState.goals.tertiary}</p>
-            <h3>Other Notes</h3>
-            <p className="log-entry">{gameState.otherGoals}</p>
-          </div>
-          {/* Minimap Overlay */}
-          <Minimap
-            location={location}
-            visible={gameState.minimapVisible}
-            className="minimap-overlay"
-            timestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
-          />
-        </div>
-
-        {/* Right Column - Game Status, Game Feed and Team */}
+        {/* Center Column - Game Status, Game Feed and Team (was right) */}
         <div className="pokemon-right-col">
           <div className="status">
             <span>Game Status: {gameState.gameStatus}</span>
@@ -201,6 +180,27 @@ export function PokemonStreamOverlay({
           <div className="pokemon-team-section">
             <PokemonTeamBar pokemon={currentPokemon} />
           </div>
+        </div>
+
+        {/* Right Column - Goals and Minimap (was center) */}
+        <div className="pokemon-goals">
+          <div className="goals-log">
+            <h3>Primary Goal</h3>
+            <p className="log-entry">{gameState.goals.primary}</p>
+            <h3>Secondary Goal</h3>
+            <p className="log-entry">{gameState.goals.secondary}</p>
+            <h3>Tertiary Goal</h3>
+            <p className="log-entry">{gameState.goals.tertiary}</p>
+            <h3>Other Notes</h3>
+            <p className="log-entry">{gameState.otherGoals}</p>
+          </div>
+          {/* Minimap Overlay */}
+          <Minimap
+            location={location}
+            visible={gameState.minimapVisible}
+            className="minimap-overlay"
+            timestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
+          />
         </div>
       </div>
     </div>
