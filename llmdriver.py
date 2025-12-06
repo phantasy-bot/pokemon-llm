@@ -882,9 +882,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log.info(f"🔄 Restored chat history: {len(chat_history)} messages")
         log.info(f"🔄 Restored from persistence: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}")
 
-    # Initialize memory manager
-    memory_manager = MemoryManager()
-    log.info("Memory manager initialized for spatial learning")
+    # Initialize memory manager - persist memories when continuing a run
+    is_continuing_run = run_state and run_state.action_count > 0
+    memory_manager = MemoryManager(reset_on_start=not is_continuing_run)
+    if is_continuing_run:
+        log.info("📝 Memory manager: Loaded existing memories (continuing run)")
+    else:
+        log.info("📝 Memory manager: Fresh start (new run)")
 
     # Initialize goal tracker
     goal_tracker = GoalTracker()
