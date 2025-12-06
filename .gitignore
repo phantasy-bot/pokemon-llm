@@ -17,6 +17,7 @@ latest_with_minimap.png
 # Runtime State Files (regenerated on start)
 pokemon_memories.json
 game_goals.json
+exploration_data.json
 
 # Web UI build artifacts (if not needed in repo)
 web_ui/*.png
