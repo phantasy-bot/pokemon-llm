@@ -21,17 +21,20 @@ const formatLargeNumber = (num: number): string => {
   return num.toString();
 };
 
-// Kanto gym badges with emoji mapping
-const KANTO_BADGES: Record<BadgeType, { emoji: string; name: string }> = {
-  Boulder: { emoji: "🪨", name: "Boulder Badge" },
-  Cascade: { emoji: "💧", name: "Cascade Badge" },
-  Thunder: { emoji: "⚡", name: "Thunder Badge" },
-  Rainbow: { emoji: "🌈", name: "Rainbow Badge" },
-  Soul: { emoji: "💜", name: "Soul Badge" },
-  Marsh: { emoji: "🐸", name: "Marsh Badge" },
-  Volcano: { emoji: "🌋", name: "Volcano Badge" },
-  Earth: { emoji: "🌍", name: "Earth Badge" },
+// Kanto gym badges with image paths (1.png - 8.png in order)
+const KANTO_BADGES: Record<BadgeType, { image: string; name: string; index: number }> = {
+  Boulder: { image: "/badges/1.png", name: "Boulder Badge", index: 1 },
+  Cascade: { image: "/badges/2.png", name: "Cascade Badge", index: 2 },
+  Thunder: { image: "/badges/3.png", name: "Thunder Badge", index: 3 },
+  Rainbow: { image: "/badges/4.png", name: "Rainbow Badge", index: 4 },
+  Soul: { image: "/badges/5.png", name: "Soul Badge", index: 5 },
+  Marsh: { image: "/badges/6.png", name: "Marsh Badge", index: 6 },
+  Volcano: { image: "/badges/7.png", name: "Volcano Badge", index: 7 },
+  Earth: { image: "/badges/8.png", name: "Earth Badge", index: 8 },
 };
+
+// All badge types in order for silhouette display
+const ALL_BADGE_TYPES: BadgeType[] = ["Boulder", "Cascade", "Thunder", "Rainbow", "Soul", "Marsh", "Volcano", "Earth"];
 
 interface PokemonStreamOverlayProps {
   gameState: PokemonGameState;
@@ -89,25 +92,23 @@ export function PokemonStreamOverlay({
           <div className="badges-widget">
             <div className="widget-title">BADGES - {badges.length}/8</div>
             <div className="badges">
-              {badges.map((badge, i) => {
-                const badgeInfo = KANTO_BADGES[badge];
+              {ALL_BADGE_TYPES.map((badgeType) => {
+                const badgeInfo = KANTO_BADGES[badgeType];
+                const isEarned = badges.includes(badgeType);
                 return (
                   <div
-                    key={`${badge}-${i}`}
-                    className="badge"
-                    title={badgeInfo?.name || badge}
+                    key={badgeType}
+                    className={`badge ${isEarned ? 'earned' : 'unearned'}`}
+                    title={badgeInfo.name}
                   >
-                    <span className="badge-emoji">
-                      {badgeInfo?.emoji || "🔒"}
-                    </span>
+                    <img 
+                      src={badgeInfo.image} 
+                      alt={badgeInfo.name}
+                      className="badge-image"
+                    />
                   </div>
                 );
               })}
-              {Array.from({ length: Math.max(0, 8 - badges.length) }).map(
-                (_, index) => (
-                  <div key={`empty-${index}`} className="badge empty"></div>
-                ),
-              )}
             </div>
           </div>
         </div>
