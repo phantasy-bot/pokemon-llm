@@ -6,6 +6,8 @@ import os
 import sys
 import asyncio
 import logging
+import signal
+import shutil
 # Environment detection and validation
 def ensure_python_environment():
     """Ensure we're running with correct Python environment and dependencies."""
@@ -88,12 +90,72 @@ from websocket_service import broadcast_message, run_server_forever as start_web
 from benchmark import load
 from interactive import interactive_console
 from llmdriver import run_auto_loop, MODEL
+from run_persistence import RunPersistence
 
 # --- Configuration (excluding WebSocket specific) ---
 import config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(name)s: %(message)s')
 log = logging.getLogger("main")
+
+# Global reference for graceful shutdown
+_global_socket = None
+_global_persistence = None
+_global_run_state = None
+
+def auto_detect_savestate() -> tuple[str | None, str | None]:
+    """Check if save state files exist and return (type, path).
+    Priority: .ss1 (primary) > -backup.ss1 (backup)
+    Returns (type, path) if found, (None, None) otherwise.
+    """
+    rom_path = get_rom_path()
+    rom_dir = os.path.dirname(rom_path)
+    rom_name = os.path.splitext(os.path.basename(rom_path))[0]
+    
+    primary_save = os.path.join(rom_dir, f"{rom_name}.ss1")
+    backup_save = os.path.join(rom_dir, f"{rom_name}-backup.ss1")
+    
+    if os.path.exists(primary_save):
+        log.info(f"🎮 Found save state: {primary_save}")
+        return ("primary", primary_save)
+    elif os.path.exists(backup_save):
+        log.info(f"🎮 Found backup save state: {backup_save} (restoring from backup)")
+        # Copy backup to primary slot for mGBA to load
+        try:
+            shutil.copy2(backup_save, primary_save)
+            log.info(f"📦 Restored backup to primary slot")
+            return ("backup", primary_save)
+        except Exception as e:
+            log.warning(f"Failed to restore backup: {e}")
+            return (None, None)
+    else:
+        log.info("🆕 No save state found - starting fresh game")
+        return (None, None)
+
+
+def graceful_save_and_exit(sock, signum=None, frame=None):
+    """Save game state before exiting."""
+    global _global_persistence, _global_run_state
+    log.info("\n🛑 Graceful shutdown initiated...")
+    if sock:
+        try:
+            log.info("💾 Saving game state before exit...")
+            response = send_command(sock, "SAVESTATE 1")
+            if response and "OK" in response:
+                log.info("✅ Game saved successfully!")
+                # Update persistence with final state
+                if _global_persistence and _global_run_state:
+                    rom_path = get_rom_path()
+                    rom_dir = os.path.dirname(rom_path)
+                    rom_name = os.path.splitext(os.path.basename(rom_path))[0]
+                    save_path = os.path.join(rom_dir, f"{rom_name}.ss1")
+                    _global_persistence.update_save_state_hash(_global_run_state.run_id, save_path)
+                    _global_persistence.save_run_state(_global_run_state)
+                    log.info("✅ Run state persisted to database!")
+            else:
+                log.warning(f"Save may have failed: {response}")
+        except Exception as e:
+            log.error(f"Error during graceful save: {e}")
 
 
 # Initialize state - llmdriver will update this
@@ -108,6 +170,7 @@ state = {
     "modelName": MODEL,
     "tokensUsed": 0,
     "minimapLocation": "Unknown",
+    "minimapTimestamp": 0,  # Timestamp for minimap image cache-busting
     "log_entries": []
 }
 
@@ -122,6 +185,16 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
     if not os.path.exists(config.LUA_SCRIPT):
         log.error(f"Lua script not found: {config.LUA_SCRIPT}")
         sys.exit(1)
+
+    # FIX: Clean up stale minimap file on startup to prevent cached display in UI
+    minimap_files = ["minimap.png", "latest.png", "latest_with_minimap.png"]
+    for mf in minimap_files:
+        if os.path.exists(mf):
+            try:
+                os.remove(mf)
+                log.info(f"🧹 Cleaned up stale file: {mf}")
+            except Exception as e:
+                log.warning(f"Could not remove {mf}: {e}")
 
     cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT, rom_path]
     log.info(f"Starting mGBA: {' '.join(cmd)}")
@@ -158,9 +231,22 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
             # Keep blocking for simplicity in current setup (console/llmdriver manage reads)
             sock.setblocking(True)
             log.info(f"Connected to mGBA scripting server on port {port}")
-            if(config.LOAD_SAVESTATE): # Check the global config.LOAD_SAVESTATE flag
+            
+            # Store global reference for graceful shutdown
+            global _global_socket
+            _global_socket = sock
+            
+            # Auto-detect and load save state
+            if config.LOAD_SAVESTATE:
                 log.info("config.LOAD_SAVESTATE is True, attempting to load savestate 1.")
                 send_command(sock, "LOADSTATE 1")
+            else:
+                # Auto-detect save state files
+                save_type = auto_detect_savestate()
+                if save_type:
+                    log.info(f"Auto-loading save state (type: {save_type})...")
+                    send_command(sock, "LOADSTATE 1")
+            
             return proc, sock # Success
         except ConnectionRefusedError:
             log.warning(f"Connection to mGBA refused (attempt {attempt+1}/{retries}). Is mGBA running and script loaded?")
@@ -240,8 +326,11 @@ async def terminate_process(proc, is_async):
 
 
 # --- Main Execution Logic ---
-async def main_async(auto, max_loops_arg=None, selected_mode=None): # Added max_loops_arg and selected_mode
+async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=None, run_state=None):
     """Asynchronous main function to run mGBA, WebSocket server, and optionally the LLM loop."""
+    global _global_run_state
+    _global_run_state = run_state
+    
     proc = sock = None
     websocket_task = None
     llm_task = None
@@ -272,13 +361,13 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None): # Added max_
                 send_command(sock, "INPUT_DISPLAY_ON")
                 log.info(f"Starting LLM driver loop (max_loops: {max_loops_arg})...")
                 llm_task = asyncio.create_task(
-                    run_auto_loop(sock, state, broadcast_message, interval=13.0, max_loops=max_loops_arg, benchmark=benchmark),
+                    run_auto_loop(sock, state, broadcast_message, interval=13.0, max_loops=max_loops_arg, benchmark=benchmark, persistence=persistence, run_state=run_state),
                     name="LLMDriverLoop"
                 )
             else:
                 log.info("Starting LLM driver loop...")
                 llm_task = asyncio.create_task(
-                    run_auto_loop(sock, state, broadcast_message, interval=13.0), # Original call
+                    run_auto_loop(sock, state, broadcast_message, interval=13.0, persistence=persistence, run_state=run_state),
                     name="LLMDriverLoop"
                 )
             tasks_to_await.append(llm_task)
@@ -370,10 +459,29 @@ if __name__ == '__main__':
         config.benchmark_path = args.benchmark
 
     if args.auto:
+        # Initialize run persistence
+        persistence = RunPersistence()
+        _global_persistence = persistence
+        
+        # Detect save state and get/create run
+        save_type, save_path = auto_detect_savestate()
+        save_exists = save_type is not None
+        run_state = persistence.get_or_create_run(save_state_exists=save_exists, save_state_path=save_path)
+        
+        # Initialize shared state from persisted run state
+        if run_state.action_count > 0:
+            state['actions'] = run_state.action_count
+            state['tokensUsed'] = run_state.tokens_used
+            state['goals'] = run_state.goals
+            state['otherGoals'] = run_state.other_goals
+            log.info(f"📊 Restored state: {run_state.action_count} actions, {run_state.tokens_used} tokens")
+        
         try:
-            asyncio.run(main_async(auto=True, max_loops_arg=args.max_loops, selected_mode=selected_mode))
+            asyncio.run(main_async(auto=True, max_loops_arg=args.max_loops, selected_mode=selected_mode, persistence=persistence, run_state=run_state))
         except KeyboardInterrupt:
             log.info("KeyboardInterrupt received, stopping async tasks...")
+            # Graceful save on Ctrl+C
+            graceful_save_and_exit(_global_socket)
         except Exception as e:
             log.critical(f"Critical error in async execution: {e}", exc_info=True)
         finally:

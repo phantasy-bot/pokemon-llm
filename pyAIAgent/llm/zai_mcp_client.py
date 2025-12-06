@@ -9,6 +9,7 @@ import logging
 import subprocess
 import asyncio
 import time
+import threading
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
@@ -30,23 +31,27 @@ class ZAIMCPClient:
         self.mcp_process = None
         self.is_connected = False
 
-        # CRITICAL: NEW RETRY SYSTEM - Agent should NOT continue without vision
-        self.retry_phase = 0  # 0: immediate, 1: 30s delay, 2: 60s delay, 3: 90s delay, 4: 120s delay
-        self.retries_in_current_phase = 0
-        self.max_retries_per_phase = 3
-        self.phase_delays = [0, 30, 60, 90, 120]  # seconds - 5 phases total (+30s pattern)
-        self.last_retry_time = 0
-        self.vision_mandatory = True  # CRITICAL: Vision is required for operation
+        # CRITICAL: Thread lock to prevent concurrent MCP access
+        self._mcp_lock = threading.Lock()
+        self._request_cancelled = False  # Flag to cancel pending requests
+        
+        # SIMPLIFIED RETRY SYSTEM: 3 attempts → restart MCP → repeat forever (never give up)
+        self.max_attempts_before_restart = 3
+        self._attempt_count = 0
+        self._restart_count = 0
         
         # Status tracking for UI updates
-        self.current_status = "INITIALIZING"  # Will be updated during analysis
+        self.current_status = "INITIALIZING"
         
-        # CRITICAL FIX: Use unique incrementing request IDs to prevent response mismatch
+        # Request ID counter - reset on each MCP restart
         self._request_id_counter = 0
+        
+        # Cache tools list - only fetch once per MCP session
+        self._tools_cached = False
+        self._available_tools = None
 
-        log.info("Z.AI MCP Client initialized with MANDATORY vision retry system")
-        log.info("Retry strategy: 5 phases (0s, 30s, 60s, 90s, 120s delay), 3 attempts each = 15 total attempts")
-        log.info("Agent will continue retrying indefinitely - never crash on vision failure")
+        log.info("Z.AI MCP Client initialized with SIMPLIFIED retry system + thread lock")
+        log.info("Retry strategy: 3 attempts → restart MCP → repeat forever (never give up)")
 
         # Start the MCP server synchronously
         self._start_mcp_server_sync()
@@ -144,80 +149,65 @@ class ZAIMCPClient:
         except Exception as e:
             log.error(f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True)
 
-    def should_attempt_vision_analysis(self) -> bool:
+    def restart_mcp_server(self):
+        """Kill and restart MCP server to clear any hung state and reset ID counters"""
+        self._restart_count += 1
+        log.warning(f"🔄 Restarting MCP server (restart #{self._restart_count})...")
+        
+        # Kill existing process
+        if self.mcp_process:
+            try:
+                # Drain any pending stdout to prevent buffer issues
+                import select
+                while True:
+                    ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
+                    if not ready:
+                        break
+                    data = self.mcp_process.stdout.read(1024)
+                    if not data:
+                        break
+                    log.debug(f"Drained {len(data)} bytes from stdout before restart")
+                
+                self.mcp_process.terminate()
+                try:
+                    self.mcp_process.wait(timeout=3)
+                except:
+                    log.warning("MCP process did not terminate, killing forcefully")
+                    self.mcp_process.kill()
+                    self.mcp_process.wait(timeout=2)
+            except Exception as e:
+                log.error(f"Error killing MCP process: {e}")
+        
+        # Reset state
+        self._request_id_counter = 0
+        self._tools_cached = False
+        self._available_tools = None
+        self._attempt_count = 0
+        self.is_connected = False
+        
+        # Restart
+        log.info("🔄 Starting fresh MCP server subprocess...")
+        self._start_mcp_server_sync()
+        log.info(f"🔄 MCP server restart #{self._restart_count} complete")
+
+    def handle_vision_failure(self, error_message: str) -> bool:
         """
-        NEW RETRY SYSTEM: Check if vision analysis should be attempted
-        Agent will NOT continue without vision - mandatory retry system
-
-        Returns:
-            True if vision analysis should be attempted, False if waiting for retry delay
+        Handle vision analysis failure.
+        Returns True if we should restart MCP server.
         """
-        current_time = time.time()
-
-        # Check if we need to wait for retry delay
-        if self.retries_in_current_phase >= self.max_retries_per_phase:
-            if self.retry_phase < len(self.phase_delays) - 1:
-                # Move to next phase with longer delay
-                self.retry_phase += 1
-                self.retries_in_current_phase = 0
-                self.last_retry_time = current_time
-                delay = self.phase_delays[self.retry_phase]
-                log.warning(f"Moving to retry phase {self.retry_phase} with {delay}s delay")
-            else:
-                # Exhausted all retry phases - this should never happen with mandatory vision
-                log.error("CRITICAL: All retry phases exhausted. Vision system failure.")
-                return False
-
-        # Check if we need to wait for phase delay
-        if self.retry_phase > 0 and self.retries_in_current_phase == 0:
-            required_wait_time = self.last_retry_time + self.phase_delays[self.retry_phase]
-            if current_time < required_wait_time:
-                remaining_time = required_wait_time - current_time
-                log.info(f"Waiting {remaining_time:.0f}s before retry phase {self.retry_phase}")
-                return False
-
-        return True
-
-    def handle_vision_failure(self, error_message: str) -> None:
-        """
-        NEW RETRY SYSTEM: Handle vision analysis failure with mandatory retry logic
-        Agent will NOT continue without vision - this implements the user's requirements
-
-        Args:
-            error_message: Description of the error that occurred
-        """
-        self.retries_in_current_phase += 1
-        total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
-
-        log.error(f"VISION FAILURE #{total_failures} (Phase {self.retry_phase + 1}, Attempt {self.retries_in_current_phase}/{self.max_retries_per_phase}): {error_message}")
-
-        if self.retries_in_current_phase < self.max_retries_per_phase:
-            # Can retry immediately in current phase (except phase 0 which has 0 delay)
-            if self.retry_phase == 0:
-                log.info(f"Retrying immediately (attempt {self.retries_in_current_phase + 1}/{self.max_retries_per_phase} in immediate phase)")
-            else:
-                # For phase 1+ we've already waited the delay, so we can retry
-                log.info(f"Retrying immediately (attempt {self.retries_in_current_phase + 1}/{self.max_retries_per_phase} in phase {self.retry_phase + 1})")
-        else:
-            # Exhausted retries in current phase
-            if self.retry_phase < len(self.phase_delays) - 1:
-                next_delay = self.phase_delays[self.retry_phase + 1]
-                log.error(f"Exhausted immediate retries. Next retry phase will begin after {next_delay}s delay")
-            else:
-                log.error("CRITICAL: All retry phases exhausted. System cannot continue without vision.")
+        self._attempt_count += 1
+        log.error(f"VISION FAILURE (Attempt {self._attempt_count}/{self.max_attempts_before_restart}): {error_message}")
+        
+        if self._attempt_count >= self.max_attempts_before_restart:
+            log.warning(f"🔄 {self._attempt_count} consecutive failures - will restart MCP server")
+            return True  # Signal to restart
+        return False
 
     def handle_vision_success(self) -> None:
-        """
-        NEW RETRY SYSTEM: Reset failure counters after successful vision analysis
-        """
-        total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
-        if total_failures > 0:
-            log.info(f"✅ VISION SUCCESS after {total_failures} previous failures! Resuming normal operation.")
-
-        # Reset all retry counters
-        self.retry_phase = 0
-        self.retries_in_current_phase = 0
-        self.last_retry_time = 0
+        """Reset failure counters after successful vision analysis"""
+        if self._attempt_count > 0:
+            log.info(f"✅ VISION SUCCESS after {self._attempt_count} attempts (restart #{self._restart_count})")
+        self._attempt_count = 0
 
     def _get_next_request_id(self) -> int:
         """Get the next unique request ID for MCP communication"""
@@ -283,68 +273,76 @@ class ZAIMCPClient:
 
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
         """
-        CRITICAL: NEW MANDATORY RETRY SYSTEM - Agent will NOT continue without vision
-        This method blocks until vision analysis succeeds or all retry attempts are exhausted
-
+        SIMPLIFIED RETRY SYSTEM: 3 attempts → restart MCP → repeat forever (never give up)
+        Uses thread lock to prevent concurrent access to MCP.
+        
         Args:
             image_path: Path to the image file
             prompt: Text prompt to accompany the image
 
         Returns:
-            Analysis result as string, or raises RuntimeError if all retries exhausted
+            Analysis result as string (blocks until success)
         """
-        log.info("🔍 Starting MANDATORY vision analysis with aggressive retry system")
-
-        while True:
-            # Check if we should attempt vision analysis based on retry phase
-            if not self.should_attempt_vision_analysis():
-                # Wait for retry delay
-                import time as time_module
-                wait_time = 1.0  # Check again in 1 second
-                time_module.sleep(wait_time)
-                continue
-
-            # Attempt vision analysis with try/catch for robust error handling
-            try:
-                log.info(f"🚀 Attempting vision analysis (Phase {self.retry_phase + 1}, Attempt {self.retries_in_current_phase + 1})")
-                result = asyncio.run(self.analyze_image(image_path, prompt))
-
-                if result is not None:
-                    # SUCCESS: Vision analysis completed successfully
-                    self.handle_vision_success()
-                    log.info("✅ Vision analysis completed successfully!")
-                    return result
-                else:
-                    # FAILURE: Vision analysis returned None
-                    self.handle_vision_failure("Vision analysis returned None/empty result")
-                    # Continue to next iteration for retry
-
-            except Exception as e:
-                # FAILURE: Exception occurred during vision analysis
-                error_msg = f"Vision analysis exception: {str(e)}"
-                self.handle_vision_failure(error_msg)
-                log.error(f"❌ Vision analysis failed with exception: {e}", exc_info=True)
-                # Continue to next iteration for retry
-
-            # Check if we've exhausted all retry attempts
-            total_failures = (self.retry_phase * self.max_retries_per_phase) + self.retries_in_current_phase
-            max_total_failures = len(self.phase_delays) * self.max_retries_per_phase
-
-            if total_failures >= max_total_failures:
-                # All retry attempts exhausted - reset and return None
-                # The agent will continue to the next cycle and try again
-                log.warning("🔄 " + "="*80)
-                log.warning(f"🔄 Vision analysis failed after {max_total_failures} attempts across all retry phases.")
-                log.warning("🔄 Resetting retry counters and returning None - agent will retry on next cycle.")
-                log.warning("🔄 " + "="*80)
+        import time as time_module
+        import select
+        
+        # CRITICAL: Cancel any pending request from previous call
+        self._request_cancelled = True
+        
+        # Acquire lock - this will block if another analyze_image_sync is running
+        log.info("🔒 Acquiring MCP lock...")
+        with self._mcp_lock:
+            log.info("🔓 MCP lock acquired")
+            self._request_cancelled = False  # Reset for this request
+            
+            # Drain any stale responses before starting fresh
+            if self.mcp_process and self.mcp_process.stdout:
+                try:
+                    drained = 0
+                    while True:
+                        ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
+                        if not ready:
+                            break
+                        data = self.mcp_process.stdout.readline()
+                        if not data:
+                            break
+                        drained += 1
+                        log.debug(f"🗑️ Pre-drained stale response before new request")
+                    if drained > 0:
+                        log.info(f"🗑️ Drained {drained} stale responses before starting fresh")
+                except Exception as e:
+                    log.warning(f"Error draining stale responses: {e}")
+            
+            log.info("🔍 Starting vision analysis (will retry forever until success)")
+            
+            while True:
+                # Check if this request was cancelled by a newer one
+                if self._request_cancelled:
+                    log.warning("⏹️ Request cancelled by newer call, exiting")
+                    return None
                 
-                # Reset retry counters so next cycle starts fresh
-                self.retry_phase = 0
-                self.retries_in_current_phase = 0
-                self.last_retry_time = 0
+                try:
+                    log.info(f"🚀 Vision attempt {self._attempt_count + 1}/{self.max_attempts_before_restart} (MCP restart #{self._restart_count})")
+                    result = asyncio.run(self.analyze_image(image_path, prompt))
+
+                    if result is not None:
+                        self.handle_vision_success()
+                        log.info("✅ Vision analysis completed successfully!")
+                        return result
+                    else:
+                        should_restart = self.handle_vision_failure("Vision analysis returned None/empty result")
+                        if should_restart:
+                            self.restart_mcp_server()
+
+                except Exception as e:
+                    error_msg = f"Vision analysis exception: {str(e)}"
+                    should_restart = self.handle_vision_failure(error_msg)
+                    log.error(f"❌ {error_msg}", exc_info=True)
+                    if should_restart:
+                        self.restart_mcp_server()
                 
-                # Return None instead of crashing - llmdriver will handle gracefully
-                return None
+                # Brief delay between attempts to prevent hammering
+                time_module.sleep(2.0)
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""
@@ -379,41 +377,44 @@ class ZAIMCPClient:
             return None
 
         try:
-            # CRITICAL FIX: Use unique request IDs to prevent cross-cycle response mismatch
-            tools_list_id = self._get_next_request_id()
-            
-            # First, try to list available tools
-            list_tools_request = {
-                "jsonrpc": "2.0",
-                "id": tools_list_id,
-                "method": "tools/list",
-                "params": {}
-            }
-
-            log.info(f"Requesting available tools: {json.dumps(list_tools_request, indent=2)}")
-
-            # Send list tools request
-            list_tools_json = json.dumps(list_tools_request) + '\n'
-            self.mcp_process.stdin.write(list_tools_json.encode())
-            self.mcp_process.stdin.flush()
-
-            # Read tools list response, draining any stale responses
-            tools_data = self._read_response_with_id_match(tools_list_id, timeout=15.0)
-            if tools_data is None:
-                log.error("Failed to get tools list response")
-                return None
+            # FIX: Cache tools list - only fetch once per session, not on every analyze call
+            if not self._tools_cached:
+                tools_list_id = self._get_next_request_id()
                 
-            log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
+                list_tools_request = {
+                    "jsonrpc": "2.0",
+                    "id": tools_list_id,
+                    "method": "tools/list",
+                    "params": {}
+                }
 
-            if 'result' in tools_data and 'tools' in tools_data['result']:
-                available_tools = tools_data['result']['tools']
-                log.info(f"Found {len(available_tools)} available tools")
-                for tool in available_tools:
-                    log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
+                log.info(f"Requesting available tools (first time only): {json.dumps(list_tools_request, indent=2)}")
+
+                # Send list tools request
+                list_tools_json = json.dumps(list_tools_request) + '\n'
+                self.mcp_process.stdin.write(list_tools_json.encode())
+                self.mcp_process.stdin.flush()
+
+                # Read tools list response, draining any stale responses
+                tools_data = self._read_response_with_id_match(tools_list_id, timeout=15.0)
+                if tools_data is None:
+                    log.error("Failed to get tools list response - will retry tools fetch next call")
+                    # Don't return None - we can still try analyze_image without cached tools list
+                    # Tools caching will be retried on next call
+                elif 'result' in tools_data and 'tools' in tools_data['result']:
+                    log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
+                    self._available_tools = tools_data['result']['tools']
+                    self._tools_cached = True
+                    log.info(f"Found {len(self._available_tools)} available tools (cached for future calls)")
+                    for tool in self._available_tools:
+                        log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
+                else:
+                    log.warning(f"tools/list response missing expected structure: {tools_data}")
+            else:
+                log.debug("Using cached tools list")
 
             # Use the correct tool name and parameters from the schema
             tool_name = "analyze_image"
-            log.info(f"Using tool: {tool_name}")
 
             # CRITICAL FIX: Use unique request ID for analysis request
             analyze_request_id = self._get_next_request_id()
@@ -444,10 +445,11 @@ class ZAIMCPClient:
             response_data = self._read_response_with_id_match(analyze_request_id, timeout=30.0)
             
             if response_data is None:
-                log.error(f"Failed to get {tool_name} response")
+                log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")
                 # Check if server is still running
                 if self.mcp_process.poll() is not None:
                     log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
+                # Return None to trigger retry in analyze_image_sync
                 return None
                 
             log.info(f"Got MCP response for {tool_name}: id={response_data.get('id')}")

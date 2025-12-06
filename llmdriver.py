@@ -17,10 +17,11 @@ import functools
 from PIL import Image
 from token_counter import count_tokens, calculate_prompt_tokens
 
-from pyAIAgent.game.state import prep_llm
+from pyAIAgent.game.state import prep_llm, get_rom_path
 from pyAIAgent.navigation import touch_controls_path_find
 from pyAIAgent.json_parser import parse_optional_fenced_json
-from prompts import build_system_prompt, get_summary_prompt
+from pyAIAgent.utils.socket_utils import send_command
+from prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt
 from client_setup import setup_llm_client, parse_mode_arg, MODES
 from benchmark import Benchmark
 from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
@@ -337,6 +338,22 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     payload["vision_analysis"] = vision_analysis
                     # Also add a more prominent vision field for better LLM recognition
                     payload["visual_context"] = processed_vision_result
+                    
+                    # Parse screen_type from vision JSON for dynamic prompting
+                    try:
+                        # Try to parse the vision result as JSON to extract screen_type
+                        vision_json = json.loads(processed_vision_result)
+                        detected_screen_type = vision_json.get("screen_type", "")
+                        if detected_screen_type:
+                            log.info(f"🖥️ Detected screen type: {detected_screen_type}")
+                            payload["detected_screen_type"] = detected_screen_type
+                    except json.JSONDecodeError:
+                        # Vision result is not valid JSON, try regex extraction
+                        screen_type_match = re.search(r'"screen_type"\s*:\s*"([^"]+)"', processed_vision_result)
+                        if screen_type_match:
+                            detected_screen_type = screen_type_match.group(1)
+                            log.info(f"🖥️ Detected screen type (regex): {detected_screen_type}")
+                            payload["detected_screen_type"] = detected_screen_type
 
                 except RuntimeError as e:
                     # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
@@ -430,6 +447,19 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         pass
 
     current_user_message_api = {"role": "user", "content": current_content}
+    
+    # DYNAMIC SCREEN-SPECIFIC PROMPTING: Update system prompt based on detected screen type
+    detected_screen_type = payload.get("detected_screen_type", "")
+    if detected_screen_type and chat_history and len(chat_history) > 0:
+        screen_prompt = get_screen_specific_prompt(detected_screen_type)
+        if screen_prompt:
+            # Append screen-specific guidance to the system prompt for this call
+            base_system = chat_history[0].get("content", "")
+            if screen_prompt not in base_system:  # Avoid duplicate injection
+                enhanced_system = f"{base_system}\n{screen_prompt}"
+                chat_history[0] = {"role": "system", "content": enhanced_system}
+                log.info(f"📝 Injected screen-specific prompt for: {detected_screen_type}")
+    
     messages_for_api = chat_history + [current_user_message_api]
 
     # Token accounting
@@ -781,9 +811,56 @@ def encode_image_base64(image_path: str) -> str | None:
         return None
 
 
-async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None):
+def save_game_state(sock, slot: int = 1) -> bool:
+    """Save game state to specified slot. Returns True if successful."""
+    try:
+        response = send_command(sock, f"SAVESTATE {slot}")
+        if response and "OK" in response:
+            log.info(f"💾 Game state saved to slot {slot}")
+            return True
+        else:
+            log.warning(f"Failed to save game state to slot {slot}: {response}")
+            return False
+    except Exception as e:
+        log.error(f"Error saving game state: {e}")
+        return False
+
+
+def backup_save_state():
+    """Copy current save state file to backup. Previous save becomes backup."""
+    rom_path = get_rom_path()
+    rom_dir = os.path.dirname(rom_path)
+    rom_name = os.path.splitext(os.path.basename(rom_path))[0]
+    
+    save_file = os.path.join(rom_dir, f"{rom_name}.ss1")
+    backup_file = os.path.join(rom_dir, f"{rom_name}-backup.ss1")
+    
+    if os.path.exists(save_file):
+        try:
+            shutil.copy2(save_file, backup_file)
+            log.info(f"📦 Backup created: {backup_file}")
+            return True
+        except Exception as e:
+            log.error(f"Failed to create backup: {e}")
+            return False
+    return False
+
+
+async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None):
     """Main async loop: Get state, call LLM, send action, update/broadcast state."""
     global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
+
+    # Restore state from persistence if available
+    if run_state and run_state.action_count > 0:
+        action_count = run_state.action_count
+        tokens_used_session = run_state.tokens_used
+        # Restore elapsed time by adjusting start_time
+        start_time = datetime.datetime.now() - datetime.timedelta(seconds=run_state.elapsed_seconds)
+        # Restore chat history if available
+        if run_state.chat_history:
+            chat_history = run_state.chat_history
+            log.info(f"🔄 Restored chat history: {len(chat_history)} messages")
+        log.info(f"🔄 Restored from persistence: actions={action_count}, tokens={tokens_used_session}")
 
     # Initialize memory manager
     memory_manager = MemoryManager()
@@ -803,12 +880,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     last_position = None
 
     b64_mm = None
+    
+    # Persistence save interval (save every N cycles)
+    PERSIST_INTERVAL = 5
+    cycles_since_persist = 0
 
     benchInstructions = ""
     if benchmark is not None:
         benchInstructions = benchmark.instructions
         logging.info(f"Added bench instructions: {benchInstructions}")
-    chat_history = [{"role": "system", "content": build_system_prompt("", benchInstructions)}]
+    
+    # Only initialize chat history if not restored from persistence
+    if not run_state or not run_state.chat_history:
+        chat_history = [{"role": "system", "content": build_system_prompt("", benchInstructions)}]
 
     while action_count < max_loops:
         loop_start_time = time.time()
@@ -944,6 +1028,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             state['minimapLocation'] = loc_str
             update_payload['minimapLocation'] = state['minimapLocation']
             log.info(f"State Update: minimapLocation -> {loc_str}")
+        
+        # Always update minimap timestamp to trigger UI refresh (minimap image changes each cycle)
+        minimap_ts = int(time.time() * 1000)
+        state['minimapTimestamp'] = minimap_ts
+        update_payload['minimapTimestamp'] = minimap_ts
 
         # Default: Analysis uses the clean snapshot unless combined
         ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
@@ -1122,7 +1211,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             update_payload['tokensUsed'] = tokens_used_session
 
         elapsed = datetime.datetime.now() - start_time
-        game_status_str = f"{int(elapsed.total_seconds() // 3600)}h {int((elapsed.total_seconds() % 3600) // 60)}m {int(elapsed.total_seconds() % 60)}s"
+        elapsed_seconds = elapsed.total_seconds()
+        game_status_str = f"{int(elapsed_seconds // 3600)}h {int((elapsed_seconds % 3600) // 60)}m {int(elapsed_seconds % 60)}s"
         if state.get('gameStatus') != game_status_str:
             state['gameStatus'] = game_status_str
             update_payload['gameStatus'] = game_status_str
@@ -1255,7 +1345,40 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
         except Exception as e:
             log.error(f"Error extracting memories: {e}", exc_info=True)
-
+            latest_memory = None
+        
+        # Persist run state periodically (after memory extraction so latest_memory is available)
+        cycles_since_persist += 1
+        if persistence and run_state and cycles_since_persist >= PERSIST_INTERVAL:
+            run_state.action_count = action_count
+            run_state.tokens_used = tokens_used_session
+            run_state.elapsed_seconds = elapsed_seconds
+            run_state.goals = state.get('goals', run_state.goals)
+            run_state.other_goals = state.get('otherGoals', run_state.other_goals)
+            run_state.chat_history = chat_history[-20:]  # Keep last 20 messages
+            run_state.recent_actions.append(action if action else 'NONE')
+            run_state.recent_actions = run_state.recent_actions[-50:]  # Keep last 50
+            if latest_memory:
+                run_state.latest_memory = latest_memory.description
+            
+            persistence.save_run_state(run_state)
+            cycles_since_persist = 0
+            log.info(f"💾 Persisted run state: actions={action_count}, tokens={tokens_used_session}")
+        
+        # Log action to database
+        if persistence and run_state and action:
+            try:
+                persistence.log_action(
+                    run_id=run_state.run_id,
+                    action=action,
+                    screenshot_b64=b64_ss[:1000] if b64_ss else None,  # Truncate for storage
+                    llm_analysis=game_analysis[:2000] if game_analysis else None,
+                    vision_analysis=vision_analysis_for_ui[:2000] if vision_analysis_for_ui else None,
+                    position=current_pos,
+                    map_name=map_name
+                )
+            except Exception as pe:
+                log.warning(f"Failed to log action to database: {pe}")
 
         # Action log entry - include action range for UI display
         # CRITICAL: Only create action_log if vision was successful to keep all logs in sync
@@ -1315,6 +1438,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             except Exception as e:
                 log.error(f"Error during WebSocket broadcast: {e}", exc_info=True)
 
+
+        # Auto-save game state at end of each cycle
+        # First, backup the current save (previous cycle becomes backup)
+        backup_save_state()
+        # Then save current state to slot 1
+        save_game_state(sock, slot=1)
 
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(10, interval - elapsed_loop_time) # Ensure at least 10 seconds wait
