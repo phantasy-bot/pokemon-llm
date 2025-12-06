@@ -9,8 +9,28 @@ import type { PokemonCardProps } from "../../types/display";
 import { HPBar } from "../units/HPBar";
 import "./PokemonCard.css";
 
+/**
+ * Convert Pokemon name to sprite URL path
+ * Handles special cases like "Mr. Mime", "Nidoran♀", "Farfetch'd"
+ */
+function getPokemonSpriteUrl(name: string): string {
+  // Convert to lowercase and handle special characters
+  let filename = name
+    .toLowerCase()
+    .replace(/♀/g, "-f")      // Nidoran♀ → nidoran-f
+    .replace(/♂/g, "-m")      // Nidoran♂ → nidoran-m
+    .replace(/\./g, "")       // Mr. Mime → mr mime
+    .replace(/'/g, "")        // Farfetch'd → farfetchd
+    .replace(/\s+/g, "-")     // spaces → hyphens
+    .replace(/-+/g, "-")      // multiple hyphens → single hyphen
+    .trim();
+  
+  return `/sprites/pokemon/${filename}.png`;
+}
+
 export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
   const faintedClass = pokemon.isFainted ? "fainted" : "";
+  const spriteUrl = getPokemonSpriteUrl(pokemon.name);
 
   return (
     <div
@@ -22,6 +42,19 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
           : `linear-gradient(to bottom, rgba(255,255,255,0.15), ${getPokemonTypeColor(pokemon.type)})`,
       }}
     >
+      {/* Pokemon sprite */}
+      <div className="pokemon-card__sprite-container">
+        <img
+          src={spriteUrl}
+          alt={pokemon.name}
+          className="pokemon-card__sprite"
+          onError={(e) => {
+            // Hide broken images
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+
       <div className="pokemon-card__info">
         <div className="pokemon-card__header">
           <span className="pokemon-card__name">
