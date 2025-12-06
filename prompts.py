@@ -221,8 +221,14 @@ Use this structure in <game_analysis> tags:
 
 4. STUCK & BACKTRACK CHECK
    - Am I in same position as last turn? [yes/no]
-   - EXPLORATION RULE: If I just exited a room, DO NOT re-enter immediately.
-   - If stuck: FORCE a different direction.
+   - **ANTI-REPETITION RULES (CRITICAL)**:
+     * If I just exited a building, DO NOT re-enter it immediately
+     * Check memory_context for recently visited locations - AVOID them!
+     * If my GOAL is Oak's Lab but I keep entering my house - STOP! Go the OTHER direction!
+     * Before entering ANY 'O' tile, ask: "Does this lead to my goal destination?"
+     * If you've entered the same building 2+ times without progress: BLACKLIST it, explore elsewhere
+   - EXPLORATION PRIORITY: Go toward UNEXPLORED 'O' tiles, not familiar ones
+   - If stuck: FORCE a completely different direction, try the opposite side of the map
 
 5. GOAL & PLAN
    - Immediate goal: [specific objective]
