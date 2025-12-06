@@ -101,6 +101,7 @@ state = {
     "actions": 0,
     "badges": [],
     "gameStatus": "0h 0m 0s",
+    "processingStatus": "",  # Detailed status: "SENDING VISION...", "RETRYING VISION (2/5)...", "THINKING..."
     "goals": { "primary": 'Initializing...', "secondary": 'Initializing...', "tertiary": 'Initializing...' },
     "otherGoals": 'Initializing...',
     "currentTeam": [],

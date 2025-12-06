@@ -1038,7 +1038,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         log_id_counter = state.get("log_id_counter", 0) + 1
         state["log_id_counter"] = log_id_counter
 
+        # Broadcast "ANALYZING..." status before starting vision+LLM processing
+        state["processingStatus"] = "ANALYZING VISION..."
+        await broadcast_func({"processingStatus": "ANALYZING VISION..."})
+
         action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
+
+        # Clear processing status after completion
+        state["processingStatus"] = ""
+        await broadcast_func({"processingStatus": ""})
 
         if summary_json is not None:
             tmp = {"log_entry": {"id": log_id_counter, "text": "🔎 Chat history cleaned up."}}

@@ -162,6 +162,7 @@ export interface PokemonGameState {
   // Game Stats
   actions: number;
   gameStatus: string;
+  processingStatus?: string; // Detailed status: "ANALYZING VISION...", "RETRYING VISION (2/5)...", "THINKING..."
   modelName: string;
   tokensUsed: number;
 
