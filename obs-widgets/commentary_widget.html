@@ -106,16 +106,38 @@
             return null;
         }
 
+        let typewriterTimeout = null;
+        let currentTypewriterText = '';
+        let typewriterIndex = 0;
+
+        function typewriterEffect(text, element, speed = 30) {
+            // Clear any existing typewriter animation
+            if (typewriterTimeout) {
+                clearTimeout(typewriterTimeout);
+            }
+            
+            currentTypewriterText = text;
+            typewriterIndex = 0;
+            element.textContent = '';
+            
+            function typeNextChar() {
+                if (typewriterIndex < currentTypewriterText.length) {
+                    element.textContent += currentTypewriterText.charAt(typewriterIndex);
+                    typewriterIndex++;
+                    typewriterTimeout = setTimeout(typeNextChar, speed);
+                }
+            }
+            
+            typeNextChar();
+        }
+
         function updateCommentary(text) {
             if (text && text !== lastCommentary) {
                 lastCommentary = text;
                 commentaryText.classList.remove('empty');
-                commentaryText.textContent = text;
                 
-                // Re-trigger animation
-                commentaryText.style.animation = 'none';
-                commentaryText.offsetHeight; // Trigger reflow
-                commentaryText.style.animation = 'fadeIn 0.3s ease-out';
+                // Use typewriter effect instead of instant text
+                typewriterEffect(text, commentaryText, 25);
             }
         }
 
