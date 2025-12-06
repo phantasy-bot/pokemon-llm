@@ -145,14 +145,12 @@
 
 .analysis-panel__thinking-text span {
   display: inline-block;
-  /* Short animation duration, long pause implied by delay staggering? 
-     Actually, for sequential wave, we want the animation to run once per cycle per char.
-     If cycle is 2s.
-     Char 1: 0-10% lift.
-     Char 2: 10-20% lift.
-     ...
-  */
-  animation: thinking-wave 2s infinite ease-in-out;
+  /* Use individual properties to avoid overriding inline animationDelay */
+  animation-name: thinking-wave;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  /* animation-delay is set via inline style for sequential effect */
   position: relative;
   color: var(--text-normal);
   transform-origin: bottom;
