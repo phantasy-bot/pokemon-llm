@@ -57,6 +57,7 @@ export function AnalysisPanel({
   const latestResponseEntry =
     responseEntries.length > 0 ? responseEntries[0] : null;
   const latestVisionEntry = visionEntries.length > 0 ? visionEntries[0] : null;
+  
   const latestEntry =
     latestResponseEntry ||
     latestVisionEntry ||
@@ -224,7 +225,6 @@ export function AnalysisPanel({
             {/* Column 1: Screenshot Only */}
             <div className="analysis-panel__vision-col-screenshot">
               <VisionScreenshot 
-                timestamp={latestVisionEntry?.timestamp?.toString() || Date.now().toString()} 
                 base64Data={latestVisionEntry?.screenshot_base64}
               />
             </div>

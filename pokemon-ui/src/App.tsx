@@ -149,6 +149,7 @@ function App() {
         text: data.vision_log.text,
         is_vision: true,
         type: "vision",
+        screenshot_base64: data.vision_log.screenshot_base64, // CRITICAL: Pass image data to UI
       };
       setLogs((prev) => [newLog, ...prev].slice(0, 3000));
     }
