@@ -202,6 +202,10 @@ export interface LogEntry {
   is_action?: boolean;
   is_vision?: boolean;
   is_response?: boolean;
+  // Action range fields for displaying "#120 - #123" style labels
+  action_start?: number;
+  action_end?: number;
+  button_count?: number;
 }
 
 export interface PokemonLogEntry extends LogEntry {

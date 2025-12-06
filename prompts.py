@@ -85,12 +85,27 @@ If you are pressing 'A' and the same text repeats, or you are stuck in a loop:
 1. **GAME STATE (Minimap)** is the SUPREME TRUTH.
    - If `minimap_2d` shows you at [6, 19], YOU ARE AT [6, 19].
    - If 'O' tiles are adjacent, they are EXITS. Use them.
-   - **FOLLOW THROUGH**: When moving into an Exit ('O'), **SUBMIT THE MOVE AGAIN** to ensure transition.
-     - Example: If exiting UP to a door, keep pressing UP until map changes.
-2. **MEMORY** is the SECOND Truth.
+
+2. **🚪 EXIT/DOOR PERSISTENCE PROTOCOL** (CRITICAL):
+   - When you see an 'O' tile on the minimap, you MUST reach it.
+   - **Step 1**: Move toward the O tile with 2-3 repeated moves: U;U;U; or D;D;D;
+   - **Step 2**: If blocked directly, try ADJACENT APPROACH:
+     * Door above? Try: L;U;U; or R;U;U; (approach from side)
+     * Door below? Try: L;D;D; or R;D;D;
+     * Door left? Try: U;L;L; or D;L;L;
+     * Door right? Try: U;R;R; or D;R;R;
+   - **Step 3**: VERIFY transition by checking if map_id changed in next cycle
+   - **NEVER give up after 1 attempt** - doors require walking INTO the O tile
+   - If stuck after 3 attempts, try pressing A or using touch navigation
+
+3. **MEMORY** is the SECOND Truth.
    - Use `[Verified Exit]` memories to know where doors lead.
-3. **VISION** is the LEAST reliable.
+
+4. **VISION** is the LEAST reliable.
    - Text reading can be wrong. Rely on Minimap for position.
+   - If vision claims a door but minimap shows no 'O', be SKEPTICAL.
+   - Test the location anyway, but don't trust it blindly.
+
 
 ### ⚠️ SAFETY PROTOCOLS
 - **Never spam the same button** without checking `stuck_check`.
