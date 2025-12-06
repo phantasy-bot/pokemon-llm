@@ -1109,6 +1109,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log_entries.append(vision_log)
             log.info(f"📸 Vision log created: {len(vision_analysis_for_ui)} chars")
 
+
+
         # Response log entry (LLM reasoning)
         analysis_text = game_analysis  # Use game_analysis from LLM response
         log.info(f"🧠 LLM Analysis received: {analysis_text[:100] if analysis_text else 'None'}...")

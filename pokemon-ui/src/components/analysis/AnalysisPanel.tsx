@@ -114,6 +114,7 @@ export function AnalysisPanel({
         {/* 2. Recent Actions Section (Show last 3 entries, chronological left-to-right) */}
         <div className="analysis-panel__actions-section">
           <span className="analysis-panel__section-label">RECENT ACTIONS</span>
+          <span className="analysis-panel__section-label-bottom-right">CURRENT</span>
           <div className="analysis-panel__actions-list">
             {(() => {
                 // We want the last 3 entries, but displayed chronological: oldest at left, newest at right
