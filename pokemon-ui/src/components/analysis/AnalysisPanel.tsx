@@ -72,7 +72,7 @@ export function AnalysisPanel({
       <span className="analysis-panel__thinking-text">
         {text.split("").map((char, i) => (
           <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>
-            {char}
+            {char === " " ? "\u00A0" : char}
           </span>
         ))}
       </span>

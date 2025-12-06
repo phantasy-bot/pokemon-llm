@@ -471,6 +471,7 @@ if __name__ == '__main__':
         # Initialize shared state from persisted run state
         if run_state.action_count > 0:
             state['actions'] = run_state.action_count
+            state['cycle'] = run_state.cycle_count
             state['tokensUsed'] = run_state.tokens_used
             state['goals'] = run_state.goals
             state['otherGoals'] = run_state.other_goals

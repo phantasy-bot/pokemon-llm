@@ -141,6 +141,7 @@ export interface PokemonGameState {
 
   // Map/Minimap Info
   minimapLocation: string;
+  minimapTimestamp?: number;  // Timestamp for minimap image cache-busting
   mapWidth?: number;
   mapHeight?: number;
   cursorPosition?: [number, number];
@@ -161,6 +162,7 @@ export interface PokemonGameState {
 
   // Game Stats
   actions: number;
+  cycle: number; // Current thinking cycle count (independent of actions)
   gameStatus: string;
   processingStatus?: string; // Detailed status: "ANALYZING VISION...", "RETRYING VISION (2/5)...", "THINKING..."
   modelName: string;

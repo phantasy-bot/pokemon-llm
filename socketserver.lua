@@ -382,6 +382,35 @@ local function parse(line, sock, sockId)
       return
    end
 
+   -- SAVESTATE command: Save game state to slot
+   local save_slot_str = line:match("^[Ss][Aa][Vv][Ee][Ss][Tt][Aa][Tt][Ee]%s+(%S+)$")
+   if save_slot_str then
+      console:log("[DEBUG] parse: SAVESTATE command received with slot: '" .. save_slot_str .. "'")
+      local slot = tonumber(save_slot_str)
+      if not slot then 
+         local err_msg = "Invalid slot number for SAVESTATE: '" .. save_slot_str .. "'"
+         err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n"); return
+      end
+      if slot < 0 then
+          local err_msg = "Slot number for SAVESTATE must be non-negative: " .. slot
+          err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n"); return
+      end
+      if math.floor(slot) ~= slot then
+          local err_msg = "Slot number for SAVESTATE must be an integer: '" .. save_slot_str .. "'"
+          err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n"); return
+      end
+      console:log("[DEBUG] parse: Calling emu:saveStateSlot(" .. slot .. ")")
+      local success = emu:saveStateSlot(slot)
+      if success then
+         console:log("[INFO ] parse: SAVESTATE successful for slot " .. slot)
+         sock:send("OK SAVESTATE slot " .. slot .. "\n")
+      else
+         local err_msg = "emu:saveStateSlot failed for slot " .. slot
+         err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n")
+      end
+      return
+   end
+
    local num_str = line:match("^SET%s+(%S+)$")
    if num_str then
       console:log("[DEBUG] parse: SET command received with value: " .. num_str)

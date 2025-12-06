@@ -864,9 +864,12 @@ def backup_save_state():
 async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None):
     """Main async loop: Get state, call LLM, send action, update/broadcast state."""
     global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
+    
+    cycle_count = 0
 
     # Restore state from persistence if available
     if run_state and run_state.action_count > 0:
+        cycle_count = run_state.cycle_count
         action_count = run_state.action_count
         tokens_used_session = run_state.tokens_used
         # Restore elapsed time by adjusting start_time
@@ -875,7 +878,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         if run_state.chat_history:
             chat_history = run_state.chat_history
             log.info(f"🔄 Restored chat history: {len(chat_history)} messages")
-        log.info(f"🔄 Restored from persistence: actions={action_count}, tokens={tokens_used_session}")
+        log.info(f"🔄 Restored from persistence: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}")
 
     # Initialize memory manager
     memory_manager = MemoryManager()
@@ -911,10 +914,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
     while action_count < max_loops:
         loop_start_time = time.time()
-        current_cycle = action_count + 1
+        cycle_count += 1
+        current_cycle = cycle_count
         log.info(f"--- Loop Cycle {current_cycle} ---")
-
-        update_payload = {}
+        
+        # Broadcast cycle count immediately
+        update_payload = {"cycle": current_cycle}
         action_payload = {}
 
         try:
@@ -1365,6 +1370,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # Persist run state periodically (after memory extraction so latest_memory is available)
         cycles_since_persist += 1
         if persistence and run_state and cycles_since_persist >= PERSIST_INTERVAL:
+            run_state.cycle_count = cycle_count
             run_state.action_count = action_count
             run_state.tokens_used = tokens_used_session
             run_state.elapsed_seconds = elapsed_seconds
@@ -1378,7 +1384,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             
             persistence.save_run_state(run_state)
             cycles_since_persist = 0
-            log.info(f"💾 Persisted run state: actions={action_count}, tokens={tokens_used_session}")
+            log.info(f"💾 Persisted run state: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}")
         
         # Log action to database
         if persistence and run_state and action:
