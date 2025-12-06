@@ -36,28 +36,32 @@ Example: "BBB;WPW;OWW;" → O at [0,2], P at [1,1]
 - Close menus/dialogues completely before moving
 - Game never auto-triggers events - YOU must walk into transitions
 
-## ANALYSIS FORMAT (STRICT JSON)
-Inside <game_analysis> tags, you must provide a valid JSON object with the following structure.
-Do NOT use hyphens or bullet points. Use JSON arrays.
+## ANALYSIS TEMPLATE
+Use this structure in <game_analysis> tags:
 
+1. CURRENT STATE
+   - Location: [map_name] at position [x,y]
+   - Facing: [direction]
+   - Screen shows: [key elements visible]
+   - Player position: [relative to objects]
+   - Nearby objects: [doors, NPCs, items]
+
+2. STUCK CHECK
+   - Am I in same position as last turn? [yes/no]
+   - Have I tried this approach before? [yes/no]
+   - If stuck: try different direction or touch command
+
+3. GOAL & PLAN
+   - Immediate goal: [specific objective]
+   - Path: [sequence of directions to reach it]
+   - Fallback if blocked: [alternative plan]
+
+4. ACTION DECISION
+   - Chosen action/touch and why
+
+## OUTPUT FORMAT
 <game_analysis>
-{{
-  "current_state": {{
-    "location": "Map Name at [x,y]",
-    "facing": "direction",
-    "screen_content": "Description of what is visible"
-  }},
-  "stuck_check": {{
-    "stuck": false,
-    "reason": "Moved successfully"
-  }},
-  "goal_and_plan": {{
-    "primary_goal": "Goal description",
-    "path": ["Step 1", "Step 2"],
-    "fallback": "Plan B if blocked"
-  }},
-  "reasoning": "Brief explanation of chosen action"
-}}
+[Your analysis following the template above]
 </game_analysis>
 
 {{"action":"U;R;A;"}}
