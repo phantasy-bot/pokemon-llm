@@ -61,6 +61,29 @@
   background: #666666;
 }
 
+/* Pokemon sprite */
+.pokemon-card__sprite-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+}
+
+.pokemon-card__sprite {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.pokemon-card--compact .pokemon-card__sprite-container {
+  width: 40px;
+  height: 40px;
+}
+
 .pokemon-card__info {
   display: flex;
   flex-direction: column;
