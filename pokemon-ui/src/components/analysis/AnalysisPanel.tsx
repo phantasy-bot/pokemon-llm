@@ -101,13 +101,13 @@ export function AnalysisPanel({
                   </div>
                 )
               )}
-              
-              {/* Thinking Animation Overlay */}
-              <div className={`analysis-panel__thinking ${isProcessing ? 'active' : ''}`}>
-                <div className="analysis-panel__thinking-spinner" />
-                {renderThinkingText()}
-              </div>
             </div>
+          </div>
+          
+          {/* Thinking Animation - Bottom Center */}
+          <div className={`analysis-panel__thinking-bottom ${isProcessing ? 'active' : ''}`}>
+            <div className="analysis-panel__thinking-spinner" />
+            {renderThinkingText()}
           </div>
         </div>
 

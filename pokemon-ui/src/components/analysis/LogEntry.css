@@ -474,29 +474,7 @@
   gap: 4px;
 }
 
-/* Game analysis blocks */
-/* Game analysis blocks */
-.game-analysis-start {
-  margin: 12px 0 4px 0;
-  padding: 0 0 2px 0;
-  /* Removed background and blue border */
-  border-bottom: 1px solid var(--border-subtle);
-  
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.game-analysis-end {
-  margin: 4px 0;
-  border-bottom: 1px dashed var(--border-subtle);
-}
+/* Game analysis blocks - removed, tags are now stripped */
 
 /* Formatted log content wrapper */
 .formatted-log-content {
