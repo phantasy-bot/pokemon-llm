@@ -268,34 +268,44 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
             # Use enhanced sync version with built-in exponential backoff
             if hasattr(zai_vision_client, 'analyze_image_sync'):
                 # CRITICAL: Updated prompt - JSON format, no styling, no emojis, no bullets
+                # Be SPECULATIVE about uncertain objects, do NOT report doors/exits (use minimap instead)
                 factual_prompt = (
                     "Analyze this Pokemon Red game screenshot. Output as JSON with these fields:\n\n"
                     "{\n"
                     '  "screen_type": "title|overworld|battle|menu|dialogue|name_entry",\n'
                     '  "readable_text": "any visible text, semicolon separated. ONLY what is perfectly legible.",\n'
                     '  "player_position": "description using directional terms (north/south/east/west)",\n'
-                    '  "nearby_objects": "objects near player, semicolon separated",\n'
+                    '  "nearby_objects": "objects near player - use SPECULATIVE language (maybe, possibly, looks like)",\n'
                     '  "npcs": "visible NPCs and positions, semicolon separated",\n'
                     '  "obstacles": "walls/trees/barriers, semicolon separated",\n'
                     '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
                     '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
                     '  "menu_cursor": "if menu: which option is highlighted",\n'
-                    '  "navigation_notes": "doors/exits/paths visible",\n'
                     '  "black_space": "list any large black cut-off areas (e.g. east side, bottom half)"\n'
                     "}\n\n"
-                    "RULES:\n"
+                    "CRITICAL RULES:\n"
                     "- Output ONLY valid JSON, no markdown formatting\n"
                     "- Do NOT use bullet points, use semicolons to separate list items\n"
                     "- Do NOT use emojis\n"
-                    "- Do NOT use headers or bold text\n"
-                    "- Be factual - only report what is clearly visible\n"
-                    "- For positions, use relative terms (north, 2 steps east, directly south)\n"
-                    "- Player sprite is ALWAYS the red human character with a hat in center of overworld screens\n"
+                    "- Do NOT use headers or bold text\n\n"
+                    "UNCERTAINTY & SPECULATION:\n"
+                    "- Be SPECULATIVE about object identification - use 'maybe', 'possibly', 'looks like'\n"
+                    "- If you can't clearly identify something, say 'unclear sprite' or 'possibly a [guess]'\n"
+                    "- Example: 'maybe a toilet or plant; possibly a bookshelf' instead of 'toilet; bookshelf'\n"
+                    "- Pixel art is ambiguous - express uncertainty appropriately\n\n"
+                    "DO NOT REPORT (HALLUCINATION-PRONE):\n"
+                    "- Do NOT report doors, exits, entrances, or paths - the minimap handles navigation\n"
+                    "- Do NOT guess at where doors/stairs might be\n"
+                    "- Leave navigation to the minimap data\n\n"
+                    "TEXT RULES:\n"
                     "- If text is unclear say 'unreadable'. DO NOT GUESS TEXT.\n"
                     "- Text must be EXACT pixel-for-pixel match. If partially cut off, do not infer words.\n"
-                    "- Empty fields should be empty strings\n"
                     "- **CRITICAL**: Do NOT report text if there is no visible text box. Verify white box with black borders.\n"
                     "- **CRITICAL**: Do NOT hallucinate 'Welcome to Pokemon Center' unless you clearly see it.\n\n"
+                    "POSITION RULES:\n"
+                    "- For positions, use relative terms (north, 2 steps east, directly south)\n"
+                    "- Player sprite is ALWAYS the red human character with a hat in center of overworld screens\n"
+                    "- Empty fields should be empty strings\n\n"
                     "SCREEN TYPES:\n"
                     "- title: Pokemon logo, copyright text, no gameplay\n"
                     "- overworld: player sprite visible, walking around\n"
