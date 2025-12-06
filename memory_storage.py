@@ -63,7 +63,7 @@ class VisionClaim:
 class MemoryManager:
     """Comprehensive memory management system for Pokemon LLM agent"""
 
-    def __init__(self, storage_path: str = "pokemon_memories.json"):
+    def __init__(self, storage_path: str = "pokemon_memories.json", reset_on_start: bool = True):
         self.storage_path = storage_path
         self.memories = {
             "spatial": [],
@@ -80,7 +80,13 @@ class MemoryManager:
             "verified_wrong": 0,
             "unverified": 0
         }
-        self.load_memories()
+        
+        if reset_on_start:
+            # Clear memories for fresh start
+            self._save_memories()
+            log.info("🧹 Memories reset for fresh session")
+        else:
+            self.load_memories()
 
     def add_spatial_memory(
         self,

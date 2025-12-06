@@ -16,9 +16,187 @@
       },
       "destination": null,
       "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: <game_analysis>1. CURRENT STATE\n   - Location: Menu screen after loading a saved game\n   - Facing: U",
+      "coordinates": [
+        2,
+        3
+      ],
+      "timestamp": "2025-12-05T19:58:21.485029",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: Menu screen after loading a saved game\n   - Facing: U"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: <game_analysis>1. CURRENT STATE\n   - Location: Menu screen after loading a saved game\n   - Facing: U",
+      "coordinates": [
+        2,
+        3
+      ],
+      "timestamp": "2025-12-05T19:58:55.713222",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: Menu screen after loading a saved game\n   - Facing: U"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: <game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [2,3]\n   - Facing: down\n",
+      "coordinates": [
+        2,
+        3
+      ],
+      "timestamp": "2025-12-05T19:59:42.307950",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [2,3]\n   - Facing: down\n"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: <game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [3,3]\n   - Facing: right",
+      "coordinates": [
+        3,
+        3
+      ],
+      "timestamp": "2025-12-05T20:00:07.733421",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [3,3]\n   - Facing: right"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Visited PLAYERS_HOUSE_1F: <game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [7,3]\n   - Facing: right",
+      "coordinates": [
+        7,
+        3
+      ],
+      "timestamp": "2025-12-05T20:01:07.435681",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_1F at position [7,3]\n   - Facing: right"
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Verified Exit: Path at [7, 3] leads to PLAYERS_HOUSE_2F",
+      "coordinates": [
+        7,
+        3
+      ],
+      "timestamp": "2025-12-05T20:01:43.149047",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "target_pos": [
+          7,
+          1
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_2F",
+      "landmark_type": "exit"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_2F",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_1F at [7, 1]",
+      "coordinates": [
+        7,
+        1
+      ],
+      "timestamp": "2025-12-05T20:01:43.149114",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          7,
+          3
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "entrance"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_2F",
+      "description": "Visited PLAYERS_HOUSE_2F: <game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_2F at position [7,1]\n   - Facing: up\n  ",
+      "coordinates": [
+        7,
+        1
+      ],
+      "timestamp": "2025-12-05T20:01:43.152657",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_2F at position [7,1]\n   - Facing: up\n  "
+      },
+      "destination": null,
+      "landmark_type": "exploration"
+    },
+    {
+      "type": "spatial",
+      "location": "PLAYERS_HOUSE_2F",
+      "description": "Visited PLAYERS_HOUSE_2F: <game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_2F at position [3,1]\n   - Facing: left ",
+      "coordinates": [
+        3,
+        1
+      ],
+      "timestamp": "2025-12-05T20:02:36.060469",
+      "importance": 1.0,
+      "context": {
+        "source": "fallback",
+        "summary": "<game_analysis>1. CURRENT STATE\n   - Location: PLAYERS_HOUSE_2F at position [3,1]\n   - Facing: left "
+      },
+      "destination": null,
+      "landmark_type": "exploration"
     }
   ],
-  "gameplay": [],
+  "gameplay": [
+    {
+      "type": "gameplay",
+      "location": "PLAYERS_HOUSE_1F",
+      "description": "Found item: stuck",
+      "coordinates": [
+        3,
+        3
+      ],
+      "timestamp": "2025-12-05T20:00:32.209231",
+      "importance": 1.5,
+      "context": {
+        "source": "analysis_extraction",
+        "item": "stuck"
+      },
+      "event_type": "item_found",
+      "outcome": "obtained",
+      "pokemon_involved": null
+    }
+  ],
   "narrative": [],
   "tactical": []
 }

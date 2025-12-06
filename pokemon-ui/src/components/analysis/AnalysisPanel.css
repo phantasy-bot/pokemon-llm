@@ -87,7 +87,25 @@
   flex: 1; 
 }
 
-/* Thinking Animation */
+/* Thinking Animation - Bottom Center of History Wrapper */
+.analysis-panel__thinking-bottom {
+  /* Position at bottom center of the history wrapper */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  margin-top: auto; /* Push to bottom */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.analysis-panel__thinking-bottom.active {
+  opacity: 1;
+}
+
+/* Legacy thinking overlay - keep for compatibility */
 .analysis-panel__thinking {
   /* Position absolute at bottom center */
   position: absolute;

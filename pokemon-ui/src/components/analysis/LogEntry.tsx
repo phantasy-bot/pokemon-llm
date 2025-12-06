@@ -277,15 +277,9 @@ function formatLogText(text: string): string {
     '<div class="log-numbered-section"><span class="log-section-number">$1.</span> <span class="log-section-title">$2</span></div>'
   );
   
-  // Highlight game_analysis tags as section separators (if not parsed as JSON above)
-  formattedText = formattedText.replace(
-    /<game_analysis>/gi,
-    '<div class="game-analysis-start">📊 Analysis</div>'
-  );
-  formattedText = formattedText.replace(
-    /<\/game_analysis>/gi,
-    '<div class="game-analysis-end"></div>'
-  );
+  // Remove game_analysis tags completely - content is displayed directly
+  formattedText = formattedText.replace(/<game_analysis>/gi, '');
+  formattedText = formattedText.replace(/<\/game_analysis>/gi, '');
 
   // Highlight coordinates
   const coordRegex = /(\[\d+,\s*\d+\])/g;

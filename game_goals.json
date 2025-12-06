@@ -31,15 +31,6 @@
   ],
   "failures": [
     {
-      "action": "A;B;A;B",
-      "position": [
-        3,
-        6
-      ],
-      "reason": "Position unchanged - movement blocked",
-      "timestamp": "2025-12-05T19:06:06.220892"
-    },
-    {
       "action": "L",
       "position": [
         3,
@@ -74,6 +65,15 @@
       ],
       "reason": "Position unchanged - movement blocked",
       "timestamp": "2025-12-05T19:23:48.843755"
+    },
+    {
+      "action": "A",
+      "position": [
+        3,
+        3
+      ],
+      "reason": "Position unchanged - movement blocked",
+      "timestamp": "2025-12-05T20:00:17.978571"
     }
   ]
 }
