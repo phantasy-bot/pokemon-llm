@@ -310,6 +310,8 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "POSITION RULES:\n"
                     "- For positions, use relative terms (north, 2 steps east, directly south)\n"
                     "- Player sprite is ALWAYS the red human character with a hat in center of overworld screens\n"
+                    "- CRITICAL: An NPC in 'red clothing' at the CENTER of the screen is almost certainly the PLAYER (named RED), not an NPC\n"
+                    "- The player character wears red and is always centered on the screen - do not confuse them with NPCs\n"
                     "- Empty fields should be empty strings\n\n"
                     "SCREEN TYPES:\n"
                     "- title: Pokemon logo, copyright text, no gameplay\n"

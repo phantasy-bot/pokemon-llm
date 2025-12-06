@@ -139,6 +139,26 @@
       },
       "destination": "PLAYERS_HOUSE_1F",
       "landmark_type": "entrance"
+    },
+    {
+      "type": "spatial",
+      "location": "PALLET_TOWN",
+      "description": "Verified Entrance: Arrived from PLAYERS_HOUSE_1F at [3, 6]",
+      "coordinates": [
+        3,
+        6
+      ],
+      "timestamp": "2025-12-06T16:51:32.705173",
+      "importance": 3.0,
+      "context": {
+        "source": "verified_transition",
+        "origin_pos": [
+          2,
+          7
+        ]
+      },
+      "destination": "PLAYERS_HOUSE_1F",
+      "landmark_type": "entrance"
     }
   ],
   "gameplay": [],
