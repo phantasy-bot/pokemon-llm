@@ -120,6 +120,7 @@ export function PokemonStreamOverlay({
               </div>
               <div className="stat-label">TOKENS</div>
             </div>
+            <div className="stats-separator" />
             <div className="stat-item">
               <div className="stat-count">
                 {gameState.actions.toLocaleString()}
