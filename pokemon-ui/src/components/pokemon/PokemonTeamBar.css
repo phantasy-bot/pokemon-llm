@@ -89,26 +89,50 @@
   font-weight: 600;
 }
 
-/* Sponsor section - adapted from party bar */
-.pokemon-team-bar__sponsor {
+/* Minimap section - replaces sponsor section */
+.pokemon-team-bar__minimap {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   padding-left: var(--space-lg);
   border-left: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  gap: var(--space-sm); /* Added gap for stacked sponsors */
+  /* Fixed dimensions to match previous sponsor section and prevent layout shift */
+  width: 220px;
+  height: 100%;
 }
 
-.pokemon-team-bar__sponsor-header {
+.pokemon-team-bar__minimap-component {
+  width: 100%;
+  height: 100%;
+}
+
+/* Strip minimap container styling when inside team bar to match Pokemon Team section */
+.pokemon-team-bar__minimap-component .minimap {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.pokemon-team-bar__minimap-component .minimap:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Make minimap header match Pokemon Team header exactly */
+.pokemon-team-bar__minimap-component .minimap__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
   margin-bottom: var(--space-sm);
+  padding: 0; /* Remove padding to match team header */
+  background: transparent;
+  border-bottom: none;
+  gap: var(--space-sm);
 }
 
-.pokemon-team-bar__sponsor-label {
+/* Map name - exact match to .pokemon-team-bar__title */
+.pokemon-team-bar__minimap-component .minimap__location {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -118,140 +142,25 @@
   letter-spacing: 0.08em;
 }
 
-.pokemon-team-bar__sponsor-link {
+/* Coordinates - exact match to .pokemon-team-bar__count */
+.pokemon-team-bar__minimap-component .minimap__coords {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
-  text-decoration: none;
-}
-
-.pokemon-team-bar__sponsor-link:hover {
-  color: var(--text-secondary);
-  text-decoration: underline;
-}
-
-.pokemon-team-bar__sponsor-card {
-  display: flex;
-  gap: var(--space-sm); /* Reduced gap */
-  padding: var(--space-sm); /* Reduced padding */
-  background: linear-gradient(
-    135deg,
-    var(--bg-card) 0%,
-    var(--bg-panel) 100%
-  );
-  border: 1px solid var(--border-default);
-  position: relative;
-  width: 100%; /* Full width to container */
-  border-radius: 8px;
-}
-
-.pokemon-team-bar__sponsor-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent-primary-bright);
-  border-radius: 8px 8px 0 0;
-}
-
-.pokemon-team-bar__sponsor-portrait {
-  width: 60px; /* Reduced from 96px */
-  height: 50px; /* Reduced from 80px */
+  font-weight: 500;
   flex-shrink: 0;
-  background: var(--bg-input);
-  border-radius: 6px;
-  overflow: hidden;
 }
 
-.pokemon-team-bar__sponsor-portrait-img {
+/* Override minimap body height to fit the fixed container */
+.pokemon-team-bar__minimap-component .minimap__body {
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+}
+
+/* Ensure the minimap image scales properly within the fixed space */
+.pokemon-team-bar__minimap-component .minimap__image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-.pokemon-team-bar__sponsor-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  flex: 1;
-  min-width: 0;
-}
-
-.pokemon-team-bar__sponsor-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-xs);
-}
-
-.pokemon-team-bar__sponsor-name {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.pokemon-team-bar__sponsor-level {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.pokemon-team-bar__sponsor-hp {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.pokemon-team-bar__sponsor-hp-track {
-  flex: 1;
-  height: 6px;
-  background: var(--bg-input);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.pokemon-team-bar__sponsor-hp-fill {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, var(--success-primary), #9aad00);
-  border-radius: var(--radius-sm);
-}
-
-.pokemon-team-bar__sponsor-hp-text {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-secondary);
-  min-width: 32px;
-  text-align: right;
-  font-weight: 500;
-}
-
-.pokemon-team-bar__sponsor-class {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  margin-top: var(--space-xs);
-}
-
-.pokemon-team-bar__sponsor-sprite {
-  width: 16px;
-  height: 16px;
   object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-}
-
-.pokemon-team-bar__sponsor-class-name {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  font-weight: 500;
 }

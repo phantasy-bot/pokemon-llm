@@ -265,28 +265,45 @@
   background: var(--bg-panel);
   /* No borders - positioned last, no separator needed on right */
   overflow-y: auto;
-  justify-content: flex-end; /* Push goals and minimap to bottom */
+  /* Removed justify-content: flex-end - content now starts from top */
 }
 
+/* Goals section with TUI box styling */
 .goals-log {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm);
-  flex-shrink: 0;
-  border-top: 1px solid var(--border-subtle); /* Separator above goals */
-  padding-top: var(--space-md);
-  margin-top: auto; /* Push to bottom */
+  padding: var(--space-md);
+  padding-top: var(--space-lg); /* Space for label */
+  flex: 1; /* Fill available space */
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+  position: relative;
 }
 
-.goals-log h3 {
+/* TUI label for Goals section */
+.goals-log__label {
+  display: block;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 700;
-  color: var(--accent-primary-bright);
-  margin: 0 0 var(--space-sm);
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on top border */
+  position: absolute;
+  top: -8px;
+  left: var(--space-md);
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
+/* Removed old h3 styling - using __label now */
+.goals-log h3 {
+  display: none; /* Hide any h3 elements */
 }
 
 .goals-log p {
@@ -301,6 +318,7 @@
   color: var(--text-primary);
   font-weight: 600;
 }
+
 
 .goals-log ul {
   margin: 0 0 var(--space-md);
@@ -330,9 +348,29 @@
   flex: 35; /* 35% */
   padding: var(--space-md);
   background: var(--bg-panel);
-  border-left: 1px solid var(--border-subtle); /* Separator on left */
-  border-right: 1px solid var(--border-subtle); /* Separator on right */
+  border-left: none; /* Removed - using pseudo-elements for partial borders */
+  border-right: none;
   overflow-y: auto;
+  position: relative;
+}
+
+/* Partial column separators - don't extend to bottom */
+.pokemon-right-col::before,
+.pokemon-right-col::after {
+  content: '';
+  position: absolute;
+  top: var(--space-md);
+  bottom: var(--space-xl); /* Gap at bottom */
+  width: 1px;
+  background: rgba(208, 202, 200, 0.5); /* Lighter, blends with --bg-panel */
+}
+
+.pokemon-right-col::before {
+  left: 0;
+}
+
+.pokemon-right-col::after {
+  right: 0;
 }
 
 .pokemon-game-feed {
