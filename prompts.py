@@ -319,11 +319,26 @@ Use this structure in <game_analysis> tags:
      * Go to the EDGE of the map in that direction before changing
      * Think: "Am I covering new ground or retracing my steps?"
 
+   **DIRECTIONAL PROGRESS CHECK (CRITICAL)**:
+   - Look at your position history from `recent_actions` and your current [x,y] vs previous positions
+   - Ask: "Which direction do I need to go?" (e.g., "I came from PALLET_TOWN in the south, I need to go NORTH to VIRIDIAN_CITY")
+   - Ask: "Is my current pattern actually moving me in that direction?"
+     * If recent positions show Y coordinate DECREASING → I'm making NORTH progress ✓
+     * If recent positions show Y coordinate INCREASING → I'm making SOUTH progress
+     * If recent positions show X coordinate INCREASING → I'm making EAST progress
+     * If recent positions show X coordinate DECREASING → I'm making WEST progress
+   - **KEEP patterns that show progress**: "My last 3 moves decreased Y from 14→12→10, so going NORTH is working!"
+   - **CHANGE patterns that don't show progress**: "My Y has been 14→14→14, I'm not making north progress. Try a different approach."
+   - **Example reasoning**: "I want to go NORTH. Looking at recent positions [6,14]→[6,12]→[6,10], my Y is decreasing = NORTH progress! Keep this pattern."
+
 5. GOAL & PLAN
    - Immediate goal: [specific objective] **← THIS IS YOUR PRIORITY**
+   - **Direction needed**: [NORTH/SOUTH/EAST/WEST to reach goal]
+   - **Am I making progress in that direction?** [Check position history - is coordinate changing correctly?]
    - Path: [sequence of directions]
    - Fallback if blocked: [alternative plan]
    - **Exploration Strategy**: Prioritize reaching 'O' tiles (exits) over 'A' interactions. Only talk to NPCs if required by the MAIN GOAL.
+
 
 6. ACTION DECISION
    - Chosen action(s): **CHAIN 2-5 MOVES** (e.g., U;U;U;U;U; or D;R;R;R;A;)
