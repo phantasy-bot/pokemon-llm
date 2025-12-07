@@ -880,10 +880,11 @@ def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary
         if directory and not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        # Robust regex: Look for "9. COMMENTARY", "## COMMENTARY", or just "COMMENTARY"
-        # Use DOTALL to capture everything until the end of the string
-        pattern = r'(?:^|\n)(?:9\.|#+)?\s*COMMENTARY\s*:?\s*\n(.*?)$'
+        # Robust regex: Look for "9. COMMENTARY", "8. COMMENTARY", "## COMMENTARY", or just "COMMENTARY"
+        # Handles any digit prefix like "8." or "9." or "10."
+        pattern = r'(?:^|\n)(?:(?:\d+\.|#+)\s*)?COMMENTARY\s*:?\s*\n(.*?)$'
         match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+
         
         commentary = ""
         
