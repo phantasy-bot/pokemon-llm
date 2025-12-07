@@ -5,7 +5,7 @@
 
 :root {
   /* Fonts */
-  --font-display: 'FjallaOne', sans-serif;
+  --font-display: 'fsJenson1ItalicRegular', serif;
   --font-mono: 'Sometype Mono', monospace;
   --font-body: var(--font-mono);
 
