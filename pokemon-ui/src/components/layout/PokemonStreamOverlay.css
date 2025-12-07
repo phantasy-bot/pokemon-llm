@@ -203,12 +203,13 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 50px;
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: center;
+  line-height: 0;
 }
 
 /* Main Content Area */
