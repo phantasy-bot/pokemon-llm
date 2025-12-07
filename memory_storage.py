@@ -85,6 +85,10 @@ class MemoryManager:
             "verified_wrong": 0,
             "unverified": 0
         }
+        # Track failed exit attempts: key = (map_name, coords_tuple), value = failure count
+        self.failed_exit_attempts: Dict[tuple, int] = {}
+        # Threshold for removing unreliable memories
+        self.FAILED_ATTEMPT_THRESHOLD = 3
         
         if reset_on_start:
             # Clear memories for fresh start
@@ -92,6 +96,57 @@ class MemoryManager:
             log.info("🧹 Memories reset for fresh session")
         else:
             self.load_memories()
+
+    def record_failed_exit_attempt(self, map_name: str, coordinates: List[int]) -> bool:
+        """
+        Record that an exit attempt at these coordinates failed.
+        If attempts exceed threshold, invalidate the memory.
+        Returns True if memory was invalidated (should stop trying this exit).
+        """
+        if not coordinates or len(coordinates) < 2:
+            return False
+        
+        key = (map_name.upper(), tuple(coordinates))
+        self.failed_exit_attempts[key] = self.failed_exit_attempts.get(key, 0) + 1
+        count = self.failed_exit_attempts[key]
+        
+        log.info(f"⚠️ Failed exit attempt {count}/{self.FAILED_ATTEMPT_THRESHOLD} at {map_name} {coordinates}")
+        
+        if count >= self.FAILED_ATTEMPT_THRESHOLD:
+            # Invalidate this memory - remove or mark as unreliable
+            self._invalidate_exit_memory(map_name, coordinates)
+            log.warning(f"🚫 Memory invalidated: {map_name} {coordinates} - too many failed attempts")
+            return True
+        
+        return False
+    
+    def _invalidate_exit_memory(self, map_name: str, coordinates: List[int]) -> None:
+        """Remove or mark unreliable an exit memory that has failed too many times."""
+        coords_tuple = tuple(coordinates)
+        map_upper = map_name.upper()
+        
+        # Find and remove matching spatial memories
+        to_remove = []
+        for i, mem in enumerate(self.memories["spatial"]):
+            if (mem.location and map_upper in mem.location.upper() and 
+                mem.coordinates and tuple(mem.coordinates) == coords_tuple and
+                mem.landmark_type in ("exit", "entrance")):
+                to_remove.append(i)
+        
+        # Remove in reverse order to preserve indices
+        for i in reversed(to_remove):
+            removed = self.memories["spatial"].pop(i)
+            log.info(f"🗑️ Removed unreliable memory: {removed.description}")
+        
+        if to_remove:
+            self._save_memories()
+    
+    def reset_failed_attempts(self, map_name: str, coordinates: List[int]) -> None:
+        """Reset failed attempt counter for a location (e.g., if exit actually works)."""
+        key = (map_name.upper(), tuple(coordinates))
+        if key in self.failed_exit_attempts:
+            del self.failed_exit_attempts[key]
+            log.info(f"✅ Reset failed attempt counter for {map_name} {coordinates}")
 
     def add_spatial_memory(
         self,

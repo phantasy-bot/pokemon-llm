@@ -1045,6 +1045,18 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                         position=last_position,
                         reason="Position unchanged - movement blocked"
                     )
+                
+                # Check if we have a memory for this position - if so, it might be a false exit
+                # Record failed exit attempt which will decay/remove unreliable memories
+                map_name_for_decay = current_mGBA_state.get('map_name', '')
+                if current_pos and map_name_for_decay:
+                    invalidated = memory_manager.record_failed_exit_attempt(
+                        map_name_for_decay, 
+                        list(current_pos)
+                    )
+                    if invalidated:
+                        # Memory was invalidated - tell the LLM to try something else
+                        llm_input_state["stuck_warning"] += " MEMORY INVALIDATED: The exit at your position was a false memory (likely from a cutscene). Explore for REAL exits!"
         
         # Add memory context to LLM input
         map_name = current_mGBA_state.get('map_name', '')

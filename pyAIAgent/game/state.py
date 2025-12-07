@@ -120,7 +120,14 @@ def prep_llm(sock) -> dict:
     if loc:
         mid, x, y, facing, mapName = loc
         rom_path = get_rom_path()
-        dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE).save("minimap.png")
+        minimap_img = dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE)
+        if minimap_img:
+            minimap_img.save("minimap.png")
+        else:
+            # Fallback if minimap generation failed (e.g., unknown tileset)
+            from PIL import Image
+            default_minimap = Image.new('RGB', (160, 160), color='gray')
+            default_minimap.save("minimap.png")
         map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
         position = (x, y)
     else:
