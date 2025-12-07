@@ -16,30 +16,39 @@
 
 .minimap__header {
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Changed to row to match Pokemon Team header layout */
   align-items: center;
+  justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
-  background: linear-gradient(
-    135deg,
-    var(--bg-panel) 0%,
-    var(--bg-card) 100%
-  );
-  border-bottom: 1px solid var(--border-subtle);
-  gap: 4px;
+  background: transparent; /* Removed gradient to match simpler Pokemon Team style */
+  border-bottom: none; /* Removed border to match cleaner look */
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
 }
 
+/* Map name - matches .pokemon-team-bar__title styling */
 .minimap__location {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex: 1;
+  letter-spacing: 0.08em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Coordinates - matches .pokemon-team-bar__count styling */
+.minimap__coords {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
 
 .minimap__status {
   font-size: 8px;

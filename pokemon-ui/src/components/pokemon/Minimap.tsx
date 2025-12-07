@@ -62,12 +62,30 @@ export function Minimap({
     img.style.display = "none";
   };
 
+  // Parse location to split map name and coordinates
+  // Format expected: "MAP_NAME (Map ID) (X, Y)" or similar
+  const parseLocation = (loc: string): { mapName: string; coords: string } => {
+    // Try to match pattern like "(7, 6)" or "(7,6)" at the end
+    const coordMatch = loc.match(/\((\d+),?\s*(\d+)\)\s*$/);
+    if (coordMatch) {
+      const coordsStr = `(${coordMatch[1]}, ${coordMatch[2]})`;
+      const mapName = loc.replace(/\((\d+),?\s*(\d+)\)\s*$/, '').trim();
+      return { mapName, coords: coordsStr };
+    }
+    // No coordinates found, just use the full location as map name
+    return { mapName: loc, coords: '' };
+  };
+
+  const { mapName, coords } = parseLocation(location);
+
   return (
     <div className={`minimap ${className}`}>
-      {/* Location header */}
+      {/* Location header - styled like Pokemon Team header */}
       <div className="minimap__header">
-        <span className="minimap__location">{location}</span>
+        <span className="minimap__location">{mapName}</span>
+        {coords && <span className="minimap__coords">{coords}</span>}
       </div>
+
 
       {/* Minimap body */}
       <div className="minimap__body">

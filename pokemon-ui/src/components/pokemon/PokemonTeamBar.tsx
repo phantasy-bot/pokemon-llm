@@ -1,12 +1,24 @@
 import { useRef, useEffect, useState } from "react";
 import type { PokemonTeamBarProps } from "../../types/display";
 import { PokemonCard } from "./PokemonCard";
+import { Minimap } from "./Minimap";
 import "./PokemonTeamBar.css";
 
 const SCROLL_SPEED = 50;
 const PAUSE_DURATION = 3000;
 
-export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
+interface ExtendedPokemonTeamBarProps extends PokemonTeamBarProps {
+  minimapLocation?: string;
+  minimapTimestamp?: string;
+  minimapVisible?: boolean;
+}
+
+export function PokemonTeamBar({ 
+  pokemon,
+  minimapLocation = "Unknown Area",
+  minimapTimestamp,
+  minimapVisible = true,
+}: ExtendedPokemonTeamBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -121,75 +133,13 @@ export function PokemonTeamBar({ pokemon }: PokemonTeamBarProps) {
         </div>
       </div>
 
-      <div className="pokemon-team-bar__sponsor">
-        <div className="pokemon-team-bar__sponsor-header">
-          <span className="pokemon-team-bar__sponsor-label">Presented By</span>
-          <a
-            href="https://mysterygift.fun"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pokemon-team-bar__sponsor-link"
-          >
-            mysterygift.fun
-          </a>
-        </div>
-        <div className="pokemon-team-bar__sponsor-card">
-          <div className="pokemon-team-bar__sponsor-portrait">
-            <img
-              src="/sponsors/mystery-gift.png"
-              alt=""
-              className="pokemon-team-bar__sponsor-portrait-img"
-            />
-          </div>
-          <div className="pokemon-team-bar__sponsor-info">
-            <div className="pokemon-team-bar__sponsor-header">
-              <span className="pokemon-team-bar__sponsor-name">
-                Mystery Gift
-              </span>
-              <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
-            </div>
-
-            <div className="pokemon-team-bar__sponsor-class">
-              <img
-                src="/sponsors/mystery-gift.png"
-                alt="Mystery Gift"
-                className="pokemon-team-bar__sponsor-sprite"
-              />
-              <span className="pokemon-team-bar__sponsor-class-name">
-                SPONSOR
-              </span>
-            </div>
-          </div>
-        </div>
-        {/* Duplicated Sponsor Card as requested */}
-        <div className="pokemon-team-bar__sponsor-card">
-          <div className="pokemon-team-bar__sponsor-portrait">
-            <img
-              src="/sponsors/mystery-gift.png"
-              alt=""
-              className="pokemon-team-bar__sponsor-portrait-img"
-            />
-          </div>
-          <div className="pokemon-team-bar__sponsor-info">
-            <div className="pokemon-team-bar__sponsor-header">
-              <span className="pokemon-team-bar__sponsor-name">
-                SPONSOR
-              </span>
-              <span className="pokemon-team-bar__sponsor-level">Lv.∞</span>
-            </div>
-
-            <div className="pokemon-team-bar__sponsor-class">
-              <img
-                src="/sponsors/mystery-gift.png"
-                alt="Mystery Gift"
-                className="pokemon-team-bar__sponsor-sprite"
-              />
-              <span className="pokemon-team-bar__sponsor-class-name">
-                SPONSOR
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="pokemon-team-bar__minimap">
+        <Minimap
+          location={minimapLocation}
+          visible={minimapVisible}
+          timestamp={minimapTimestamp}
+          className="pokemon-team-bar__minimap-component"
+        />
       </div>
     </div>
   );

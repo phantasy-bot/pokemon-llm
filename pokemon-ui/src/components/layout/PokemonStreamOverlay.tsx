@@ -6,8 +6,8 @@ import type {
 } from "../../types/gameTypes";
 import type { PokemonDisplay } from "../../types/display";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
-import { Minimap } from "../pokemon/Minimap";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
+import { RecentActions } from "../shared/RecentActions";
 import "./PokemonStreamOverlay.css";
 
 // Utility function to truncate large numbers
@@ -139,27 +139,27 @@ export function PokemonStreamOverlay({
 
       {/* Main content area */}
       <div className="pokemon-content">
-        {/* Left Column - Battle Log Only */}
+        {/* Left Column - LLM Analysis (now fills full height, no recent actions) */}
         <div className="pokemon-left-col">
           <div className="pokemon-analysis-panel">
             <AnalysisPanel
-            logs={logs}
-            isProcessing={
-              !!gameState.processingStatus ||
-              gameState.gameStatus === "Thinking..." || 
-              gameState.gameStatus === "Processing..." ||
-              gameState.gameStatus === "Running..." ||
-              gameState.gameStatus.includes("Auto")
-            }
-            processingStatus={gameState.processingStatus || ""}
-            totalActions={gameState.actions}
-            memoryWrite={memoryWrite}
-            onMemoryWriteClear={onMemoryWriteClear}
-          />
+              logs={logs}
+              isProcessing={
+                !!gameState.processingStatus ||
+                gameState.gameStatus === "Thinking..." || 
+                gameState.gameStatus === "Processing..." ||
+                gameState.gameStatus === "Running..." ||
+                gameState.gameStatus.includes("Auto")
+              }
+              processingStatus={gameState.processingStatus || ""}
+              memoryWrite={memoryWrite}
+              onMemoryWriteClear={onMemoryWriteClear}
+            />
+
           </div>
         </div>
 
-        {/* Center Column - Game Status, Game Feed and Team (was right) */}
+        {/* Center Column - Game Status, Game Feed and Team */}
         <div className="pokemon-right-col">
           <div className="status">
             <span>Game Status: {gameState.gameStatus}</span>
@@ -176,28 +176,30 @@ export function PokemonStreamOverlay({
             </div>
           </div>
 
-          {/* Pokemon Team Bar */}
+          {/* Pokemon Team Bar with Minimap */}
           <div className="pokemon-team-section">
-            <PokemonTeamBar pokemon={currentPokemon} />
+            <PokemonTeamBar 
+              pokemon={currentPokemon}
+              minimapLocation={location}
+              minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
+              minimapVisible={gameState.minimapVisible}
+            />
           </div>
         </div>
 
-        {/* Right Column - Goals and Minimap (was center) */}
+        {/* Right Column - Recent Actions and Goals */}
         <div className="pokemon-goals">
+          {/* Recent Actions - moved from left column */}
+          <RecentActions logs={logs} totalActions={gameState.actions} />
+
+          {/* Goals with TUI box styling */}
           <div className="goals-log">
-            <h3>Goals</h3>
+            <span className="goals-log__label">GOALS</span>
             <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
             <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
             <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
             <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
           </div>
-          {/* Minimap Overlay */}
-          <Minimap
-            location={location}
-            visible={gameState.minimapVisible}
-            className="minimap-overlay"
-            timestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
-          />
         </div>
       </div>
     </div>

@@ -161,21 +161,33 @@ def get_base_prompt() -> str:
    - Use for: Object identification, text location, nearby interactions
 
 2. **MINIMAP GRID (Navigation)**:
-   - Size: 21x21 cells (larger area around player)
-   - Player Position: [10,10] (Center of minimap)
+   - **DYNAMIC SIZE**: Varies by map! Check the actual dimensions (e.g., 7x10, 21x21, 8x8)
+   - **Player Position**: ALWAYS at grid center = [width//2, height//2]
+   - **EXAMPLE**: 7-column x 10-row map → player at [3, 5] (center)
+   - **EXAMPLE**: 21x21 map → player at [10, 10] (center)
    - Use for: Pathfinding, locating 'O' exits/entrances
-   - Symbols: P=Player, O=Entrance/Exit, W=Walkable, B=Blocked
-   - **ROW 0 = TOP, ROW 20 = BOTTOM** (standard screen coordinates)
+   - Symbols: P=Player (YOU!), O=Entrance/Exit, W=Walkable, B=Blocked
+   - **⚠️ 'P' IS YOU** - 'P' marks YOUR current tile position. It is NOT an object to interact with!
+   - **'P' counts as a tile** - When counting coordinates, 'P' is a walkable tile at your position (treat it like 'W' for grid math)
+
+
+   - **ROW 0 = TOP, ROW (height-1) = BOTTOM** (standard screen coordinates)
    - **To reach a LOWER row number, move UP (U)**
    - **To reach a HIGHER row number, move DOWN (D)**
+   - **⚠️ BOUNDS CHECK**: Exit coordinates CANNOT exceed grid dimensions!
+     * If grid is 7 wide, max X is 6 (columns 0-6)
+     * If grid is 10 tall, max Y is 9 (rows 0-9)
+     * Coordinates like [16,19] are INVALID on a 7x10 map!
 
 ## MINIMAP FORMAT (Raw String)
-- The raw minimap string represents the 21x21 Minimap Grid.
-- Semicolon-separated rows (Row 0 to Row 20, TOP to BOTTOM).
-- Example: "BBB...;...WPW...;...OWW..."
-- **CRITICAL**: Use 0-based indexing for coordinates (e.g., Column 0 is first char).
-- 'O' coordinates in the analysis MUST use the [10,10] center reference.
+- The raw minimap string represents the **ACTUAL grid size** (NOT always 21x21).
+- Semicolon-separated rows (Top to Bottom).
+- **FIRST**: Count the rows (semicolons + 1) and columns (chars per row) to know dimensions.
+- Example "BBWWWWB;BWWPWWB;BWWOOWB" = 3 rows × 7 columns
+- **CRITICAL**: 'O' coordinates MUST exist within the actual grid bounds.
+- The player 'P' is ALWAYS at the center of the grid.
 - Walk INTO orange O tiles to use doors/exits (no A press needed).
+
 
 ## INTERACTION RULES
 - NPCs/signs: Move orthogonally adjacent, face them, press A
@@ -207,13 +219,16 @@ Use this structure in <game_analysis> tags:
 
 2. MINIMAP ANALYSIS
    - Raw Minimap: [Insert the exact minimap_2d string from input here]
-   - My Position: [10,10] (Minimap Center)
-   - Visible Exits ('O'): List ONLY [x,y] coordinates - DO NOT GUESS what they lead to!
+   - **Grid Dimensions**: [Count rows and columns] → e.g., "8 columns × 10 rows"
+   - **My Position**: [width//2, height//2] = [computed center coords]
+   - Visible Exits ('O'): List ONLY [x,y] coordinates **WITHIN GRID BOUNDS** - DO NOT GUESS what they lead to!
+   - **BOUNDS CHECK**: Verify all 'O' coords are within [0 to width-1, 0 to height-1]
    - **CRITICAL**: You CANNOT know where 'O' tiles lead just by looking at them!
    - Check "memory_context" for VERIFIED exits (e.g., "[Verified Exit] [5,6] -> PLAYERS_HOUSE_1F")
    - If no memory exists for an 'O' tile, mark it as "UNKNOWN EXIT at [x,y]"
    - Immediate surroundings: NORTH/SOUTH/EAST/WEST [Blocked/Walkable]
-   - Path to Goal: [Describe path relative to [10,10]]
+   - Path to Goal: [Describe path relative to your center position]
+
 
 3. MEMORY-BASED REASONING
    - What do I KNOW from memory_context? [List verified exits/entrances]
@@ -228,37 +243,29 @@ Use this structure in <game_analysis> tags:
      * If my GOAL is Oak's Lab but I keep entering my house - STOP! Go the OTHER direction!
      * Before entering ANY 'O' tile, ask: "Does this lead to my goal destination?"
      * If you've entered the same building 2+ times without progress: BLACKLIST it, explore elsewhere
-   - EXPLORATION PRIORITY: Go toward UNEXPLORED 'O' tiles, not familiar ones
+   - **EXPLORATION NOTE**: When choosing between paths, prefer UNEXPLORED exits over familiar ones
    - If stuck: FORCE a completely different direction, try the opposite side of the map
-   
-   **STUCK RECOVERY - EXPLORATION FALLBACK**:
-   - If you're stuck or making no progress on your current goal:
-     * PIVOT TO EXPLORATION GOAL: "Let me increase my map exploration % to find new areas"
-     * Find and enter UNKNOWN exits ('O' tiles not in memory_context)
-     * Walk toward unexplored areas shown in exploration_context
-     * New areas often trigger story events, NPCs with hints, or paths to your goal
-   - Exploration is NEVER wasted - it reveals map connections and may unblock progress
 
 5. GOAL & PLAN
-   - Immediate goal: [specific objective]
+   - Immediate goal: [specific objective] **← THIS IS YOUR PRIORITY**
    - Path: [sequence of directions]
    - Fallback if blocked: [alternative plan]
+   - **Minor exploration**: If passing unexplored areas en route to goal, note them for later
 
 6. ACTION DECISION
    - Chosen action(s): **CHAIN 2-4 MOVES** (e.g., U;U;U; or D;R;R;A;)
    - **DIALOGUE EXCEPTION**: If vision shows "dialogue" screen_type, use ONLY ONE action (A; or B;)
      * During dialogue, pressing multiple buttons risks skipping important text or making wrong choices
      * Single actions allow you to read and react to each text box
+   - **DO NOT spam A to interact** - only press A when facing an NPC you need to talk to or a specific object for your goal
    - Why: [brief reasoning]
 
-8. EXPLORATION STATUS (Check "exploration_context" field)
-   - Current map exploration %: [From exploration_context if available]
-   - Unexplored areas: [Directions with unexplored tiles]
-   - **SYSTEMATIC EXPLORATION STRATEGY**:
-     * If exploration < 80%, PRIORITIZE walking toward unexplored areas
-     * WALL-FOLLOWING: When lost, find a wall edge and follow it clockwise
-     * Don't re-enter buildings unless your GOAL is inside that building
-     * Move toward suggested exploration targets before revisiting familiar areas
+7. EXPLORATION STATUS (Optional - minor consideration)
+   - Exploration %: [if available in exploration_context]
+   - **NOTE**: Exploration is secondary to your main goal. Only explore more if stuck or if unexplored exits are directly on your path.
+
+
+
 
 9. COMMENTARY
    - Lass persona: Bubbly, funny, SHORT reaction to current game moment.

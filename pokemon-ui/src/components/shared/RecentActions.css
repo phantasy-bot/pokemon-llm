@@ -1,0 +1,102 @@
+/* Recent Actions - TUI Box Styling */
+.recent-actions {
+  position: relative;
+  padding: var(--space-md);
+  padding-top: var(--space-lg);
+  margin-bottom: var(--space-md);
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+}
+
+.recent-actions__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on top border */
+  position: absolute;
+  top: -8px;
+  left: var(--space-md);
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
+.recent-actions__label-right {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on bottom border */
+  position: absolute;
+  bottom: -8px;
+  right: var(--space-md);
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
+.recent-actions__list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.recent-actions__item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recent-actions__number {
+  opacity: 0.5;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.recent-actions__number--empty {
+  opacity: 0.2;
+}
+
+.recent-actions__group {
+  display: flex;
+  gap: 4px;
+}
+
+.recent-actions__square {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent-primary-bright);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+}
+
+.recent-actions__square--empty {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  color: transparent;
+  box-shadow: none;
+}

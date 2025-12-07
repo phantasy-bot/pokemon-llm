@@ -18,7 +18,6 @@ interface AnalysisPanelProps {
   logs: LogEntry[];
   isProcessing?: boolean;
   processingStatus?: string; // Dynamic status text: "ANALYZING VISION...", "THINKING...", etc.
-  totalActions?: number;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
 }
@@ -27,12 +26,12 @@ export function AnalysisPanel({
   logs,
   isProcessing = false,
   processingStatus = "",
-  totalActions = 0,
   memoryWrite,
   onMemoryWriteClear,
 }: AnalysisPanelProps) {
   // @ts-expect-error - Parameter not used yet
   const _onMemoryWriteClear = onMemoryWriteClear;
+
   const [currentKeyart, setCurrentKeyart] = useState(0);
   const [persistedMemory, setPersistedMemory] = useState<string | null>(null);
 
@@ -53,7 +52,7 @@ export function AnalysisPanel({
   // Filter for different types of entries (show only current/most recent)
   const visionEntries = logs.filter((log) => log.is_vision).slice(0, 1);
   const responseEntries = logs.filter((log) => log.is_response).slice(0, 1);
-  const actionEntries = logs.filter((log) => log.is_action).slice(0, 3);
+
 
   // Get the latest LLM response entry for main display - prioritize response over vision
   const latestResponseEntry =
@@ -115,114 +114,9 @@ export function AnalysisPanel({
           </div>
         </div>
 
-        {/* 2. Recent Actions Section (Show last 3 entries, chronological left-to-right) */}
-        <div className="analysis-panel__actions-section">
-          <span className="analysis-panel__section-label">RECENT ACTIONS</span>
-          <span className="analysis-panel__section-label-bottom-right">CURRENT</span>
-          <div className="analysis-panel__actions-list">
-            {(() => {
-                // We want the last 3 entries, but displayed chronological: oldest at left, newest at right
-                const top3 = actionEntries.slice(0, 3);
-                
-                // Construct the display array of length 3, filling from the right
-                const displayItems = new Array(3).fill(null);
-                top3.forEach((action, i) => {
-                    const targetIndex = 2 - i; // 0->2, 1->1, 2->0
-                    if (targetIndex >= 0) {
-                        displayItems[targetIndex] = action;
-                    }
-                });
+        {/* 2. Vision Section (Fixed Height, Row Layout) */}
 
-                // Calculate action numbers based on totalActions
-                // The newest action (rightmost) ends at totalActions
-                // Count backwards from there
-                
-                // First, count total buttons in all displayed actions (newest to oldest)
-                const buttonCounts: number[] = [];
-                for (let i = 0; i < displayItems.length; i++) {
-                    const action = displayItems[i];
-                    if (action) {
-                        const rawText = action.text || action.message || "";
-                        const cleanText = rawText.replace("Action:", "").trim();
-                        const buttons = cleanText.split(";").filter((k: string) => k.trim()).length;
-                        buttonCounts.push(buttons > 0 ? buttons : 1);
-                    } else {
-                        buttonCounts.push(0);
-                    }
-                }
-                
-                // Calculate starting number - work backwards from totalActions
-                const totalButtonsDisplayed = buttonCounts.reduce((a, b) => a + b, 0);
-                let currentNum = totalActions - totalButtonsDisplayed + 1;
-                
-                const numberedItems: Array<{action: any, startNum: number, endNum: number} | null> = [];
-                
-                // Traverse in display order (left to right = oldest to newest)
-                for (let i = 0; i < displayItems.length; i++) {
-                    const action = displayItems[i];
-                    if (action) {
-                        const buttonCount = buttonCounts[i];
-                        const startNum = currentNum;
-                        const endNum = currentNum + buttonCount - 1;
-                        currentNum = endNum + 1;
-                        
-                        numberedItems.push({ action, startNum, endNum });
-                    } else {
-                        numberedItems.push(null);
-                    }
-                }
 
-                return numberedItems.map((item, i) => {
-                     if (item) {
-                         const { action, startNum, endNum } = item;
-                         
-                         // Format as range if multiple buttons, single number otherwise
-                         const numberLabel = (startNum !== endNum)
-                           ? `#${startNum}-${endNum}`
-                           : `#${startNum}`;
-                         
-                         const rawText = action.text || action.message || "";
-                         const cleanText = rawText.replace("Action:", "").trim();
-                         const keys = cleanText.split(";").map((k: string) => k.trim()).filter((k: string) => k).map((k: string) => {
-                            const upper = k.toUpperCase();
-                            if (upper === "START") return "S";
-                            if (upper === "SELECT") return "SEL";
-                            return upper;
-                         });
-                         if (keys.length === 0 && cleanText) keys.push(cleanText.charAt(0));
-
-                         return (
-                            <div key={action.id} className="analysis-panel__action-item">
-                                <span className="analysis-panel__action-number" style={{ opacity: 0.5, fontFamily: 'var(--font-mono)' }}>
-                                {numberLabel}
-                                </span>
-                                <div className="analysis-panel__action-group">
-                                {keys.map((k: string, idx: number) => (
-                                    <div key={idx} className="analysis-panel__action-square">
-                                    {k}
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
-                        );
-                     } else {
-                         return (
-                            <div key={`empty-${i}`} className="analysis-panel__action-item">
-                                <span className="analysis-panel__action-number" style={{ opacity: 0.2, fontFamily: 'var(--font-mono)' }}>
-                                #--
-                                </span>
-                                <div className="analysis-panel__action-group">
-                                <div className="analysis-panel__action-square empty" />
-                                </div>
-                            </div>
-                        );
-                     }
-                });
-            })()}
-          </div>
-        </div>
-
-        {/* 3. Vision Section (Fixed Height, Row Layout) */}
         <div className="analysis-panel__vision-section">
           <div className="analysis-panel__vision-row">
             {/* Column 1: Screenshot Only */}
