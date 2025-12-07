@@ -894,21 +894,34 @@ def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary
             # Clean up: Remove persona guidelines if the model hallucinated them back
             lines = []
             for line in raw_commentary.split('\n'):
+                # Strip XML tag artifacts from the line content
+                line = line.replace('</game_analysis>', '').replace('<game_analysis>', '')
+                
                 line = line.strip()
                 if not line:
                     continue
+                    
+                # Remove leading dash if present (common list format)
+                if line.startswith('- '):
+                    line = line[2:]
+                elif line.startswith('-'):
+                    line = line[1:]
+                
+                line = line.strip()
+                
                 # Skip lines that look like instructions or metadata
                 if (line.lower().startswith('- lass persona') or 
+                    line.lower().startswith('lass persona') or
                     line.lower().startswith('- never mention buttons') or
                     line.lower().startswith('- react like') or
                     line.lower().startswith('- good:') or
-                    line.lower().startswith('- bad:') or
-                    line.lower().startswith('</game_analysis>')): # Catch closing tag if captured
+                    line.lower().startswith('- bad:')):
                     continue
                 # Skip lines that are just quotes formatting details
                 if line == '""' or line == "''":
                     continue
                 lines.append(line)
+
             
             commentary = '\n'.join(lines)
             log.info(f"📝 Extracted commentary ({len(commentary)} chars)")
