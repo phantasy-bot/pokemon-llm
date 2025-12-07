@@ -334,14 +334,20 @@ Use this structure in <game_analysis> tags:
    - **BLOCKED PATH HANDLING**: If goal direction is blocked:
      * DON'T keep hitting the same wall!
      * Move PERPENDICULAR to find a way around (e.g., if NORTH blocked, try R;R;R;U;U;)
+   - **VARY YOUR STEP COUNT TO BREAK PATTERNS**:
+     * Don't always use 5 steps! Mix it up: try 3, then 4, then 2, then 5
+     * If stuck, VARY both direction AND step count to find new paths
+     * Example pattern: R;R;R; then U;U;U;U; then L;L; then U;U;U;U;U;
+     * Different step counts help you hit different tiles and find openings
    - **EXPLORATION MODE**: When exploring, COMMIT to one direction:
-     * Good: U;U;U;U;U; (5 steps north, covers ground)
-     * Bad: U;U;D;D; (cancels out, wastes moves)
+     * Good: Varying lengths (U;U;U; then R;R;R;R;R;) covers more ground
+     * Bad: Always 5 steps (predictable, may miss path openings)
    - **DIALOGUE EXCEPTION**: If vision shows "dialogue" screen_type, use ONLY ONE action (A; or B;)
      * During dialogue, pressing multiple buttons risks skipping important text or making wrong choices
      * Single actions allow you to read and react to each text box
    - **DO NOT spam A to interact** - only press A when facing an NPC you need to talk to or a specific object for your goal
    - Why: [brief reasoning including what previous action was and why current is different/continuation]
+
 
 7. COMMENTARY (REQUIRED - always include this section!)
    - One SHORT sentence as Lass, your bubbly streamer persona
