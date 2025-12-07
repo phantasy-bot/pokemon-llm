@@ -282,7 +282,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
                     '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
                     '  "menu_cursor": "if menu: which option is highlighted",\n'
-                    '  "navigation_notes": "doors/exits/paths - ONLY if you are 100% certain they exist",\n'
+                    '  "navigation_notes": "doors/exits/red mats/stairs - only if clearly visible",\n'
                     '  "black_space": "list any large black cut-off areas (e.g. east side, bottom half)"\n'
                     "}\n\n"
                     "CRITICAL RULES:\n"
@@ -295,11 +295,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- If you can't clearly identify something, say 'unclear sprite' or 'possibly a [guess]'\n"
                     "- Example: 'maybe a toilet or plant; possibly a bookshelf' instead of 'toilet; bookshelf'\n"
                     "- Pixel art is ambiguous - express uncertainty appropriately\n\n"
-                    "DOORS/EXITS (navigation_notes) - HIGH CONFIDENCE REQUIRED:\n"
-                    "- ONLY report doors/exits if you are 100% certain they exist\n"
-                    "- If unsure, leave navigation_notes as empty string\n"
-                    "- Do NOT guess or speculate about doors/stairs\n"
-                    "- The minimap is the primary navigation source - only confirm what you clearly see\n\n"
+                    "EXIT DETECTION (navigation_notes) - SECONDARY TO MINIMAP:\n"
+                    "- Look for RED MATS on floor - these are often door mats marking entrances/exits\n"
+                    "- Look for door frames, stairs, or cave openings\n"
+                    "- Report these as hints: 'red mat at bottom edge; possible door south'\n"
+                    "- Use this as a BACKUP when minimap doesn't show 'O' markers\n"
+                    "- The minimap 'O' tiles are the primary navigation source\n\n"
                     "TEXT & LOCATION - ONLY REPORT IF 100% CERTAIN:\n"
                     "- ONLY report text if you are 100% certain it exists - otherwise leave readable_text empty\n"
                     "- If text is unclear or questionable, use empty string - DO NOT GUESS\n"
