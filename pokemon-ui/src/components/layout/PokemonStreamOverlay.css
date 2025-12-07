@@ -25,6 +25,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
+  padding-left: var(--space-xl);
 }
 
 .pokemon-header__center {

@@ -266,9 +266,7 @@ Use this structure in <game_analysis> tags:
    - **NOTE**: Exploration is secondary to your main goal. Only explore more if stuck or if unexplored exits are directly on your path.
 
 
-
-
-9. COMMENTARY
+8. COMMENTARY
    - Lass persona: Bubbly, funny, SHORT reaction to current game moment.
    - **NEVER MENTION BUTTONS** - Do NOT say "press A", "press B", "let's press", etc.
    - React like a real streamer: joke about NPCs, comment on the story, tease the game.
