@@ -755,9 +755,6 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 log.warning(f"⚠️ No analysis text found in LLM output. Full output: {full_output[:200]}...")
                 analysis_text = "No analysis available"
 
-        # Update OBS commentary file from the extracted analysis
-        update_obs_commentary(analysis_text)
-
         # Extract action JSON - search ANYWHERE in output (may be before closing tags)
         action = None
         parsed = None
@@ -868,78 +865,6 @@ def backup_save_state():
             return False
     return False
 
-
-def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary.txt"):
-    """
-    Extracts the commentary section from the analysis text and writes it to a file
-    for OBS Text Source (GDI+) to read.
-    """
-    try:
-        # Ensure directory exists
-        directory = os.path.dirname(filename)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-
-        # Robust regex: Look for "9. COMMENTARY", "8. COMMENTARY", "## COMMENTARY", or just "COMMENTARY"
-        # Handles any digit prefix like "8." or "9." or "10."
-        pattern = r'(?:^|\n)(?:(?:\d+\.|#+)\s*)?COMMENTARY\s*:?\s*\n(.*?)$'
-        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-
-        
-        commentary = ""
-        
-        if match:
-            raw_commentary = match.group(1).strip()
-            
-            # Clean up: Remove persona guidelines if the model hallucinated them back
-            lines = []
-            for line in raw_commentary.split('\n'):
-                # Strip XML tag artifacts from the line content
-                line = line.replace('</game_analysis>', '').replace('<game_analysis>', '')
-                
-                line = line.strip()
-                if not line:
-                    continue
-                    
-                # Remove leading dash if present (common list format)
-                if line.startswith('- '):
-                    line = line[2:]
-                elif line.startswith('-'):
-                    line = line[1:]
-                
-                line = line.strip()
-                
-                # Skip lines that look like instructions or metadata
-                if (line.lower().startswith('- lass persona') or 
-                    line.lower().startswith('lass persona') or
-                    line.lower().startswith('- never mention buttons') or
-                    line.lower().startswith('- react like') or
-                    line.lower().startswith('- good:') or
-                    line.lower().startswith('- bad:')):
-                    continue
-                # Skip lines that are just quotes formatting details
-                if line == '""' or line == "''":
-                    continue
-                lines.append(line)
-
-            
-            commentary = '\n'.join(lines)
-            log.info(f"📝 Extracted commentary ({len(commentary)} chars)")
-        else:
-             # If no specific commentary section, check if the text ITSELF is just commentary 
-             # (sometimes models freak out and just output text).
-             # But for now, just log failure.
-             log.warning("⚠️ No 'COMMENTARY' section found in analysis text for OBS widget.")
-             # log.debug(f"Analysis text was: {text[:200]}...")
-
-        if commentary:
-            # Write to file for OBS
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(commentary)
-            log.info(f"💾 Updated OBS file: {filename}")
-            
-    except Exception as e:
-        log.error(f"Failed to update OBS commentary: {e}")
 
 
 
