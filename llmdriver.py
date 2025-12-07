@@ -1046,17 +1046,24 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                         reason="Position unchanged - movement blocked"
                     )
                 
-                # Check if we have a memory for this position - if so, it might be a false exit
-                # Record failed exit attempt which will decay/remove unreliable memories
+                # Use the stuck_position from detection (more accurate than current_pos for patterns)
                 map_name_for_decay = current_mGBA_state.get('map_name', '')
-                if current_pos and map_name_for_decay:
-                    invalidated = memory_manager.record_failed_exit_attempt(
-                        map_name_for_decay, 
-                        list(current_pos)
-                    )
-                    if invalidated:
-                        # Memory was invalidated - tell the LLM to try something else
-                        llm_input_state["stuck_warning"] += " MEMORY INVALIDATED: The exit at your position was a false memory (likely from a cutscene). Explore for REAL exits!"
+                stuck_pos = stuck_info.get("stuck_position")
+                if stuck_pos and map_name_for_decay:
+                    # stuck_pos is a tuple like (map_id, (x, y)), extract coordinates
+                    if isinstance(stuck_pos, tuple) and len(stuck_pos) >= 2:
+                        coords_to_decay = list(stuck_pos[1]) if isinstance(stuck_pos[1], tuple) else list(stuck_pos)
+                    else:
+                        coords_to_decay = list(current_pos) if current_pos else None
+                    
+                    if coords_to_decay:
+                        invalidated = memory_manager.record_failed_exit_attempt(
+                            map_name_for_decay, 
+                            coords_to_decay
+                        )
+                        if invalidated:
+                            # Memory was invalidated - tell the LLM to try something else
+                            llm_input_state["stuck_warning"] += " 🚫 MEMORY INVALIDATED: The 'verified exit' at your position was a FALSE MEMORY (likely from a cutscene teleport). Explore for REAL exits using the minimap!"
         
         # Add memory context to LLM input
         map_name = current_mGBA_state.get('map_name', '')
