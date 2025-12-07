@@ -169,19 +169,34 @@ class GoalTracker:
         
         return "\n".join(lines)
     
-    def get_context_for_llm(self) -> str:
-        """Generate compact goal context for LLM injection"""
+    def get_context_for_llm(self, team_size: int = 0, team_pokemon: list = None) -> str:
+        """Generate compact goal context for LLM injection with progress tracking"""
+        lines = ["🎯 GOAL STATUS:"]
+        
+        # Show team status first - this is critical for progress awareness
+        if team_size > 0:
+            pokemon_names = ", ".join(team_pokemon[:3]) if team_pokemon else "your Pokemon"
+            lines.append(f"  ✓ OBTAINED STARTER: You have {team_size} Pokemon ({pokemon_names})")
+            lines.append(f"  → The 'get first Pokemon' objective is COMPLETE - do NOT repeat it!")
+        else:
+            lines.append(f"  ○ NO POKEMON YET: You need to get your starter from Professor Oak")
+        
+        # Show recently completed goals (helps LLM remember progress)
+        completed = self.get_completed_goals(limit=3)
+        if completed:
+            lines.append("  📋 COMPLETED:")
+            for goal in completed:
+                lines.append(f"    ✓ {goal.description}")
+        
+        # Show active goals hierarchy
         hierarchy = self.get_goal_hierarchy()
-        if not hierarchy:
-            return ""
-        
-        lines = ["🎯 GOALS:"]
-        labels = ["MAIN", "CURRENT", "MICRO", "IMMEDIATE"]
-        
-        for i, goal in enumerate(hierarchy):
-            label = labels[i] if i < len(labels) else f"#{i+1}"
-            status_icon = "→" if goal.status == "in_progress" else "○"
-            lines.append(f"  {status_icon} {label}: {goal.description}")
+        if hierarchy:
+            lines.append("  📍 ACTIVE GOALS:")
+            labels = ["MAIN", "CURRENT", "MICRO", "IMMEDIATE"]
+            for i, goal in enumerate(hierarchy):
+                label = labels[i] if i < len(labels) else f"#{i+1}"
+                status_icon = "→" if goal.status == "in_progress" else "○"
+                lines.append(f"    {status_icon} {label}: {goal.description}")
         
         # Add failure context if any
         failure_ctx = self.get_failure_context()
@@ -189,6 +204,24 @@ class GoalTracker:
             lines.append(failure_ctx)
         
         return "\n".join(lines)
+    
+    def get_completed_goals(self, limit: int = 5) -> List[Goal]:
+        """Get recently completed goals"""
+        completed = [
+            g for g in self.goals.values() 
+            if g.status == "completed"
+        ]
+        # Sort by completion time, most recent first
+        completed.sort(key=lambda g: g.completed_at or "", reverse=True)
+        return completed[:limit]
+    
+    def complete_goal_by_keyword(self, keyword: str) -> bool:
+        """Find and complete a goal containing the keyword"""
+        for goal_id, goal in self.goals.items():
+            if keyword.lower() in goal.description.lower() and goal.status != "completed":
+                self.complete_goal(goal_id)
+                return True
+        return False
     
     def initialize_default_goals(self):
         """Set up initial game goals"""

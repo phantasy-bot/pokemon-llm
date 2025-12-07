@@ -926,15 +926,45 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         benchInstructions = benchmark.instructions
         logging.info(f"Added bench instructions: {benchInstructions}")
     
-    # Only initialize chat history if not restored from persistence
-    if not run_state or not run_state.chat_history:
-        chat_history = [{"role": "system", "content": build_system_prompt("", benchInstructions)}]
+    # Always use fresh system prompt (in case prompts.py was updated)
+    fresh_system_prompt = build_system_prompt("", benchInstructions)
+    
+    if run_state and run_state.chat_history:
+        # Get the old system prompt from persisted history
+        old_system_prompt = ""
+        if run_state.chat_history and run_state.chat_history[0].get("role") == "system":
+            old_system_prompt = run_state.chat_history[0].get("content", "")
+        
+        # Check if prompt format has changed by looking for key structural changes
+        # We check for the COMMENTARY section format which changed from section 8/9 to section 7
+        old_has_commentary_7 = "7. COMMENTARY" in old_system_prompt and "REQUIRED" in old_system_prompt
+        new_has_commentary_7 = "7. COMMENTARY" in fresh_system_prompt and "REQUIRED" in fresh_system_prompt
+        prompt_format_changed = old_has_commentary_7 != new_has_commentary_7
+        
+        if prompt_format_changed:
+            # Prompt format changed - start fresh to avoid LLM following old patterns
+            log.info("🔄 PROMPT FORMAT CHANGED - Clearing chat history to adopt new format")
+            chat_history = [{"role": "system", "content": fresh_system_prompt}]
+        else:
+            # Restore chat history but replace the system prompt with fresh one
+            chat_history = run_state.chat_history
+            if chat_history and chat_history[0].get("role") == "system":
+                chat_history[0] = {"role": "system", "content": fresh_system_prompt}
+                log.info("🔄 Updated system prompt to latest version")
+    else:
+        chat_history = [{"role": "system", "content": fresh_system_prompt}]
 
     while action_count < max_loops:
         loop_start_time = time.time()
         cycle_count += 1
         current_cycle = cycle_count
         log.info(f"--- Loop Cycle {current_cycle} ---")
+        
+        # CRITICAL: Always sync cycle/action count to run_state for graceful shutdown
+        # This ensures Ctrl+C saves the correct state even between PERSIST_INTERVAL saves
+        if run_state:
+            run_state.cycle_count = cycle_count
+            run_state.action_count = action_count
         
         # Broadcast cycle count immediately
         update_payload = {"cycle": current_cycle}
@@ -1049,14 +1079,60 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         except Exception as e:
             log.debug(f"Battle context error (not in battle): {e}")
         
-        # Add goal context
-        goal_context = goal_tracker.get_context_for_llm()
+        new_team = current_mGBA_state.get('party')
+        prev_team = state.get('currentTeam', []) or []
+        prev_team_size = len(prev_team) if prev_team else 0
+        new_team_size = len(new_team) if new_team else 0
+        
+        # 🎉 MILESTONE DETECTION: First Pokemon obtained
+        if prev_team_size == 0 and new_team_size > 0:
+            log.info("🎉 MILESTONE DETECTED: First Pokemon obtained!")
+            
+            # Complete the starter goal
+            if goal_tracker.complete_goal_by_keyword("first Pokemon"):
+                log.info("✅ Goal auto-completed: Get first Pokemon")
+            
+            # Record in memory as a milestone event
+            pokemon_name = new_team[0].get('name', 'Unknown') if new_team else 'Unknown'
+            memory_manager.add_gameplay_memory(
+                location=current_mGBA_state.get('map_name', 'unknown'),
+                description=f"MILESTONE: Received starter Pokemon {pokemon_name} from Professor Oak",
+                event_type="milestone",
+                outcome="obtained_first_pokemon",
+                pokemon_involved=[pokemon_name]
+            )
+            log.info(f"📝 Memory recorded: Obtained starter {pokemon_name}")
+        
+        # Build team context for LLM awareness (every cycle)
+        team_pokemon_names = []
+        if new_team and new_team_size > 0:
+            for mon in new_team:
+                name = mon.get('name', 'Unknown')
+                level = mon.get('level', '?')
+                team_pokemon_names.append(name)
+            
+            # Create detailed team summary for LLM
+            team_details = []
+            for mon in new_team:
+                name = mon.get('name', 'Unknown')
+                level = mon.get('level', '?')
+                hp = mon.get('current_hp', '?')
+                max_hp = mon.get('max_hp', '?')
+                team_details.append(f"{name} Lv{level} ({hp}/{max_hp}HP)")
+            llm_input_state["pokemon_team"] = f"YOUR TEAM ({new_team_size}/6): " + ", ".join(team_details)
+            log.info(f"🎮 Team context added: {new_team_size} Pokemon")
+        
+        # Update goal context with team awareness
+        goal_context = goal_tracker.get_context_for_llm(
+            team_size=new_team_size, 
+            team_pokemon=team_pokemon_names
+        )
         if goal_context:
             llm_input_state["goal_context"] = goal_context
-            log.info(f"🎯 Goals: {goal_context[:80]}...")
-
-
-        new_team = current_mGBA_state.get('party')
+            # Log first line only to avoid spam
+            log.info(f"🎯 Goals: {goal_context.split(chr(10))[0]}...")
+        
+        # Standard team state update
         if new_team is not None and json.dumps(new_team) != json.dumps(state.get('currentTeam')):
             state['currentTeam'] = new_team
             update_payload['currentTeam'] = state['currentTeam']

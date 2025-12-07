@@ -69,14 +69,14 @@
 /* Empty slot styling - adapted for grid */
 .pokemon-empty-slot {
   width: 100%;
-  height: 80px;
+  height: 70px;
   /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-panel); /* Flat color as requested */
   border: 1px dashed var(--border-subtle);
-  border-radius: 8px;
+  border-radius: 6px;
   opacity: 0.5;
 }
 

@@ -156,27 +156,7 @@ export function LogEntryCard({
               </ReactMarkdown>
             </div>
 
-            {/* Special sections for response analysis */}
-            {logType === "response" && (
-              <div className="log-entry__response-details">
-                {text.toLowerCase().includes("battle") && (
-                  <div className="log-entry__battle-indicator">
-                    <span className="log-entry__battle-icon">⚔️</span>
-                    <span className="log-entry__battle-text">
-                      Battle strategy
-                    </span>
-                  </div>
-                )}
-                {text.toLowerCase().includes("item") && (
-                  <div className="log-entry__item-indicator">
-                    <span className="log-entry__item-icon">🎒</span>
-                    <span className="log-entry__item-text">
-                      Item management
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Response details section removed - battle/item indicators no longer used */}
 
             {/* Special sections for action entries */}
             {logType === "action" && (
