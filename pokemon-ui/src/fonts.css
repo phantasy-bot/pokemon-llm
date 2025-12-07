@@ -1,21 +1,14 @@
 /* Fire Emblem GBA - Shared Font & Color System */
 
-/* PoltawskiNowy for headings/logos - variable font with weight support */
+/* FjallaOne for headings */
 @font-face {
-  font-family: 'PoltawskiNowy';
-  src: url('/fonts/PoltawskiNowy-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
+  font-family: 'FjallaOne';
+  src: url('/fonts/FjallaOne-Regular.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'PoltawskiNowy';
-  src: url('/fonts/PoltawskiNowy-Italic-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
-}
 
 /* Monospace font for body */
 @font-face {
@@ -36,8 +29,8 @@
 
 :root {
   /* Fonts */
-  --font-display: 'PoltawskiNowy', Georgia, 'Times New Roman', serif;
-  --font-mono: 'Sometype Mono', 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --font-display: 'FjallaOne', sans-serif;
+  --font-mono: 'Sometype Mono', monospace;
   --font-body: var(--font-mono);
 
   /* Fire Emblem Color Palette - Streaming overlay stays dark for OBS */
