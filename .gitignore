@@ -22,7 +22,6 @@ exploration_data.json
 # Web UI build artifacts (if not needed in repo)
 web_ui/*.png
 
-# OBS Text Source Output
-obs-widgets/obs_commentary.txt
+
 
 
