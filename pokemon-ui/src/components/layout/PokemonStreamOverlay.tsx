@@ -82,7 +82,7 @@ export function PokemonStreamOverlay({
         {/* Left side - Title with Model Badge */}
         <div className="pokemon-header__left">
           <div className="title-section">
-            <div className="title">Lass Plays Pokémon Red</div>
+            <div className="title">LLM LETS PLAY: POKEMON RED</div>
           </div>
         </div>
 

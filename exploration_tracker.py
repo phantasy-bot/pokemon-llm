@@ -237,10 +237,19 @@ class ExplorationTracker:
         summary = self.get_exploration_summary(map_id)
         parts.append(f"EXPLORATION: {summary}")
         
-        # Unexplored directions
+        # Unexplored directions with counts
         unexplored = self.get_unexplored_directions(map_id, player_x, player_y, minimap_2d)
         if unexplored:
+            # Sort by count (highest first) to prioritize direction with most unexplored
             parts.append(f"UNEXPLORED AREAS: {', '.join(unexplored)}")
+            
+            # Find direction with most unexplored tiles
+            best_dir = unexplored[0].split(" ")[0] if unexplored else None
+            if best_dir:
+                # Give strong directional command
+                dir_to_button = {"NORTH": "U", "SOUTH": "D", "EAST": "R", "WEST": "L"}
+                button = dir_to_button.get(best_dir, "U")
+                parts.append(f"⚡ PRIORITY: Move {best_dir} (chain 5x {button};{button};{button};{button};{button};) to reach unexplored area")
         
         # Suggested target
         target = self.suggest_exploration_target(map_id, player_x, player_y, minimap_2d)
@@ -258,7 +267,10 @@ class ExplorationTracker:
                 direction.append("WEST")
             
             dir_str = "-".join(direction) if direction else "NEARBY"
-            parts.append(f"SUGGESTED TARGET: Move {dir_str} toward unexplored area")
+            # Calculate distance for step suggestion
+            distance = abs(dx) + abs(dy)
+            steps = min(5, max(3, distance))
+            parts.append(f"SUGGESTED TARGET: Move {dir_str} toward unexplored area ({distance} tiles away, use {steps}+ moves)")
         
         return "\n".join(parts) if parts else ""
     

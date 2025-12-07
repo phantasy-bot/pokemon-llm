@@ -21,7 +21,7 @@ from pyAIAgent.game.state import prep_llm, get_rom_path
 from pyAIAgent.navigation import touch_controls_path_find
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
-from prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt
+from prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
 from client_setup import setup_llm_client, parse_mode_arg, MODES
 from benchmark import Benchmark
 from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
@@ -30,6 +30,8 @@ from memory_storage import MemoryManager
 from battle_strategy import read_battle_state, choose_battle_action, get_battle_context
 from goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from exploration_tracker import ExplorationTracker
+from twitch_chat_service import TwitchChatService, create_twitch_service
+from comfyui_tts_service import ComfyUITTSService, create_tts_service
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -40,7 +42,38 @@ COORD_RE = re.compile(r'^([0-9]),([0-8])$')
 ANALYSIS_RE = re.compile(r"<game_analysis>([\s\S]*?)</game_analysis>", re.IGNORECASE)
 IS_LOCAL = DEFAULT_MODE == "LMSTUDIO" or DEFAULT_MODE == "OLLAMA"
 
+
+def translate_cardinal_to_buttons(action_str: str) -> str:
+    """
+    Translate cardinal directions (N/S/E/W) to game buttons (U/D/R/L).
+    
+    CRITICAL: 'S' is ambiguous - it's both 'South' AND 'START' button.
+    We only translate S->D when other cardinal letters (N/E/W) are present,
+    indicating the LLM meant directions, not the START button.
+    """
+    if not action_str:
+        return action_str
+    
+    # Check if cardinal directions are being used (N, E, or W present)
+    has_cardinal = any(c in action_str.upper() for c in ['N', 'E', 'W'])
+    
+    # Build translation - N->U, E->R, W->L always
+    # S->D only if we detected cardinal direction usage
+    result = action_str
+    result = result.replace('N', 'U').replace('n', 'u')  # North -> Up
+    result = result.replace('E', 'R').replace('e', 'r')  # East -> Right  
+    result = result.replace('W', 'L').replace('w', 'l')  # West -> Left
+    
+    if has_cardinal:
+        # Only translate S->D when in cardinal direction context
+        result = result.replace('S', 'D')  # South -> Down (keep lowercase 's' as SELECT)
+        log.info(f"🔄 Translated cardinal directions: {action_str} -> {result}")
+    
+    return result
+
+
 if(IS_LOCAL):
+
     # Often slow inference
     STREAM_TIMEOUT = 120
 else:
@@ -772,10 +805,13 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 if vision_from_json and isinstance(vision_from_json, str):
                     vision_analysis_for_ui = vision_from_json
 
-                if isinstance(act, str) and ACTION_RE.match(act):
-                    action = act
-                    log.info(f"✅ Found action in JSON: {action}")
-                    break
+                if isinstance(act, str):
+                    # Translate cardinal directions (N/S/E/W) to buttons (U/D/L/R)
+                    act = translate_cardinal_to_buttons(act)
+                    if ACTION_RE.match(act):
+                        action = act
+                        log.info(f"✅ Found action in JSON: {action}")
+                        break
                 elif isinstance(touch, str) and COORD_RE.match(touch):
                     # handle JSON-provided touch coords
                     x, y = state_data["position"]
@@ -795,9 +831,10 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
             lines = [line.strip() for line in full_output.splitlines() if line.strip()]
             if lines:
                 last = lines[-1]
-                # plain “action” string
-                if ACTION_RE.match(last) and not last.startswith('{'):
-                    action = last
+                # plain "action" string - translate cardinal directions first
+                translated_last = translate_cardinal_to_buttons(last)
+                if ACTION_RE.match(translated_last) and not translated_last.startswith('{'):
+                    action = translated_last
 
                 # plain touch coords
                 elif COORD_RE.match(last):
@@ -909,6 +946,49 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     else:
         log.info("🗺️ Exploration tracker: Fresh start")
 
+    # Initialize Twitch chat service (optional - gracefully disabled if not configured)
+    twitch_service = create_twitch_service()
+    if twitch_service.is_available:
+        try:
+            await twitch_service.start()
+            log.info("📺 Twitch chat service started")
+        except Exception as e:
+            log.warning(f"Failed to start Twitch chat service: {e}")
+    else:
+        log.info("📺 Twitch chat service not configured (set TWITCH_* env vars to enable)")
+
+    # Initialize ComfyUI TTS service (optional - gracefully disabled if not configured)
+    tts_service = create_tts_service()
+    if tts_service.is_available:
+        is_connected = await tts_service.check_connection()
+        if is_connected:
+            log.info(f"🔊 ComfyUI TTS service connected: {tts_service.base_url}")
+        else:
+            log.warning(f"🔊 ComfyUI TTS not reachable at {tts_service.base_url} (will retry when needed)")
+    else:
+        log.info("🔊 ComfyUI TTS service not configured (set COMFYUI_URL in .env to enable)")
+
+    # Helper function to generate a chat response via LLM
+    async def generate_chat_response(username: str, message: str, is_past: bool = False) -> str:
+        """Generate a response to a Twitch chat message using the LLM."""
+        try:
+            prompt = get_chat_response_prompt(username, message, is_past)
+            
+            # Use a simple, quick LLM call for chat responses
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.9  # Slightly more creative for chat
+            )
+            
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
+            return ""
+        except Exception as e:
+            log.error(f"Error generating chat response: {e}")
+            return ""
+
     # Position history for stuck detection
     position_history = []
     
@@ -921,6 +1001,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     # Persistence save interval (save every N cycles)
     PERSIST_INTERVAL = 5
     cycles_since_persist = 0
+
 
     benchInstructions = ""
     if benchmark is not None:
@@ -1619,7 +1700,96 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(10, interval - elapsed_loop_time) # Ensure at least 10 seconds wait
         log.info(f"Cycle {current_cycle} took {elapsed_loop_time:.2f}s. Waiting {wait_time:.2f}s...")
-        await asyncio.sleep(wait_time)
+        
+        # ═══════════════════════════════════════════════════════════════════════════
+        # TWITCH CHAT RESPONSE PROCESSING (during wait period)
+        # ═══════════════════════════════════════════════════════════════════════════
+        # Mark the current time as when game commentary was sent
+        if twitch_service.is_available:
+            twitch_service.mark_commentary_timestamp()
+        
+        # Process Twitch chat during wait period
+        wait_start = time.time()
+        chat_response_count = 0
+        max_chat_responses = 3  # Limit responses per cycle to avoid overwhelming
+        
+        while time.time() - wait_start < wait_time:
+            remaining_wait = wait_time - (time.time() - wait_start)
+            
+            # Check if Twitch service is available and we haven't hit response limit
+            if not twitch_service.is_available or chat_response_count >= max_chat_responses:
+                await asyncio.sleep(min(remaining_wait, 2.0))
+                continue
+            
+            # Try to get pending mentions first
+            pending_mentions = twitch_service.get_pending_mentions()
+            
+            chat_msg = None
+            is_past_message = False
+            
+            if pending_mentions:
+                # Respond to new mentions
+                chat_msg = pending_mentions[0]
+                log.info(f"💬 Processing new Twitch mention from @{chat_msg.display_name}")
+            elif remaining_wait > 5.0:
+                # If no new mentions and we have time, check for past messages
+                past_messages = twitch_service.get_past_messages(count=1)
+                if past_messages:
+                    chat_msg = past_messages[0]
+                    is_past_message = True
+                    log.info(f"💬 Catching up on past message from @{chat_msg.display_name}")
+            
+            if chat_msg:
+                try:
+                    # Generate response via LLM
+                    response_text = await generate_chat_response(
+                        chat_msg.display_name,
+                        chat_msg.message,
+                        is_past=is_past_message
+                    )
+                    
+                    if response_text:
+                        # Format response with @ mention if not already present
+                        if not response_text.startswith("@"):
+                            response_text = f"@{chat_msg.display_name} {response_text}"
+                        
+                        # Mark message as responded
+                        twitch_service.mark_responded(chat_msg)
+                        chat_response_count += 1
+                        
+                        # Queue TTS for the response (lower priority than game commentary)
+                        if tts_service.is_available:
+                            await tts_service.queue_tts(
+                                response_text,
+                                priority=tts_service.PRIORITY_CHAT_RESPONSE
+                            )
+                            # Process TTS queue
+                            await tts_service.process_queue()
+                        
+                        # Send response to Twitch chat
+                        await twitch_service.send_response(
+                            chat_msg.display_name,
+                            response_text.replace(f"@{chat_msg.display_name} ", "")  # Remove duplicate @
+                        )
+                        
+                        # Broadcast chat response to OBS widget
+                        chat_response_payload = {
+                            "chat_response": {
+                                "username": chat_msg.display_name,
+                                "response": response_text,
+                                "is_past_message": is_past_message,
+                                "timestamp": int(time.time() * 1000)
+                            }
+                        }
+                        await broadcast_func(chat_response_payload)
+                        log.info(f"✅ Chat response sent: {response_text[:50]}...")
+                        
+                except Exception as e:
+                    log.error(f"Error processing chat message: {e}")
+            
+            # Small sleep to avoid busy loop
+            await asyncio.sleep(min(remaining_wait, 2.0))
+
 
 
     log.info("Auto loop terminated.")
