@@ -880,9 +880,11 @@ def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary
         if directory and not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
 
-        # Look for "9. COMMENTARY" or just "COMMENTARY" header
-        # Match from header to end of string (assuming it's the last section)
-        match = re.search(r'(?:9\.\s*)?COMMENTARY\s*:?\s*\n((?:.+\n?)+)', text, re.IGNORECASE)
+        # Robust regex: Look for "9. COMMENTARY", "## COMMENTARY", or just "COMMENTARY"
+        # Use DOTALL to capture everything until the end of the string
+        pattern = r'(?:^|\n)(?:9\.|#+)?\s*COMMENTARY\s*:?\s*\n(.*?)$'
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        
         commentary = ""
         
         if match:
@@ -899,7 +901,8 @@ def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary
                     line.lower().startswith('- never mention buttons') or
                     line.lower().startswith('- react like') or
                     line.lower().startswith('- good:') or
-                    line.lower().startswith('- bad:')):
+                    line.lower().startswith('- bad:') or
+                    line.lower().startswith('</game_analysis>')): # Catch closing tag if captured
                     continue
                 # Skip lines that are just quotes formatting details
                 if line == '""' or line == "''":
@@ -907,15 +910,23 @@ def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary
                 lines.append(line)
             
             commentary = '\n'.join(lines)
-            
+            log.info(f"📝 Extracted commentary ({len(commentary)} chars)")
+        else:
+             # If no specific commentary section, check if the text ITSELF is just commentary 
+             # (sometimes models freak out and just output text).
+             # But for now, just log failure.
+             log.warning("⚠️ No 'COMMENTARY' section found in analysis text for OBS widget.")
+             # log.debug(f"Analysis text was: {text[:200]}...")
+
         if commentary:
             # Write to file for OBS
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(commentary)
-            # log.info(f"📝 OBS commentary updated: {commentary[:50]}...")
+            log.info(f"💾 Updated OBS file: {filename}")
             
     except Exception as e:
         log.error(f"Failed to update OBS commentary: {e}")
+
 
 
 async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None):
