@@ -1305,14 +1305,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         analysis_text = game_analysis  # Use game_analysis from LLM response
         log.info(f"🧠 LLM Analysis received: {analysis_text[:100] if analysis_text else 'None'}...")
 
-        if vision_analysis_for_ui and analysis_text and analysis_text.strip():
+        if analysis_text and analysis_text.strip():
             response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
             log_entries.append(response_log)
             log.info(f"✅ Response log created and added to entries")
-        elif not vision_analysis_for_ui:
-            log.warning(f"⚠️ Skipping response_log creation - no vision analysis (keeping sync)")
         else:
-            log.warning(f"⚠️ No analysis_text to send to frontend. game_analysis: {game_analysis}")
+            log.warning(f"⚠️ No analysis_text to send to frontend.")
 
         # Force memory recording for important location transitions
         # IMPORTANT: This runs ALWAYS, not just when analysis_text is empty
