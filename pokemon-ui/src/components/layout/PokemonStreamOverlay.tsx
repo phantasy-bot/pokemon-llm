@@ -83,7 +83,6 @@ export function PokemonStreamOverlay({
         <div className="pokemon-header__left">
           <div className="title-section">
             <div className="title">Lass Plays Pokémon Red</div>
-            <div className="model-badge">{gameState.modelName}</div>
           </div>
         </div>
 
