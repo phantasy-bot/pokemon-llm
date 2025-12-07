@@ -392,6 +392,13 @@
   margin: 1px 0;
 }
 
+/* Ensure section titles are ALWAYS bold in all contexts */
+.log-entry__compact-vision .log-section-simple .log-section-title,
+.log-entry__compact-vision .log-section-title,
+.formatted-log-content .log-section-title {
+  font-weight: 700 !important;
+}
+
 /* Compact Vision Items (JSON parsed) */
 .vision-item {
   display: flex;

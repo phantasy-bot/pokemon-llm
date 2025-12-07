@@ -1072,6 +1072,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             llm_input_state["memory_context"] = memory_context
             log.info(f"📝 Memory context: {memory_context[:100]}...")
         
+        # Add NPC avoidance context
+        npc_context = memory_manager.get_npc_interaction_context(map_name)
+        if npc_context:
+            llm_input_state["npc_warning"] = npc_context
+            log.info(f"🚫 NPC context: {npc_context}")
+        
         # Track exploration and add context
         map_id = current_mGBA_state.get('map_id', 0)
         pos = current_mGBA_state.get('position', [0, 0])
@@ -1327,6 +1333,18 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 # Track for failure replay
                 last_action = action_to_send
                 last_position = current_pos
+                
+                # Track NPC interactions when A button is pressed
+                if 'A' in action_to_send.upper() and current_pos and map_name:
+                    npc_warning = memory_manager.record_npc_interaction(
+                        map_name, 
+                        list(current_pos), 
+                        npc_name="NPC"
+                    )
+                    if npc_warning:
+                        # Add warning to stuck_warning for next cycle
+                        llm_input_state["stuck_warning"] = llm_input_state.get("stuck_warning", "") + f" {npc_warning}"
+                        
             except socket.error as se:
                 log.error(f"Socket error sending action '{action_to_send}': {se}. Stopping loop.")
                 break
