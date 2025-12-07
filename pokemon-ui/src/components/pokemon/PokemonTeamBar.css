@@ -142,6 +142,20 @@
   letter-spacing: 0.08em;
 }
 
+.pokemon-team-bar__minimap-component .minimap__header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.pokemon-team-bar__minimap-component .minimap__location-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: block; /* Ensure new line behavior if not in flex-col */
+}
+
+
 /* Coordinates - exact match to .pokemon-team-bar__count */
 .pokemon-team-bar__minimap-component .minimap__coords {
   font-family: var(--font-mono);

@@ -62,27 +62,43 @@ export function Minimap({
     img.style.display = "none";
   };
 
-  // Parse location to split map name and coordinates
+  // Parse location to split map name, number and coordinates
   // Format expected: "MAP_NAME (Map ID) (X, Y)" or similar
-  const parseLocation = (loc: string): { mapName: string; coords: string } => {
-    // Try to match pattern like "(7, 6)" or "(7,6)" at the end
+  const parseLocation = (loc: string): { mapName: string; mapNumber: string; coords: string } => {
+    let coords = '';
+    let rest = loc;
+    
+    // 1. Extract Coords: (X, Y) at end
     const coordMatch = loc.match(/\((\d+),?\s*(\d+)\)\s*$/);
     if (coordMatch) {
-      const coordsStr = `(${coordMatch[1]}, ${coordMatch[2]})`;
-      const mapName = loc.replace(/\((\d+),?\s*(\d+)\)\s*$/, '').trim();
-      return { mapName, coords: coordsStr };
+      coords = `(${coordMatch[1]}, ${coordMatch[2]})`;
+      rest = loc.replace(/\((\d+),?\s*(\d+)\)\s*$/, '').trim();
     }
-    // No coordinates found, just use the full location as map name
-    return { mapName: loc, coords: '' };
+    
+    // 2. Extract Map Number from rest: NAME (NUMBER)
+    let mapNumber = '';
+    let mapName = rest;
+    
+    // Regex for "Name (123)"
+    const numMatch = rest.match(/^(.*)\s+\((\d+)\)$/);
+    if (numMatch) {
+        mapName = numMatch[1].trim();
+        mapNumber = `(${numMatch[2]})`; // Keep parens
+    }
+    
+    return { mapName, mapNumber, coords };
   };
 
-  const { mapName, coords } = parseLocation(location);
+  const { mapName, mapNumber, coords } = parseLocation(location);
 
   return (
     <div className={`minimap ${className}`}>
       {/* Location header - styled like Pokemon Team header */}
       <div className="minimap__header">
-        <span className="minimap__location">{mapName}</span>
+        <div className="minimap__header-left">
+            <span className="minimap__location">{mapName}</span>
+            {mapNumber && <span className="minimap__location-number">{mapNumber}</span>}
+        </div>
         {coords && <span className="minimap__coords">{coords}</span>}
       </div>
 
