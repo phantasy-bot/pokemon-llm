@@ -5,8 +5,8 @@
 
 :root {
   /* Fonts */
-  --font-display: 'PoltawskiNowy', Georgia, 'Times New Roman', serif;
-  --font-mono: 'Sometype Mono', 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+  --font-display: 'FjallaOne', sans-serif;
+  --font-mono: 'Sometype Mono', monospace;
   --font-body: var(--font-mono);
 
   /* Backgrounds - Light with subtle rose/pink undertone */
