@@ -406,9 +406,25 @@ function formatVisionAnalysisAsList(text: string): string {
       if (data.npcs) addItem("NPCs", formatList(data.npcs));
       if (data.obstacles) addItem("OBSTACLES", formatList(data.obstacles));
       if (data.ui_elements) addItem("UI", formatList(data.ui_elements));
-      if (data.battle_info) addItem("BATTLE", formatList(data.battle_info));
+      
+      // Handle battle_info specially - it's an object, not a string
+      if (data.battle_info && typeof data.battle_info === 'object') {
+        const bi = data.battle_info;
+        // Format battle info as a readable string
+        const battleParts: string[] = [];
+        if (bi.player_pokemon) battleParts.push(`${bi.player_pokemon}${bi.player_hp ? ` (${bi.player_hp})` : ''}`);
+        if (bi.enemy_pokemon) battleParts.push(`vs ${bi.enemy_pokemon}${bi.enemy_hp ? ` (${bi.enemy_hp})` : ''}`);
+        if (bi.moves) battleParts.push(`Moves: ${bi.moves}`);
+        if (battleParts.length > 0) {
+          addItem("BATTLE", battleParts.join(' | '));
+        }
+      } else if (data.battle_info && typeof data.battle_info === 'string') {
+        addItem("BATTLE", formatList(data.battle_info));
+      }
+      
       if (data.menu_cursor) addItem("CURSOR", data.menu_cursor);
       if (data.navigation_notes) addItem("NAV", formatList(data.navigation_notes));
+      if (data.black_space) addItem("BLACK SPACE", data.black_space);
 
       if (htmlItems.length > 0) {
         return htmlItems.join("");
