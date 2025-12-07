@@ -354,24 +354,12 @@
   position: relative;
 }
 
-/* Partial column separators - don't extend to bottom */
+/* Partial column separators removed as requested */
 .pokemon-right-col::before,
 .pokemon-right-col::after {
-  content: '';
-  position: absolute;
-  top: var(--space-md);
-  bottom: var(--space-xl); /* Gap at bottom */
-  width: 1px;
-  background: rgba(208, 202, 200, 0.5); /* Lighter, blends with --bg-panel */
+  display: none;
 }
 
-.pokemon-right-col::before {
-  left: 0;
-}
-
-.pokemon-right-col::after {
-  right: 0;
-}
 
 .pokemon-game-feed {
   position: relative; /* Required for absolute positioning of children */
