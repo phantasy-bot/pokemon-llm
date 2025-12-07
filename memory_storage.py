@@ -87,8 +87,10 @@ class MemoryManager:
         }
         # Track failed exit attempts: key = (map_name, coords_tuple), value = failure count
         self.failed_exit_attempts: Dict[tuple, int] = {}
-        # Threshold for removing unreliable memories
-        self.FAILED_ATTEMPT_THRESHOLD = 3
+        # Threshold for removing unreliable memories - lowered for faster detection
+        self.FAILED_ATTEMPT_THRESHOLD = 2
+        # Track positions we've tried to exit from in recent cycles (for pattern detection)
+        self.recent_exit_attempts: List[tuple] = []  # (map_name, coords, cycle)
         
         if reset_on_start:
             # Clear memories for fresh start
@@ -125,18 +127,39 @@ class MemoryManager:
         coords_tuple = tuple(coordinates)
         map_upper = map_name.upper()
         
-        # Find and remove matching spatial memories
+        # Find and remove ALL matching spatial memories (not just exits/entrances)
+        # This handles cutscene-created false memories more aggressively
         to_remove = []
         for i, mem in enumerate(self.memories["spatial"]):
-            if (mem.location and map_upper in mem.location.upper() and 
-                mem.coordinates and tuple(mem.coordinates) == coords_tuple and
-                mem.landmark_type in ("exit", "entrance")):
-                to_remove.append(i)
+            # Match by coordinates in current map
+            if mem.coordinates and tuple(mem.coordinates) == coords_tuple:
+                # Check if this memory is for our map OR references our map as destination
+                is_our_map = mem.location and map_upper in mem.location.upper()
+                targets_our_map = mem.destination and map_upper in str(mem.destination).upper()
+                has_our_coords = mem.coordinates == list(coords_tuple)
+                
+                if is_our_map or (targets_our_map and has_our_coords):
+                    to_remove.append(i)
+                    log.info(f"🎯 Matched memory for removal: {mem.description} at {mem.coordinates}")
+        
+        # Also check for memories that POINT TO this map at these coordinates
+        for i, mem in enumerate(self.memories["spatial"]):
+            if i in to_remove:
+                continue
+            # Check if this is a memory pointing TO our location
+            if mem.destination and map_upper in str(mem.destination).upper():
+                ctx = mem.context or {}
+                target_pos = ctx.get('target_pos')
+                if target_pos and tuple(target_pos) == coords_tuple:
+                    to_remove.append(i)
+                    log.info(f"🎯 Matched outbound memory for removal: {mem.description}")
         
         # Remove in reverse order to preserve indices
-        for i in reversed(to_remove):
+        to_remove = list(set(to_remove))  # Dedupe
+        to_remove.sort(reverse=True)
+        for i in to_remove:
             removed = self.memories["spatial"].pop(i)
-            log.info(f"🗑️ Removed unreliable memory: {removed.description}")
+            log.warning(f"🗑️ REMOVED unreliable memory: {removed.description}")
         
         if to_remove:
             self._save_memories()
@@ -937,28 +960,51 @@ class MemoryManager:
         
         return "\n".join(context_parts) if context_parts else ""
 
-    def detect_stuck(self, position_history: List[tuple], threshold: int = 5) -> dict:
+    def detect_stuck(self, position_history: List[tuple], threshold: int = 3) -> dict:
         """
         Detect if agent is stuck based on position history.
-        Returns dict with is_stuck bool and suggestion string.
+        Returns dict with is_stuck bool, suggestion string, and stuck_position if stuck.
+        
+        Detection methods:
+        1. Same position for threshold consecutive cycles
+        2. Oscillating between 2 positions
+        3. Returning to the same position frequently (new)
         """
         if len(position_history) < threshold:
-            return {"is_stuck": False, "suggestion": ""}
+            return {"is_stuck": False, "suggestion": "", "stuck_position": None}
         
         recent = position_history[-threshold:]
         
-        # Check if position unchanged for threshold cycles
+        # Check if position unchanged for threshold cycles (consecutive)
         if len(set(recent)) == 1:
+            stuck_pos = recent[0]
             return {
                 "is_stuck": True,
-                "suggestion": "Position unchanged for 5+ cycles. Try: 1) Different direction 2) Touch navigation 3) Check for blocking NPCs"
+                "suggestion": f"Position unchanged for {threshold}+ cycles at {stuck_pos}. This might be a FALSE EXIT from a cutscene. Try: 1) Walk in different directions 2) Look for REAL doors 3) Explore unexplored areas",
+                "stuck_position": stuck_pos
             }
         
         # Check for oscillation (back and forth between 2 positions)
         if len(set(recent)) == 2:
+            positions = list(set(recent))
             return {
                 "is_stuck": True, 
-                "suggestion": "Oscillating between 2 positions. Break the loop - try a completely different route."
+                "suggestion": f"Oscillating between {positions[0]} and {positions[1]}. Break the loop - explore a completely different area.",
+                "stuck_position": positions[0]
             }
         
-        return {"is_stuck": False, "suggestion": ""}
+        # NEW: Check for repeated returns to same position (pattern detection)
+        # If we've been to the same spot 3+ times in last 8 moves, we're probably stuck on a false exit
+        extended = position_history[-8:] if len(position_history) >= 8 else position_history
+        from collections import Counter
+        pos_counts = Counter(extended)
+        most_common = pos_counts.most_common(1)
+        if most_common and most_common[0][1] >= 3:
+            frequent_pos = most_common[0][0]
+            return {
+                "is_stuck": True,
+                "suggestion": f"Repeatedly returning to {frequent_pos} ({most_common[0][1]} times in last 8 moves). This position may be a FALSE MEMORY created by a cutscene. IGNORE any 'verified exit' at this location and explore elsewhere!",
+                "stuck_position": frequent_pos
+            }
+        
+        return {"is_stuck": False, "suggestion": "", "stuck_position": None}
