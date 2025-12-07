@@ -23,5 +23,6 @@ exploration_data.json
 web_ui/*.png
 
 # OBS Text Source Output
-obs_commentary.txt
+obs-widgets/obs_commentary.txt
+
 

@@ -869,12 +869,17 @@ def backup_save_state():
     return False
 
 
-def update_obs_commentary(text: str, filename: str = "obs_commentary.txt"):
+def update_obs_commentary(text: str, filename: str = "obs-widgets/obs_commentary.txt"):
     """
     Extracts the commentary section from the analysis text and writes it to a file
     for OBS Text Source (GDI+) to read.
     """
     try:
+        # Ensure directory exists
+        directory = os.path.dirname(filename)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+
         # Look for "9. COMMENTARY" or just "COMMENTARY" header
         # Match from header to end of string (assuming it's the last section)
         match = re.search(r'(?:9\.\s*)?COMMENTARY\s*:?\s*\n((?:.+\n?)+)', text, re.IGNORECASE)
