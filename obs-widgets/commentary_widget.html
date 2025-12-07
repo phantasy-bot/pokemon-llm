@@ -24,12 +24,10 @@
 
         .commentary-text {
             color: #000000;
+            font-family: 'Sometype Mono', 'JetBrains Mono', 'Fira Code', monospace;
             font-size: 20px;
             line-height: 1.5;
             font-weight: 600;
-            text-shadow: 
-                2px 2px 4px rgba(0,0,0,0.8),
-                -1px -1px 2px rgba(0,0,0,0.5);
             animation: fadeIn 0.3s ease-out;
         }
 
@@ -80,11 +78,18 @@
         function extractCommentary(text) {
             if (!text) return null;
             
-            // Look for COMMENTARY section (section 9 in the analysis)
+            // Look for COMMENTARY section (now section 7 in the analysis, was 8 or 9)
             const patterns = [
-                /(?:9\.|8\.)\s*COMMENTARY[:\s]*[-–]\s*(.+?)(?=\n\d+\.|$)/is,
-                /COMMENTARY[:\s]*[-–]\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+                // Match section number followed by COMMENTARY and capture content on same line or next line
+                /(?:7\.|8\.|9\.)\s*COMMENTARY[^\n]*\n\s*[-–•]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+                // Match COMMENTARY with content on same line after colon/dash
+                /COMMENTARY[^:]*[:\s]+[-–]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+                // Match just the content line after COMMENTARY header
+                /COMMENTARY[^\n]*\n[^\n]*(?:Lass|persona|streamer)[^\n]*\n?\s*[-–•]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+                // Fallback: look for Lass persona pattern
                 /Lass persona[:\s]*(.+?)(?=\n\d+\.|$|\n\n)/is,
+                // Try to find any quoted speech-like content after COMMENTARY
+                /COMMENTARY[^\n]*\n[^"]*"([^"]+)"/is,
             ];
 
             for (const pattern of patterns) {
@@ -97,6 +102,8 @@
                     commentary = commentary.replace(/\n.*$/, '');
                     // Remove any XML-style tags (like </game_analysis>)
                     commentary = commentary.replace(/<\/?[^>]+>/g, '');
+                    // Remove markdown bold markers
+                    commentary = commentary.replace(/\*\*/g, '');
                     commentary = commentary.trim();
                     if (commentary.length > 5) {
                         return commentary;

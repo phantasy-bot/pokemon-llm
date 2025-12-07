@@ -42,19 +42,6 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
           : `linear-gradient(to bottom, rgba(255,255,255,0.15), ${getPokemonTypeColor(pokemon.type)})`,
       }}
     >
-      {/* Pokemon sprite */}
-      <div className="pokemon-card__sprite-container">
-        <img
-          src={spriteUrl}
-          alt={pokemon.name}
-          className="pokemon-card__sprite"
-          onError={(e) => {
-            // Hide broken images
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      </div>
-
       <div className="pokemon-card__info">
         <div className="pokemon-card__header">
           <span className="pokemon-card__name">
@@ -70,13 +57,27 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
           size={compact ? "sm" : "md"}
         />
 
-        <div className="pokemon-card__type-row">
-          <span className="pokemon-card__type">{pokemon.type}</span>
-          {pokemon.type2 && (
-            <span className="pokemon-card__type pokemon-card__type--secondary">
-              {pokemon.type2}
-            </span>
-          )}
+        {/* Bottom row: sprite + type badges */}
+        <div className="pokemon-card__bottom-row">
+          <div className="pokemon-card__sprite-container">
+            <img
+              src={spriteUrl}
+              alt={pokemon.name}
+              className="pokemon-card__sprite"
+              onError={(e) => {
+                // Hide broken images
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+          <div className="pokemon-card__type-row">
+            <span className="pokemon-card__type">{pokemon.type}</span>
+            {pokemon.type2 && (
+              <span className="pokemon-card__type pokemon-card__type--secondary">
+                {pokemon.type2}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Status condition display */}
