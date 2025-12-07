@@ -253,9 +253,14 @@ function formatLogText(text: string): string {
   
   // Add section dividers for numbered sections (1. CURRENT STATE, etc.)
   // Unified Numbered Section Styling (Base Default Style as requested)
-  // Matches "1. Title" and makes it bold, removing complex flex layouts
+  // Matches "1. Title" patterns - greedy regex to catch all variations
   formattedText = formattedText.replace(
-    /^\s*(\d+)\.\s*([A-Za-z0-9][A-Za-z0-9\s&:\-]+?)\s*$/gm, 
+    /^(\d+)\.\s+([A-Z][A-Z\s&:\-]+(?:STATE|ANALYSIS|DECISION|COMMENTARY|STATUS|CHECK|PLAN|NOTES))\s*$/gm, 
+    '<div class="log-section-simple"><span class="log-section-title">$1. $2</span></div>'
+  );
+  // Fallback for other numbered sections that don't match known patterns
+  formattedText = formattedText.replace(
+    /^(\d+)\.\s+([A-Z][A-Z\s&:\-]{2,})\s*$/gm, 
     '<div class="log-section-simple"><span class="log-section-title">$1. $2</span></div>'
   );
   

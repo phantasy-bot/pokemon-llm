@@ -91,6 +91,10 @@ class MemoryManager:
         self.FAILED_ATTEMPT_THRESHOLD = 2
         # Track positions we've tried to exit from in recent cycles (for pattern detection)
         self.recent_exit_attempts: List[tuple] = []  # (map_name, coords, cycle)
+        # Track NPC interactions: key = (map_name, coords_tuple), value = interaction count
+        self.npc_interactions: Dict[tuple, int] = {}
+        # Threshold for warning about repeated NPC interactions
+        self.NPC_INTERACTION_THRESHOLD = 2
         
         if reset_on_start:
             # Clear memories for fresh start
@@ -170,6 +174,40 @@ class MemoryManager:
         if key in self.failed_exit_attempts:
             del self.failed_exit_attempts[key]
             log.info(f"✅ Reset failed attempt counter for {map_name} {coordinates}")
+
+    def record_npc_interaction(self, map_name: str, coordinates: List[int], npc_name: str = "NPC") -> Optional[str]:
+        """
+        Record an NPC interaction at these coordinates.
+        Returns a warning string if this NPC has been talked to too many times.
+        """
+        if not coordinates or len(coordinates) < 2:
+            return None
+        
+        key = (map_name.upper(), tuple(coordinates))
+        self.npc_interactions[key] = self.npc_interactions.get(key, 0) + 1
+        count = self.npc_interactions[key]
+        
+        log.info(f"💬 NPC interaction #{count} at {map_name} {coordinates}")
+        
+        if count >= self.NPC_INTERACTION_THRESHOLD:
+            warning = f"⚠️ You've already talked to {npc_name} at {coordinates} {count} times! STOP interacting with this NPC. Move away and explore elsewhere or find the actual exit."
+            log.warning(warning)
+            return warning
+        
+        return None
+    
+    def get_npc_interaction_context(self, map_name: str) -> str:
+        """Get context about NPCs to avoid in the current map."""
+        map_upper = map_name.upper()
+        avoided = []
+        
+        for (stored_map, coords), count in self.npc_interactions.items():
+            if stored_map == map_upper and count >= self.NPC_INTERACTION_THRESHOLD:
+                avoided.append(f"NPC at {list(coords)} (talked {count}x - AVOID)")
+        
+        if avoided:
+            return f"🚫 NPCs TO AVOID: {', '.join(avoided)}"
+        return ""
 
     def add_spatial_memory(
         self,
