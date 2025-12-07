@@ -319,7 +319,7 @@
 }
 
 .goals-log p strong {
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
@@ -388,7 +388,7 @@
 }
 
 .game-placeholder {
-  background: var(--bg-input);
+  background: #000000;
   border: 1px dashed var(--border-subtle);
   border-radius: 0; /* Removed rounded corners as requested */
   flex: 1;
