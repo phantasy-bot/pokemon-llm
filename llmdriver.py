@@ -755,6 +755,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 log.warning(f"⚠️ No analysis text found in LLM output. Full output: {full_output[:200]}...")
                 analysis_text = "No analysis available"
 
+        # Update OBS commentary file from the extracted analysis
+        update_obs_commentary(analysis_text)
+
         # Extract action JSON - search ANYWHERE in output (may be before closing tags)
         action = None
         parsed = None
@@ -864,6 +867,50 @@ def backup_save_state():
             log.error(f"Failed to create backup: {e}")
             return False
     return False
+
+
+def update_obs_commentary(text: str, filename: str = "obs_commentary.txt"):
+    """
+    Extracts the commentary section from the analysis text and writes it to a file
+    for OBS Text Source (GDI+) to read.
+    """
+    try:
+        # Look for "9. COMMENTARY" or just "COMMENTARY" header
+        # Match from header to end of string (assuming it's the last section)
+        match = re.search(r'(?:9\.\s*)?COMMENTARY\s*:?\s*\n((?:.+\n?)+)', text, re.IGNORECASE)
+        commentary = ""
+        
+        if match:
+            raw_commentary = match.group(1).strip()
+            
+            # Clean up: Remove persona guidelines if the model hallucinated them back
+            lines = []
+            for line in raw_commentary.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                # Skip lines that look like instructions or metadata
+                if (line.lower().startswith('- lass persona') or 
+                    line.lower().startswith('- never mention buttons') or
+                    line.lower().startswith('- react like') or
+                    line.lower().startswith('- good:') or
+                    line.lower().startswith('- bad:')):
+                    continue
+                # Skip lines that are just quotes formatting details
+                if line == '""' or line == "''":
+                    continue
+                lines.append(line)
+            
+            commentary = '\n'.join(lines)
+            
+        if commentary:
+            # Write to file for OBS
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(commentary)
+            # log.info(f"📝 OBS commentary updated: {commentary[:50]}...")
+            
+    except Exception as e:
+        log.error(f"Failed to update OBS commentary: {e}")
 
 
 async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None):
