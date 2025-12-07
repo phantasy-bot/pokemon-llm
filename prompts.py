@@ -1,10 +1,54 @@
 # Screen-specific prompt modules and system prompt builder for Pokemon LLM Agent
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# TWITCH CHAT RESPONSE PROMPTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CHAT_RESPONSE_PROMPT = """You are Lass, a bubbly female AI videogame livestreamer playing Pokemon Red on Twitch.
+A viewer just sent you this message in chat:
+
+Username: {username}
+Message: {message}
+
+Respond as Lass in 1-2 SHORT sentences. Be friendly, funny, and engaged with your viewer!
+Keep your response under 100 characters (for TTS brevity).
+Do NOT mention game controls or buttons.
+Just be genuine and personable - react to what they said!
+
+Respond with ONLY your response text, nothing else."""
+
+
+PAST_CHAT_RESPONSE_PROMPT = """You are Lass, a bubbly female AI videogame livestreamer playing Pokemon Red on Twitch.
+You noticed a chat message from earlier that you didn't get to respond to:
+
+Username: {username}
+Message: {message}
+
+Respond in PAST TENSE as if you're catching up on chat. Be brief and friendly!
+Start with "@{username}" to notify them.
+Keep your response under 100 characters (for TTS brevity).
+
+Example styles:
+- "@viewer123 Oh I missed that! Haha yes exactly!"
+- "@coolpoke Sorry I was focused on the game - but totally agree!"
+
+Respond with ONLY your response text (starting with @username), nothing else."""
+
+
+def get_chat_response_prompt(username: str, message: str, is_past: bool = False) -> str:
+    """Get a formatted prompt for generating chat responses."""
+    if is_past:
+        return PAST_CHAT_RESPONSE_PROMPT.format(username=username, message=message)
+    else:
+        return CHAT_RESPONSE_PROMPT.format(username=username, message=message)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SCREEN-SPECIFIC PROMPT MODULES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 NAME_ENTRY_PROMPT = """
+
 ## 🎮 NAME ENTRY SCREEN (ACTIVE)
 
 ### ⚡ PRIORITY: USE DEFAULT NAMES!
@@ -151,8 +195,9 @@ def get_base_prompt() -> str:
 - Actions: A (confirm/interact), B (cancel/back)
 - Menu: S (START), s (SELECT)
 - Chain with semicolons: U;U;R;A;
-- **USE 2-4 ACTIONS PER TURN** - chain directions to move efficiently!
+- **USE 2-5 ACTIONS PER TURN** - chain directions to move efficiently!
 - Single actions waste time. Always chain when moving: U;U;U; or D;D;R;
+- **⚠️ NEVER use N/S/E/W** - only U/D/L/R for movement! (S is the START button, not South!)
 
 ## COORDINATE SYSTEMS
 1. **SCREEN GRID (Visuals)**:
@@ -261,6 +306,11 @@ Use this structure in <game_analysis> tags:
    - **EXPLORATION PRIORITY (CRITICAL)**: ALWAYS prefer UNEXPLORED 'O' entrances/exits over interacting with NPCs or objects!
    - **Even if stuck/backtracking**: Ignoring NPCs and finding new map transitions is better than random interaction.
    - If stuck: FORCE a completely different direction, try the opposite side of the map
+   - **OSCILLATION PREVENTION**: If you notice you're bouncing between 2-3 positions:
+     * STOP the pattern immediately!
+     * Pick ONE consistent direction and commit to it for 5+ moves
+     * Go to the EDGE of the map in that direction before changing
+     * Think: "Am I covering new ground or retracing my steps?"
 
 5. GOAL & PLAN
    - Immediate goal: [specific objective] **← THIS IS YOUR PRIORITY**
@@ -269,7 +319,10 @@ Use this structure in <game_analysis> tags:
    - **Exploration Strategy**: Prioritize reaching 'O' tiles (exits) over 'A' interactions. Only talk to NPCs if required by the MAIN GOAL.
 
 6. ACTION DECISION
-   - Chosen action(s): **CHAIN 2-4 MOVES** (e.g., U;U;U; or D;R;R;A;)
+   - Chosen action(s): **CHAIN 2-5 MOVES** (e.g., U;U;U;U;U; or D;R;R;R;A;)
+   - **EXPLORATION MODE**: When exploring, COMMIT to one direction:
+     * Good: U;U;U;U;U; (5 steps north, covers ground)
+     * Bad: U;U;D;D; (cancels out, wastes moves)
    - **DIALOGUE EXCEPTION**: If vision shows "dialogue" screen_type, use ONLY ONE action (A; or B;)
      * During dialogue, pressing multiple buttons risks skipping important text or making wrong choices
      * Single actions allow you to read and react to each text box

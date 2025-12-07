@@ -48,6 +48,36 @@
             font-style: italic;
         }
 
+        /* Chat response styling */
+        .chat-response-container {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid rgba(138, 43, 226, 0.3);
+        }
+
+        .chat-response {
+            color: #6B21A8;
+            font-family: 'Sometype Mono', monospace;
+            font-size: 18px;
+            line-height: 1.4;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .chat-response .username {
+            color: #7C3AED;
+            font-weight: 700;
+        }
+
+        .chat-response.past-message {
+            opacity: 0.85;
+            font-style: italic;
+        }
+
+        .chat-response.past-message::before {
+            content: "📬 ";
+        }
+
         /* Hidden connection status - uncomment to show */
         .status-dot {
             display: none;
@@ -71,16 +101,22 @@
     
     <div class="widget-container">
         <p class="commentary-text" id="commentaryText"></p>
+        <div class="chat-response-container" id="chatResponseContainer" style="display: none;">
+            <p class="chat-response" id="chatResponseText"></p>
+        </div>
     </div>
 
     <script>
         const WS_URL = 'ws://localhost:8765';
         const commentaryText = document.getElementById('commentaryText');
+        const chatResponseContainer = document.getElementById('chatResponseContainer');
+        const chatResponseText = document.getElementById('chatResponseText');
         const statusDot = document.getElementById('statusDot');
 
         let ws = null;
         let reconnectTimeout = null;
         let lastCommentary = '';
+        let chatResponseHideTimeout = null;
 
         function extractCommentary(text) {
             if (!text) return null;
@@ -124,7 +160,7 @@
         let currentTypewriterText = '';
         let typewriterIndex = 0;
 
-        function typewriterEffect(text, element, speed = 30) {
+        function typewriterEffect(text, element, speed = 30, onComplete = null) {
             // Clear any existing typewriter animation
             if (typewriterTimeout) {
                 clearTimeout(typewriterTimeout);
@@ -139,6 +175,8 @@
                     element.textContent += currentTypewriterText.charAt(typewriterIndex);
                     typewriterIndex++;
                     typewriterTimeout = setTimeout(typeNextChar, speed);
+                } else if (onComplete) {
+                    onComplete();
                 }
             }
             
@@ -155,6 +193,45 @@
             }
         }
 
+        function updateChatResponse(data) {
+            if (!data) return;
+            
+            const username = data.username || 'viewer';
+            const response = data.response || '';
+            const isPast = data.is_past_message || false;
+            
+            if (!response) return;
+            
+            // Clear any existing hide timeout
+            if (chatResponseHideTimeout) {
+                clearTimeout(chatResponseHideTimeout);
+            }
+            
+            // Show the chat response container
+            chatResponseContainer.style.display = 'block';
+            
+            // Set class based on whether it's a past message
+            chatResponseText.className = 'chat-response' + (isPast ? ' past-message' : '');
+            
+            // Format the response HTML (highlight username)
+            const formattedResponse = response.replace(
+                new RegExp(`@${username}\\b`, 'i'),
+                `<span class="username">@${username}</span>`
+            );
+            
+            // Use typewriter for chat response too
+            chatResponseText.innerHTML = '';
+            typewriterEffect(response, chatResponseText, 20, () => {
+                // After typing is complete, add the username styling
+                chatResponseText.innerHTML = formattedResponse;
+            });
+            
+            // Hide chat response after 8 seconds
+            chatResponseHideTimeout = setTimeout(() => {
+                chatResponseContainer.style.display = 'none';
+            }, 8000);
+        }
+
         function connect() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
 
@@ -168,6 +245,11 @@
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    
+                    // Check for chat_response (Twitch chat responses)
+                    if (data.chat_response) {
+                        updateChatResponse(data.chat_response);
+                    }
                     
                     // Check for response_log (contains analysis with commentary)
                     if (data.response_log && data.response_log.text) {
@@ -212,6 +294,7 @@
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            if (chatResponseHideTimeout) clearTimeout(chatResponseHideTimeout);
             if (ws) ws.close();
         });
     </script>

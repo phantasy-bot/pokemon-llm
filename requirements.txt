@@ -5,3 +5,4 @@ httpx
 Pillow
 websockets
 tiktoken
+twitchio>=2.8.0
