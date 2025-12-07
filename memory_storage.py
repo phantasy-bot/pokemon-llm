@@ -87,8 +87,8 @@ class MemoryManager:
         }
         # Track failed exit attempts: key = (map_name, coords_tuple), value = failure count
         self.failed_exit_attempts: Dict[tuple, int] = {}
-        # Threshold for removing unreliable memories - lowered for faster detection
-        self.FAILED_ATTEMPT_THRESHOLD = 2
+        # Threshold for removing unreliable memories - higher to allow trying nearby tiles
+        self.FAILED_ATTEMPT_THRESHOLD = 4
         # Track positions we've tried to exit from in recent cycles (for pattern detection)
         self.recent_exit_attempts: List[tuple] = []  # (map_name, coords, cycle)
         # Track NPC interactions: key = (map_name, coords_tuple), value = interaction count
