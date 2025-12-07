@@ -243,14 +243,15 @@ Use this structure in <game_analysis> tags:
      * If my GOAL is Oak's Lab but I keep entering my house - STOP! Go the OTHER direction!
      * Before entering ANY 'O' tile, ask: "Does this lead to my goal destination?"
      * If you've entered the same building 2+ times without progress: BLACKLIST it, explore elsewhere
-   - **EXPLORATION NOTE**: When choosing between paths, prefer UNEXPLORED exits over familiar ones
+   - **EXPLORATION PRIORITY (CRITICAL)**: ALWAYS prefer UNEXPLORED 'O' entrances/exits over interacting with NPCs or objects!
+   - **Even if stuck/backtracking**: Ignoring NPCs and finding new map transitions is better than random interaction.
    - If stuck: FORCE a completely different direction, try the opposite side of the map
 
 5. GOAL & PLAN
    - Immediate goal: [specific objective] **← THIS IS YOUR PRIORITY**
    - Path: [sequence of directions]
    - Fallback if blocked: [alternative plan]
-   - **Minor exploration**: If passing unexplored areas en route to goal, note them for later
+   - **Exploration Strategy**: Prioritize reaching 'O' tiles (exits) over 'A' interactions. Only talk to NPCs if required by the MAIN GOAL.
 
 6. ACTION DECISION
    - Chosen action(s): **CHAIN 2-4 MOVES** (e.g., U;U;U; or D;R;R;A;)
