@@ -373,13 +373,13 @@
   overflow: visible; /* Allow image to overflow */
   position: relative;
   z-index: 2; /* Above left column */
-  margin-left: -40px; /* Overlap into left column */
+  margin-left: -60px; /* More overlap into left column */
 }
 
 /* Lass character image */
 .lass-character {
-  max-width: 120%;
-  max-height: 100%;
+  max-width: 180%; /* Much larger */
+  max-height: 120%; /* Can extend beyond container */
   object-fit: contain;
   object-position: bottom left;
 }
