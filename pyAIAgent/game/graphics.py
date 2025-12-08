@@ -356,32 +356,36 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
         else:
             left, right, top, bottom = 0, grid_w - 1, 0, grid_h - 1
 
+        # Convert sprites to a set for O(1) lookup - sprites are in WORLD coords
+        sprite_set = set(sprites) if sprites else set()
+        
         rows = []
         # Debug logging for coordinate analysis
         print(f"DEBUG: Player position pos={pos}", file=sys.stderr)
         print(f"DEBUG: walkable_special coordinates: {sorted(list(walkable_special))}", file=sys.stderr)
+        print(f"DEBUG: sprite_set (world coords): {sprite_set}", file=sys.stderr)
+        print(f"DEBUG: Grid bounds: left={left}, top={top}, right={right}, bottom={bottom}", file=sys.stderr)
 
         for y in range(top, bottom + 1):
             row_chars = []
             for x in range(left, right + 1):
                 # Player marker takes precedence
                 if pos and x == pos[0] and y == pos[1]:
-                    print(f"DEBUG: Placing player marker P at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
                     row_chars.append('P')
                 else:
                     is_special = (x, y) in walkable_special
                     is_walkable = grid_data[y][x]
+                    # CRITICAL: x,y here are WORLD coords (the loop goes from left to right which are world offsets)
+                    is_sprite = (x, y) in sprite_set
+                    
                     if is_special:
-                        print(f"DEBUG: Placing orange tile O at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
-                        print(f"DEBUG: Placing orange tile O at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
                         row_chars.append('O')
-                    elif sprites and (x, y) in sprites:
+                    elif is_sprite:
                         row_chars.append('N') # NPC
                     elif is_walkable:
                         row_chars.append('W')
                     else:
                         row_chars.append('B')
-                # (Debug: could print tile IDs if desired, but omitted here)
             rows.append("".join(row_chars))
 
         return ";".join(rows)
