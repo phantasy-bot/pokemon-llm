@@ -366,21 +366,21 @@
 
 /* Right column - Character image (overlaps left but stays in viewport) */
 .character-container__right {
-  flex: 0 0 200px; /* Fixed width for character column */
+  flex: 0 0 250px; /* Fixed width for character column */
   display: flex;
   align-items: flex-end;
   justify-content: flex-end; /* Align to right edge */
   overflow: visible; /* Allow image to overflow left */
   position: relative;
   z-index: 2; /* Above left column */
-  margin-left: -80px; /* Overlap into left column */
-  margin-right: -10px; /* Slight right edge adjustment */
+  margin-left: -100px; /* Overlap into left column */
+  margin-right: 0;
 }
 
 /* Lass character image */
 .lass-character {
-  width: 280px; /* Fixed width for consistency */
-  max-height: 100%;
+  width: 450px; /* Much larger for visibility */
+  max-height: 120%;
   object-fit: contain;
   object-position: bottom right;
 }
@@ -392,9 +392,9 @@
   gap: var(--space-xs);
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for label */
-  margin-top: 10px; /* Space above for the sheared label */
+  margin-top: 12px; /* More space above for the sheared label */
   flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
-  overflow: hidden; /* Hide overflow text */
+  overflow: visible; /* Allow label to show above */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
