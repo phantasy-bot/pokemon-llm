@@ -159,48 +159,96 @@ def get_sprites(sock) -> list[tuple[int, int]]:
 
 # Updated prep_llm to include sprites
 def prep_llm(sock) -> dict:
-    _flush_socket(sock)
-    capture(sock, "latest.png")
-    time.sleep(0.5) # Increased wait to ensure FS sync
-    _flush_socket(sock)
-    loc = get_location(sock)
-    mid = None
-    mapName = None
-    map2D = ""
-
-    if loc:
-        mid, x, y, facing, mapName = loc
-
+    import logging
+    import socket
+    log = logging.getLogger("prep_llm")
+    
+    # Log socket state before starting
+    try:
+        sock_fileno = sock.fileno()
+        sock_timeout = sock.gettimeout()
+        log.info(f"📡 prep_llm START: socket fd={sock_fileno}, timeout={sock_timeout}")
+    except Exception as e:
+        log.error(f"📡 prep_llm: Socket state check failed: {e}")
+        return None
+    
+    try:
+        t_start = time.time()
+        log.debug("prep_llm: flushing socket...")
+        _flush_socket(sock)
         
-        rom_path = get_rom_path()
-        minimap_img = dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE)
-        if minimap_img:
-            minimap_img.save("minimap.png")
-        else:
-            # Fallback if minimap generation failed (e.g., unknown tileset)
-            from PIL import Image
-            default_minimap = Image.new('RGB', (160, 160), color='gray')
-            default_minimap.save("minimap.png")
-        map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
-        position = (x, y)
-    else:
-        # no map data or in battle → create default white minimap
-        from PIL import Image
-        # Create a white square with same dimensions as typical minimap
-        default_minimap = Image.new('RGB', (160, 160), color='white')
-        default_minimap.save("minimap.png")
-        position = None
-        facing = None
+        log.debug("prep_llm: capturing screenshot...")
+        t_cap = time.time()
+        capture(sock, "latest.png")
+        log.debug(f"prep_llm: capture took {time.time() - t_cap:.2f}s")
+        
+        time.sleep(0.5) # Increased wait to ensure FS sync
+        _flush_socket(sock)
+        
+        log.debug("prep_llm: getting location...")
+        t_loc = time.time()
+        loc = get_location(sock)
+        log.debug(f"prep_llm: get_location took {time.time() - t_loc:.2f}s")
+        
+        mid = None
+        mapName = None
+        map2D = ""
 
-    return {
-        "party":   get_party_text(sock),
-        "map_id": mid,
-        "badges":  get_badges_text(sock),
-        "position": position,
-        "facing":  facing,
-        "map_name": mapName,
-        "minimap_2d": map2D
-    }
+        if loc:
+            mid, x, y, facing, mapName = loc
+            log.debug(f"prep_llm: location = {mapName} ({mid}) at ({x},{y}) facing {facing}")
+            
+            rom_path = get_rom_path()
+            log.debug("prep_llm: generating minimap...")
+            t_map = time.time()
+            minimap_img = dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE)
+            if minimap_img:
+                minimap_img.save("minimap.png")
+            else:
+                # Fallback if minimap generation failed (e.g., unknown tileset)
+                from PIL import Image
+                default_minimap = Image.new('RGB', (160, 160), color='gray')
+                default_minimap.save("minimap.png")
+            map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
+            log.debug(f"prep_llm: minimap generation took {time.time() - t_map:.2f}s")
+            position = (x, y)
+        else:
+            log.debug("prep_llm: no location data, creating default minimap")
+            # no map data or in battle → create default white minimap
+            from PIL import Image
+            # Create a white square with same dimensions as typical minimap
+            default_minimap = Image.new('RGB', (160, 160), color='white')
+            default_minimap.save("minimap.png")
+            position = None
+            facing = None
+
+        log.debug("prep_llm: getting party/badges...")
+        t_party = time.time()
+        party = get_party_text(sock)
+        badges = get_badges_text(sock)
+        log.debug(f"prep_llm: party/badges took {time.time() - t_party:.2f}s")
+
+        total_time = time.time() - t_start
+        log.info(f"📡 prep_llm DONE: total={total_time:.2f}s location={mapName}")
+        
+        return {
+            "party":   party,
+            "map_id": mid,
+            "badges":  badges,
+            "position": position,
+            "facing":  facing,
+            "map_name": mapName,
+            "minimap_2d": map2D
+        }
+    except socket.timeout as e:
+        log.error(f"📡 prep_llm: Socket TIMEOUT during operation: {e}")
+        raise
+    except socket.error as e:
+        log.error(f"📡 prep_llm: Socket ERROR: {e} (errno={e.errno if hasattr(e, 'errno') else 'N/A'})")
+        raise
+    except Exception as e:
+        log.error(f"📡 prep_llm: Unexpected error: {e}", exc_info=True)
+        raise
 
 
 

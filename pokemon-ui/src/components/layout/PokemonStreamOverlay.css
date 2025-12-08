@@ -364,24 +364,25 @@
   flex: 1; /* Smaller than commentary */
 }
 
-/* Right column - Character image (narrower, overlaps left) */
+/* Right column - Character image (overlaps left but stays in viewport) */
 .character-container__right {
-  flex: 2; /* 40% of container */
+  flex: 0 0 200px; /* Fixed width for character column */
   display: flex;
   align-items: flex-end;
-  justify-content: flex-start;
-  overflow: visible; /* Allow image to overflow */
+  justify-content: flex-end; /* Align to right edge */
+  overflow: visible; /* Allow image to overflow left */
   position: relative;
   z-index: 2; /* Above left column */
-  margin-left: -60px; /* More overlap into left column */
+  margin-left: -80px; /* Overlap into left column */
+  margin-right: -10px; /* Slight right edge adjustment */
 }
 
 /* Lass character image */
 .lass-character {
-  max-width: 180%; /* Much larger */
-  max-height: 120%; /* Can extend beyond container */
+  width: 280px; /* Fixed width for consistency */
+  max-height: 100%;
   object-fit: contain;
-  object-position: bottom left;
+  object-position: bottom right;
 }
 
 /* Goals section with TUI box styling */
