@@ -366,21 +366,21 @@
 
 /* Right column - Character image (overlaps left but stays in viewport) */
 .character-container__right {
-  flex: 0 0 250px; /* Fixed width for character column */
+  flex: 0 0 300px; /* Wider column for massive character */
   display: flex;
   align-items: flex-end;
   justify-content: flex-end; /* Align to right edge */
   overflow: visible; /* Allow image to overflow left */
   position: relative;
   z-index: 2; /* Above left column */
-  margin-left: -100px; /* Overlap into left column */
-  margin-right: 0;
+  margin-left: -150px; /* Massive overlap into left column */
+  margin-right: -20px; /* Slight right edge adjustment */
 }
 
 /* Lass character image */
 .lass-character {
-  width: 450px; /* Much larger for visibility */
-  max-height: 120%;
+  width: 600px; /* A lot a lot larger */
+  max-height: 140%; /* Can extend way beyond container */
   object-fit: contain;
   object-position: bottom right;
 }
