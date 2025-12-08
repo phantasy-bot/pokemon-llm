@@ -240,7 +240,8 @@ export function PokemonStreamOverlay({
               onMemoryWriteClear={onMemoryWriteClear}
               debugMode={gameState.debugMode}
             />
-
+            {/* Recent Actions - moved here */}
+            <RecentActions logs={logs} totalActions={gameState.actions} />
           </div>
         </div>
 
@@ -284,12 +285,11 @@ export function PokemonStreamOverlay({
           </div>
         </div>
 
-        {/* Right Column - Recent Actions and Goals */}
+        {/* Right Column - Goals and Character */}
         <div className="pokemon-goals">
-          {/* Top Section - Actions and Goals */}
+          {/* Top Section - Goals only */}
           <div className="pokemon-goals__top">
-            {/* Recent Actions - moved from left column */}
-            <RecentActions logs={logs} totalActions={gameState.actions} />
+            {/* Recent Actions removed from here */}
 
             {/* Goals with TUI box styling */}
             <div className="goals-log">
