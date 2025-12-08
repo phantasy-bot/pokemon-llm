@@ -71,7 +71,7 @@ class ZAIMCPClient:
 
             # Start MCP server using npx
             cmd = [
-                'npx', '-y', '@z_ai/mcp-server'
+                'npx', '-y', '@z_ai/mcp-server@latest'
             ]
 
             log.info("Starting Z.AI MCP vision server...")
@@ -112,9 +112,9 @@ class ZAIMCPClient:
             env['Z_AI_API_KEY'] = self.api_key
             env['Z_AI_MODE'] = self.mode
 
-            # Start MCP server using npx
+            # Start MCP server using npx (version >=0.1.1 required for GLM-4.6V)
             cmd = [
-                'npx', '-y', '@z_ai/mcp-server'
+                'npx', '-y', '@z_ai/mcp-server@latest'
             ]
 
             log.info("Starting Z.AI MCP vision server...")
