@@ -282,27 +282,25 @@
   display: flex;
   flex-direction: column;
   flex: 32.5; /* 32.5% */
-  padding: var(--space-md);
-  padding-top: var(--space-lg); /* Extra top padding for sheared labels */
+  padding: var(--space-md); /* Match other columns padding */
   background: var(--bg-panel);
   /* No borders - positioned last, no separator needed on right */
   overflow: visible; /* Allow labels to show above containers */
 }
 
-/* Top section - Actions and Goals (25%) */
+/* Top section - Actions and Goals (40%) */
 .pokemon-goals__top {
-  flex: 0 0 25%; /* Fixed 25% height */
+  flex: 0 0 40%; /* Fixed 40% height */
   display: flex;
   flex-direction: column;
+  gap: var(--space-sm);
   overflow: hidden; /* Content never spills over to bottom section */
-  overflow-y: auto; /* Allow scrolling if needed */
   min-height: 0; /* Required for flex overflow to work */
-  padding-top: 8px; /* Space for sheared labels that sit above border */
 }
 
-/* Bottom section - Lass Character (75%) */
+/* Bottom section - Lass Character (60%) */
 .pokemon-goals__bottom {
-  flex: 1; /* Take remaining space (75%) */
+  flex: 1; /* Take remaining space (60%) */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -325,6 +323,7 @@
   gap: var(--space-xs);
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for label */
+  margin-top: 10px; /* Space above for the sheared label */
   flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
   overflow: hidden; /* Hide overflow text */
   
