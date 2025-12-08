@@ -32,6 +32,7 @@ from goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from exploration_tracker import ExplorationTracker
 from twitch_chat_service import TwitchChatService, create_twitch_service
 from comfyui_tts_service import ComfyUITTSService, create_tts_service
+from history_tracker import ScreenshotHistoryTracker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -502,6 +503,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
     # Extract Z.AI specific image paths for MCP processing
     screenshot_path = payload.pop("screenshot_path", None)
+    previous_screenshot_path = payload.pop("previous_screenshot_path", None)
     minimap_path = payload.pop("minimap_path", None)
 
     if not MINIMAP_2D:
@@ -668,6 +670,41 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                             detected_screen_type = screen_type_match.group(1)
                             log.info(f"🖥️ Detected screen type (regex): {detected_screen_type}")
                             payload["detected_screen_type"] = detected_screen_type
+                    
+                    # ═══════════════════════════════════════════════════════════════
+                    # UI DIFF CHECK - Compare previous cycle to current cycle
+                    # Uses GLM4.6 ui_diff_check tool for temporal context
+                    # ═══════════════════════════════════════════════════════════════
+                    if previous_screenshot_path and os.path.exists(previous_screenshot_path):
+                        try:
+                            log.info(f"🔄 Running ui_diff_check: {previous_screenshot_path} → {screenshot_path}")
+                            diff_result = zai_vision_client.ui_diff_check_sync(
+                                previous_screenshot_path, 
+                                screenshot_path,
+                                max_attempts=2  # Limited retries for supplementary context
+                            )
+                            if diff_result:
+                                # Clean up the diff result similarly to vision analysis
+                                processed_diff = diff_result
+                                # Filter Japanese characters
+                                processed_diff = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_diff)
+                                # Trim if needed similar to vision result
+                                if len(processed_diff) > 31:
+                                    processed_diff = processed_diff[17:-14] if len(processed_diff) > 31 else processed_diff
+                                
+                                payload["ui_changes_from_previous_cycle"] = processed_diff
+                                log.info(f"🔄 UI diff detected: {processed_diff[:150]}...")
+                            else:
+                                log.info("🔄 ui_diff_check returned no changes or failed")
+                                payload["ui_changes_from_previous_cycle"] = "No significant changes detected between cycles"
+                        except Exception as diff_error:
+                            log.warning(f"ui_diff_check failed (non-critical): {diff_error}")
+                            # Non-critical - continue without diff context
+                    else:
+                        if previous_screenshot_path:
+                            log.debug(f"Previous screenshot not found: {previous_screenshot_path}")
+                        else:
+                            log.debug("No previous screenshot available for diff (first cycle?)")
 
                 except RuntimeError as e:
                     # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
@@ -1206,6 +1243,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     else:
         log.info("🗺️ Exploration tracker: Fresh start")
 
+    # Initialize screenshot history tracker for ui_diff_check (keeps N and N-1)
+    screenshot_history = ScreenshotHistoryTracker(snapshot_dir="snapshots")
+    log.info("📸 Screenshot history tracker initialized for ui_diff_check")
+
     # Initialize Twitch chat service (optional - gracefully disabled if not configured)
     twitch_service = create_twitch_service()
     if twitch_service.is_available:
@@ -1338,17 +1379,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 SCREENSHOT_PATH = snapshot_path
                 log.info(f"🔒 Atomic snapshot locked: {snapshot_path}")
                 
-                # Cleanup previous cycle's snapshot to prevent disk bloat
-                prev_snapshot = f"snapshots/cycle_{current_cycle - 1}.png"
-                if os.path.exists(prev_snapshot):
-                    try:
-                        os.remove(prev_snapshot)
-                         # Also try to remove the combined version if it exists
-                        prev_combined = f"snapshots/cycle_{current_cycle - 1}_with_minimap.png"
-                        if os.path.exists(prev_combined):
-                            os.remove(prev_combined)
-                    except OSError:
-                        pass
+                # Register with history tracker - this keeps N and N-1, auto-cleans N-2+
+                screenshot_history.add_screenshot(current_cycle, snapshot_path)
             except Exception as e:
                 log.error(f"Failed to create atomic snapshot: {e}. Falling back to global path.")
                 SCREENSHOT_PATH = SAVED_SCREENSHOT_PATH
@@ -1686,6 +1718,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
             # The minimap context is no longer sent to vision - user prefers clean image
             llm_input_state["screenshot_path"] = UI_IMAGE_PATH
+            # Add previous screenshot path for ui_diff_check (from history tracker)
+            llm_input_state["previous_screenshot_path"] = screenshot_history.get_previous_screenshot()
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 llm_input_state["minimap_path"] = MINIMAP_PATH
 
