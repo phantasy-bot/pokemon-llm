@@ -125,6 +125,23 @@ action_count = 0
 tokens_used_session = 0
 start_time = datetime.datetime.now()
 
+# Global status callback for real-time processing status updates
+# Set by run_auto_loop, called by llm_stream_action during vision processing
+_status_callback = None
+
+def set_status_callback(callback):
+    """Set the callback for processing status updates."""
+    global _status_callback
+    _status_callback = callback
+
+def update_processing_status(status: str):
+    """Update the processing status via callback if set."""
+    if _status_callback:
+        try:
+            _status_callback(status)
+        except Exception as e:
+            log.warning(f"Status callback error: {e}")
+
 
 def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
     """
@@ -633,6 +650,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 try:
                     # Use the snapshot path if available, otherwise fallback (though snapshot should always be there now)
                     target_image_path = screenshot_path if screenshot_path else SAVED_SCREENSHOT_PATH
+                    
+                    # Update status for OBS widget
+                    update_processing_status("ANALYZING VISION...")
                     vision_result = zai_vision_client.analyze_image_sync(target_image_path, factual_prompt)
 
                     # SUCCESS: Vision analysis completed successfully (this should always happen now)
@@ -678,6 +698,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     if previous_screenshot_path and os.path.exists(previous_screenshot_path):
                         try:
                             log.info(f"🔄 Running ui_diff_check: {previous_screenshot_path} → {screenshot_path}")
+                            
+                            # Update status for OBS widget
+                            update_processing_status("COMPARING SCREENSHOTS...")
                             diff_result = zai_vision_client.ui_diff_check_sync(
                                 previous_screenshot_path, 
                                 screenshot_path,
@@ -822,6 +845,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     analysis_text = None
 
     try:
+        # Update status for OBS widget - now thinking
+        update_processing_status("THINKING...")
+        
         # --- API Call Section: Conditional Streaming ---
         kwargs = {
             "model": MODEL,
@@ -1246,6 +1272,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     # Initialize screenshot history tracker for ui_diff_check (keeps N and N-1)
     screenshot_history = ScreenshotHistoryTracker(snapshot_dir="snapshots")
     log.info("📸 Screenshot history tracker initialized for ui_diff_check")
+
+    # Set up status callback for real-time processing status updates
+    # This allows llm_stream_action to broadcast status changes during vision processing
+    def status_callback(status: str):
+        state["processingStatus"] = status
+        # Use asyncio to schedule the broadcast (we're in an async context)
+        asyncio.create_task(broadcast_func({"processingStatus": status}))
+    
+    set_status_callback(status_callback)
+    log.info("📢 Processing status callback initialized")
 
     # Initialize Twitch chat service (optional - gracefully disabled if not configured)
     twitch_service = create_twitch_service()

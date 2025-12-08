@@ -152,7 +152,6 @@ export function PokemonStreamOverlay({
                 gameState.gameStatus === "Running..." ||
                 gameState.gameStatus.includes("Auto")
               }
-              processingStatus={gameState.processingStatus || ""}
               memoryWrite={memoryWrite}
               onMemoryWriteClear={onMemoryWriteClear}
             />

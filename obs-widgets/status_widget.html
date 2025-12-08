@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Status - OBS Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .widget-container {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        @font-face {
+            font-family: 'Sometype Mono';
+            src: url('./fonts/SometypeMono-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Animated spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #e74c3c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            font-family: 'Sometype Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: 0.05em;
+        }
+
+        /* Character wave animation */
+        .status-text span {
+            display: inline-block;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Different colors for different statuses */
+        .status-text.vision {
+            color: #3498db;
+        }
+
+        .status-text.comparing {
+            color: #9b59b6;
+        }
+
+        .status-text.thinking {
+            color: #e74c3c;
+        }
+
+        .spinner.vision {
+            border-top-color: #3498db;
+        }
+
+        .spinner.comparing {
+            border-top-color: #9b59b6;
+        }
+
+        .spinner.thinking {
+            border-top-color: #e74c3c;
+        }
+
+        /* Hidden state */
+        .widget-container.hidden {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .widget-container.visible {
+            opacity: 1;
+            transition: opacity 0.3s ease-in;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container hidden" id="widgetContainer">
+        <div class="spinner" id="spinner"></div>
+        <span class="status-text" id="statusText"></span>
+    </div>
+
+    <script>
+        const WS_URL = 'ws://localhost:8765';
+        const widgetContainer = document.getElementById('widgetContainer');
+        const spinner = document.getElementById('spinner');
+        const statusText = document.getElementById('statusText');
+
+        let ws = null;
+        let reconnectTimeout = null;
+        let hideTimeout = null;
+
+        function getStatusClass(status) {
+            if (!status) return '';
+            const lower = status.toLowerCase();
+            if (lower.includes('vision') || lower.includes('analyzing')) return 'vision';
+            if (lower.includes('comparing') || lower.includes('diff')) return 'comparing';
+            if (lower.includes('thinking')) return 'thinking';
+            return '';
+        }
+
+        function updateStatus(status) {
+            // Clear any pending hide timeout
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+
+            if (!status || status.trim() === '') {
+                // Hide widget after a short delay
+                hideTimeout = setTimeout(() => {
+                    widgetContainer.classList.remove('visible');
+                    widgetContainer.classList.add('hidden');
+                }, 500);
+                return;
+            }
+
+            // Show widget
+            widgetContainer.classList.remove('hidden');
+            widgetContainer.classList.add('visible');
+
+            // Get status class
+            const statusClass = getStatusClass(status);
+            
+            // Update spinner color
+            spinner.className = 'spinner ' + statusClass;
+
+            // Animate text character by character
+            statusText.className = 'status-text ' + statusClass;
+            statusText.innerHTML = status.split('').map((char, i) => 
+                `<span style="animation-delay: ${i * 0.05}s">${char === ' ' ? '&nbsp;' : char}</span>`
+            ).join('');
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                console.log('Status widget connected to WebSocket');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Check for processingStatus updates
+                    if (data.processingStatus !== undefined) {
+                        updateStatus(data.processingStatus);
+                    }
+                    
+                    // Also check nested in state updates
+                    if (data.state && data.state.processingStatus !== undefined) {
+                        updateStatus(data.state.processingStatus);
+                    }
+                } catch (e) {
+                    console.error('Error parsing WebSocket message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected, reconnecting...');
+                reconnectTimeout = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                ws.close();
+            };
+        }
+
+        // Start connection
+        connect();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            if (hideTimeout) clearTimeout(hideTimeout);
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>
