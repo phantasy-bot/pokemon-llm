@@ -375,7 +375,7 @@ class ZAIMCPClient:
             request_id = self._get_next_request_id()
             
             # Create MCP request for UI diff check
-            # Based on the tool description: "Compare two UI shots to flag visual or implementation drift"
+            # MCP requires: expected_image_source, actual_image_source, prompt
             mcp_request = {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -383,8 +383,9 @@ class ZAIMCPClient:
                 "params": {
                     "name": tool_name,
                     "arguments": {
-                        "image_source_1": prev_image_path,
-                        "image_source_2": curr_image_path
+                        "expected_image_source": prev_image_path,
+                        "actual_image_source": curr_image_path,
+                        "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements."
                     }
                 }
             }
