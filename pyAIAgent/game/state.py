@@ -1,4 +1,5 @@
 import os
+import sys
 import struct
 import time
 from pyAIAgent.game.graphics import dump_minimal_map, dump_minimap_map_array
@@ -107,6 +108,55 @@ def get_location(sock) -> tuple[int, int, int, str] | None:
     return (mid, tile_x, tile_y, facing, mapName)
 
 
+
+
+
+def get_sprites(sock) -> list[tuple[int, int]]:
+    """
+    Read Sprite Table from RAM (0xC100-0xC1FF) to get NPC coordinates.
+    There are 16 slots, each 16 bytes.
+    Offset +0: Picture ID (0 if inactive/hidden)
+    Offset +4: Y Coordinate (Grid Y + 4)
+    Offset +6: X Coordinate (Grid X + 4)
+    """
+    _flush_socket(sock)
+    sprites = []
+    try:
+        # Read all 16 slots * 16 bytes = 256 bytes
+        # Using 0xC100 (SpriteStateData1) which contains positions
+        data = readrange(sock, "0xC100", "256")
+        
+        for i in range(16):
+            offset = i * 16
+            if offset + 6 >= len(data): 
+                break
+                
+            picture_id = data[offset]
+            # Offset 0 is picture ID. If 0, sprite is disabled/hidden.
+            if picture_id != 0:
+                # Valid sprite
+                y_raw = data[offset + 4]
+                x_raw = data[offset + 6] # X is at +6, not +5
+                
+                # Convert to 0-indexed grid coordinates
+                # RAM stores value as Grid + 4
+                idx_x = x_raw - 4
+                idx_y = y_raw - 4
+                
+                # Simple sanity check for map bounds (0-30 roughly)
+                if 0 <= idx_x < 80 and 0 <= idx_y < 80:
+                    sprites.append((idx_x, idx_y))
+        
+        # Debug log to verify we are getting data
+        if sprites:
+            print(f"DEBUG: Found {len(sprites)} sprites at: {sprites}", file=sys.stderr)
+
+    except Exception as e:
+        log.warning(f"Error reading sprite data: {e}. continuing without sprites.")
+        
+    return sprites
+
+# Updated prep_llm to include sprites
 def prep_llm(sock) -> dict:
     _flush_socket(sock)
     capture(sock, "latest.png")
@@ -119,8 +169,20 @@ def prep_llm(sock) -> dict:
 
     if loc:
         mid, x, y, facing, mapName = loc
+        sprites = get_sprites(sock)
+        
+        # Filter out the player sprite if it appears in the table (usually slot 0 is player, but double check logic)
+        # Actually in Gen 1, player coordinates are at 0xD362/0xD361 (which get_location reads).
+        # The sprite table at 0xC200 describes OTHER map objects (NPCs, items balls, etc).
+        # Sometimes slot 0 of C200 IS the player, sometimes not. 
+        # But usually we can just overlay all of them.
+        # Ideally, exclude sprite if it matches player position exactly?
+        # Let's filter out exact matches to avoid drawing 'N' on top of 'P'
+        
+        filtered_sprites = [s for s in sprites if s != (x, y)]
+        
         rom_path = get_rom_path()
-        minimap_img = dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE)
+        minimap_img = dump_minimal_map(rom_path, mid, (x, y), sprites=filtered_sprites, grid_lines=True, crop=MINI_MAP_SIZE)
         if minimap_img:
             minimap_img.save("minimap.png")
         else:
@@ -128,7 +190,7 @@ def prep_llm(sock) -> dict:
             from PIL import Image
             default_minimap = Image.new('RGB', (160, 160), color='gray')
             default_minimap.save("minimap.png")
-        map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
+        map2D = dump_minimap_map_array(rom_path, mid, (x, y), sprites=filtered_sprites, crop=MINI_MAP_SIZE)
         position = (x, y)
     else:
         # no map data or in battle → create default white minimap

@@ -116,6 +116,13 @@ export function PokemonStreamOverlay({
           <div className="stats-row">
             <div className="stat-item">
               <div className="stat-count">
+                {gameState.cycle || 0}
+              </div>
+              <div className="stat-label">CYCLE</div>
+            </div>
+            <div className="stats-separator" />
+            <div className="stat-item">
+              <div className="stat-count">
                 {formatLargeNumber(gameState.tokensUsed)}
               </div>
               <div className="stat-label">TOKENS</div>
@@ -126,12 +133,6 @@ export function PokemonStreamOverlay({
                 {gameState.actions.toLocaleString()}
               </div>
               <div className="stat-label">ACTIONS</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-count">
-                {gameState.cycle || 0}
-              </div>
-              <div className="stat-label">CYCLE</div>
             </div>
           </div>
         </div>

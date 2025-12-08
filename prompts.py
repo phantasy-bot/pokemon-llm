@@ -388,6 +388,19 @@ Use this structure in <game_analysis> tags:
      * Go to the EDGE of the map in that direction before changing
      * Think: "Am I covering new ground or retracing my steps?"
 
+   **EXIT & RE-ENTRY AWARENESS (SPATIAL COMMON SENSE - CRITICAL)**:
+   - **JUST EXITED A BUIDING?**: The door is usually **immediately BEHIND you** or **ABOVE you**.
+     * If you just exited a building (e.g. SCHOOL -> CITY), **DO NOT GO NORTH IMMEDIATELY**!
+     * Going North usually sends you BACK INTO the building you just left!
+   - **MOVE AWAY FROM DOORS**: When you enter a new map, your first priority is to **create distance** from the entrance.
+     * Move DOWN, LEFT, or RIGHT to explore the new area.
+     * Only move UP if you are certain the path forward is North (and not the door you just used).
+   - **CONTEXT CHECK**:
+     * Previous Map: "VIRIDIAN_SCHOOL" -> Current Map: "VIRIDIAN_CITY".
+     * Did I just exit? YES.
+     * Where is the school? BEHIND ME (North).
+     * Where should I go? AWAY (South/East/West).
+
    **DIRECTIONAL PROGRESS CHECK (CRITICAL)**:
    - Look at your position history from `recent_actions` and your current [x,y] vs previous positions
    - Ask: "Which direction do I need to go?" (e.g., "I came from PALLET_TOWN in the south, I need to go NORTH to VIRIDIAN_CITY")
@@ -499,6 +512,14 @@ Use this structure in <game_analysis> tags:
 - If you're on an 'O' and nothing happened, you haven't stepped through yet!
 - Action pattern when ON exit tile: D; (try down first for interior exits)
 - If D doesn't work, try: U; then L; then R;
+
+### 🔴 RED MAT / WARP TILE PROTOCOL
+- **VISION CONFIRMED RED MAT**: If vision sees a "Red Mat" or "Doormat" under/near you:
+  - This is a WARP TILE. Standing on it is not enough.
+  - You must **WALK THROUGH IT** in the direction of the mat.
+  - **ENTERING (Mat is North)**: Walk UP into it, then UP once more: `U;U;`
+  - **EXITING (Mat is South)**: Walk DOWN onto it, then DOWN once more: `D;D;`
+  - **RULE**: "If I am on the mat, I must take ONE MORE STEP in that direction!"
 
 
 If "memory_context" appears, USE IT for navigation.
