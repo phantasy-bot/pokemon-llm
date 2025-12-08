@@ -118,6 +118,7 @@ export function PokemonStreamOverlay({
 }: PokemonStreamOverlayProps) {
   // Extract commentary from most recent response log
   const [currentCommentary, setCurrentCommentary] = useState<string>("");
+  const lastCommentaryRef = useRef<string>("");
   
   useEffect(() => {
     // Find the most recent response log entry with commentary
@@ -125,13 +126,14 @@ export function PokemonStreamOverlay({
       const entry = logs[i];
       if (entry.is_response && entry.text) {
         const commentary = extractCommentary(entry.text);
-        if (commentary && commentary !== currentCommentary) {
+        if (commentary && commentary !== lastCommentaryRef.current) {
+          lastCommentaryRef.current = commentary;
           setCurrentCommentary(commentary);
           break;
         }
       }
     }
-  }, [logs, currentCommentary]);
+  }, [logs]); // Only depend on logs, not currentCommentary
 
   // Extract Pokemon data from game state
   const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
