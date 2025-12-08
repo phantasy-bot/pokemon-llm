@@ -33,6 +33,7 @@ from exploration_tracker import ExplorationTracker
 from twitch_chat_service import TwitchChatService, create_twitch_service
 from comfyui_tts_service import ComfyUITTSService, create_tts_service
 from history_tracker import ScreenshotHistoryTracker
+from coordinate_tracker import CoordinateTracker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -521,6 +522,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     # Extract Z.AI specific image paths for MCP processing
     screenshot_path = payload.pop("screenshot_path", None)
     previous_screenshot_path = payload.pop("previous_screenshot_path", None)
+    diff_pairs = payload.pop("diff_pairs", [])  # List of (prev_cycle, prev_path, curr_path) tuples
     minimap_path = payload.pop("minimap_path", None)
 
     if not MINIMAP_2D:
@@ -692,42 +694,63 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                             payload["detected_screen_type"] = detected_screen_type
                     
                     # ═══════════════════════════════════════════════════════════════
-                    # UI DIFF CHECK - Compare previous cycle to current cycle
-                    # Uses GLM4.6 ui_diff_check tool for temporal context
+                    # MULTI-DIFF CHECK - Compare current to all previous cycles (N-1 to N-4)
+                    # Runs in parallel using ThreadPoolExecutor for speed
                     # ═══════════════════════════════════════════════════════════════
-                    if previous_screenshot_path and os.path.exists(previous_screenshot_path):
+                    if diff_pairs:
                         try:
-                            log.info(f"🔄 Running ui_diff_check: {previous_screenshot_path} → {screenshot_path}")
+                            log.info(f"🔄 Running {len(diff_pairs)} parallel ui_diff_checks")
+                            update_processing_status(f"COMPARING {len(diff_pairs)} SCREENSHOTS...")
                             
-                            # Update status for OBS widget
-                            update_processing_status("COMPARING SCREENSHOTS...")
-                            diff_result = zai_vision_client.ui_diff_check_sync(
-                                previous_screenshot_path, 
-                                screenshot_path,
-                                max_attempts=2  # Limited retries for supplementary context
-                            )
-                            if diff_result:
-                                # Clean up the diff result similarly to vision analysis
-                                processed_diff = diff_result
-                                # Filter Japanese characters
-                                processed_diff = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_diff)
-                                # Trim if needed similar to vision result
-                                if len(processed_diff) > 31:
-                                    processed_diff = processed_diff[17:-14] if len(processed_diff) > 31 else processed_diff
+                            def run_single_diff(pair):
+                                """Run a single diff check - called in parallel."""
+                                prev_cycle, prev_path, curr_path = pair
+                                try:
+                                    result = zai_vision_client.ui_diff_check_sync(
+                                        prev_path, curr_path, max_attempts=1
+                                    )
+                                    if result:
+                                        # Clean up result
+                                        cleaned = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', result)
+                                        if len(cleaned) > 31:
+                                            cleaned = cleaned[17:-14]
+                                        return {"cycle": prev_cycle, "diff": cleaned}
+                                except Exception as e:
+                                    log.warning(f"Diff for cycle {prev_cycle} failed: {e}")
+                                return None
+                            
+                            # Run diffs in parallel
+                            all_diffs = []
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                                futures = {executor.submit(run_single_diff, pair): pair for pair in diff_pairs}
+                                for future in concurrent.futures.as_completed(futures, timeout=90):
+                                    try:
+                                        result = future.result()
+                                        if result:
+                                            all_diffs.append(result)
+                                    except Exception as e:
+                                        log.warning(f"Diff future failed: {e}")
+                            
+                            # Sort by cycle (most recent first)
+                            all_diffs.sort(key=lambda x: -x["cycle"])
+                            
+                            if all_diffs:
+                                # Format as temporal context
+                                temporal_context = "TEMPORAL CHANGES (what changed from previous cycles):\n"
+                                for diff_info in all_diffs:
+                                    cycles_ago = screenshot_path and diff_info["cycle"]
+                                    temporal_context += f"\n[Cycle {diff_info['cycle']}]: {diff_info['diff'][:300]}"
                                 
-                                payload["ui_changes_from_previous_cycle"] = processed_diff
-                                log.info(f"🔄 UI diff detected: {processed_diff[:150]}...")
+                                payload["temporal_diffs"] = temporal_context
+                                payload["ui_changes_from_previous_cycle"] = all_diffs[0]["diff"] if all_diffs else ""
+                                log.info(f"🔄 {len(all_diffs)} diffs completed: {[d['cycle'] for d in all_diffs]}")
                             else:
-                                log.info("🔄 ui_diff_check returned no changes or failed")
-                                payload["ui_changes_from_previous_cycle"] = "No significant changes detected between cycles"
+                                log.info("🔄 No diffs completed successfully")
+                                
                         except Exception as diff_error:
-                            log.warning(f"ui_diff_check failed (non-critical): {diff_error}")
-                            # Non-critical - continue without diff context
+                            log.warning(f"Multi-diff failed (non-critical): {diff_error}")
                     else:
-                        if previous_screenshot_path:
-                            log.debug(f"Previous screenshot not found: {previous_screenshot_path}")
-                        else:
-                            log.debug("No previous screenshot available for diff (first cycle?)")
+                        log.debug("No diff pairs available (first few cycles?)")
 
                 except RuntimeError as e:
                     # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
@@ -1269,9 +1292,17 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     else:
         log.info("🗺️ Exploration tracker: Fresh start")
 
-    # Initialize screenshot history tracker for ui_diff_check (keeps N and N-1)
-    screenshot_history = ScreenshotHistoryTracker(snapshot_dir="snapshots")
-    log.info("📸 Screenshot history tracker initialized for ui_diff_check")
+    # Initialize screenshot history tracker for ui_diff_check (keeps N through N-4)
+    screenshot_history = ScreenshotHistoryTracker(snapshot_dir="snapshots", max_history=5)
+    log.info("📸 Screenshot history tracker initialized (5 cycles for multi-diff)")
+
+    # Initialize coordinate tracker for loop detection and target tracking
+    coord_tracker = CoordinateTracker(
+        storage_path="coordinate_history.json",
+        max_history=10,
+        reset_on_start=not is_continuing_run
+    )
+    log.info(f"📍 Coordinate tracker initialized (history: {coord_tracker.get_context_summary()[:100] if coord_tracker.history else 'empty'})")
 
     # Set up status callback for real-time processing status updates
     # This allows llm_stream_action to broadcast status changes during vision processing
@@ -1538,6 +1569,25 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             if exploration_context:
                 llm_input_state["exploration_context"] = exploration_context
                 log.info(f"🗺️ Exploration: {exploration_context.split(chr(10))[0]}")
+            
+            # Track coordinates for loop detection and navigation progress
+            coord_tracker.add_position(current_cycle, pos[0], pos[1], map_name)
+            
+            # Check for loops and add warning to LLM
+            loop_warning = coord_tracker.detect_loop()
+            if loop_warning:
+                llm_input_state["loop_warning"] = loop_warning
+                log.warning(f"⚠️ {loop_warning}")
+            
+            # Add target progress context
+            target_progress = coord_tracker.get_progress_toward_target()
+            if target_progress.get("has_target"):
+                llm_input_state["navigation_target"] = target_progress
+                log.info(f"🎯 Target: {target_progress.get('progress', 'unknown')} - {target_progress.get('recommendation', '')[:60]}")
+            
+            # Check if target reached
+            if coord_tracker.check_target_reached():
+                log.info("✅ Navigation target reached!")
         
         # Add pre-computed minimap analysis to reduce LLM hallucination
         if minimap_2d:
@@ -1754,7 +1804,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
             # The minimap context is no longer sent to vision - user prefers clean image
             llm_input_state["screenshot_path"] = UI_IMAGE_PATH
-            # Add previous screenshot path for ui_diff_check (from history tracker)
+            # Add all diff pairs for multi-diff analysis (N-1 through N-4)
+            llm_input_state["diff_pairs"] = screenshot_history.get_diff_pairs()
+            # Keep previous_screenshot_path for backwards compatibility
             llm_input_state["previous_screenshot_path"] = screenshot_history.get_previous_screenshot()
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 llm_input_state["minimap_path"] = MINIMAP_PATH
