@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import type {
   PokemonGameState,
   LogEntry,
@@ -9,6 +10,70 @@ import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
 import { RecentActions } from "../shared/RecentActions";
 import "./PokemonStreamOverlay.css";
+
+// Extract commentary from LLM response text
+function extractCommentary(text: string): string | null {
+  if (!text) return null;
+  
+  const patterns = [
+    // Match section number followed by COMMENTARY and capture content
+    /(?:7\.|8\.|9\.)\s*COMMENTARY[^\n]*\n\s*[-–•]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+    // Match COMMENTARY with content after colon/dash
+    /COMMENTARY[^:]*[:\s]+[-–]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
+    // Fallback: look for Lass persona pattern
+    /Lass persona[:\s]*(.+?)(?=\n\d+\.|$|\n\n)/is,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      let commentary = match[1].trim();
+      // Clean up
+      commentary = commentary.replace(/^[-–•]\s*/, '');
+      commentary = commentary.replace(/\n.*$/, '');
+      commentary = commentary.replace(/<\/?[^>]+>/g, '');
+      commentary = commentary.replace(/\*\*/g, '');
+      commentary = commentary.trim();
+      if (commentary.length > 5) {
+        return commentary;
+      }
+    }
+  }
+  return null;
+}
+
+// Typewriter text component
+function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const timeoutRef = useRef<number | null>(null);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    // Reset on new text
+    setDisplayedText("");
+    indexRef.current = 0;
+
+    if (!text) return;
+
+    const typeNextChar = () => {
+      if (indexRef.current < text.length) {
+        setDisplayedText(text.slice(0, indexRef.current + 1));
+        indexRef.current++;
+        timeoutRef.current = window.setTimeout(typeNextChar, speed);
+      }
+    };
+
+    typeNextChar();
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [text, speed]);
+
+  return <>{displayedText}</>;
+}
 
 // Utility function to truncate large numbers
 const formatLargeNumber = (num: number): string => {
@@ -51,6 +116,23 @@ export function PokemonStreamOverlay({
   memoryWrite,
   onMemoryWriteClear,
 }: PokemonStreamOverlayProps) {
+  // Extract commentary from most recent response log
+  const [currentCommentary, setCurrentCommentary] = useState<string>("");
+  
+  useEffect(() => {
+    // Find the most recent response log entry with commentary
+    for (let i = logs.length - 1; i >= 0; i--) {
+      const entry = logs[i];
+      if (entry.is_response && entry.text) {
+        const commentary = extractCommentary(entry.text);
+        if (commentary && commentary !== currentCommentary) {
+          setCurrentCommentary(commentary);
+          break;
+        }
+      }
+    }
+  }, [logs, currentCommentary]);
+
   // Extract Pokemon data from game state
   const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
     (p: Pokemon) => ({
@@ -227,13 +309,15 @@ export function PokemonStreamOverlay({
           <div className="character-container">
             {/* Left Column - Commentary */}
             <div className="character-container__left">
-              {/* Commentary text box */}
-              <div className="character-container__commentary">
-                <span className="character-container__commentary-label">COMMENTARY</span>
-                <p className="character-container__commentary-text">
-                  Waiting for commentary...
-                </p>
-              </div>
+              {/* Commentary text box - only show when we have commentary */}
+              {currentCommentary && (
+                <div className="character-container__commentary">
+                  <span className="character-container__commentary-label">COMMENTARY</span>
+                  <p className="character-container__commentary-text">
+                    <TypewriterText text={currentCommentary} speed={25} />
+                  </p>
+                </div>
+              )}
               {/* Empty bottom row for spacing */}
               <div className="character-container__spacer" />
             </div>
