@@ -393,6 +393,12 @@ Use this structure in <game_analysis> tags:
    - If the exit I'm approaching is labeled "VIRIDIAN_SCHOOL" in memory → DO NOT ENTER if I'm looking for Pokemon Center!
    - Rule: "I will CHECK the World Coordinates of my destination against memory BEFORE moving."
    - Example: World[21,15] -> VIRIDIAN_SCHOOL (VERIFIED). I need Pokemon Center, so SKIP THIS EXIT.
+   
+   **POKEMON CENTER IDENTIFICATION (VISUAL CHECK)**:
+   - Pokemon Centers have RED ROOFS and "POKE" text visible on the building facade.
+   - If approaching a building and you do NOT see "POKE" text on it → it is NOT the Pokemon Center.
+   - SKIP buildings without the "POKE" sign when looking for healing.
+   - Other buildings (schools, houses, gyms) do NOT have "POKE" text.
 
    **EXIT & RE-ENTRY AWARENESS (SPATIAL COMMON SENSE - CRITICAL)**:
    - **JUST EXITED A BUIDING?**: The door is usually **immediately BEHIND you** or **ABOVE you**.
