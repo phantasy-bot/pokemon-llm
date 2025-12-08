@@ -112,7 +112,7 @@ export function LogEntryCard({
             {/* Screenshot on the left */}
             <div className="log-entry__vision-screenshot">
               <VisionScreenshot
-                timestamp={entry.timestamp || Date.now().toString()}
+                base64Data={entry.screenshot_base64}
                 compact={compact}
               />
             </div>

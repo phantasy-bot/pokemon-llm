@@ -14,11 +14,19 @@ import os
 
 
 class GoalPriority(Enum):
-    """Goal priority levels"""
-    CRITICAL = 1    # Must complete (heal at Pokemon Center when dying)
-    HIGH = 2        # Main quest objective (beat next gym)
-    MEDIUM = 3      # Current task (navigate to location)
-    LOW = 4         # Optional (collect items, train)
+    """
+    Goal priority levels - QUESTS are PRIMARY, healing is SECONDARY
+    
+    Priority Order:
+    1. CRITICAL - Main story quests (deliver Oak's Parcel, beat Gyms)
+    2. HIGH - Quest item objectives (pick up items, find NPCs)
+    3. MEDIUM - Urgent needs (heal at Pokemon Center when low HP)
+    4. LOW - Optional (extra exploration, training)
+    """
+    CRITICAL = 1    # Main story quests (Oak's Parcel delivery, Gym battles)
+    HIGH = 2        # Quest-related tasks (go to target location)
+    MEDIUM = 3      # Urgent but not quest-critical (healing when HP < 30%)
+    LOW = 4         # Optional (explore, train, catch Pokemon)
 
 
 class GoalStatus(Enum):
@@ -223,6 +231,57 @@ class GoalTracker:
                 return True
         return False
     
+    def add_quest_goal(
+        self,
+        quest_id: str,
+        description: str,
+        target_location: Optional[str] = None,
+        target_npc: Optional[str] = None,
+        priority: GoalPriority = GoalPriority.CRITICAL  # Quests are CRITICAL priority
+    ) -> Optional[str]:
+        """
+        Add a goal derived from a quest item pickup.
+        
+        Quest goals are CRITICAL priority because the game's story progression
+        depends on completing them. Healing can wait, but the Parcel must be delivered.
+        """
+        # Check if we already have a goal for this quest
+        for goal in self.goals.values():
+            if goal.context.get("quest_id") == quest_id and goal.status != "completed":
+                return goal.id  # Already have this quest goal
+        
+        context = {
+            "type": "quest",
+            "quest_id": quest_id,
+            "target_location": target_location,
+            "target_npc": target_npc
+        }
+        
+        # Get main quest ID as parent
+        main_quest_id = self._get_main_quest_id()
+        
+        return self.add_goal(
+            description=description,
+            priority=priority,
+            parent_id=main_quest_id,
+            context=context
+        )
+    
+    def _get_main_quest_id(self) -> Optional[str]:
+        """Get the main quest goal ID."""
+        for goal_id, goal in self.goals.items():
+            if goal.context.get("type") == "main_quest":
+                return goal_id
+        return None
+    
+    def has_quest_goal(self, quest_id: str) -> bool:
+        """Check if we already have an active goal for this quest."""
+        for goal in self.goals.values():
+            if (goal.context.get("quest_id") == quest_id and 
+                goal.status in ["pending", "in_progress"]):
+                return True
+        return False
+
     def initialize_default_goals(self):
         """Set up initial game goals"""
         # Main quest

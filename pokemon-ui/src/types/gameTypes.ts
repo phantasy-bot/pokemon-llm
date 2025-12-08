@@ -167,6 +167,7 @@ export interface PokemonGameState {
   processingStatus?: string; // Detailed status: "ANALYZING VISION...", "RETRYING VISION (2/5)...", "THINKING..."
   modelName: string;
   tokensUsed: number;
+  cycleTiming?: string; // Cycle duration and wait time, e.g. "40.2s | wait 10.0s"
 
   // UI State
   inMenu?: boolean;

@@ -7,9 +7,6 @@ interface VisionScreenshotProps {
   className?: string;
 }
 
-// Constants
-const FALLBACK_SRC = "/placeholder.png"; // Optional fallback
-
 export function VisionScreenshot({
   base64Data,
   compact = false,

@@ -51,6 +51,23 @@ class GameplayMemory(Memory):
 
 
 @dataclass
+class QuestMemory(Memory):
+    """Quest memory for tracking active quests and quest items.
+    
+    When the agent receives a quest item like Oak's Parcel, this creates:
+    1. A QuestMemory to remember we have the item
+    2. An associated Goal to complete the quest
+    """
+    quest_id: str = ""  # Unique ID like "oaks_parcel_delivery"
+    quest_type: str = ""  # "delivery", "fetch", "defeat", "explore", "item_received"
+    target_npc: Optional[str] = None  # Who to deliver to or talk to
+    target_location: Optional[str] = None  # Where to go
+    item_involved: Optional[str] = None  # What item is involved
+    is_active: bool = True  # Is quest still pending
+    completed_at: Optional[str] = None  # When completed
+
+
+@dataclass
 class StrategyMemory:
     """
     Memory for learned strategies - discovered through experience, not hard-coded.
@@ -109,7 +126,8 @@ class MemoryManager:
             "spatial": [],
             "gameplay": [],
             "narrative": [],
-            "tactical": []
+            "tactical": [],
+            "quests": []  # Quest items and active quests (Oak's Parcel, etc.)
         }
         # Track vision claims that need verification
         self.vision_claims: List[VisionClaim] = []
@@ -1112,11 +1130,164 @@ class MemoryManager:
                 )
                 memories.append(memory)
 
+        # ═══════════════════════════════════════════════════════════════════════════════
+        # QUEST ITEM DETECTION - Pokemon Red specific quest items
+        # These create QuestMemory entries that should trigger goal creation
+        # ═══════════════════════════════════════════════════════════════════════════════
+        
+        # Quest items with their associated quest details
+        QUEST_ITEMS = {
+            "oak's parcel": {
+                "quest_id": "oaks_parcel_delivery",
+                "quest_type": "delivery",
+                "description": "Deliver Oak's Parcel to Professor Oak in Pallet Town",
+                "target_npc": "Professor Oak",
+                "target_location": "OAKS_LAB"
+            },
+            "parcel": {  # Alternate match
+                "quest_id": "oaks_parcel_delivery",
+                "quest_type": "delivery",
+                "description": "Deliver Oak's Parcel to Professor Oak in Pallet Town",
+                "target_npc": "Professor Oak",
+                "target_location": "OAKS_LAB"
+            },
+            "pokedex": {
+                "quest_id": "fill_pokedex",
+                "quest_type": "collection",
+                "description": "Fill the Pokédex by catching all Pokemon",
+                "target_npc": None,
+                "target_location": None
+            },
+            "town map": {
+                "quest_id": "received_town_map",
+                "quest_type": "item_received",
+                "description": "Received Town Map from Daisy",
+                "target_npc": None,
+                "target_location": None
+            },
+            "old amber": {
+                "quest_id": "revive_aerodactyl", 
+                "quest_type": "delivery",
+                "description": "Take Old Amber to Cinnabar Lab to revive Aerodactyl",
+                "target_npc": "Lab Scientist",
+                "target_location": "CINNABAR_LAB"
+            },
+            "helix fossil": {
+                "quest_id": "revive_omanyte",
+                "quest_type": "delivery", 
+                "description": "Take Helix Fossil to Cinnabar Lab to revive Omanyte",
+                "target_npc": "Lab Scientist",
+                "target_location": "CINNABAR_LAB"
+            },
+            "dome fossil": {
+                "quest_id": "revive_kabuto",
+                "quest_type": "delivery",
+                "description": "Take Dome Fossil to Cinnabar Lab to revive Kabuto", 
+                "target_npc": "Lab Scientist",
+                "target_location": "CINNABAR_LAB"
+            },
+            "secret key": {
+                "quest_id": "unlock_cinnabar_gym",
+                "quest_type": "unlock",
+                "description": "Use Secret Key to unlock Cinnabar Gym",
+                "target_npc": None,
+                "target_location": "CINNABAR_GYM"
+            },
+            "ss ticket": {
+                "quest_id": "board_ss_anne",
+                "quest_type": "access",
+                "description": "Use S.S. Ticket to board the S.S. Anne in Vermilion City",
+                "target_npc": None,
+                "target_location": "SS_ANNE"
+            },
+            "silph scope": {
+                "quest_id": "identify_ghosts",
+                "quest_type": "item_received",
+                "description": "Use Silph Scope to identify Ghost Pokemon in Pokemon Tower",
+                "target_npc": None,
+                "target_location": "POKEMON_TOWER"
+            },
+            "poke flute": {
+                "quest_id": "wake_snorlax",
+                "quest_type": "item_received",
+                "description": "Use Poke Flute to wake sleeping Snorlax blocking routes",
+                "target_npc": None,
+                "target_location": None
+            },
+            "lift key": {
+                "quest_id": "access_rocket_hideout",
+                "quest_type": "unlock",
+                "description": "Use Lift Key to access Team Rocket Hideout elevator",
+                "target_npc": None,
+                "target_location": "ROCKET_HIDEOUT"
+            },
+            "card key": {
+                "quest_id": "access_silph_floors",
+                "quest_type": "unlock",
+                "description": "Use Card Key to access all floors in Silph Co.",
+                "target_npc": None,
+                "target_location": "SILPH_CO"
+            }
+        }
+        
+        # Patterns for detecting quest item acquisition in vision/dialogue
+        # Matches: "Red Got Oak's Parcel!", "Got Pokedex!", "Received Town Map!", etc.
+        quest_patterns = [
+            r"(?:Red\s+)?Got\s+([^!]+?)!",  # "Red Got Oak's Parcel!"
+            r"(?:Red\s+)?Received\s+([^!]+?)!",  # "Received Town Map!"
+            r"(?:Red\s+)?Obtained\s+([^!]+?)!",  # "Obtained Pokedex!"
+            r"got\s+the\s+([^!.]+)",  # "got the Parcel"
+            r"received\s+(?:a\s+)?([^!.]+?)(?:\s+from|\s*!|\s*\.)",  # "received a Town Map from"
+        ]
+        
+        for pattern in quest_patterns:
+            matches = re.finditer(pattern, analysis_text, re.IGNORECASE)
+            for match in matches:
+                item_found = match.group(1).strip().lower()
+                
+                # Check if this matches any quest item
+                for quest_key, quest_info in QUEST_ITEMS.items():
+                    if quest_key in item_found or item_found in quest_key:
+                        # Check if we already have this quest
+                        existing_quest = self._find_active_quest(quest_info["quest_id"])
+                        if existing_quest:
+                            log.info(f"🎯 Quest already exists: {quest_info['quest_id']}")
+                            continue
+                        
+                        # Create new quest memory
+                        quest_memory = QuestMemory(
+                            type="quests",
+                            location=current_location,
+                            description=quest_info["description"],
+                            coordinates=current_position,
+                            timestamp=datetime.now().isoformat(),
+                            importance=3.0,  # High importance for quests
+                            context={
+                                "source": "dialogue_extraction",
+                                "raw_match": match.group(0)
+                            },
+                            quest_id=quest_info["quest_id"],
+                            quest_type=quest_info["quest_type"],
+                            target_npc=quest_info["target_npc"],
+                            target_location=quest_info["target_location"],
+                            item_involved=quest_key,
+                            is_active=True
+                        )
+                        
+                        # Add to quests list
+                        self.memories["quests"].append(quest_memory)
+                        self._save_memories()
+                        log.info(f"🎯 NEW QUEST DETECTED: {quest_info['description']}")
+                        log.info(f"   Item: {quest_key} | Target: {quest_info['target_location']}")
+                        
+                        # Add to return list with quest_id attribute for goal creation
+                        memories.append(quest_memory)
+                        break  # Found a match, no need to check other quest keys
+
         return memories
 
     def _determine_landmark_type(self, text: str, landmark: str) -> Optional[str]:
         """Determine the type of landmark based on text analysis"""
-
         text_lower = text.lower()
         landmark_lower = landmark.lower() if landmark else ""
 
@@ -1134,6 +1305,28 @@ class MemoryManager:
             return "building"
 
         return "landmark"
+
+    def _find_active_quest(self, quest_id: str) -> Optional[QuestMemory]:
+        """Find an active quest by its ID."""
+        for quest in self.memories.get("quests", []):
+            if hasattr(quest, 'quest_id') and quest.quest_id == quest_id and quest.is_active:
+                return quest
+        return None
+    
+    def get_active_quests(self) -> List[QuestMemory]:
+        """Get all active quests."""
+        return [q for q in self.memories.get("quests", []) if hasattr(q, 'is_active') and q.is_active]
+    
+    def complete_quest(self, quest_id: str) -> bool:
+        """Mark a quest as completed."""
+        for quest in self.memories.get("quests", []):
+            if hasattr(quest, 'quest_id') and quest.quest_id == quest_id:
+                quest.is_active = False
+                quest.completed_at = datetime.now().isoformat()
+                self._save_memories()
+                log.info(f"✅ Quest completed: {quest_id}")
+                return True
+        return False
 
     def _calculate_importance(self, description: str) -> float:
         """Calculate importance score based on description content"""

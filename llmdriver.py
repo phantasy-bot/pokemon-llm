@@ -985,7 +985,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                         "Content-Type": "application/json"
                     }
 
-                    with httpx.Client(timeout=30.0) as http_client:
+                    with httpx.Client(timeout=90.0) as http_client:
                         response = http_client.post(
                             f"{client.base_url}chat/completions",
                             json=api_data,
@@ -1588,6 +1588,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             # Check if target reached
             if coord_tracker.check_target_reached():
                 log.info("✅ Navigation target reached!")
+            
+            # Add full coordinate history context to help LLM understand movement patterns
+            coord_context = coord_tracker.get_context_summary()
+            if coord_context:
+                llm_input_state["coordinate_history"] = coord_context
+                log.info(f"📍 Coord context: {len(coord_tracker.history)} positions tracked")
         
         # Add pre-computed minimap analysis to reduce LLM hallucination
         if minimap_2d:
@@ -2090,6 +2096,27 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 log.info(f"📝 Extracted {len(extracted_memories)} memories from LLM response")
                 for memory in extracted_memories:
                     log.debug(f"Memory: {memory.type} - {memory.description[:50]}...")
+                    
+                    # ═══════════════════════════════════════════════════════════════════
+                    # QUEST GOAL CREATION - When we detect quest items, create goals
+                    # Quest goals are CRITICAL priority - they override healing
+                    # ═══════════════════════════════════════════════════════════════════
+                    if hasattr(memory, 'quest_id') and memory.quest_id:
+                        # Check if we already have this quest goal
+                        if not goal_tracker.has_quest_goal(memory.quest_id):
+                            goal_id = goal_tracker.add_quest_goal(
+                                quest_id=memory.quest_id,
+                                description=memory.description,
+                                target_location=getattr(memory, 'target_location', None),
+                                target_npc=getattr(memory, 'target_npc', None)
+                            )
+                            if goal_id:
+                                log.info(f"🎯 CREATED QUEST GOAL: {memory.description}")
+                                log.info(f"   Quest ID: {memory.quest_id} | Goal ID: {goal_id}")
+                                # Broadcast quest detection to UI
+                                update_payload["memory_write"] = {
+                                    "text": f"🎯 NEW QUEST: {memory.description}"
+                                }
 
             # Verify pending vision claims against minimap data
             minimap_2d = current_mGBA_state.get('minimap_2d', '')
@@ -2230,6 +2257,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(10, interval - elapsed_loop_time) # Ensure at least 10 seconds wait
         log.info(f"Cycle {current_cycle} took {elapsed_loop_time:.2f}s. Waiting {wait_time:.2f}s...")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # Broadcast cycle timing to UI
+        # ═══════════════════════════════════════════════════════════════════
+        cycle_timing_str = f"{elapsed_loop_time:.1f}s | wait {wait_time:.1f}s"
+        if broadcast_func:
+            try:
+                await broadcast_func({"cycleTiming": cycle_timing_str})
+            except Exception as e:
+                log.warning(f"Failed to broadcast cycle timing: {e}")
         
         # ═══════════════════════════════════════════════════════════════════════════
         # TWITCH CHAT RESPONSE PROCESSING (during wait period)
