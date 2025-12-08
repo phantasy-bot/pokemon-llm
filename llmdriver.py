@@ -341,41 +341,46 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     target_image_path = screenshot_path if screenshot_path else SAVED_SCREENSHOT_PATH
                     vision_result = zai_vision_client.analyze_image_sync(target_image_path, factual_prompt)
 
-                    # SUCCESS: Vision analysis completed successfully (this should always happen now)
-                    log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
-                    log.info(f"Vision analysis preview: {vision_result[:200]}...")
+                    # Check if vision_result is valid before processing
+                    if vision_result is None:
+                        log.warning("⚠️ Vision analysis returned None - continuing without vision")
+                        payload["vision_analysis"] = "[Vision analysis returned no result]"
+                    else:
+                        # SUCCESS: Vision analysis completed successfully
+                        log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
+                        log.info(f"Vision analysis preview: {vision_result[:200]}...")
 
-                    # TEXT PROCESSING: Filter Japanese characters and truncate
-                    processed_vision_result = vision_result
+                        # TEXT PROCESSING: Filter Japanese characters and truncate
+                        processed_vision_result = vision_result
 
-                    # Filter out Japanese characters and non-English text
-                    processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
+                        # Filter out Japanese characters and non-English text
+                        processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
 
-                    # Remove first 17 and last 14 characters as specified
-                    if len(processed_vision_result) > 31:
-                        processed_vision_result = processed_vision_result[17:-14]
+                        # Remove first 17 and last 14 characters as specified
+                        if len(processed_vision_result) > 31:
+                            processed_vision_result = processed_vision_result[17:-14]
 
-                    vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
-                    vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
-                    payload["vision_analysis"] = vision_analysis
-                    # Also add a more prominent vision field for better LLM recognition
-                    payload["visual_context"] = processed_vision_result
-                    
-                    # Parse screen_type from vision JSON for dynamic prompting
-                    try:
-                        # Try to parse the vision result as JSON to extract screen_type
-                        vision_json = json.loads(processed_vision_result)
-                        detected_screen_type = vision_json.get("screen_type", "")
-                        if detected_screen_type:
-                            log.info(f"🖥️ Detected screen type: {detected_screen_type}")
-                            payload["detected_screen_type"] = detected_screen_type
-                    except json.JSONDecodeError:
-                        # Vision result is not valid JSON, try regex extraction
-                        screen_type_match = re.search(r'"screen_type"\s*:\s*"([^"]+)"', processed_vision_result)
-                        if screen_type_match:
-                            detected_screen_type = screen_type_match.group(1)
-                            log.info(f"🖥️ Detected screen type (regex): {detected_screen_type}")
-                            payload["detected_screen_type"] = detected_screen_type
+                        vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
+                        vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
+                        payload["vision_analysis"] = vision_analysis
+                        # Also add a more prominent vision field for better LLM recognition
+                        payload["visual_context"] = processed_vision_result
+                        
+                        # Parse screen_type from vision JSON for dynamic prompting
+                        try:
+                            # Try to parse the vision result as JSON to extract screen_type
+                            vision_json = json.loads(processed_vision_result)
+                            detected_screen_type = vision_json.get("screen_type", "")
+                            if detected_screen_type:
+                                log.info(f"🖥️ Detected screen type: {detected_screen_type}")
+                                payload["detected_screen_type"] = detected_screen_type
+                        except json.JSONDecodeError:
+                            # Vision result is not valid JSON, try regex extraction
+                            screen_type_match = re.search(r'"screen_type"\s*:\s*"([^"]+)"', processed_vision_result)
+                            if screen_type_match:
+                                detected_screen_type = screen_type_match.group(1)
+                                log.info(f"🖥️ Detected screen type (regex): {detected_screen_type}")
+                                payload["detected_screen_type"] = detected_screen_type
 
                 except RuntimeError as e:
                     # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
