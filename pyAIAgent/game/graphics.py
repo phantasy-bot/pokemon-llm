@@ -378,10 +378,10 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
                     # CRITICAL: x,y here are WORLD coords (the loop goes from left to right which are world offsets)
                     is_sprite = (x, y) in sprite_set
                     
-                    if is_special:
+                    if is_sprite:
+                        row_chars.append('N')  # NPC takes priority - show blockers!
+                    elif is_special:
                         row_chars.append('O')
-                    elif is_sprite:
-                        row_chars.append('N') # NPC
                     elif is_walkable:
                         row_chars.append('W')
                     else:

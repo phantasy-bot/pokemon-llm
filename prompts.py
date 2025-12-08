@@ -536,6 +536,12 @@ Use this structure in <game_analysis> tags:
   - **EXITING (Mat is South)**: Walk DOWN onto it, then DOWN once more: `D;D;`
   - **RULE**: "If I am on the mat, I must take ONE MORE STEP in that direction!"
 
+- **BUILDING INTERIOR LAYOUT (COMMON PATTERN)**:
+  - Red mats are typically at the **SOUTH edge** of building interiors
+  - Check `minimap_data` for exits marked "(SOUTH EXIT - step DOWN)"
+  - If an exit tile has that hint, you MUST step DOWN (D;D;) to exit
+  - The exit direction hint tells you which direction to walk THROUGH the tile
+
 
 If "memory_context" appears, USE IT for navigation.
 

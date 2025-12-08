@@ -247,16 +247,41 @@ def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
     else:
         walkable.append("WEST (L)")
     
-    # Find all O tiles in the minimap (with world coordinates)
+    # Find all O tiles in the minimap (with world coordinates and direction hints)
     o_tiles = []
     for r_idx, row in enumerate(rows):
         for c_idx, char in enumerate(row):
             if char in ('O', 'D', 'E'):
                 world_coords = grid_to_world(c_idx, r_idx)
+                
+                # Add direction hint based on position relative to grid
+                # If exit is at bottom of grid, likely a building exit (step DOWN)
+                # If exit is at top, likely an entrance from outside (step UP)
+                dir_hint = ""
+                if r_idx >= num_rows - 2:  # Bottom edge
+                    dir_hint = " (SOUTH EXIT - step DOWN)"
+                elif r_idx <= 1:  # Top edge
+                    dir_hint = " (NORTH - step UP to enter)"
+                elif c_idx >= num_cols - 2:  # Right edge
+                    dir_hint = " (EAST EXIT)"
+                elif c_idx <= 1:  # Left edge
+                    dir_hint = " (WEST EXIT)"
+                
                 if world_coords:
-                    o_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]")
+                    o_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]{dir_hint}")
                 else:
-                    o_tiles.append(f"Grid[{c_idx},{r_idx}]")
+                    o_tiles.append(f"Grid[{c_idx},{r_idx}]{dir_hint}")
+    
+    # Find all NPC tiles ('N') in the minimap
+    npc_tiles = []
+    for r_idx, row in enumerate(rows):
+        for c_idx, char in enumerate(row):
+            if char == 'N':
+                world_coords = grid_to_world(c_idx, r_idx)
+                if world_coords:
+                    npc_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]")
+                else:
+                    npc_tiles.append(f"Grid[{c_idx},{r_idx}]")
     
     # ═══════════════════════════════════════════════════════════════════════════
     # PASSAGE/CHOKEPOINT DETECTION
@@ -379,7 +404,8 @@ def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
         "walkable_directions": walkable,
         "adjacent_exits": exits,
         "all_exit_tiles": o_tiles,
-        "passages": passage_strs  # NEW: Detected passages/chokepoints
+        "npc_tiles": npc_tiles,  # NEW: NPC positions for LLM context
+        "passages": passage_strs  # Detected passages/chokepoints
     }
 
 
@@ -1608,6 +1634,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 exits = minimap_analysis['all_exit_tiles']
                 adj = minimap_analysis['adjacent_tiles']
                 passages = minimap_analysis.get('passages', [])
+                npcs = minimap_analysis.get('npc_tiles', [])
                 
                 analysis_str = (
                     f"⚠️ MINIMAP DATA (USE THIS - DO NOT PARSE RAW MINIMAP!) ⚠️\n"
@@ -1621,11 +1648,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                     f"🚫 BLOCKED MOVES: {blocked if blocked else 'NONE - all directions open'}\n"
                     f"✅ ALLOWED MOVES: {walkable}\n"
                     f"🚪 EXIT TILES: {exits if exits else 'None visible in current view'}\n"
+                    f"🚶 NPCs: {npcs if npcs else 'None visible'}\n"
                     f"🌉 PASSAGES (paths through walls - might lead somewhere!): {chr(10).join(passages) if passages else 'None detected'}"
                 )
                 llm_input_state["minimap_data"] = analysis_str
                 log.info(f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
-                        f"blocked: {blocked}, passages: {len(passages)}")
+                        f"blocked: {blocked}, npcs: {len(npcs)}, passages: {len(passages)}")
         
         # Add battle context using game memory (more accurate than vision)
         try:

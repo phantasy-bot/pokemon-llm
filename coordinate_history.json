@@ -5,6 +5,34 @@
       "x": 2,
       "y": 7,
       "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:32:19.427599"
+    },
+    {
+      "cycle": 1196,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:30:38.633785"
+    },
+    {
+      "cycle": 1196,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:28:57.834221"
+    },
+    {
+      "cycle": 1196,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:27:17.095435"
+    },
+    {
+      "cycle": 1196,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
       "timestamp": "2025-12-08T12:25:36.374516"
     },
     {
@@ -41,36 +69,8 @@
       "y": 7,
       "map_name": "VIRIDIAN_MART",
       "timestamp": "2025-12-08T12:18:22.735493"
-    },
-    {
-      "cycle": 1195,
-      "x": 2,
-      "y": 7,
-      "map_name": "VIRIDIAN_MART",
-      "timestamp": "2025-12-08T12:16:42.002869"
-    },
-    {
-      "cycle": 1194,
-      "x": 4,
-      "y": 7,
-      "map_name": "VIRIDIAN_MART",
-      "timestamp": "2025-12-08T12:15:59.750619"
-    },
-    {
-      "cycle": 1193,
-      "x": 2,
-      "y": 7,
-      "map_name": "VIRIDIAN_MART",
-      "timestamp": "2025-12-08T12:15:29.620337"
-    },
-    {
-      "cycle": 1193,
-      "x": 2,
-      "y": 7,
-      "map_name": "VIRIDIAN_MART",
-      "timestamp": "2025-12-08T11:34:30.260999"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-08T12:25:36.374665"
+  "last_updated": "2025-12-08T12:32:19.427742"
 }
