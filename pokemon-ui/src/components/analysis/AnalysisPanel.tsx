@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import { LogEntryCard } from "./LogEntry";
-import { VisionScreenshot } from "../vision/VisionScreenshot";
+import { VisionScreenshot } from "../vision/VisionScreenshot"; // Restored
+import { RecentActions } from "../shared/RecentActions";
 import "./AnalysisPanel.css";
 
 const POKEMON_KEYART = [
@@ -16,6 +17,7 @@ const ROTATION_INTERVAL = 15000;
 
 interface AnalysisPanelProps {
   logs: LogEntry[];
+  totalActions: number; // For RecentActions component
   isProcessing?: boolean;
   // Note: processingStatus moved to OBS widget (obs-widgets/status_widget.html)
   memoryWrite?: string | null;
@@ -25,6 +27,7 @@ interface AnalysisPanelProps {
 
 export function AnalysisPanel({
   logs,
+  totalActions,
   isProcessing = false,
   memoryWrite,
   onMemoryWriteClear,
@@ -73,7 +76,7 @@ export function AnalysisPanel({
     if (!rawLatestEntry) return null;
     if (debugMode) return rawLatestEntry; // Debug mode = show everything
     
-    // In normal mode, if it's an LLM response, try to extract specific sections
+    // In normal mode, if it's an LLM response, try to extract sections
     if (rawLatestEntry.is_response) {
        // Try to find SUMMARY section (can be section 9 or 10 depending on prompt version)
        const summaryMatch = rawLatestEntry.text?.match(/(?:^|\n)\d+\.\s*SUMMARY[\s\S]*$/i);
@@ -155,7 +158,10 @@ export function AnalysisPanel({
           {/* Status animation moved to OBS widget (obs-widgets/status_widget.html) */}
         </div>
 
-        {/* 2. Vision Section (Fixed Height, Row Layout) */}
+        {/* 2. Recent Actions Section (Inserted here) */}
+        <RecentActions logs={logs} totalActions={totalActions} />
+
+        {/* 3. Vision Section (Fixed Height, Row Layout) */}
 
 
         <div className="analysis-panel__vision-section">
