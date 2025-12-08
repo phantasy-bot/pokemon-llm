@@ -125,8 +125,247 @@ tokens_used_session = 0
 start_time = datetime.datetime.now()
 
 
+def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
+    """
+    Pre-compute minimap analysis to reduce LLM hallucination.
+    
+    Args:
+        minimap_2d: The raw minimap string
+        world_position: Player's world coordinates [x, y] - used to convert grid coords to world coords
+    
+    Returns a dict with player position, grid dimensions, adjacent tiles, blocked directions,
+    and world coordinate mappings for exits.
+    """
+    if not minimap_2d:
+        return {}
+    
+    # Parse rows (split by semicolon, strip whitespace)
+    rows = [row.strip() for row in minimap_2d.split(';') if row.strip()]
+    if not rows:
+        return {}
+    
+    num_rows = len(rows)
+    num_cols = len(rows[0]) if rows else 0
+    
+    # Find player position (look for 'P' in the grid)
+    player_row = -1
+    player_col = -1
+    for r_idx, row in enumerate(rows):
+        p_idx = row.find('P')
+        if p_idx >= 0:
+            player_row = r_idx
+            player_col = p_idx
+            break
+    
+    if player_row < 0 or player_col < 0:
+        return {"error": "Player 'P' not found in minimap"}
+    
+    # World coordinate conversion function
+    # Grid is centered on player, so player's grid position maps to world position
+    world_x = world_position[0] if world_position and len(world_position) >= 2 else None
+    world_y = world_position[1] if world_position and len(world_position) >= 2 else None
+    
+    def grid_to_world(grid_col, grid_row):
+        """Convert grid coordinates to world coordinates"""
+        if world_x is None or world_y is None:
+            return None
+        # Offset from player's grid position
+        dx = grid_col - player_col
+        dy = grid_row - player_row
+        return [world_x + dx, world_y + dy]
+    
+    # Get adjacent tiles
+    def get_tile(row, col):
+        if 0 <= row < num_rows and 0 <= col < len(rows[row]):
+            return rows[row][col]
+        return '?'  # Out of bounds
+    
+    north_tile = get_tile(player_row - 1, player_col)
+    south_tile = get_tile(player_row + 1, player_col)
+    east_tile = get_tile(player_row, player_col + 1)
+    west_tile = get_tile(player_row, player_col - 1)
+    
+    # Determine blocked directions (B = blocked, W = walkable, O = exit)
+    def is_blocked(tile):
+        return tile == 'B'
+    
+    def is_exit(tile):
+        return tile in ('O', 'D', 'E', '>', '<', '^', 'v')
+    
+    blocked = []
+    walkable = []
+    exits = []
+    
+    if is_blocked(north_tile):
+        blocked.append("NORTH (U)")
+    elif is_exit(north_tile):
+        exits.append(f"NORTH at [{player_col},{player_row-1}]")
+        walkable.append("NORTH (U)")
+    else:
+        walkable.append("NORTH (U)")
+    
+    if is_blocked(south_tile):
+        blocked.append("SOUTH (D)")
+    elif is_exit(south_tile):
+        exits.append(f"SOUTH at [{player_col},{player_row+1}]")
+        walkable.append("SOUTH (D)")
+    else:
+        walkable.append("SOUTH (D)")
+    
+    if is_blocked(east_tile):
+        blocked.append("EAST (R)")
+    elif is_exit(east_tile):
+        exits.append(f"EAST at [{player_col+1},{player_row}]")
+        walkable.append("EAST (R)")
+    else:
+        walkable.append("EAST (R)")
+    
+    if is_blocked(west_tile):
+        blocked.append("WEST (L)")
+    elif is_exit(west_tile):
+        exits.append(f"WEST at [{player_col-1},{player_row}]")
+        walkable.append("WEST (L)")
+    else:
+        walkable.append("WEST (L)")
+    
+    # Find all O tiles in the minimap (with world coordinates)
+    o_tiles = []
+    for r_idx, row in enumerate(rows):
+        for c_idx, char in enumerate(row):
+            if char in ('O', 'D', 'E'):
+                world_coords = grid_to_world(c_idx, r_idx)
+                if world_coords:
+                    o_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]")
+                else:
+                    o_tiles.append(f"Grid[{c_idx},{r_idx}]")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PASSAGE/CHOKEPOINT DETECTION
+    # Find walkable paths through blocked areas (bridges, corridors, entrances)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def is_walkable(tile):
+        return tile in ('W', 'P', 'O', 'D', 'E', '>', '<', '^', 'v')
+    
+    passages = []  # List of detected passages/chokepoints
+    
+    # Scan for horizontal passages (W surrounded by B above and below)
+    for r_idx in range(1, num_rows - 1):
+        row = rows[r_idx]
+        for c_idx in range(len(row)):
+            tile = row[c_idx]
+            if is_walkable(tile):
+                above = get_tile(r_idx - 1, c_idx)
+                below = get_tile(r_idx + 1, c_idx)
+                
+                # Horizontal passage: walkable with blocked above AND below
+                if above == 'B' and below == 'B':
+                    # Check if this is part of a longer passage
+                    passage_width = 1
+                    for check_col in range(c_idx + 1, min(c_idx + 10, len(row))):
+                        if (is_walkable(get_tile(r_idx, check_col)) and
+                            get_tile(r_idx - 1, check_col) == 'B' and
+                            get_tile(r_idx + 1, check_col) == 'B'):
+                            passage_width += 1
+                        else:
+                            break
+                    
+                    if passage_width >= 2:  # At least 2 tiles wide to be notable
+                        # Calculate direction from player
+                        dy = r_idx - player_row
+                        dx = c_idx - player_col
+                        direction = []
+                        if dy < 0: direction.append("NORTH")
+                        elif dy > 0: direction.append("SOUTH")
+                        if dx < 0: direction.append("WEST")
+                        elif dx > 0: direction.append("EAST")
+                        dir_str = "-".join(direction) if direction else "HERE"
+                        
+                        passages.append({
+                            "type": "horizontal_passage",
+                            "start": f"[{c_idx},{r_idx}]",
+                            "width": passage_width,
+                            "direction": dir_str,
+                            "distance": abs(dy) + abs(dx)
+                        })
+                        # Skip tiles we've already counted
+                        break
+    
+    # Scan for vertical passages (W surrounded by B left and right)
+    for c_idx in range(1, num_cols - 1):
+        for r_idx in range(num_rows):
+            if c_idx >= len(rows[r_idx]):
+                continue
+            tile = rows[r_idx][c_idx]
+            if is_walkable(tile):
+                left = get_tile(r_idx, c_idx - 1)
+                right = get_tile(r_idx, c_idx + 1)
+                
+                # Vertical passage: walkable with blocked left AND right
+                if left == 'B' and right == 'B':
+                    # Check if this is part of a longer passage
+                    passage_height = 1
+                    for check_row in range(r_idx + 1, min(r_idx + 10, num_rows)):
+                        if (check_row < num_rows and c_idx < len(rows[check_row]) and
+                            is_walkable(get_tile(check_row, c_idx)) and
+                            get_tile(check_row, c_idx - 1) == 'B' and
+                            get_tile(check_row, c_idx + 1) == 'B'):
+                            passage_height += 1
+                        else:
+                            break
+                    
+                    if passage_height >= 2:  # At least 2 tiles tall to be notable
+                        # Calculate direction from player
+                        dy = r_idx - player_row
+                        dx = c_idx - player_col
+                        direction = []
+                        if dy < 0: direction.append("NORTH")
+                        elif dy > 0: direction.append("SOUTH")
+                        if dx < 0: direction.append("WEST")
+                        elif dx > 0: direction.append("EAST")
+                        dir_str = "-".join(direction) if direction else "HERE"
+                        
+                        passages.append({
+                            "type": "vertical_passage",
+                            "start": f"[{c_idx},{r_idx}]",
+                            "height": passage_height,
+                            "direction": dir_str,
+                            "distance": abs(dy) + abs(dx)
+                        })
+                        break
+    
+    # Sort passages by distance from player
+    passages.sort(key=lambda p: p.get("distance", 999))
+    
+    # Format passages for output (top 3 closest)
+    passage_strs = []
+    for p in passages[:3]:
+        if p["type"] == "horizontal_passage":
+            passage_strs.append(f"🌉 Horizontal path at {p['start']} ({p['width']} tiles wide) - go {p['direction']}")
+        else:
+            passage_strs.append(f"🚶 Vertical path at {p['start']} ({p['height']} tiles tall) - go {p['direction']}")
+    
+    return {
+        "grid_size": f"{num_cols}x{num_rows}",
+        "player_position": f"[{player_col},{player_row}]",
+        "player_row": player_row,
+        "player_col": player_col,
+        "adjacent_tiles": {
+            "north": f"[{player_col},{player_row-1}] = '{north_tile}'",
+            "south": f"[{player_col},{player_row+1}] = '{south_tile}'",
+            "east": f"[{player_col+1},{player_row}] = '{east_tile}'",
+            "west": f"[{player_col-1},{player_row}] = '{west_tile}'"
+        },
+        "blocked_directions": blocked,
+        "walkable_directions": walkable,
+        "adjacent_exits": exits,
+        "all_exit_tiles": o_tiles,
+        "passages": passage_strs  # NEW: Detected passages/chokepoints
+    }
+
+
 # ─── Constants ────────────────────────────────────────────────────────────────
-LLM_TOTAL_TIMEOUT = STREAM_TIMEOUT + 30     # e.g. 90 s / 150 s
+LLM_TOTAL_TIMEOUT = STREAM_TIMEOUT + 30     # e.g. 90 s / 150 s
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 async def call_llm_with_timeout(state_data: dict,
@@ -1118,6 +1357,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             continue
 
         llm_input_state = copy.deepcopy(current_mGBA_state)
+        
+        # REMOVE raw minimap_2d - LLM should use pre-computed minimap_analysis instead
+        # This prevents LLM from doing its own buggy parsing
+        if "minimap_2d" in llm_input_state:
+            del llm_input_state["minimap_2d"]
+        
         state_update_start = time.time()
         
         # Track position for stuck detection
@@ -1153,13 +1398,20 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                         coords_to_decay = list(current_pos) if current_pos else None
                     
                     if coords_to_decay:
-                        invalidated = memory_manager.record_failed_exit_attempt(
+                        # NEW: record_failed_exit_attempt now returns dict with status
+                        failure_result = memory_manager.record_failed_exit_attempt(
                             map_name_for_decay, 
                             coords_to_decay
                         )
-                        if invalidated:
-                            # Memory was invalidated - tell the LLM to try something else
-                            llm_input_state["stuck_warning"] += " 🚫 MEMORY INVALIDATED: The 'verified exit' at your position was a FALSE MEMORY (likely from a cutscene teleport). Explore for REAL exits using the minimap!"
+                        
+                        # Append the suggestion to stuck_warning
+                        if failure_result.get("suggestion"):
+                            llm_input_state["stuck_warning"] += f" {failure_result['suggestion']}"
+                        
+                        # If there are untried directions, emphasize them
+                        untried = failure_result.get("untried_directions", [])
+                        if untried and failure_result.get("status") == "try_different_direction":
+                            llm_input_state["stuck_warning"] += f" 🧭 TRY APPROACHING FROM: {untried[0]}"
         
         # Add memory context to LLM input
         map_name = current_mGBA_state.get('map_name', '')
@@ -1173,6 +1425,27 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         if npc_context:
             llm_input_state["npc_warning"] = npc_context
             log.info(f"🚫 NPC context: {npc_context}")
+        
+        # Add learned strategies context
+        # Build situation string from current state for relevance matching
+        situation_keywords = []
+        party = current_mGBA_state.get('party', [])
+        if party:
+            total_hp = sum(p.get('hp', 0) for p in party if isinstance(p, dict))
+            max_hp = sum(p.get('max_hp', 1) for p in party if isinstance(p, dict))
+            if max_hp > 0 and total_hp / max_hp < 0.3:
+                situation_keywords.append("low HP")
+            if all(p.get('hp', 0) == 0 for p in party if isinstance(p, dict)):
+                situation_keywords.append("fainted")
+        if stuck_info.get("is_stuck"):
+            situation_keywords.append("stuck")
+            situation_keywords.append("lost")
+        situation_str = " ".join(situation_keywords) if situation_keywords else map_name
+        
+        strategy_context = memory_manager.get_strategy_context_for_llm(situation_str)
+        if strategy_context:
+            llm_input_state["strategy_hints"] = strategy_context
+            log.info(f"💡 Strategy context: {strategy_context[:80]}...")
         
         # Track exploration and add context
         map_id = current_mGBA_state.get('map_id', 0)
@@ -1190,6 +1463,38 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             if exploration_context:
                 llm_input_state["exploration_context"] = exploration_context
                 log.info(f"🗺️ Exploration: {exploration_context.split(chr(10))[0]}")
+        
+        # Add pre-computed minimap analysis to reduce LLM hallucination
+        if minimap_2d:
+            # Pass world position for coordinate conversion
+            world_pos = current_mGBA_state.get('position', [])
+            minimap_analysis = parse_minimap(minimap_2d, world_position=world_pos)
+            if minimap_analysis and "error" not in minimap_analysis:
+                # Format as VERY CLEAR human-readable string for LLM
+                # Make blocked directions VERY obvious
+                blocked = minimap_analysis['blocked_directions']
+                walkable = minimap_analysis['walkable_directions']
+                exits = minimap_analysis['all_exit_tiles']
+                adj = minimap_analysis['adjacent_tiles']
+                passages = minimap_analysis.get('passages', [])
+                
+                analysis_str = (
+                    f"⚠️ MINIMAP DATA (USE THIS - DO NOT PARSE RAW MINIMAP!) ⚠️\n"
+                    f"Grid: {minimap_analysis['grid_size']} | Player: {minimap_analysis['player_position']}\n"
+                    f"═══════════════════════════════════════\n"
+                    f"NORTH: {adj['north']} {'❌ BLOCKED!' if 'NORTH (U)' in blocked else '✓ walkable'}\n"
+                    f"SOUTH: {adj['south']} {'❌ BLOCKED!' if 'SOUTH (D)' in blocked else '✓ walkable'}\n"
+                    f"EAST:  {adj['east']} {'❌ BLOCKED!' if 'EAST (R)' in blocked else '✓ walkable'}\n"
+                    f"WEST:  {adj['west']} {'❌ BLOCKED!' if 'WEST (L)' in blocked else '✓ walkable'}\n"
+                    f"═══════════════════════════════════════\n"
+                    f"🚫 BLOCKED MOVES: {blocked if blocked else 'NONE - all directions open'}\n"
+                    f"✅ ALLOWED MOVES: {walkable}\n"
+                    f"🚪 EXIT TILES: {exits if exits else 'None visible in current view'}\n"
+                    f"🌉 PASSAGES (paths through walls - might lead somewhere!): {chr(10).join(passages) if passages else 'None detected'}"
+                )
+                llm_input_state["minimap_data"] = analysis_str
+                log.info(f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
+                        f"blocked: {blocked}, passages: {len(passages)}")
         
         # Add battle context using game memory (more accurate than vision)
         try:
@@ -1223,6 +1528,51 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 pokemon_involved=[pokemon_name]
             )
             log.info(f"📝 Memory recorded: Obtained starter {pokemon_name}")
+            
+            # Record outcome for strategy learning
+            memory_manager.record_outcome(
+                "goal_complete",
+                {"goal": "first_pokemon", "pokemon": pokemon_name},
+                {"location": current_mGBA_state.get('map_name', 'unknown')}
+            )
+        
+        # 🩺 HEALTH MONITORING: Detect blackouts and heals for strategy learning
+        prev_party_hp = getattr(memory_manager, '_last_party_hp', None)
+        if new_team:
+            current_hp_total = sum(p.get('hp', 0) for p in new_team if isinstance(p, dict))
+            current_hp_max = sum(p.get('max_hp', 1) for p in new_team if isinstance(p, dict))
+            all_fainted = all(p.get('hp', 0) == 0 for p in new_team if isinstance(p, dict))
+            
+            # Detect blackout (all Pokemon fainted, then respawned with full health)
+            if prev_party_hp is not None:
+                was_all_fainted = prev_party_hp.get('all_fainted', False)
+                prev_hp_total = prev_party_hp.get('total', 0)
+                
+                # Blackout detected: was fainted, now have HP
+                if was_all_fainted and current_hp_total > 0:
+                    memory_manager.record_outcome(
+                        "blacked_out",
+                        {"respawn_location": current_mGBA_state.get('map_name', 'unknown'),
+                         "hp_restored": current_hp_total},
+                        {"was_lost": stuck_info.get("is_stuck", False)}
+                    )
+                    log.info("💀 Blackout detected - recording as potential strategy")
+                
+                # Heal detected: significant HP increase without blackout
+                elif current_hp_total > prev_hp_total * 1.5 and not was_all_fainted:
+                    memory_manager.record_outcome(
+                        "healed",
+                        {"location": current_mGBA_state.get('map_name', 'unknown'),
+                         "hp_before": prev_hp_total, "hp_after": current_hp_total},
+                        {}
+                    )
+            
+            # Store for next cycle
+            memory_manager._last_party_hp = {
+                'total': current_hp_total, 
+                'max': current_hp_max,
+                'all_fainted': all_fainted
+            }
         
         # Build team context for LLM awareness (every cycle)
         team_pokemon_names = []
@@ -1544,20 +1894,57 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 # exact position we arrived AT is current_pos
                 
                 if last_pos and current_pos:
+                    # Check if we were on an O tile before transition
+                    # This helps determine if this was a natural transition or cutscene
+                    last_minimap = getattr(memory_manager, 'last_minimap_2d', '')
+                    was_on_o_tile = False
+                    minimap_had_exit = False
+                    
+                    if last_minimap:
+                        # Check if there was an 'O' tile near player position in last minimap
+                        # 'O' tiles indicate exits/entrances
+                        rows = last_minimap.split(';')
+                        for row in rows:
+                            if 'O' in row:
+                                minimap_had_exit = True
+                                break
+                        # Check if player marker 'P' was adjacent to or on an 'O'
+                        for row_idx, row in enumerate(rows):
+                            p_idx = row.find('P')
+                            if p_idx >= 0:
+                                # Check adjacent tiles for 'O'
+                                if (p_idx > 0 and row[p_idx-1] == 'O') or \
+                                   (p_idx < len(row)-1 and row[p_idx+1] == 'O'):
+                                    was_on_o_tile = True
+                                if row_idx > 0 and len(rows[row_idx-1]) > p_idx and rows[row_idx-1][p_idx] == 'O':
+                                    was_on_o_tile = True
+                                if row_idx < len(rows)-1 and len(rows[row_idx+1]) > p_idx and rows[row_idx+1][p_idx] == 'O':
+                                    was_on_o_tile = True
+                                break
+                    
                     new_links = memory_manager.record_transition(
                         from_map=last_map,
                         from_pos=list(last_pos) if isinstance(last_pos, tuple) else last_pos,
                         to_map=current_map,
-                        to_pos=list(current_pos) if isinstance(current_pos, tuple) else current_pos
+                        to_pos=list(current_pos) if isinstance(current_pos, tuple) else current_pos,
+                        was_on_o_tile=was_on_o_tile,
+                        minimap_had_exit=minimap_had_exit
                     )
                     if new_links:
-                         log.info(f"🔗 VERIFIED TRANSITION RECORDED: {last_map} -> {current_map}")
+                         log.info(f"🔗 TRANSITION RECORDED: {last_map} -> {current_map} (O-tile: {was_on_o_tile})")
                          update_payload["memory_write"] = {"text": f"Mapped connection: {last_map} -> {current_map}"}
+                         
+                         # Reset failed attempts and boost confidence since this exit WORKED
+                         memory_manager.reset_failed_attempts(
+                             last_map, 
+                             list(last_pos) if isinstance(last_pos, tuple) else last_pos
+                         )
             
             # Update history for next loop
             memory_manager.last_map = current_map
             memory_manager.last_map_id = current_map_id
             memory_manager.last_pos = current_pos
+            memory_manager.last_minimap_2d = current_mGBA_state.get('minimap_2d', '')
 
             # Extract memories from LLM response and vision analysis
             # CRITICAL FIX: Use current_mGBA_state which has map_name and position keys
