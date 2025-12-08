@@ -14,6 +14,7 @@ const INITIAL_GAME_STATE: PokemonGameState = {
   minimapLocation: "Unknown Area",
   currentTeam: [],
   actions: 0,
+  cycle: 0,
   gameStatus: "Connecting...",
   modelName: "N/A",
   tokensUsed: 0,

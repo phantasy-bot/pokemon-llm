@@ -597,7 +597,7 @@ class MemoryManager:
         mem1 = SpatialMemory(
             type="spatial",
             location=from_map,
-            description=f"Exit: Path at {from_pos} leads to {to_map}" + 
+            description=f"Exit: Path at {from_pos} leads to {to_map} at {to_pos}" + 
                        (" [VERIFIED]" if trust_score >= 0.8 else " [UNVERIFIED]"),
             coordinates=from_pos,
             destination=to_map,
@@ -620,7 +620,7 @@ class MemoryManager:
         mem2 = SpatialMemory(
             type="spatial",
             location=to_map,
-            description=f"Entrance: Arrived from {from_map} at {to_pos}" +
+            description=f"Entrance: Arrived from {from_map} (via {from_pos}) at {to_pos}" +
                        (" [VERIFIED]" if trust_score >= 0.8 else " [UNVERIFIED]"),
             coordinates=to_pos,
             destination=from_map,

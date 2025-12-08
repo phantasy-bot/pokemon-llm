@@ -130,7 +130,7 @@ def calculate_walkable_special_quadrants(width, height, map_data, blocks, grid_d
 
     return special_quadrants
 
-def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=False, debug_tiles=False, crop=None):
+def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False, debug_coords=False, debug_tiles=False, crop=None):
     """
     Dumps minimal map (walkability/special) with optional overlays and cropping.
 
@@ -138,6 +138,7 @@ def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=
         rom_path (str): Path to ROM file.
         map_id (int): Map ID.
         pos (tuple[int,int] or None): Grid-quadrant to mark (gx, gy).
+        sprites (list[tuple[int,int]]): List of sprite coordinates (gx, gy).
         grid_lines (bool): Whether to draw grid lines.
         debug_coords (bool): Whether to overlay coordinate text.
         debug_tiles (bool): Whether to print tile IDs during processing.
@@ -176,6 +177,7 @@ def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=
             'marker': (0, 0, 255),
             'grid': (100, 100, 100),
             'debug_text': (0, 0, 255),
+            'sprite': (255, 0, 0), # Red for NPCs
         }
 
         font = None
@@ -226,6 +228,19 @@ def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=
                     f"Warning: Marker pos {pos} OOB ({grid_w}x{grid_h}).",
                     file=sys.stderr
                 )
+        
+        # Draw Sprites
+        if sprites:
+            for sp in sprites:
+                sx, sy = sp
+                if 0 <= sx < grid_w and 0 <= sy < grid_h:
+                    cx, cy = sx * cell_size + cell_size // 2, sy * cell_size + cell_size // 2
+                    radius = cell_size // 2 - 4
+                    draw.ellipse(
+                        [(cx - radius, cy - radius), (cx + radius, cy + radius)],
+                        fill=colors['sprite'],
+                        outline=colors['sprite']
+                    )
 
         # --- Cropping Logic inside dump_minimal_map ---
         if crop:
@@ -275,7 +290,7 @@ def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=
         return None
 
 
-def dump_minimap_map_array(rom_path, map_id, pos=None, crop=None):
+def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
     """
     Dumps a minimal map as a semicolon-separated 2D array string.
 
@@ -292,6 +307,7 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, crop=None):
         rom_path (str): Path to ROM file.
         map_id (int): Map ID.
         pos (tuple[int,int] or None): Grid-quadrant to mark (gx, gy) as 'P'.
+        sprites (list[tuple[int,int]]): List of sprite coordinates (gx, gy) to mark as 'N'.
         crop (tuple[int,int] or None): If provided, crop width,height around `pos` in quadrants.
 
     Returns:
@@ -357,7 +373,10 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, crop=None):
                     is_walkable = grid_data[y][x]
                     if is_special:
                         print(f"DEBUG: Placing orange tile O at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
+                        print(f"DEBUG: Placing orange tile O at grid position [{x},{y}] (char index {len(row_chars)})", file=sys.stderr)
                         row_chars.append('O')
+                    elif sprites and (x, y) in sprites:
+                        row_chars.append('N') # NPC
                     elif is_walkable:
                         row_chars.append('W')
                     else:
