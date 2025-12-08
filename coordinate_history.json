@@ -1,6 +1,20 @@
 {
   "history": [
     {
+      "cycle": 31,
+      "x": 7,
+      "y": 5,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:29:22.439614"
+    },
+    {
+      "cycle": 30,
+      "x": 7,
+      "y": 5,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:27:36.008906"
+    },
+    {
       "cycle": 32,
       "x": 6,
       "y": 5,
@@ -55,22 +69,8 @@
       "y": 7,
       "map_name": "PLAYERS_HOUSE_1F",
       "timestamp": "2025-12-08T17:32:09.369872"
-    },
-    {
-      "cycle": 39,
-      "x": 2,
-      "y": 7,
-      "map_name": "PLAYERS_HOUSE_1F",
-      "timestamp": "2025-12-08T17:25:40.447072"
-    },
-    {
-      "cycle": 38,
-      "x": 5,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-08T17:24:58.786730"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-08T18:15:16.245579"
+  "last_updated": "2025-12-08T18:29:22.472068"
 }
