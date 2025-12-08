@@ -202,22 +202,34 @@ export function PokemonStreamOverlay({
 
         {/* Right Column - Recent Actions and Goals */}
         <div className="pokemon-goals">
-          {/* Recent Actions - moved from left column */}
-          <RecentActions logs={logs} totalActions={gameState.actions} />
+          {/* Top Half - Actions and Goals (content never spills over) */}
+          <div className="pokemon-goals__top">
+            {/* Recent Actions - moved from left column */}
+            <RecentActions logs={logs} totalActions={gameState.actions} />
 
-          {/* Goals with TUI box styling */}
-          <div className="goals-log">
-            <span className="goals-log__label">GOALS</span>
-            {gameState.goals.primary === "Initializing..." ? (
-              <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
-            ) : (
-              <>
-                <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
-                <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
-                <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
-                <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
-              </>
-            )}
+            {/* Goals with TUI box styling */}
+            <div className="goals-log">
+              <span className="goals-log__label">GOALS</span>
+              {gameState.goals.primary === "Initializing..." ? (
+                <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
+              ) : (
+                <>
+                  <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
+                  <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
+                  <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
+                  <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Half - Lass Character Image */}
+          <div className="pokemon-goals__bottom">
+            <img 
+              src="/lass/lass-default.png" 
+              alt="Lass Pokemon Trainer" 
+              className="lass-character"
+            />
           </div>
         </div>
       </div>
