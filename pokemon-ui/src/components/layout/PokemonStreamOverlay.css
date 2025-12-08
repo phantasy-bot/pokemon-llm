@@ -285,8 +285,34 @@
   padding: var(--space-md);
   background: var(--bg-panel);
   /* No borders - positioned last, no separator needed on right */
-  overflow-y: auto;
-  /* Removed justify-content: flex-end - content now starts from top */
+  overflow: hidden; /* Prevent any overflow from entire container */
+}
+
+/* Top half - Actions and Goals */
+.pokemon-goals__top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Content never spills over to bottom half */
+  min-height: 0; /* Required for flex overflow to work */
+}
+
+/* Bottom half - Lass Character */
+.pokemon-goals__bottom {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  padding-top: var(--space-md);
+}
+
+/* Lass character image */
+.lass-character {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
 }
 
 /* Goals section with TUI box styling */
@@ -296,7 +322,8 @@
   gap: var(--space-xs);
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for label */
-  flex: 1; /* Fill available space */
+  flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
+  overflow: hidden; /* Hide overflow text */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
