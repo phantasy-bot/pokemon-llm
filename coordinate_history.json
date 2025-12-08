@@ -1,6 +1,13 @@
 {
   "history": [
     {
+      "cycle": 30,
+      "x": 6,
+      "y": 5,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:49:26.302396"
+    },
+    {
       "cycle": 32,
       "x": 5,
       "y": 5,
@@ -62,15 +69,8 @@
       "y": 6,
       "map_name": "PLAYERS_HOUSE_2F",
       "timestamp": "2025-12-08T18:13:33.052104"
-    },
-    {
-      "cycle": 28,
-      "x": 4,
-      "y": 7,
-      "map_name": "PLAYERS_HOUSE_2F",
-      "timestamp": "2025-12-08T18:12:56.263967"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-08T18:43:19.054730"
+  "last_updated": "2025-12-08T18:49:26.302471"
 }

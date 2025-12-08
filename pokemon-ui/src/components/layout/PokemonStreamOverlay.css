@@ -381,7 +381,7 @@
 
 /* Lass character image */
 .lass-character {
-  width: 800px; /* A lot a lot a lot larger */
+  width: 1000px; /* A lot a lot a lot a lot larger */
   max-height: 160%;
   object-fit: contain;
   object-position: bottom right;
@@ -395,7 +395,7 @@
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for label */
   /* Remove duplicates and fix margin */
-  margin-top: 16px; /* Align with AnalysisPanel and allow room for label */
+  margin-top: 0; /* Align with AnalysisPanel (offset by container padding) */
   flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
   overflow: visible; /* Allow label to show above */
   
