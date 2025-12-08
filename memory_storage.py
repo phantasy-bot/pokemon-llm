@@ -35,6 +35,11 @@ class SpatialMemory(Memory):
     """Spatial memory for map connections and locations"""
     destination: Optional[str] = None
     landmark_type: Optional[str] = None  # e.g., "door", "stairs", "pokemon_center"
+    # Confidence scoring for memory reliability
+    confidence: float = 0.5  # 0.0-1.0 scale
+    verification_source: str = "unverified"  # "verified_transition", "vision", "llm_claim"
+    failed_attempts: int = 0  # Track failures per-memory
+    last_verified_at: Optional[str] = None  # Timestamp of last successful use
 
 
 @dataclass
@@ -43,6 +48,36 @@ class GameplayMemory(Memory):
     event_type: Optional[str] = None  # e.g., "battle", "item_found", "level_up"
     outcome: Optional[str] = None
     pokemon_involved: Optional[List[str]] = None
+
+
+@dataclass
+class StrategyMemory:
+    """
+    Memory for learned strategies - discovered through experience, not hard-coded.
+    Tracks situation → action → outcome patterns so agent can learn what works.
+    """
+    strategy_id: str  # Unique identifier
+    situation: str  # What situation triggered this (e.g., "lost, low HP, far from Pokemon Center")
+    action_taken: str  # What the agent did (e.g., "let Pokemon faint in wild battle")
+    outcome: str  # What happened (e.g., "respawned at Pokemon Center, full heal")
+    
+    # Learning metrics
+    times_used: int = 1  # How many times this strategy was used
+    times_successful: int = 1  # How many times it worked
+    effectiveness: float = 1.0  # success rate (0.0-1.0)
+    
+    # Context
+    discovered_at: str = ""  # Timestamp when first discovered
+    last_used_at: str = ""  # Timestamp of last use
+    tags: Optional[List[str]] = None  # e.g., ["healing", "navigation", "shortcut"]
+    notes: Optional[str] = None  # Additional context
+    
+    def update_effectiveness(self, success: bool):
+        """Update strategy effectiveness after use"""
+        self.times_used += 1
+        if success:
+            self.times_successful += 1
+        self.effectiveness = self.times_successful / self.times_used
 
 
 @dataclass
@@ -87,14 +122,44 @@ class MemoryManager:
         }
         # Track failed exit attempts: key = (map_name, coords_tuple), value = failure count
         self.failed_exit_attempts: Dict[tuple, int] = {}
-        # Threshold for removing unreliable memories - higher to allow trying nearby tiles
-        self.FAILED_ATTEMPT_THRESHOLD = 4
         # Track positions we've tried to exit from in recent cycles (for pattern detection)
         self.recent_exit_attempts: List[tuple] = []  # (map_name, coords, cycle)
         # Track NPC interactions: key = (map_name, coords_tuple), value = interaction count
         self.npc_interactions: Dict[tuple, int] = {}
         # Threshold for warning about repeated NPC interactions
         self.NPC_INTERACTION_THRESHOLD = 2
+        
+        # === NEW: Confidence-based memory system ===
+        # Confidence decay rates per verification source (more trusted = slower decay)
+        self.CONFIDENCE_DECAY_RATES = {
+            "verified_transition": 0.1,   # Slow decay - we SAW this work
+            "vision": 0.2,                # Medium decay - vision can hallucinate
+            "llm_claim": 0.3,             # Fast decay - least trusted
+            "unverified": 0.25
+        }
+        # Thresholds for memory lifecycle
+        self.LOW_CONFIDENCE_THRESHOLD = 0.3  # Warn LLM this memory is questionable
+        self.QUARANTINE_THRESHOLD = 0.15     # Move to quarantine below this
+        self.DELETE_THRESHOLD = 0.05         # Delete if confirmed wrong at this level
+        self.REVALIDATION_THRESHOLD = 0.6    # Restore from quarantine above this
+        
+        # Quarantine for suspect memories (not deleted, but not trusted)
+        self.quarantined_memories: List[SpatialMemory] = []
+        
+        # Track which approach directions have been tried at each exit
+        # Key: (map_name, coords_tuple), Value: set of directions tried
+        self.tried_approach_directions: Dict[tuple, set] = {}
+        
+        # === Strategy Learning System ===
+        # Stores learned strategies (discovered through experience)
+        self.strategies: List[StrategyMemory] = []
+        
+        # Track pending outcomes - actions that might lead to learning
+        # Key: action_id, Value: {situation, action, timestamp, context}
+        self.pending_outcomes: Dict[str, Dict] = {}
+        
+        # Outcome tracking - recent significant events for reflection
+        self.recent_outcomes: List[Dict] = []  # Last 10 outcomes
         
         if reset_on_start:
             # Clear memories for fresh start
@@ -103,77 +168,227 @@ class MemoryManager:
         else:
             self.load_memories()
 
-    def record_failed_exit_attempt(self, map_name: str, coordinates: List[int]) -> bool:
+    def record_failed_exit_attempt(self, map_name: str, coordinates: List[int], 
+                                     approach_direction: Optional[str] = None) -> dict:
         """
         Record that an exit attempt at these coordinates failed.
-        If attempts exceed threshold, invalidate the memory.
-        Returns True if memory was invalidated (should stop trying this exit).
+        Uses confidence decay instead of binary invalidation.
+        
+        Returns dict with:
+        - status: "decayed", "low_confidence", "quarantined", "try_different_direction"
+        - suggestion: Human-readable suggestion for LLM
+        - untried_directions: List of approach directions not yet tried
         """
         if not coordinates or len(coordinates) < 2:
-            return False
+            return {"status": "error", "suggestion": "Invalid coordinates"}
         
         key = (map_name.upper(), tuple(coordinates))
-        self.failed_exit_attempts[key] = self.failed_exit_attempts.get(key, 0) + 1
-        count = self.failed_exit_attempts[key]
         
-        log.info(f"⚠️ Failed exit attempt {count}/{self.FAILED_ATTEMPT_THRESHOLD} at {map_name} {coordinates}")
+        # Track which approach direction was tried
+        if approach_direction:
+            if key not in self.tried_approach_directions:
+                self.tried_approach_directions[key] = set()
+            self.tried_approach_directions[key].add(approach_direction.upper())
         
-        if count >= self.FAILED_ATTEMPT_THRESHOLD:
-            # Invalidate this memory - remove or mark as unreliable
-            self._invalidate_exit_memory(map_name, coordinates)
-            log.warning(f"🚫 Memory invalidated: {map_name} {coordinates} - too many failed attempts")
-            return True
+        # Find the memory for this exit
+        matching_memory = self._find_exit_memory(map_name, coordinates)
         
-        return False
+        if not matching_memory:
+            # No memory to decay - just track failure count
+            self.failed_exit_attempts[key] = self.failed_exit_attempts.get(key, 0) + 1
+            return {"status": "no_memory", "suggestion": "No exit memory at this location"}
+        
+        # Increment failure counter on the memory itself
+        matching_memory.failed_attempts += 1
+        
+        # Calculate decay based on verification source
+        decay_rate = self.CONFIDENCE_DECAY_RATES.get(
+            matching_memory.verification_source, 
+            self.CONFIDENCE_DECAY_RATES["unverified"]
+        )
+        old_confidence = matching_memory.confidence
+        matching_memory.confidence = max(0.0, matching_memory.confidence - decay_rate)
+        
+        log.info(f"⚠️ Exit attempt failed at {map_name} {coordinates}: "
+                f"confidence {old_confidence:.2f} → {matching_memory.confidence:.2f} "
+                f"(source: {matching_memory.verification_source}, attempts: {matching_memory.failed_attempts})")
+        
+        # Check if we should suggest trying different approach directions
+        all_directions = {"NORTH", "SOUTH", "EAST", "WEST"}
+        tried = self.tried_approach_directions.get(key, set())
+        untried = all_directions - tried
+        
+        # Before quarantining, suggest trying other directions
+        if untried and matching_memory.confidence > self.QUARANTINE_THRESHOLD:
+            return {
+                "status": "try_different_direction",
+                "suggestion": f"Exit at {coordinates} might work from a different direction. "
+                             f"Tried: {sorted(tried)}. Try approaching from: {sorted(untried)[0]}",
+                "untried_directions": sorted(untried),
+                "memory": matching_memory
+            }
+        
+        # Check thresholds
+        if matching_memory.confidence <= self.DELETE_THRESHOLD:
+            # Confirmed wrong - delete
+            self._delete_exit_memory(map_name, coordinates)
+            return {
+                "status": "deleted",
+                "suggestion": f"❌ Memory DELETED: Exit at {coordinates} confirmed false after {matching_memory.failed_attempts} attempts. "
+                             f"This was likely a cutscene teleport. Explore for REAL exits!",
+                "untried_directions": []
+            }
+        
+        if matching_memory.confidence <= self.QUARANTINE_THRESHOLD:
+            # Move to quarantine
+            self._quarantine_exit_memory(map_name, coordinates, 
+                                        reason=f"Failed {matching_memory.failed_attempts} times, tried directions: {sorted(tried)}")
+            return {
+                "status": "quarantined", 
+                "suggestion": f"🔒 Memory QUARANTINED: Exit at {coordinates} is unreliable (confidence: {matching_memory.confidence:.2f}). "
+                             f"It might be a false memory from a cutscene. Look for other exits on the minimap or in memory.",
+                "untried_directions": sorted(untried)
+            }
+        
+        if matching_memory.confidence <= self.LOW_CONFIDENCE_THRESHOLD:
+            self._save_memories()
+            return {
+                "status": "low_confidence",
+                "suggestion": f"⚠️ Low confidence ({matching_memory.confidence:.2f}) in exit at {coordinates}. "
+                             f"This might be wrong. Consider exploring other areas first.",
+                "untried_directions": sorted(untried)
+            }
+        
+        self._save_memories()
+        return {
+            "status": "decayed",
+            "suggestion": f"Exit at {coordinates} didn't work this time (confidence: {matching_memory.confidence:.2f}). "
+                         f"Try again or approach from a different direction.",
+            "untried_directions": sorted(untried)
+        }
     
-    def _invalidate_exit_memory(self, map_name: str, coordinates: List[int]) -> None:
-        """Remove or mark unreliable an exit memory that has failed too many times."""
+    def _find_exit_memory(self, map_name: str, coordinates: List[int]) -> Optional[SpatialMemory]:
+        """Find a spatial memory matching these coordinates."""
         coords_tuple = tuple(coordinates)
         map_upper = map_name.upper()
         
-        # Find and remove ALL matching spatial memories (not just exits/entrances)
-        # This handles cutscene-created false memories more aggressively
+        for mem in self.memories["spatial"]:
+            if mem.coordinates and tuple(mem.coordinates) == coords_tuple:
+                if mem.location and map_upper in mem.location.upper():
+                    if mem.landmark_type in ("exit", "entrance", "door", "stairs", None):
+                        return mem
+        return None
+    
+    def _quarantine_exit_memory(self, map_name: str, coordinates: List[int], reason: str) -> None:
+        """Move a suspect memory to quarantine instead of deleting."""
+        coords_tuple = tuple(coordinates)
+        map_upper = map_name.upper()
+        
+        to_quarantine = []
+        for i, mem in enumerate(self.memories["spatial"]):
+            if mem.coordinates and tuple(mem.coordinates) == coords_tuple:
+                is_our_map = mem.location and map_upper in mem.location.upper()
+                if is_our_map and mem.landmark_type in ("exit", "entrance", "door", "stairs", None):
+                    to_quarantine.append(i)
+        
+        # Move to quarantine in reverse order
+        to_quarantine.sort(reverse=True)
+        for i in to_quarantine:
+            mem = self.memories["spatial"].pop(i)
+            mem.context = mem.context or {}
+            mem.context["quarantine_reason"] = reason
+            mem.context["quarantined_at"] = datetime.now().isoformat()
+            self.quarantined_memories.append(mem)
+            log.warning(f"🔒 QUARANTINED memory: {mem.description} (reason: {reason})")
+        
+        if to_quarantine:
+            self._save_memories()
+    
+    def _delete_exit_memory(self, map_name: str, coordinates: List[int]) -> None:
+        """Permanently delete a confirmed-false memory."""
+        coords_tuple = tuple(coordinates)
+        map_upper = map_name.upper()
+        
         to_remove = []
         for i, mem in enumerate(self.memories["spatial"]):
-            # Match by coordinates in current map
             if mem.coordinates and tuple(mem.coordinates) == coords_tuple:
-                # Check if this memory is for our map OR references our map as destination
                 is_our_map = mem.location and map_upper in mem.location.upper()
-                targets_our_map = mem.destination and map_upper in str(mem.destination).upper()
-                has_our_coords = mem.coordinates == list(coords_tuple)
-                
-                if is_our_map or (targets_our_map and has_our_coords):
+                if is_our_map:
                     to_remove.append(i)
-                    log.info(f"🎯 Matched memory for removal: {mem.description} at {mem.coordinates}")
         
-        # Also check for memories that POINT TO this map at these coordinates
-        for i, mem in enumerate(self.memories["spatial"]):
-            if i in to_remove:
-                continue
-            # Check if this is a memory pointing TO our location
-            if mem.destination and map_upper in str(mem.destination).upper():
-                ctx = mem.context or {}
-                target_pos = ctx.get('target_pos')
-                if target_pos and tuple(target_pos) == coords_tuple:
-                    to_remove.append(i)
-                    log.info(f"🎯 Matched outbound memory for removal: {mem.description}")
+        # Also remove from quarantine
+        self.quarantined_memories = [
+            m for m in self.quarantined_memories 
+            if not (m.coordinates and tuple(m.coordinates) == coords_tuple and 
+                   m.location and map_upper in m.location.upper())
+        ]
         
-        # Remove in reverse order to preserve indices
-        to_remove = list(set(to_remove))  # Dedupe
         to_remove.sort(reverse=True)
         for i in to_remove:
             removed = self.memories["spatial"].pop(i)
-            log.warning(f"🗑️ REMOVED unreliable memory: {removed.description}")
+            log.warning(f"🗑️ DELETED false memory: {removed.description}")
         
         if to_remove:
             self._save_memories()
     
     def reset_failed_attempts(self, map_name: str, coordinates: List[int]) -> None:
-        """Reset failed attempt counter for a location (e.g., if exit actually works)."""
+        """
+        Reset failed attempt counter for a location when exit actually works.
+        Also boosts confidence of the memory and attempts to rehabilitate quarantined memories.
+        """
         key = (map_name.upper(), tuple(coordinates))
+        
+        # Reset failure tracking
         if key in self.failed_exit_attempts:
             del self.failed_exit_attempts[key]
-            log.info(f"✅ Reset failed attempt counter for {map_name} {coordinates}")
+        if key in self.tried_approach_directions:
+            del self.tried_approach_directions[key]
+        
+        # Boost confidence of the memory that just worked
+        memory = self._find_exit_memory(map_name, coordinates)
+        if memory:
+            old_confidence = memory.confidence
+            # Boost confidence significantly - this exit WORKS
+            memory.confidence = min(1.0, memory.confidence + 0.3)
+            memory.verification_source = "verified_transition"
+            memory.last_verified_at = datetime.now().isoformat()
+            memory.failed_attempts = 0  # Reset failure count
+            log.info(f"✅ Exit VERIFIED at {map_name} {coordinates}: "
+                    f"confidence {old_confidence:.2f} → {memory.confidence:.2f}")
+            self._save_memories()
+        
+        # Check if this exit was quarantined and should be rehabilitated
+        self._attempt_revalidation(map_name, coordinates)
+    
+    def _attempt_revalidation(self, map_name: str, coordinates: List[int]) -> bool:
+        """
+        If a quarantined memory matches this location and it just worked,
+        restore it with boosted confidence.
+        """
+        coords_tuple = tuple(coordinates)
+        map_upper = map_name.upper()
+        
+        for i, mem in enumerate(self.quarantined_memories):
+            if (mem.coordinates and tuple(mem.coordinates) == coords_tuple and
+                mem.location and map_upper in mem.location.upper()):
+                # Found a quarantined memory that just worked! Rehabilitate it.
+                mem.confidence = self.REVALIDATION_THRESHOLD + 0.1
+                mem.verification_source = "verified_transition"
+                mem.last_verified_at = datetime.now().isoformat()
+                mem.failed_attempts = 0
+                mem.context = mem.context or {}
+                mem.context["rehabilitated_at"] = datetime.now().isoformat()
+                mem.context["quarantine_reason"] = None  # Clear quarantine reason
+                
+                # Move back to active memories
+                self.quarantined_memories.pop(i)
+                self.memories["spatial"].append(mem)
+                log.info(f"♻️ REHABILITATED memory: {mem.description} at {coordinates} "
+                        f"(confidence: {mem.confidence:.2f})")
+                self._save_memories()
+                return True
+        
+        return False
 
     def record_npc_interaction(self, map_name: str, coordinates: List[int], npc_name: str = "NPC") -> Optional[str]:
         """
@@ -208,6 +423,79 @@ class MemoryManager:
         if avoided:
             return f"🚫 NPCs TO AVOID: {', '.join(avoided)}"
         return ""
+    
+    def should_trust_transition(self, from_map: str, from_pos: List[int], 
+                                 to_map: str, to_pos: List[int],
+                                 was_on_o_tile: bool = False,
+                                 minimap_had_exit: bool = False) -> tuple:
+        """
+        Determine if a map transition should be trusted as a real connection
+        or might be a cutscene/teleport.
+        
+        Returns: (trust_score: float, reason: str)
+        
+        trust_score:
+        - 0.9-1.0: High trust (natural transition, player walked through exit)
+        - 0.5-0.8: Medium trust (unclear, might be real)
+        - 0.1-0.4: Low trust (likely cutscene/teleport)
+        
+        Heuristics:
+        1. If player was on 'O' tile before transition: HIGH trust
+        2. If minimap showed an exit at player position: HIGH trust
+        3. If transition is between adjacent maps (Route 1 <-> Viridian City): OK trust
+        4. If transition is to a special location (OAKS_LAB, etc.): LOWER trust
+        5. If position changed dramatically without walking: VERY LOW trust (teleport)
+        """
+        from_upper = from_map.upper() if from_map else ""
+        to_upper = to_map.upper() if to_map else ""
+        
+        # Heuristic 1 & 2: Player was on an exit tile
+        if was_on_o_tile or minimap_had_exit:
+            return (0.95, "Player walked through a visible exit tile")
+        
+        # Heuristic 3: Check for known adjacent maps
+        # These are pairs that should naturally connect
+        adjacent_pairs = [
+            ("PALLET_TOWN", "ROUTE_1"),
+            ("ROUTE_1", "VIRIDIAN_CITY"),
+            ("VIRIDIAN_CITY", "ROUTE_2"),
+            ("VIRIDIAN_CITY", "ROUTE_22"),
+            ("ROUTE_2", "PEWTER_CITY"),
+            ("ROUTE_2", "VIRIDIAN_FOREST"),
+            # Add more as needed
+        ]
+        
+        for pair in adjacent_pairs:
+            if (pair[0] in from_upper and pair[1] in to_upper) or \
+               (pair[1] in from_upper and pair[0] in to_upper):
+                return (0.7, f"Transition between adjacent maps {from_map} <-> {to_map}")
+        
+        # Heuristic 4: Suspicious destination maps (often reached via cutscene)
+        # These are indoor locations that you typically enter via door, not open map edge
+        suspicious_destinations = ["OAKS_LAB", "PLAYERS_HOUSE", "RIVAL", "POKEMON_CENTER", "MART"]
+        for suspicious in suspicious_destinations:
+            if suspicious in to_upper and not was_on_o_tile:
+                # Entering a building without walking through a door? Suspicious.
+                return (0.3, f"Sudden transition to indoor location {to_map} without visible exit - possible cutscene")
+        
+        # Heuristic 5: Position didn't change much before transition (likely cutscene)
+        # If from_pos was on the edge of from_map, that's normal
+        # But if from_pos was in the middle, might be a cutscene teleport
+        if from_pos and len(from_pos) >= 2:
+            x, y = from_pos
+            # Edge detection (rough heuristic - map edges are typically at low/high coords)
+            on_edge = (x <= 2 or x >= 15 or y <= 2 or y >= 15)
+            if not on_edge:
+                return (0.4, f"Transition occurred from middle of map ({from_pos}) - might be cutscene teleport")
+        
+        # Heuristic 6: We have no other info - medium trust
+        # Check if we have any previous verified memories for this route
+        existing_memory = self._find_exit_memory(from_map, from_pos) if from_pos else None
+        if existing_memory and existing_memory.verification_source == "verified_transition":
+            return (0.85, "Previously verified transition at this location")
+        
+        # Default: Medium-low trust
+        return (0.5, "Unknown transition context - treating with moderate trust")
 
     def add_spatial_memory(
         self,
@@ -275,27 +563,54 @@ class MemoryManager:
         from_map: str,
         from_pos: List[int],
         to_map: str,
-        to_pos: List[int]
+        to_pos: List[int],
+        was_on_o_tile: bool = False,
+        minimap_had_exit: bool = False
     ) -> List[SpatialMemory]:
         """
-        Record a verified transition between two maps.
-        Creates bidirectional memories with high importance.
+        Record a transition between two maps.
+        Uses trust heuristics to set confidence appropriately.
+        Low-trust transitions (likely cutscenes) get lower confidence.
         """
         created = []
         if not from_map or not to_map or from_map == to_map:
             return created
+        
+        # Evaluate how much we should trust this transition
+        trust_score, trust_reason = self.should_trust_transition(
+            from_map, from_pos, to_map, to_pos,
+            was_on_o_tile=was_on_o_tile,
+            minimap_had_exit=minimap_had_exit
+        )
+        
+        log.info(f"📍 Transition trust: {trust_score:.2f} - {trust_reason}")
+        
+        # Set verification source based on trust
+        if trust_score >= 0.8:
+            verification_source = "verified_transition"
+        elif trust_score >= 0.5:
+            verification_source = "unverified"
+        else:
+            verification_source = "llm_claim"  # Treat low-trust as claim that needs verification
 
         # Memory 1: Exit from A -> B
         mem1 = SpatialMemory(
             type="spatial",
             location=from_map,
-            description=f"Verified Exit: Path at {from_pos} leads to {to_map}",
+            description=f"Exit: Path at {from_pos} leads to {to_map}" + 
+                       (" [VERIFIED]" if trust_score >= 0.8 else " [UNVERIFIED]"),
             coordinates=from_pos,
             destination=to_map,
             landmark_type="exit",
             timestamp=datetime.now().isoformat(),
-            importance=3.0, # High importance for verified transitions
-            context={"source": "verified_transition", "target_pos": to_pos}
+            importance=3.0 if trust_score >= 0.8 else 2.0,
+            confidence=trust_score,  # Set based on trust evaluation
+            verification_source=verification_source,
+            context={
+                "source": verification_source, 
+                "target_pos": to_pos,
+                "trust_reason": trust_reason
+            }
         )
         if not self._is_duplicate_memory(mem1, self.memories["spatial"]):
             self.memories["spatial"].append(mem1)
@@ -305,13 +620,20 @@ class MemoryManager:
         mem2 = SpatialMemory(
             type="spatial",
             location=to_map,
-            description=f"Verified Entrance: Arrived from {from_map} at {to_pos}",
+            description=f"Entrance: Arrived from {from_map} at {to_pos}" +
+                       (" [VERIFIED]" if trust_score >= 0.8 else " [UNVERIFIED]"),
             coordinates=to_pos,
-            destination=from_map, # Logic implies going back leads to A
+            destination=from_map,
             landmark_type="entrance",
             timestamp=datetime.now().isoformat(),
-            importance=3.0,
-            context={"source": "verified_transition", "origin_pos": from_pos}
+            importance=3.0 if trust_score >= 0.8 else 2.0,
+            confidence=trust_score,
+            verification_source=verification_source,
+            context={
+                "source": verification_source, 
+                "origin_pos": from_pos,
+                "trust_reason": trust_reason
+            }
         )
         if not self._is_duplicate_memory(mem2, self.memories["spatial"]):
             self.memories["spatial"].append(mem2)
@@ -963,10 +1285,190 @@ class MemoryManager:
 
         return summary
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # STRATEGY LEARNING SYSTEM
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def record_outcome(self, event_type: str, details: Dict, context: Dict = None) -> None:
+        """
+        Record a significant outcome for potential strategy learning.
+        Call this when something notable happens (heal, faint, goal complete, etc.)
+        
+        Args:
+            event_type: Type of outcome (e.g., "healed", "blacked_out", "goal_complete", "found_exit")
+            details: Event details (e.g., {"hp_restored": 100, "location": "Pokemon Center"})
+            context: What was happening before (e.g., {"was_lost": True, "hp_before": 5})
+        """
+        outcome = {
+            "event_type": event_type,
+            "details": details,
+            "context": context or {},
+            "timestamp": datetime.now().isoformat(),
+            "pending_actions": list(self.pending_outcomes.keys())
+        }
+        
+        self.recent_outcomes.append(outcome)
+        self.recent_outcomes = self.recent_outcomes[-10:]  # Keep last 10
+        
+        log.info(f"📊 Outcome recorded: {event_type} - {details}")
+        
+        # Check if this outcome completes any pending action
+        self._check_for_strategy_discovery(outcome)
+    
+    def start_tracking_action(self, action_id: str, situation: str, action: str, context: Dict = None) -> None:
+        """
+        Start tracking an action to see what outcome it leads to.
+        Call this when the agent takes a notable action.
+        
+        Args:
+            action_id: Unique ID for this action
+            situation: What situation triggered this (e.g., "lost, low HP")
+            action: What action is being taken (e.g., "walking into wild battle")
+            context: Additional context
+        """
+        self.pending_outcomes[action_id] = {
+            "situation": situation,
+            "action": action,
+            "context": context or {},
+            "timestamp": datetime.now().isoformat()
+        }
+        log.info(f"🔬 Tracking action: {action_id} - {action}")
+    
+    def _check_for_strategy_discovery(self, outcome: Dict) -> None:
+        """Check if an outcome reveals a new or existing strategy."""
+        # Look for patterns that might indicate a learnable strategy
+        event_type = outcome.get("event_type", "")
+        details = outcome.get("details", {})
+        context = outcome.get("context", {})
+        
+        # Pattern: Blackout led to healing
+        if event_type == "blacked_out":
+            # This is a potential "faint to heal" strategy discovery!
+            self._maybe_discover_strategy(
+                situation="Team fainted in battle",
+                action="Let Pokemon faint",
+                outcome="Respawned at Pokemon Center, full heal",
+                tags=["healing", "shortcut", "recovery"]
+            )
+        
+        # Pattern: Found a shortcut or new path
+        if event_type == "found_exit" and context.get("was_exploring"):
+            self._maybe_discover_strategy(
+                situation=f"Exploring {details.get('from_location', 'unknown')}",
+                action=f"Checked coordinates {details.get('coordinates', '?')}",
+                outcome=f"Found exit to {details.get('to_location', 'unknown')}",
+                tags=["navigation", "exploration"]
+            )
+    
+    def _maybe_discover_strategy(self, situation: str, action: str, outcome: str, tags: List[str] = None) -> Optional[StrategyMemory]:
+        """
+        Check if this is a new strategy or update an existing one.
+        Returns the strategy if created/updated, None if duplicate.
+        """
+        # Check for similar existing strategy
+        for existing in self.strategies:
+            if self._strategies_similar(existing, situation, action):
+                # Update existing strategy
+                existing.update_effectiveness(True)
+                existing.last_used_at = datetime.now().isoformat()
+                log.info(f"📈 Strategy reinforced: {existing.strategy_id} (effectiveness: {existing.effectiveness:.0%})")
+                return existing
+        
+        # Create new strategy
+        strategy_id = f"strategy_{len(self.strategies) + 1}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        strategy = StrategyMemory(
+            strategy_id=strategy_id,
+            situation=situation,
+            action_taken=action,
+            outcome=outcome,
+            discovered_at=datetime.now().isoformat(),
+            last_used_at=datetime.now().isoformat(),
+            tags=tags or []
+        )
+        
+        self.strategies.append(strategy)
+        log.info(f"💡 NEW STRATEGY DISCOVERED: {strategy_id}")
+        log.info(f"   Situation: {situation}")
+        log.info(f"   Action: {action}")
+        log.info(f"   Outcome: {outcome}")
+        
+        return strategy
+    
+    def _strategies_similar(self, existing: StrategyMemory, situation: str, action: str) -> bool:
+        """Check if a situation/action combo matches an existing strategy."""
+        # Simple keyword matching for now
+        situation_words = set(situation.lower().split())
+        action_words = set(action.lower().split())
+        
+        existing_situation_words = set(existing.situation.lower().split())
+        existing_action_words = set(existing.action_taken.lower().split())
+        
+        situation_overlap = len(situation_words & existing_situation_words) / max(len(situation_words), 1)
+        action_overlap = len(action_words & existing_action_words) / max(len(action_words), 1)
+        
+        return situation_overlap > 0.5 and action_overlap > 0.5
+    
+    def get_relevant_strategies(self, current_situation: str, limit: int = 3) -> List[StrategyMemory]:
+        """
+        Get strategies relevant to the current situation.
+        Used to surface learned strategies to the LLM.
+        """
+        if not self.strategies:
+            return []
+        
+        # Score strategies by relevance to current situation
+        situation_words = set(current_situation.lower().split())
+        scored = []
+        
+        for strategy in self.strategies:
+            strategy_words = set(strategy.situation.lower().split())
+            strategy_words.update(strategy.tags or [])
+            
+            overlap = len(situation_words & strategy_words)
+            # Weight by effectiveness
+            score = overlap * strategy.effectiveness
+            
+            if score > 0:
+                scored.append((strategy, score))
+        
+        # Sort by score and return top matches
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [s[0] for s in scored[:limit]]
+    
+    def get_strategy_context_for_llm(self, current_situation: str = "") -> str:
+        """Generate LLM context string for learned strategies."""
+        if not self.strategies:
+            return ""
+        
+        context_parts = []
+        
+        # Get relevant strategies
+        relevant = self.get_relevant_strategies(current_situation, limit=3) if current_situation else self.strategies[:3]
+        
+        if relevant:
+            context_parts.append("💡 LEARNED STRATEGIES (from experience):")
+            for s in relevant:
+                effectiveness_str = f"{s.effectiveness:.0%}" if s.times_used > 1 else "new"
+                context_parts.append(
+                    f"  • When: {s.situation[:50]}... → "
+                    f"Try: {s.action_taken[:40]}... "
+                    f"({effectiveness_str} effective, used {s.times_used}x)"
+                )
+        
+        # Recent outcomes for reflection
+        if self.recent_outcomes:
+            recent = self.recent_outcomes[-3:]
+            context_parts.append("\n📊 RECENT OUTCOMES (reflect on what worked):")
+            for o in recent:
+                details_str = str(o.get('details', {}))[:50]
+                context_parts.append(f"  • {o['event_type']}: {details_str}")
+        
+        return "\n".join(context_parts) if context_parts else ""
+
     def get_context_for_llm(self, current_location: str, limit: int = 5) -> str:
         """
         Generate a compact context string for LLM injection.
-        Returns relevant memories for the current location.
+        Returns relevant memories for the current location with confidence information.
         """
         if not current_location:
             return ""
@@ -976,19 +1478,56 @@ class MemoryManager:
         # Get spatial memories for this location
         spatial_here = [m for m in self.memories["spatial"] 
                        if m.location and current_location.lower() in m.location.lower()]
+        
         if spatial_here:
-            # Prioritize verified exits
-            verified = [m for m in spatial_here if m.importance >= 3.0 and m.landmark_type in ("exit", "entrance")]
-            others = [m for m in spatial_here if m not in verified]
+            # Separate by confidence level
+            high_conf = [m for m in spatial_here 
+                        if getattr(m, 'confidence', 0.5) >= 0.7 
+                        and m.landmark_type in ("exit", "entrance")]
+            medium_conf = [m for m in spatial_here 
+                         if 0.3 <= getattr(m, 'confidence', 0.5) < 0.7 
+                         and m.landmark_type in ("exit", "entrance")]
+            low_conf = [m for m in spatial_here 
+                       if getattr(m, 'confidence', 0.5) < 0.3 
+                       and m.landmark_type in ("exit", "entrance")]
+            others = [m for m in spatial_here if m not in high_conf + medium_conf + low_conf]
             
-            if verified:
-                exits = [f"[Verified Exit] {m.coordinates} -> {m.destination}" for m in verified]
-                context_parts.append(f"MAP CONNECTIONS: {', '.join(exits)}")
+            # Show high-confidence exits (verified)
+            if high_conf:
+                exits = []
+                for m in high_conf:
+                    conf = getattr(m, 'confidence', 0.5)
+                    source = getattr(m, 'verification_source', 'unverified')
+                    tag = "[VERIFIED]" if source == "verified_transition" else f"[{conf:.0%}]"
+                    exits.append(f"{tag} {m.coordinates} -> {m.destination}")
+                context_parts.append(f"✅ TRUSTED EXITS: {', '.join(exits)}")
+            
+            # Show medium-confidence exits with warning
+            if medium_conf:
+                exits = []
+                for m in medium_conf:
+                    conf = getattr(m, 'confidence', 0.5)
+                    exits.append(f"[{conf:.0%}] {m.coordinates} -> {m.destination}")
+                context_parts.append(f"⚠️ UNVERIFIED EXITS (try multiple directions): {', '.join(exits)}")
+            
+            # Show low-confidence exits strongly warned
+            if low_conf:
+                exits = []
+                for m in low_conf:
+                    conf = getattr(m, 'confidence', 0.5)
+                    exits.append(f"[{conf:.0%}] {m.coordinates}")
+                context_parts.append(f"❌ LOW CONFIDENCE (may be false): {', '.join(exits)}")
             
             if others:
-                # Show other landmarks
                 landmarks = [f"{m.description}" for m in others[-limit:]]
                 context_parts.append(f"Notes: {'; '.join(landmarks)}")
+        
+        # Show quarantined memories for this location (so agent knows what to avoid)
+        quarantined_here = [m for m in self.quarantined_memories 
+                          if m.location and current_location.lower() in m.location.lower()]
+        if quarantined_here:
+            qlist = [f"{m.coordinates} (was: {m.destination})" for m in quarantined_here[:3]]
+            context_parts.append(f"🔒 QUARANTINED (don't trust): {', '.join(qlist)}")
         
         # Get recent gameplay events  
         gameplay = self.memories["gameplay"][-3:]
