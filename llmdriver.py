@@ -44,7 +44,8 @@ if(IS_LOCAL):
     # Often slow inference
     STREAM_TIMEOUT = 120
 else:
-    STREAM_TIMEOUT = 60
+    # Increased for MCP vision on Windows which can be slower
+    STREAM_TIMEOUT = 120
 
 CLEANUP_WINDOW = 10 # Sometimes 4 is a good choice for local
 
