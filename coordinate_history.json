@@ -1,6 +1,27 @@
 {
   "history": [
     {
+      "cycle": 32,
+      "x": 5,
+      "y": 5,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:43:19.054494"
+    },
+    {
+      "cycle": 31,
+      "x": 5,
+      "y": 6,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:42:30.384418"
+    },
+    {
+      "cycle": 30,
+      "x": 5,
+      "y": 6,
+      "map_name": "PLAYERS_HOUSE_2F",
+      "timestamp": "2025-12-08T18:42:05.900861"
+    },
+    {
       "cycle": 31,
       "x": 7,
       "y": 5,
@@ -48,29 +69,8 @@
       "y": 7,
       "map_name": "PLAYERS_HOUSE_2F",
       "timestamp": "2025-12-08T18:12:56.263967"
-    },
-    {
-      "cycle": 27,
-      "x": 3,
-      "y": 7,
-      "map_name": "PLAYERS_HOUSE_2F",
-      "timestamp": "2025-12-08T18:12:16.566770"
-    },
-    {
-      "cycle": 26,
-      "x": 3,
-      "y": 6,
-      "map_name": "PLAYERS_HOUSE_2F",
-      "timestamp": "2025-12-08T18:11:38.516404"
-    },
-    {
-      "cycle": 37,
-      "x": 2,
-      "y": 7,
-      "map_name": "PLAYERS_HOUSE_1F",
-      "timestamp": "2025-12-08T17:32:09.369872"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-08T18:29:22.472068"
+  "last_updated": "2025-12-08T18:43:19.054730"
 }

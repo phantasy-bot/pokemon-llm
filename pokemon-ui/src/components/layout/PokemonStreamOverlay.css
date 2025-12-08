@@ -330,7 +330,7 @@
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Allow label to show */
 }
 
 .character-container__commentary-label {
@@ -394,10 +394,8 @@
   gap: var(--space-xs);
   padding: var(--space-md);
   padding-top: var(--space-lg); /* Space for label */
-  gap: var(--space-xs);
-  padding: var(--space-md);
-  padding-top: var(--space-lg); /* Space for label */
-  margin-top: -16px; /* Pull up to align symmetrically with left column (counteract parent padding/margin diffs) */
+  /* Remove duplicates and fix margin */
+  margin-top: 16px; /* Align with AnalysisPanel and allow room for label */
   flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
   overflow: visible; /* Allow label to show above */
   
