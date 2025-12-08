@@ -344,6 +344,125 @@ class ZAIMCPClient:
                 # Brief delay between attempts to prevent hammering
                 time_module.sleep(2.0)
 
+    async def ui_diff_check(self, prev_image_path: str, curr_image_path: str) -> Optional[str]:
+        """
+        Compare two screenshots using ui_diff_check MCP tool to detect UI changes.
+        
+        This tool is designed to flag visual or implementation drift between
+        two UI screenshots - perfect for detecting what changed between cycles.
+        
+        Args:
+            prev_image_path: Path to the previous cycle's screenshot
+            curr_image_path: Path to the current cycle's screenshot
+            
+        Returns:
+            Description of changes between the two images, or None if failed
+        """
+        if not self.is_connected:
+            log.error("MCP server not connected for ui_diff_check")
+            return None
+        
+        if not os.path.exists(prev_image_path):
+            log.error(f"Previous image not found for diff: {prev_image_path}")
+            return None
+            
+        if not os.path.exists(curr_image_path):
+            log.error(f"Current image not found for diff: {curr_image_path}")
+            return None
+        
+        try:
+            tool_name = "ui_diff_check"
+            request_id = self._get_next_request_id()
+            
+            # Create MCP request for UI diff check
+            # Based on the tool description: "Compare two UI shots to flag visual or implementation drift"
+            mcp_request = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": {
+                        "image_source_1": prev_image_path,
+                        "image_source_2": curr_image_path
+                    }
+                }
+            }
+            
+            log.info(f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}")
+            
+            # Send request
+            request_json = json.dumps(mcp_request) + '\n'
+            self.mcp_process.stdin.write(request_json.encode())
+            self.mcp_process.stdin.flush()
+            
+            # Wait for response (shorter timeout since diff should be faster)
+            response_data = self._read_response_with_id_match(request_id, timeout=60.0)
+            
+            if response_data is None:
+                log.error(f"Failed to get {tool_name} response (timeout)")
+                return None
+            
+            if 'result' in response_data:
+                result = response_data['result']
+                if isinstance(result, dict) and 'content' in result:
+                    content = result['content']
+                    if isinstance(content, list) and len(content) > 0:
+                        if isinstance(content[0], dict) and 'text' in content[0]:
+                            diff_analysis = content[0]['text']
+                            log.info(f"✅ ui_diff_check completed: {len(diff_analysis)} chars")
+                            return diff_analysis
+                # Fallback parsing
+                if isinstance(result, str):
+                    return result
+                return str(result)
+            elif 'error' in response_data:
+                log.error(f"MCP error for {tool_name}: {response_data['error']}")
+                return None
+            else:
+                log.error(f"Unexpected response for {tool_name}: {response_data}")
+                return None
+                
+        except Exception as e:
+            log.error(f"ui_diff_check failed: {e}", exc_info=True)
+            return None
+    
+    def ui_diff_check_sync(self, prev_image_path: str, curr_image_path: str, max_attempts: int = 2) -> Optional[str]:
+        """
+        Synchronous wrapper for ui_diff_check with limited retries.
+        
+        Unlike analyze_image_sync which retries forever, this has limited retries
+        since diff analysis is optional/supplementary context.
+        
+        Args:
+            prev_image_path: Path to previous screenshot
+            curr_image_path: Path to current screenshot
+            max_attempts: Maximum retry attempts (default 2)
+            
+        Returns:
+            Diff analysis or None if failed after retries
+        """
+        import time as time_module
+        
+        log.info(f"🔍 Starting ui_diff_check (max {max_attempts} attempts)")
+        
+        for attempt in range(max_attempts):
+            try:
+                result = asyncio.run(self.ui_diff_check(prev_image_path, curr_image_path))
+                if result:
+                    log.info(f"✅ ui_diff_check succeeded on attempt {attempt + 1}")
+                    return result
+                else:
+                    log.warning(f"ui_diff_check returned empty on attempt {attempt + 1}")
+            except Exception as e:
+                log.error(f"ui_diff_check attempt {attempt + 1} failed: {e}")
+            
+            if attempt < max_attempts - 1:
+                time_module.sleep(1.0)
+        
+        log.warning(f"ui_diff_check failed after {max_attempts} attempts")
+        return None
+
     async def stop_mcp_server(self):
         """Stop the MCP server"""
         if self.mcp_process:
