@@ -388,6 +388,12 @@ Use this structure in <game_analysis> tags:
      * Go to the EDGE of the map in that direction before changing
      * Think: "Am I covering new ground or retracing my steps?"
 
+   **VERIFIED EXIT CHECK (BEFORE APPROACHING ANY DOOR)**:
+   - CHECK MEMORY_CONTEXT for Exit Tiles that are ALREADY VERIFIED.
+   - If the exit I'm approaching is labeled "VIRIDIAN_SCHOOL" in memory → DO NOT ENTER if I'm looking for Pokemon Center!
+   - Rule: "I will CHECK the World Coordinates of my destination against memory BEFORE moving."
+   - Example: World[21,15] -> VIRIDIAN_SCHOOL (VERIFIED). I need Pokemon Center, so SKIP THIS EXIT.
+
    **EXIT & RE-ENTRY AWARENESS (SPATIAL COMMON SENSE - CRITICAL)**:
    - **JUST EXITED A BUIDING?**: The door is usually **immediately BEHIND you** or **ABOVE you**.
      * If you just exited a building (e.g. SCHOOL -> CITY), **DO NOT GO NORTH IMMEDIATELY**!
