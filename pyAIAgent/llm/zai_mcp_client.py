@@ -678,13 +678,26 @@ class ZAIMCPClient:
 
             # Read response with short timeout - 10s for vision to keep cycles fast
             log.info(f"Waiting for MCP server response for {tool_name}...")
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=20.0)
+            # Windows needs longer timeout for MCP vision
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=120.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")
                 # Check if server is still running
                 if self.mcp_process.poll() is not None:
                     log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
+                # Try to read stderr for any error messages (non-blocking)
+                try:
+                    import select
+                    import sys
+                    if sys.platform != 'win32' and self.mcp_process.stderr:
+                        ready, _, _ = select.select([self.mcp_process.stderr], [], [], 0.1)
+                        if ready:
+                            stderr_output = self.mcp_process.stderr.read(4096)
+                            if stderr_output:
+                                log.error(f"MCP stderr: {stderr_output.decode('utf-8', errors='replace')}")
+                except Exception as e:
+                    log.debug(f"Could not read stderr: {e}")
                 # Return None to trigger retry in analyze_image_sync
                 return None
                 
