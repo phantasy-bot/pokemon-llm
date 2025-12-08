@@ -19,6 +19,10 @@ const INITIAL_GAME_STATE: PokemonGameState = {
   modelName: "N/A",
   tokensUsed: 0,
   minimapVisible: false,
+  debugMode: false,
+  currentCycleTime: 0,
+  prevCycleTime: 0,
+  avgCycleTime: 0,
 };
 
 function App() {
@@ -95,7 +99,11 @@ function App() {
     if (
       data.actions !== undefined ||
       data.badges !== undefined ||
-      data.currentTeam !== undefined
+      data.currentTeam !== undefined ||
+      data.currentCycleTime !== undefined ||
+      data.prevCycleTime !== undefined ||
+      data.avgCycleTime !== undefined ||
+      data.cycleTiming !== undefined
     ) {
       setGameState((prev) => {
         const newState = { ...prev };

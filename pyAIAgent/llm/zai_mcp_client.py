@@ -35,8 +35,8 @@ class ZAIMCPClient:
         self._mcp_lock = threading.Lock()
         self._request_cancelled = False  # Flag to cancel pending requests
         
-        # SIMPLIFIED RETRY SYSTEM: 3 attempts → restart MCP → repeat forever (never give up)
-        self.max_attempts_before_restart = 3
+        # SIMPLIFIED RETRY SYSTEM: 2 attempts → restart MCP → repeat forever (never give up)
+        self.max_attempts_before_restart = 2
         self._attempt_count = 0
         self._restart_count = 0
         
@@ -401,8 +401,8 @@ class ZAIMCPClient:
             self.mcp_process.stdin.write(request_json.encode())
             self.mcp_process.stdin.flush()
             
-            # Wait for response (shorter timeout since diff should be faster)
-            response_data = self._read_response_with_id_match(request_id, timeout=60.0)
+            # Wait for response with short timeout to prevent blocking
+            response_data = self._read_response_with_id_match(request_id, timeout=20.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout)")
@@ -432,7 +432,7 @@ class ZAIMCPClient:
             log.error(f"ui_diff_check failed: {e}", exc_info=True)
             return None
     
-    def ui_diff_check_sync(self, prev_image_path: str, curr_image_path: str, max_attempts: int = 2) -> Optional[str]:
+    def ui_diff_check_sync(self, prev_image_path: str, curr_image_path: str, max_attempts: int = 2, timeout: int = 10) -> Optional[str]:
         """
         Synchronous wrapper for ui_diff_check with limited retries.
         
@@ -443,6 +443,7 @@ class ZAIMCPClient:
             prev_image_path: Path to previous screenshot
             curr_image_path: Path to current screenshot
             max_attempts: Maximum retry attempts (default 2)
+            timeout: Maximum time in seconds for each diff attempt (default 10)
             
         Returns:
             Diff analysis or None if failed after retries
@@ -564,9 +565,9 @@ class ZAIMCPClient:
             self.mcp_process.stdin.write(request_json.encode())
             self.mcp_process.stdin.flush()
 
-            # Read response, draining any stale responses
+            # Read response with short timeout - 10s for vision to keep cycles fast
             log.info(f"Waiting for MCP server response for {tool_name}...")
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=90.0)
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=20.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")

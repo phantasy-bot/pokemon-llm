@@ -146,6 +146,7 @@ def get_sprites(sock) -> list[tuple[int, int]]:
                 # Simple sanity check for map bounds (0-30 roughly)
                 if 0 <= idx_x < 80 and 0 <= idx_y < 80:
                     sprites.append((idx_x, idx_y))
+                    print(f"DEBUG Sprite {i}: ID={picture_id} Raw=({x_raw},{y_raw}) -> ({idx_x},{idx_y})", file=sys.stderr)
         
         # Debug log to verify we are getting data
         if sprites:
@@ -169,20 +170,10 @@ def prep_llm(sock) -> dict:
 
     if loc:
         mid, x, y, facing, mapName = loc
-        sprites = get_sprites(sock)
-        
-        # Filter out the player sprite if it appears in the table (usually slot 0 is player, but double check logic)
-        # Actually in Gen 1, player coordinates are at 0xD362/0xD361 (which get_location reads).
-        # The sprite table at 0xC200 describes OTHER map objects (NPCs, items balls, etc).
-        # Sometimes slot 0 of C200 IS the player, sometimes not. 
-        # But usually we can just overlay all of them.
-        # Ideally, exclude sprite if it matches player position exactly?
-        # Let's filter out exact matches to avoid drawing 'N' on top of 'P'
-        
-        filtered_sprites = [s for s in sprites if s != (x, y)]
+
         
         rom_path = get_rom_path()
-        minimap_img = dump_minimal_map(rom_path, mid, (x, y), sprites=filtered_sprites, grid_lines=True, crop=MINI_MAP_SIZE)
+        minimap_img = dump_minimal_map(rom_path, mid, (x, y), grid_lines=True, crop=MINI_MAP_SIZE)
         if minimap_img:
             minimap_img.save("minimap.png")
         else:
@@ -190,7 +181,7 @@ def prep_llm(sock) -> dict:
             from PIL import Image
             default_minimap = Image.new('RGB', (160, 160), color='gray')
             default_minimap.save("minimap.png")
-        map2D = dump_minimap_map_array(rom_path, mid, (x, y), sprites=filtered_sprites, crop=MINI_MAP_SIZE)
+        map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
         position = (x, y)
     else:
         # no map data or in battle → create default white minimap
