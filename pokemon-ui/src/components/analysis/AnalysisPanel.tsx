@@ -17,7 +17,7 @@ const ROTATION_INTERVAL = 15000;
 interface AnalysisPanelProps {
   logs: LogEntry[];
   isProcessing?: boolean;
-  processingStatus?: string; // Dynamic status text: "ANALYZING VISION...", "THINKING...", etc.
+  // Note: processingStatus moved to OBS widget (obs-widgets/status_widget.html)
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
 }
@@ -25,12 +25,13 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({
   logs,
   isProcessing = false,
-  processingStatus = "",
   memoryWrite,
   onMemoryWriteClear,
 }: AnalysisPanelProps) {
   // @ts-expect-error - Parameter not used yet
   const _onMemoryWriteClear = onMemoryWriteClear;
+  // @ts-expect-error - Parameter kept for future use
+  const _isProcessing = isProcessing;
 
   const [currentKeyart, setCurrentKeyart] = useState(0);
   const [persistedMemory, setPersistedMemory] = useState<string | null>(null);
@@ -64,21 +65,7 @@ export function AnalysisPanel({
     latestVisionEntry ||
     (logs.length > 0 ? logs[0] : null);
 
-  const renderThinkingText = () => {
-    // Use dynamic processingStatus if available, otherwise default to "THINKING..."
-    const text = processingStatus || "THINKING...";
-    return (
-      <span className="analysis-panel__thinking-text">
-        {text.split("").map((char, i) => (
-          <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>
-            {char === " " ? "\u00A0" : char}
-          </span>
-        ))}
-      </span>
-    );
-  };
-
-
+  // Note: Thinking animation moved to OBS widget (obs-widgets/status_widget.html)
 
   return (
     <div className="analysis-panel-container">
@@ -107,11 +94,7 @@ export function AnalysisPanel({
             </div>
           </div>
           
-          {/* Thinking Animation - Bottom Center */}
-          <div className={`analysis-panel__thinking-bottom ${isProcessing ? 'active' : ''}`}>
-            <div className="analysis-panel__thinking-spinner" />
-            {renderThinkingText()}
-          </div>
+          {/* Status animation moved to OBS widget (obs-widgets/status_widget.html) */}
         </div>
 
         {/* 2. Vision Section (Fixed Height, Row Layout) */}
