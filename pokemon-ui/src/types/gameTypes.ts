@@ -168,6 +168,16 @@ export interface PokemonGameState {
   modelName: string;
   tokensUsed: number;
   cycleTiming?: string; // Cycle duration and wait time, e.g. "40.2s | wait 10.0s"
+  currentCycleTime?: number; // Current cycle duration in seconds
+  prevCycleTime?: number; // Previous cycle duration in seconds
+  avgCycleTime?: number; // Average cycle time over last 20 cycles
+  cycleMetrics?: {
+    mGBA?: number; // mGBA game state request time in seconds
+    vision?: number; // Vision analysis time in seconds
+    diff?: number; // Diff analysis time in seconds
+    llm?: number; // LLM inference time in seconds
+    total?: number; // Total cycle time in seconds (true wall-clock time)
+  };
 
   // UI State
   inMenu?: boolean;
@@ -177,6 +187,7 @@ export interface PokemonGameState {
   screenshotUrl?: string;
   minimapSrc?: string;
   minimapVisible: boolean;
+  debugMode?: boolean;
   llmMetrics?: {
     p50LatencySec?: number;
     p95LatencySec?: number;

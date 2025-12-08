@@ -154,6 +154,10 @@ class RunPersistence:
                     vision_analysis TEXT,
                     position_json TEXT,
                     map_name TEXT,
+                    vision_duration_ms REAL,
+                    diff_duration_ms REAL,
+                    llm_duration_ms REAL,
+                    cycle_duration_ms REAL,
                     FOREIGN KEY (run_id) REFERENCES runs(id)
                 )
             """)
@@ -169,6 +173,10 @@ class RunPersistence:
                 ("vision_analysis", "TEXT"),
                 ("position_json", "TEXT"),
                 ("map_name", "TEXT"),
+                ("vision_duration_ms", "REAL"),
+                ("diff_duration_ms", "REAL"),
+                ("llm_duration_ms", "REAL"),
+                ("cycle_duration_ms", "REAL")
             ]
             for col_name, col_type in action_log_columns:
                 try:
@@ -345,16 +353,25 @@ class RunPersistence:
         llm_analysis: Optional[str] = None,
         vision_analysis: Optional[str] = None,
         position: Optional[List[int]] = None,
-        map_name: Optional[str] = None
+        map_name: Optional[str] = None,
+        metrics: Optional[Dict[str, float]] = None
     ):
         """Log a single action with associated data."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
+            
+            # Extract metrics if provided
+            v_dur = metrics.get("vision", 0) if metrics else 0
+            d_dur = metrics.get("diff", 0) if metrics else 0
+            l_dur = metrics.get("llm", 0) if metrics else 0
+            c_dur = metrics.get("cycle", 0) if metrics else 0
+
             cursor.execute("""
                 INSERT INTO action_log 
-                (run_id, timestamp, action, screenshot_b64, llm_analysis, vision_analysis, position_json, map_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (run_id, timestamp, action, screenshot_b64, llm_analysis, vision_analysis, position_json, map_name,
+                 vision_duration_ms, diff_duration_ms, llm_duration_ms, cycle_duration_ms)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 run_id,
                 datetime.now().isoformat(),
@@ -363,7 +380,8 @@ class RunPersistence:
                 llm_analysis,
                 vision_analysis,
                 json.dumps(position) if position else None,
-                map_name
+                map_name,
+                v_dur, d_dur, l_dur, c_dur
             ))
             conn.commit()
         finally:
@@ -398,6 +416,51 @@ class RunPersistence:
             
             rows = cursor.fetchall()
             return [dict(row) for row in reversed(rows)]
+        finally:
+            conn.close()
+    
+    def get_ui_logs(self, run_id: int, limit: int = 10) -> List[Dict]:
+        """Get recent log entries formatted for UI display (vision + response)."""
+        conn = self._get_conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, timestamp, llm_analysis, vision_analysis
+                FROM action_log
+                WHERE run_id = ?
+                ORDER BY id DESC
+                LIMIT ?
+            """, (run_id, limit))
+            
+            rows = cursor.fetchall()
+            logs = []
+            for row in reversed(rows):
+                row_id = row["id"]
+                ts = row["timestamp"]
+                
+                # Add vision entry if present
+                if row["vision_analysis"]:
+                    logs.append({
+                        "id": f"vision-{row_id}",
+                        "timestamp": ts,
+                        "text": row["vision_analysis"],
+                        "is_vision": True,
+                        "is_response": False,
+                        "is_action": False
+                    })
+                
+                # Add response entry if present
+                if row["llm_analysis"]:
+                    logs.append({
+                        "id": f"response-{row_id}",
+                        "timestamp": ts,
+                        "text": row["llm_analysis"],
+                        "is_vision": False,
+                        "is_response": True,
+                        "is_action": False
+                    })
+            
+            return logs
         finally:
             conn.close()
     

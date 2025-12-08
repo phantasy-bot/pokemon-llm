@@ -207,6 +207,19 @@ function extractActions(text: string): string[] {
 
 
 // Format log text with highlighting and proper markdown parsing
+const TOWN_COLORS: Record<string, string> = {
+  "PALLET": "#b888f8",
+  "VIRIDIAN": "#7ff71f",
+  "PEWTER": "#909078",
+  "CERULEAN": "#2840f8",
+  "VERMILLION": "#f89800",
+  "LAVENDER": "#c820f8",
+  "CELADON": "#28f828",
+  "SAFFRON": "#f8f800",
+  "FUSCHIA": "#f87878",
+  "CINNABAR": "#f84040"
+};
+
 function formatLogText(text: string): string {
   // Try to extract and format structured analysis JSON first
   const analysisMatch = text.match(/<game_analysis>([\s\S]*?)<\/game_analysis>/);
@@ -268,10 +281,24 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/<game_analysis>/gi, '');
   formattedText = formattedText.replace(/<\/game_analysis>/gi, '');
 
-  // Highlight coordinates
+  // Highlight coordinates like [7,1]
   const coordRegex = /(\[\d+,\s*\d+\])/g;
   formattedText = formattedText.replace(coordRegex, (match) => {
-    return `<span class="coordinate">${match}</span>`;
+    return `<span class="grid-coordinate">${match}</span>`;
+  });
+  
+  // Highlight Grid coordinates like Grid[2,7]
+  const gridCoordRegex = /(Grid\s*\[\d+,\s*\d+\])/gi;
+  formattedText = formattedText.replace(gridCoordRegex, (match) => {
+    return `<span class="grid-coordinate">${match}</span>`;
+  });
+
+  // Highlight Town Names (no shadow, just color)
+  const townRegex = /\b(Pallet|Viridian|Pewter|Cerulean|Vermillion|Lavender|Celadon|Saffron|Fuschia|Cinnabar)(?:\s+(?:City|Town))?\b/gi;
+  formattedText = formattedText.replace(townRegex, (match, cityName) => {
+     const key = cityName.toUpperCase();
+     const color = TOWN_COLORS[key] || "#ffffff";
+     return `<span class="town-name" style="color: ${color};">${match}</span>`;
   });
 
   // Highlight action sequences

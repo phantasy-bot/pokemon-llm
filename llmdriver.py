@@ -56,30 +56,58 @@ def translate_cardinal_to_buttons(action_str: str) -> str:
     if not action_str:
         return action_str
     
-    # Check if cardinal directions are being used (N, E, or W present)
-    has_cardinal = any(c in action_str.upper() for c in ['N', 'E', 'W'])
+    # Split into potential tokens to avoid replacing inside words (e.g. START -> DTART)
+    tokens = action_str.replace(';', ' ; ').split()
+    translated_tokens = []
     
-    # Build translation - N->U, E->R, W->L always
-    # S->D only if we detected cardinal direction usage
-    result = action_str
-    result = result.replace('N', 'U').replace('n', 'u')  # North -> Up
-    result = result.replace('E', 'R').replace('e', 'r')  # East -> Right  
-    result = result.replace('W', 'L').replace('w', 'l')  # West -> Left
+    for token in tokens:
+        upper_token = token.upper()
+        # Direct cardinal translations
+        if upper_token in ['NORTH', 'N']:
+            translated_tokens.append('U')
+        elif upper_token in ['EAST', 'E']:
+            translated_tokens.append('R')
+        elif upper_token in ['WEST', 'W']:
+            translated_tokens.append('L')
+        elif upper_token == 'SOUTH': # Explicit SOUTH -> DOWN
+            translated_tokens.append('D')
+        elif upper_token == 'S': 
+             # Ambiguous 'S'. If context suggests directions, maybe? 
+             # But user said: "if we detect that it tried to do 'SOUTH' then we deterministicaly translate to DOWN... we didn't want it to do 'S' which is Start by accident"
+             # So 'S' should remain 'S' (Start/Select) unless it explicitly wrote SOUTH.
+             # Ideally the LLM shouldn't write SOUTH. If it does, we map to D.
+             # If it writes 'S', we assume it means 'S' button (Start/Select handling elsewhere or handled by mGBA as S=Start?)
+             # Actually, checking `input_map`: S usually maps to Start? Or Select?
+             # Let's keep S as S.
+             translated_tokens.append('S')
+        elif upper_token == 'DOWN':
+             translated_tokens.append('D')
+        elif upper_token == 'UP':
+             translated_tokens.append('U')
+        elif upper_token == 'LEFT':
+             translated_tokens.append('L')
+        elif upper_token == 'RIGHT':
+             translated_tokens.append('R')
+        else:
+            translated_tokens.append(token)
+            
+    # Rejoin
+    result = "".join(translated_tokens)
+    # Fix spacing if we added too many spaces around semicolons, though `send_command` handles spaces fine usually.
+    # But let's be clean.
+    result = result.replace(' ; ', ';')
     
-    if has_cardinal:
-        # Only translate S->D when in cardinal direction context
-        result = result.replace('S', 'D')  # South -> Down (keep lowercase 's' as SELECT)
+    if result != action_str:
         log.info(f"🔄 Translated cardinal directions: {action_str} -> {result}")
     
     return result
 
 
 if(IS_LOCAL):
-
-    # Often slow inference
-    STREAM_TIMEOUT = 120
+    # Reduced for faster cycles
+    STREAM_TIMEOUT = 30
 else:
-    STREAM_TIMEOUT = 60
+    STREAM_TIMEOUT = 30
 
 CLEANUP_WINDOW = 10 # Sometimes 4 is a good choice for local
 
@@ -410,19 +438,20 @@ def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-LLM_TOTAL_TIMEOUT = STREAM_TIMEOUT + 30     # e.g. 90 s / 150 s
+LLM_TOTAL_TIMEOUT = 60  # Fixed 60s cycle timeout
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 async def call_llm_with_timeout(state_data: dict,
                                 llm_timeout: float = STREAM_TIMEOUT,
                                 total_timeout: float = LLM_TOTAL_TIMEOUT,
-                                benchmark: Benchmark = None):
+                                benchmark: Benchmark = None,
+                                cycle_metrics: dict = None):
     """
     Run `llm_stream_action` in a worker thread and abort the whole thing
     (token‑counting, API call, streaming, parsing…) after `total_timeout` s.
     """
     loop = asyncio.get_running_loop()
-    fn   = functools.partial(llm_stream_action, state_data, llm_timeout, benchmark)
+    fn   = functools.partial(llm_stream_action, state_data, llm_timeout, benchmark, cycle_metrics)
 
     try:
         # run blocking LLM code in a thread, wait with an asyncio timeout
@@ -527,7 +556,7 @@ def next_with_timeout(iterator, timeout: float):
             raise TimeoutError(f"No chunk received in {timeout}s")
 
 
-def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchmark: Benchmark = None):
+def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchmark: Benchmark = None, cycle_metrics: dict = None):
     """
     Determines and executes an action by querying an LLM.
 
@@ -537,6 +566,8 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     - For other models, it streams the response for lower perceived latency.
     - For Z.AI mode, it optionally uses MCP vision server for image analysis.
     """
+    if cycle_metrics is None:
+        cycle_metrics = {}
     global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE
 
     summary_json = None
@@ -681,7 +712,13 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     
                     # Update status for OBS widget
                     update_processing_status("ANALYZING VISION...")
+                    t_vision_start = time.time()
                     vision_result = zai_vision_client.analyze_image_sync(target_image_path, factual_prompt)
+                    t_vision_end = time.time()
+                    cycle_metrics["vision"] = (t_vision_end - t_vision_start) * 1000
+                    log.info(f"⏱️ Vision Analysis: {t_vision_end - t_vision_start:.2f}s")
+                    
+                    update_processing_status("THINKING...")
 
                     # SUCCESS: Vision analysis completed successfully (this should always happen now)
                     log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
@@ -720,58 +757,44 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                             payload["detected_screen_type"] = detected_screen_type
                     
                     # ═══════════════════════════════════════════════════════════════
-                    # MULTI-DIFF CHECK - Compare current to all previous cycles (N-1 to N-4)
-                    # Runs in parallel using ThreadPoolExecutor for speed
+                    # SINGLE DIFF CHECK - Compare current to previous cycle (N-1 only)
+                    # Sequential execution to prevent MCP response ID conflicts
                     # ═══════════════════════════════════════════════════════════════
                     if diff_pairs:
                         try:
-                            log.info(f"🔄 Running {len(diff_pairs)} parallel ui_diff_checks")
-                            update_processing_status(f"COMPARING {len(diff_pairs)} SCREENSHOTS...")
+                            # Only use the most recent diff pair (N-1)
+                            single_pair = diff_pairs[0] if diff_pairs else None
                             
-                            def run_single_diff(pair):
-                                """Run a single diff check - called in parallel."""
-                                prev_cycle, prev_path, curr_path = pair
+                            if single_pair:
+                                prev_cycle, prev_path, curr_path = single_pair
+                                log.info(f"🔄 Running single ui_diff_check (cycle {prev_cycle} vs current)")
+                                update_processing_status(f"COMPARING TO PREVIOUS CYCLE...")
+                                
+                                t_diff_start = time.time()
+                                
                                 try:
                                     result = zai_vision_client.ui_diff_check_sync(
-                                        prev_path, curr_path, max_attempts=1
+                                        prev_path, curr_path, max_attempts=1, timeout=10
                                     )
                                     if result:
                                         # Clean up result
                                         cleaned = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', result)
                                         if len(cleaned) > 31:
                                             cleaned = cleaned[17:-14]
-                                        return {"cycle": prev_cycle, "diff": cleaned}
+                                        log.info(f"UI Diff result: {cleaned}")
+                                        
+                                        # Add to payload
+                                        payload["ui_changes_from_previous_cycle"] = cleaned
+                                        payload["temporal_diffs"] = f"TEMPORAL CHANGES (vs cycle {prev_cycle}):\n{cleaned[:300]}"
+                                        log.info(f"🔄 Diff completed for cycle {prev_cycle}")
+                                    else:
+                                        log.info("🔄 Diff returned no result")
                                 except Exception as e:
                                     log.warning(f"Diff for cycle {prev_cycle} failed: {e}")
-                                return None
-                            
-                            # Run diffs in parallel
-                            all_diffs = []
-                            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                                futures = {executor.submit(run_single_diff, pair): pair for pair in diff_pairs}
-                                for future in concurrent.futures.as_completed(futures, timeout=90):
-                                    try:
-                                        result = future.result()
-                                        if result:
-                                            all_diffs.append(result)
-                                    except Exception as e:
-                                        log.warning(f"Diff future failed: {e}")
-                            
-                            # Sort by cycle (most recent first)
-                            all_diffs.sort(key=lambda x: -x["cycle"])
-                            
-                            if all_diffs:
-                                # Format as temporal context
-                                temporal_context = "TEMPORAL CHANGES (what changed from previous cycles):\n"
-                                for diff_info in all_diffs:
-                                    cycles_ago = screenshot_path and diff_info["cycle"]
-                                    temporal_context += f"\n[Cycle {diff_info['cycle']}]: {diff_info['diff'][:300]}"
                                 
-                                payload["temporal_diffs"] = temporal_context
-                                payload["ui_changes_from_previous_cycle"] = all_diffs[0]["diff"] if all_diffs else ""
-                                log.info(f"🔄 {len(all_diffs)} diffs completed: {[d['cycle'] for d in all_diffs]}")
-                            else:
-                                log.info("🔄 No diffs completed successfully")
+                                t_diff_end = time.time()
+                                cycle_metrics["diff"] = (t_diff_end - t_diff_start) * 1000
+                                log.info(f"⏱️ UI Diff Check: {t_diff_end - t_diff_start:.2f}s")
                                 
                         except Exception as diff_error:
                             log.warning(f"Multi-diff failed (non-critical): {diff_error}")
@@ -1011,7 +1034,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                         "Content-Type": "application/json"
                     }
 
-                    with httpx.Client(timeout=90.0) as http_client:
+                    with httpx.Client(timeout=30.0) as http_client:
                         response = http_client.post(
                             f"{client.base_url}chat/completions",
                             json=api_data,
@@ -1051,7 +1074,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     raise e
             else:
                 kwargs["reasoning_effort"] = REASONING_EFFORT
+                t_llm_start = time.time()
                 response = client.chat.completions.create(**kwargs)
+                t_llm_end = time.time()
+                cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
+                log.info(f"⏱️ LLM Generation: {t_llm_end - t_llm_start:.2f}s")
+                update_processing_status("EXECUTING...")
             choice = response.choices[0]
             content = choice.message.content
 
@@ -1392,10 +1420,29 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
     b64_mm = None
     
+    # Capture the main event loop for thread-safe callbacks
+    loop = asyncio.get_running_loop()
+    
+    # Define thread-safe status callback for vision updates (called from executor threads)
+    def status_callback(status: str):
+        state["processingStatus"] = status
+        # Use run_coroutine_threadsafe to schedule the async broadcast on the main loop
+        # This is required because this callback is invoked from llm_stream_action running in a ThreadPoolExecutor
+        asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
+
+    # Set the global callback
+    set_status_callback(status_callback)
+
     # Persistence save interval (save every N cycles)
     PERSIST_INTERVAL = 5
     cycles_since_persist = 0
-
+    
+    # Track previous cycle time for UI display
+    prev_cycle_time_s = 0.0
+    cycle_times_history = []  # List of recent cycle times for average calculation
+    
+    # mGBA timeout - if no response in this time, restart the cycle
+    MGBA_TIMEOUT = 20  # seconds
 
     benchInstructions = ""
     if benchmark is not None:
@@ -1430,6 +1477,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     else:
         chat_history = [{"role": "system", "content": fresh_system_prompt}]
 
+    # Track consecutive mGBA failures across cycle retries
+    # This persists across loop iterations so we can detect when mGBA is completely dead
+    consecutive_mgba_failures = 0
+    MAX_CONSECUTIVE_FAILURES = 10  # Exit after 10 consecutive mGBA failures
+
     while action_count < max_loops:
         loop_start_time = time.time()
         cycle_count += 1
@@ -1445,10 +1497,49 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # Broadcast cycle count immediately
         update_payload = {"cycle": current_cycle}
         action_payload = {}
+        
+        # Performance metrics container
+        cycle_metrics = {"mGBA": 0.0, "vision": 0.0, "diff": 0.0, "llm": 0.0, "cycle": 0.0}
+        
+        # Track true cycle start time (persists across restarts within same cycle)
+        true_cycle_start = time.time()
+        
+        # Initialize result to prevent NameError if loop breaks early
+        result = None
 
         try:
             log.info("Requesting game state from mGBA...")
-            current_mGBA_state = prep_llm(sock)
+            t_mgba_start = time.time()
+            
+            # Wrap prep_llm in async timeout to prevent indefinite blocking
+            loop = asyncio.get_event_loop()
+            try:
+                current_mGBA_state = await asyncio.wait_for(
+                    loop.run_in_executor(None, prep_llm, sock),
+                    timeout=MGBA_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                mgba_duration = time.time() - t_mgba_start
+                consecutive_mgba_failures += 1
+                log.error(f"⏱️ mGBA TIMEOUT after {mgba_duration:.1f}s (limit: {MGBA_TIMEOUT}s) - Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES})")
+                cycle_metrics["mGBA"] = mgba_duration * 1000  # Store in ms for consistency
+                
+                # Check if mGBA is completely dead
+                if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                    log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
+                    break
+                
+                # Decrement cycle_count to retry the same cycle number (it was incremented at loop start)
+                cycle_count -= 1
+                await asyncio.sleep(2)  # Brief pause before retry
+                continue
+            
+            mgba_duration = time.time() - t_mgba_start
+            cycle_metrics["mGBA"] = mgba_duration * 1000  # Store in ms
+            log.info(f"⏱️ mGBA Response: {mgba_duration:.2f}s")
+            
+            # Reset failure counter on success
+            consecutive_mgba_failures = 0
 
             if benchmark is not None:
                 # check if we complted the bench
@@ -1457,7 +1548,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
             #print(str(current_mGBA_state))
             if not current_mGBA_state:
-                log.error("Failed to get state from mGBA (prep_llm returned None). Skipping.")
+                consecutive_mgba_failures += 1
+                log.error(f"Failed to get state from mGBA (prep_llm returned None). Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}).")
+                
+                if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                    log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
+                    break
+                
+                cycle_count -= 1  # Retry same cycle number
                 await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
                 continue
             log.info("Received game state from mGBA.")
@@ -1484,7 +1582,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
              log.error(f"Socket error getting state from mGBA: {se}. Stopping loop.")
              break
         except Exception as e:
-            log.error(f"Error getting state from mGBA: {e}", exc_info=True)
+            consecutive_mgba_failures += 1
+            log.error(f"Error getting state from mGBA: {e} - Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES})", exc_info=True)
+            
+            if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
+                break
+            
+            cycle_count -= 1  # Retry same cycle number
             await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
             continue
 
@@ -1500,6 +1605,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # Track position for stuck detection
         current_pos = current_mGBA_state.get('position')
         current_map = current_mGBA_state.get('map_id')
+        stuck_info = {"is_stuck": False, "suggestion": ""}  # Default if no position data
         if current_pos and current_map:
             position_history.append((current_map, tuple(current_pos)))
             # Keep only last 10 positions
@@ -1552,11 +1658,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             llm_input_state["memory_context"] = memory_context
             log.info(f"📝 Memory context: {memory_context[:100]}...")
         
-        # Add NPC avoidance context
-        npc_context = memory_manager.get_npc_interaction_context(map_name)
-        if npc_context:
-            llm_input_state["npc_warning"] = npc_context
-            log.info(f"🚫 NPC context: {npc_context}")
+        # Add NPC avoidance context (only if map_name is available)
+        if map_name:
+            npc_context = memory_manager.get_npc_interaction_context(map_name)
+            if npc_context:
+                llm_input_state["npc_warning"] = npc_context
+                log.info(f"🚫 NPC context: {npc_context}")
         
         # Add learned strategies context
         # Build situation string from current state for relevance matching
@@ -1896,7 +2003,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         state["processingStatus"] = "ANALYZING VISION..."
         await broadcast_func({"processingStatus": "ANALYZING VISION..."})
 
-        action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(llm_input_state, benchmark=benchmark)
+        action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(
+            llm_input_state, 
+            benchmark=benchmark,
+            cycle_metrics=cycle_metrics  # Pass cycle_metrics here
+        )
 
         # Clear processing status after completion
         state["processingStatus"] = ""
@@ -2212,7 +2323,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                     llm_analysis=game_analysis[:2000] if game_analysis else None,
                     vision_analysis=vision_analysis_for_ui[:2000] if vision_analysis_for_ui else None,
                     position=current_pos,
-                    map_name=map_name
+                    map_name=map_name,
+                    metrics=cycle_metrics
                 )
             except Exception as pe:
                 log.warning(f"Failed to log action to database: {pe}")
@@ -2283,18 +2395,71 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         save_game_state(sock, slot=1)
 
         elapsed_loop_time = time.time() - loop_start_time
-        wait_time = max(10, interval - elapsed_loop_time) # Ensure at least 10 seconds wait
+        wait_time = max(5, interval - elapsed_loop_time) # Ensure at least 5 seconds wait
+        if result and result.get("stats", {}).get("action_count", 0) > 0:
+            log.info(f"💾 Cycle {current_cycle} action execution successful")
+            
+        t_cycle_end = time.time()
+        cycle_duration_s = t_cycle_end - loop_start_time  # Processing time (from successful mGBA response)
+        true_cycle_duration_s = t_cycle_end - true_cycle_start  # True wall clock time (includes mGBA retries)
+        cycle_metrics["cycle"] = true_cycle_duration_s * 1000  # Store TRUE cycle time
+        
+        log.info(f"⏱️ Total Cycle Time: {true_cycle_duration_s:.2f}s")
         log.info(f"Cycle {current_cycle} took {elapsed_loop_time:.2f}s. Waiting {wait_time:.2f}s...")
         
         # ═══════════════════════════════════════════════════════════════════
         # Broadcast cycle timing to UI
         # ═══════════════════════════════════════════════════════════════════
         cycle_timing_str = f"{elapsed_loop_time:.1f}s | wait {wait_time:.1f}s"
+        
+        # We need to update the log_action call (it happened inside llm_stream_action or executed via persistence object?)
+        # Actually persistence.log_action is called where? It hasn't been called yet for this cycle in this scope?
+        # Aah, log_action is usually called inside the execute loop or we need to pass these metrics to where it IS called.
+        # But wait, run_persistence.log_action is called in `run_auto_loop`? No, it's not.
+        # Looking at previous code, `persistence.log_action` was NOT called in `run_auto_loop` explicitly in the visible code. 
+        # It must be called elsewhere or I missed it.
+        # Let's check `llm_stream_action` returns `summary_json`? 
+        # Ah, `persistence` is global or passed?
+        # I need to find where `log_action` is called.
+        
+        pass # Placeholder to allow finding the callsite in next step if needed, or simply patching likely location.
+        
         if broadcast_func:
             try:
-                await broadcast_func({"cycleTiming": cycle_timing_str})
+                # Track cycle time for average calculation - use TRUE time
+                cycle_times_history.append(true_cycle_duration_s)
+                # Keep only last 20 cycles for average
+                if len(cycle_times_history) > 20:
+                    cycle_times_history.pop(0)
+                
+                # Calculate average
+                avg_cycle_time = sum(cycle_times_history) / len(cycle_times_history) if cycle_times_history else 0
+                
+                # Broadcast enhanced cycle metrics: current cycle, previous cycle, average, and detailed breakdown
+                cycle_metrics_payload = {
+                    "cycleTiming": cycle_timing_str,
+                    "currentCycleTime": round(true_cycle_duration_s, 1),  # TRUE wall clock time
+                    "prevCycleTime": round(prev_cycle_time_s, 1),
+                    "avgCycleTime": round(avg_cycle_time, 1),
+                    "cycleMetrics": {
+                        "mGBA": round(cycle_metrics.get("mGBA", 0) / 1000, 1),  # Convert ms to s
+                        "vision": round(cycle_metrics.get("vision", 0) / 1000, 1),
+                        "diff": round(cycle_metrics.get("diff", 0) / 1000, 1),
+                        "llm": round(cycle_metrics.get("llm", 0) / 1000, 1),
+                        "total": round(true_cycle_duration_s, 1)
+                    }
+                }
+                await broadcast_func(cycle_metrics_payload)
+                
+                # Also update the shared state so new clients get the values
+                state["currentCycleTime"] = round(true_cycle_duration_s, 1)
+                state["prevCycleTime"] = round(prev_cycle_time_s, 1)
+                state["avgCycleTime"] = round(avg_cycle_time, 1)
             except Exception as e:
                 log.warning(f"Failed to broadcast cycle timing: {e}")
+        
+        # Store current cycle time as previous for next iteration - use TRUE time
+        prev_cycle_time_s = true_cycle_duration_s
         
         # ═══════════════════════════════════════════════════════════════════════════
         # TWITCH CHAT RESPONSE PROCESSING (during wait period)

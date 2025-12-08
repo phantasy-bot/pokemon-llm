@@ -99,12 +99,31 @@
 /* .battle-entry--vision .battle-entry__text, ... removed */
 
 /* Text highlighting styles */
+
+/* Grid coordinates like [7,1] or Grid[2,7] - bold only */
+.log-entry__text :global(.grid-coordinate),
+.formatted-log-content .grid-coordinate {
+  font-weight: 700;
+  color: inherit;
+}
+
+/* Town names - bold with color, NO shadow */
+.log-entry__text :global(.town-name),
+.formatted-log-content .town-name {
+  font-weight: 700;
+}
+
+/* Legacy coordinate class */
 .log-entry__text :global(.coordinate) {
-  background: rgba(0, 255, 255, 0.2);
-  color: #00bcd4;
-  padding: 1px 3px;
-  border-radius: 3px;
-  font-weight: 600;
+  font-weight: 700;
+  color: inherit;
+}
+
+/* Summary mode - larger text for LLM response when showing just summary */
+.log-entry--response .log-entry__text,
+.log-entry--response .formatted-log-content {
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .log-entry__text :global(.action-type-button) {

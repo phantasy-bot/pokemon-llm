@@ -154,6 +154,7 @@ export function PokemonStreamOverlay({
               }
               memoryWrite={memoryWrite}
               onMemoryWriteClear={onMemoryWriteClear}
+              debugMode={gameState.debugMode}
             />
 
           </div>
@@ -168,9 +169,17 @@ export function PokemonStreamOverlay({
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {/* Cycle timing info - small, light text on the right */}
-            {gameState.cycleTiming && (
-              <span className="cycle-timing">{gameState.cycleTiming}</span>
+            {/* Cycle timing info - current, previous, and average cycle times */}
+            {gameState.currentCycleTime !== undefined && gameState.currentCycleTime > 0 && (
+              <span className="cycle-timing">
+                Cycle: {gameState.currentCycleTime}s
+                {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
+                  <> | Prev: {gameState.prevCycleTime}s</>
+                )}
+                {gameState.avgCycleTime !== undefined && gameState.avgCycleTime > 0 && (
+                  <> | Avg: {gameState.avgCycleTime}s</>
+                )}
+              </span>
             )}
           </div>
 
@@ -199,10 +208,16 @@ export function PokemonStreamOverlay({
           {/* Goals with TUI box styling */}
           <div className="goals-log">
             <span className="goals-log__label">GOALS</span>
-            <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
-            <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
-            <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
-            <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
+            {gameState.goals.primary === "Initializing..." ? (
+              <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
+            ) : (
+              <>
+                <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
+                <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
+                <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
+                <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
+              </>
+            )}
           </div>
         </div>
       </div>

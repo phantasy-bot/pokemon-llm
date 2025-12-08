@@ -176,7 +176,11 @@ state = {
     "tokensUsed": 0,
     "minimapLocation": "Unknown",
     "minimapTimestamp": 0,  # Timestamp for minimap image cache-busting
-    "log_entries": []
+    "log_entries": [],
+    "debugMode": False,  # Flag for UI display mode
+    "currentCycleTime": 0,  # Current cycle duration in seconds
+    "prevCycleTime": 0,  # Previous cycle duration in seconds
+    "avgCycleTime": 0,  # Average cycle time over last 20 cycles
 }
 
 def start_mgba_with_scripting(rom_path=None, port=config.PORT):
@@ -200,6 +204,17 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
                 log.info(f"🧹 Cleaned up stale file: {mf}")
             except Exception as e:
                 log.warning(f"Could not remove {mf}: {e}")
+    
+    # Clean up old snapshots from previous runs
+    snapshots_dir = "snapshots"
+    if os.path.exists(snapshots_dir):
+        try:
+            for f in os.listdir(snapshots_dir):
+                if f.endswith('.png'):
+                    os.remove(os.path.join(snapshots_dir, f))
+            log.info(f"🧹 Cleaned up old snapshots from {snapshots_dir}")
+        except Exception as e:
+            log.warning(f"Could not clean snapshots dir: {e}")
 
     cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT, rom_path]
     log.info(f"Starting mGBA: {' '.join(cmd)}")
@@ -445,6 +460,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_savestate', action='store_true', help='Load savestate 1 on mGBA start.')
     parser.add_argument('--benchmark', type=str, metavar='PATH', help='Path to a benchmark file to run.')
     parser.add_argument('--max_loops', type=max_loops_type, metavar='N', help='Maximum number of loops for the LLM driver to run.')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode (show full LLM analysis).')
 
     args = parser.parse_args()
 
@@ -463,6 +479,11 @@ if __name__ == '__main__':
     if args.benchmark:
         config.benchmark_path = args.benchmark
 
+    # Set debug mode in global state
+    if args.debug:
+        state['debugMode'] = True
+        log.info("🐛 Debug mode enabled: UI will show full analysis.")
+
     if args.auto:
         # Initialize run persistence
         persistence = RunPersistence()
@@ -480,6 +501,16 @@ if __name__ == '__main__':
             state['tokensUsed'] = run_state.tokens_used
             state['goals'] = run_state.goals
             state['otherGoals'] = run_state.other_goals
+            
+            # Restore UI logs from database so UI shows content immediately
+            try:
+                ui_logs = persistence.get_ui_logs(run_state.run_id, limit=10)
+                if ui_logs:
+                    state['log_history'] = ui_logs
+                    log.info(f"📜 Restored {len(ui_logs)} log entries for UI display")
+            except Exception as e:
+                log.warning(f"Could not restore UI logs: {e}")
+            
             log.info(f"📊 Restored state: {run_state.action_count} actions, {run_state.tokens_used} tokens")
         
         try:

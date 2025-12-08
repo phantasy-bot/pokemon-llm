@@ -8,17 +8,10 @@ from pyAIAgent.game.rom import (
 )
 
 SPECIAL_FEATURE_TILE_IDS = {
-    # Outdoor tileset doors/warps
     0x04, 0x05, 0x0C, 0x0D, 0x14, 0x15, 0x1C, 0x1D, 0x64, 0x65, 0x6C, 0x6D,
     0x66, 0x67, 0x6E, 0x6F, 0x7B, 0x5A, 0x5B, 0x5C, 0x5D, 0x30, 0x31, 0x32,
     0x33, 0x3A, 0x3B, 0x70, 0x71, 0x78, 0x79, 0x0E, 0x0F, 0x82, 0x83, 0x0A,
     0x0B, 0x1A, 0x1B,
-    # Indoor tileset door mats (for Oak's Lab and similar buildings)
-    0x54, 0x55, 0x56, 0x57, 0x58, 0x59,  # Indoor floor mat patterns
-    0x74, 0x75, 0x76, 0x77,  # Additional indoor transitions
-    0x80, 0x81, 0x84, 0x85,  # Door frame tiles
-    0x34, 0x35, 0x36, 0x37,  # Carpet/mat variations
-    0x24, 0x25, 0x26, 0x27,  # More indoor entrance tiles
 }
 
 def decode_tile(tile_bytes):
@@ -88,34 +81,11 @@ def calculate_walkable_special_quadrants(width, height, map_data, blocks, grid_d
                         and None not in tile_ids
                     )
 
-                    # Enhanced debug for OAKS_LAB coordinates (4,12) and (5,12)
-                    if (gx, gy) in [(4, 12), (5, 12)] or debug_tiles:
-                        tiles_str = ", ".join(
-                            [f"0x{tid:02X}" if tid is not None else "N/A" for tid in tile_ids]
-                        )
-                        walk_str = "Walkable" if is_walkable else "Blocked"
-                        print(f"DEBUG Coordinate ({gx},{gy}): Tiles=[{tiles_str}] Walkable={walk_str}", file=sys.stderr)
-
-                    # More flexible special detection - check if at least 2 tiles are special
-                    is_special_flexible = sum(1 for tid in tile_ids if tid is not None and tid in SPECIAL_FEATURE_TILE_IDS) >= 2
-
-                    # Use original strict logic but add enhanced debug
-                    is_special = (
-                        all(tid in SPECIAL_FEATURE_TILE_IDS for tid in tile_ids if tid is not None)
-                        and None not in tile_ids
-                    )
-
-                    # Special case: If at least 2 tiles are special and coordinate is a known entrance, mark as special
-                    if (gx, gy) in [(4, 12), (5, 12)] and is_special_flexible and is_walkable:
-                        is_special = True
-                        print(f"DEBUG: Special case - marking ({gx},{gy}) as entrance/exit tile", file=sys.stderr)
-
                     if debug_tiles:
                         tiles_str = ", ".join(
                             [f"0x{tid:02X}" if tid is not None else "N/A" for tid in tile_ids]
                         )
                         walk_str = "Walkable" if is_walkable else "Blocked"
-                        flexible_str = "Special(Flexible)" if is_special_flexible else "Normal"
                         special_str = (
                             "Special"
                             if is_special
@@ -130,7 +100,7 @@ def calculate_walkable_special_quadrants(width, height, map_data, blocks, grid_d
 
     return special_quadrants
 
-def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False, debug_coords=False, debug_tiles=False, crop=None):
+def dump_minimal_map(rom_path, map_id, pos=None, grid_lines=False, debug_coords=False, debug_tiles=False, crop=None):
     """
     Dumps minimal map (walkability/special) with optional overlays and cropping.
 
@@ -138,7 +108,6 @@ def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False,
         rom_path (str): Path to ROM file.
         map_id (int): Map ID.
         pos (tuple[int,int] or None): Grid-quadrant to mark (gx, gy).
-        sprites (list[tuple[int,int]]): List of sprite coordinates (gx, gy).
         grid_lines (bool): Whether to draw grid lines.
         debug_coords (bool): Whether to overlay coordinate text.
         debug_tiles (bool): Whether to print tile IDs during processing.
@@ -177,7 +146,6 @@ def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False,
             'marker': (0, 0, 255),
             'grid': (100, 100, 100),
             'debug_text': (0, 0, 255),
-            'sprite': (255, 0, 0), # Red for NPCs
         }
 
         font = None
@@ -228,19 +196,6 @@ def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False,
                     f"Warning: Marker pos {pos} OOB ({grid_w}x{grid_h}).",
                     file=sys.stderr
                 )
-        
-        # Draw Sprites
-        if sprites:
-            for sp in sprites:
-                sx, sy = sp
-                if 0 <= sx < grid_w and 0 <= sy < grid_h:
-                    cx, cy = sx * cell_size + cell_size // 2, sy * cell_size + cell_size // 2
-                    radius = cell_size // 2 - 4
-                    draw.ellipse(
-                        [(cx - radius, cy - radius), (cx + radius, cy + radius)],
-                        fill=colors['sprite'],
-                        outline=colors['sprite']
-                    )
 
         # --- Cropping Logic inside dump_minimal_map ---
         if crop:
@@ -290,7 +245,7 @@ def dump_minimal_map(rom_path, map_id, pos=None, sprites=None, grid_lines=False,
         return None
 
 
-def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
+def dump_minimap_map_array(rom_path, map_id, pos=None, crop=None):
     """
     Dumps a minimal map as a semicolon-separated 2D array string.
 
@@ -307,7 +262,6 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
         rom_path (str): Path to ROM file.
         map_id (int): Map ID.
         pos (tuple[int,int] or None): Grid-quadrant to mark (gx, gy) as 'P'.
-        sprites (list[tuple[int,int]]): List of sprite coordinates (gx, gy) to mark as 'N'.
         crop (tuple[int,int] or None): If provided, crop width,height around `pos` in quadrants.
 
     Returns:
@@ -356,16 +310,7 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
         else:
             left, right, top, bottom = 0, grid_w - 1, 0, grid_h - 1
 
-        # Convert sprites to a set for O(1) lookup - sprites are in WORLD coords
-        sprite_set = set(sprites) if sprites else set()
-        
         rows = []
-        # Debug logging for coordinate analysis
-        print(f"DEBUG: Player position pos={pos}", file=sys.stderr)
-        print(f"DEBUG: walkable_special coordinates: {sorted(list(walkable_special))}", file=sys.stderr)
-        print(f"DEBUG: sprite_set (world coords): {sprite_set}", file=sys.stderr)
-        print(f"DEBUG: Grid bounds: left={left}, top={top}, right={right}, bottom={bottom}", file=sys.stderr)
-
         for y in range(top, bottom + 1):
             row_chars = []
             for x in range(left, right + 1):
@@ -375,17 +320,13 @@ def dump_minimap_map_array(rom_path, map_id, pos=None, sprites=None, crop=None):
                 else:
                     is_special = (x, y) in walkable_special
                     is_walkable = grid_data[y][x]
-                    # CRITICAL: x,y here are WORLD coords (the loop goes from left to right which are world offsets)
-                    is_sprite = (x, y) in sprite_set
-                    
-                    if is_sprite:
-                        row_chars.append('N')  # NPC takes priority - show blockers!
-                    elif is_special:
+                    if is_special:
                         row_chars.append('O')
                     elif is_walkable:
                         row_chars.append('W')
                     else:
                         row_chars.append('B')
+            # (Debug: could print tile IDs if desired, but omitted here)
             rows.append("".join(row_chars))
 
         return ";".join(rows)
