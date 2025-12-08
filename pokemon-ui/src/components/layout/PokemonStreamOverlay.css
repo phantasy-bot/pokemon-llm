@@ -294,18 +294,81 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  overflow: hidden; /* Content never spills over to bottom section */
+  overflow: visible; /* Allow sheared labels to show */
   min-height: 0; /* Required for flex overflow to work */
 }
 
-/* Bottom section - Lass Character (60%) */
-.pokemon-goals__bottom {
-  flex: 1; /* Take remaining space (60%) */
+/* Character Container - 2 column layout (60%) */
+.character-container {
+  flex: 1; /* Take remaining 60% */
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-md);
+  overflow: hidden;
+}
+
+/* Left column - Commentary */
+.character-container__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Commentary text box in left column */
+.character-container__commentary {
+  flex: 2; /* Takes more space than spacer */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  padding-top: var(--space-lg);
+  margin-top: 10px; /* Space for sheared label */
+  
+  /* TUI Box Style */
+  border: 1px dotted var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.character-container__commentary-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  
+  /* Sheared position on top border */
+  position: absolute;
+  top: -8px;
+  left: var(--space-md);
+  background: var(--bg-panel);
+  padding: 0 6px;
+  z-index: 2;
+}
+
+.character-container__commentary-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Empty spacer at bottom of left column */
+.character-container__spacer {
+  flex: 1; /* Smaller than commentary */
+}
+
+/* Right column - Character image */
+.character-container__right {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  padding-top: var(--space-md);
 }
 
 /* Lass character image */

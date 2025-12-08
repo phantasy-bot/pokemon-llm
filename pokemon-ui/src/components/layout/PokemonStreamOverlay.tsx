@@ -202,7 +202,7 @@ export function PokemonStreamOverlay({
 
         {/* Right Column - Recent Actions and Goals */}
         <div className="pokemon-goals">
-          {/* Top Half - Actions and Goals (content never spills over) */}
+          {/* Top Section - Actions and Goals */}
           <div className="pokemon-goals__top">
             {/* Recent Actions - moved from left column */}
             <RecentActions logs={logs} totalActions={gameState.actions} />
@@ -223,13 +223,29 @@ export function PokemonStreamOverlay({
             </div>
           </div>
 
-          {/* Bottom Half - Lass Character Image */}
-          <div className="pokemon-goals__bottom">
-            <img 
-              src="/lass/lass-default.png" 
-              alt="Lass Pokemon Trainer" 
-              className="lass-character"
-            />
+          {/* Bottom Section - Character Container (2-column layout) */}
+          <div className="character-container">
+            {/* Left Column - Commentary */}
+            <div className="character-container__left">
+              {/* Commentary text box */}
+              <div className="character-container__commentary">
+                <span className="character-container__commentary-label">COMMENTARY</span>
+                <p className="character-container__commentary-text">
+                  Waiting for commentary...
+                </p>
+              </div>
+              {/* Empty bottom row for spacing */}
+              <div className="character-container__spacer" />
+            </div>
+            
+            {/* Right Column - Character Image */}
+            <div className="character-container__right">
+              <img 
+                src="/lass/lass-default.png" 
+                alt="Lass Pokemon Trainer" 
+                className="lass-character"
+              />
+            </div>
           </div>
         </div>
       </div>
