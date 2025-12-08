@@ -198,6 +198,8 @@ class MemoryManager:
     
     def get_npc_interaction_context(self, map_name: str) -> str:
         """Get context about NPCs to avoid in the current map."""
+        if not map_name:
+            return ""
         map_upper = map_name.upper()
         avoided = []
         

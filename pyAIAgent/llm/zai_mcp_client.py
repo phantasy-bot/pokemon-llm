@@ -113,22 +113,36 @@ class ZAIMCPClient:
             env['Z_AI_MODE'] = self.mode
 
             # Start MCP server using npx
-            cmd = [
-                'npx', '-y', '@z_ai/mcp-server'
-            ]
+            # On Windows, we need to find npx.cmd directly to avoid shell=True buffering issues
+            import sys
+            import shutil
+            is_windows = sys.platform == 'win32'
+            
+            if is_windows:
+                # Find npx.cmd or npx.exe in PATH
+                npx_path = shutil.which('npx.cmd') or shutil.which('npx')
+                if not npx_path:
+                    log.error("Could not find npx in PATH. Make sure Node.js is installed.")
+                    return
+                cmd = [npx_path, '-y', '@z_ai/mcp-server']
+                log.info(f"Windows: Using npx at {npx_path}")
+            else:
+                cmd = ['npx', '-y', '@z_ai/mcp-server']
 
             log.info("Starting Z.AI MCP vision server...")
             log.info(f"Command: {' '.join(cmd)}")
             log.info(f"Environment variables: Z_AI_API_KEY={'*' * len(self.api_key)}, Z_AI_MODE={self.mode}")
 
-            # Start the subprocess
+            # Start the subprocess WITHOUT shell=True
+            # shell=True causes stdin/stdout buffering issues on Windows
             self.mcp_process = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=env,
-                text=False  # Use bytes mode for proper MCP communication
+                text=False,  # Use bytes mode for proper MCP communication
+                shell=False  # CRITICAL: Don't use shell on Windows, causes buffering issues
             )
 
             # Give it a moment to start
@@ -157,16 +171,8 @@ class ZAIMCPClient:
         # Kill existing process
         if self.mcp_process:
             try:
-                # Drain any pending stdout to prevent buffer issues
-                import select
-                while True:
-                    ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
-                    if not ready:
-                        break
-                    data = self.mcp_process.stdout.read(1024)
-                    if not data:
-                        break
-                    log.debug(f"Drained {len(data)} bytes from stdout before restart")
+                # Note: On Windows, we can't easily drain stdout without blocking
+                # Just terminate the process directly
                 
                 self.mcp_process.terminate()
                 try:
@@ -226,8 +232,8 @@ class ZAIMCPClient:
         Returns:
             The response dict if found, None if timeout or error
         """
-        import select
         import time as time_module
+        import threading
         
         start_time = time_module.time()
         stale_count = 0
@@ -240,22 +246,38 @@ class ZAIMCPClient:
                 log.error(f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses")
                 return None
             
-            # Wait for data with remaining timeout
-            if hasattr(select, 'select'):
-                ready, _, _ = select.select([self.mcp_process.stdout], [], [], min(remaining_timeout, 5.0))
-                if not ready:
-                    if remaining_timeout <= 5.0:
-                        log.error(f"Timeout waiting for response id={expected_id}")
-                        return None
-                    continue  # Try again with remaining timeout
+            # Use threaded readline with timeout (cross-platform)
+            response_line = [None]
+            read_error = [None]
             
-            response_line = self.mcp_process.stdout.readline()
-            if not response_line:
+            def read_line():
+                try:
+                    response_line[0] = self.mcp_process.stdout.readline()
+                except Exception as e:
+                    read_error[0] = e
+            
+            read_thread = threading.Thread(target=read_line, daemon=True)
+            read_thread.start()
+            read_thread.join(timeout=min(remaining_timeout, 5.0))
+            
+            if read_thread.is_alive():
+                # Thread is still running, timeout occurred
+                if remaining_timeout <= 5.0:
+                    log.error(f"Timeout waiting for response id={expected_id}")
+                    return None
+                continue  # Try again with remaining timeout
+            
+            if read_error[0]:
+                log.error(f"Error reading from MCP: {read_error[0]}")
+                return None
+            
+            # Use the result from the thread
+            if not response_line[0]:
                 log.error("No response from MCP server (empty readline)")
                 return None
             
             try:
-                response_data = json.loads(response_line.decode())
+                response_data = json.loads(response_line[0].decode())
                 response_id = response_data.get('id')
                 
                 if response_id == expected_id:
@@ -295,23 +317,9 @@ class ZAIMCPClient:
             log.info("🔓 MCP lock acquired")
             self._request_cancelled = False  # Reset for this request
             
-            # Drain any stale responses before starting fresh
-            if self.mcp_process and self.mcp_process.stdout:
-                try:
-                    drained = 0
-                    while True:
-                        ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
-                        if not ready:
-                            break
-                        data = self.mcp_process.stdout.readline()
-                        if not data:
-                            break
-                        drained += 1
-                        log.debug(f"🗑️ Pre-drained stale response before new request")
-                    if drained > 0:
-                        log.info(f"🗑️ Drained {drained} stale responses before starting fresh")
-                except Exception as e:
-                    log.warning(f"Error draining stale responses: {e}")
+            # Note: On Windows, we can't easily drain stdout without blocking
+            # Skip draining on Windows, the ID matching mechanism will handle stale responses
+            pass
             
             log.info("🔍 Starting vision analysis (will retry forever until success)")
             
@@ -372,9 +380,20 @@ class ZAIMCPClient:
             log.error("MCP server not connected")
             return None
 
+        # CRITICAL FIX: Convert relative paths to absolute paths for Windows compatibility
+        # The MCP subprocess may have a different working directory on Windows
+        if not os.path.isabs(image_path):
+            image_path = os.path.abspath(image_path)
+            log.info(f"Converted to absolute path: {image_path}")
+
         if not os.path.exists(image_path):
             log.error(f"Image file not found: {image_path}")
             return None
+        
+        # Convert Windows backslashes to forward slashes for MCP compatibility
+        # Do this AFTER file existence check since os.path.exists needs native format
+        mcp_image_path = image_path.replace('\\', '/')
+        log.info(f"Using image path for MCP: {mcp_image_path}")
 
         try:
             # FIX: Cache tools list - only fetch once per session, not on every analyze call
@@ -427,7 +446,7 @@ class ZAIMCPClient:
                 "params": {
                     "name": tool_name,
                     "arguments": {
-                        "image_source": image_path,  # Use correct parameter name from schema
+                        "image_source": mcp_image_path,  # Use correct parameter name from schema
                         "prompt": prompt
                     }
                 }
