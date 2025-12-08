@@ -10,6 +10,7 @@ import subprocess
 import asyncio
 import time
 import threading
+import queue
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
@@ -49,6 +50,11 @@ class ZAIMCPClient:
         # Cache tools list - only fetch once per MCP session
         self._tools_cached = False
         self._available_tools = None
+
+        # Threading support for robust pipe reading
+        self.response_queue = queue.Queue()
+        self._reader_running = False
+        self._reader_thread = None
 
         log.info("Z.AI MCP Client initialized with SIMPLIFIED retry system + thread lock")
         log.info("Retry strategy: 3 attempts → restart MCP → repeat forever (never give up)")
@@ -135,15 +141,25 @@ class ZAIMCPClient:
 
             # Start the subprocess WITHOUT shell=True
             # shell=True causes stdin/stdout buffering issues on Windows
-            self.mcp_process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=env,
-                text=False,  # Use bytes mode for proper MCP communication
-                shell=False  # CRITICAL: Don't use shell on Windows, causes buffering issues
-            )
+            
+            # Windows-specific subprocess options
+            popen_kwargs = {
+                'stdin': subprocess.PIPE,
+                'stdout': subprocess.PIPE,
+                'stderr': subprocess.PIPE,
+                'env': env,
+                'bufsize': 0,  # Unbuffered - try to fix Windows pipe issues
+                'shell': False  # CRITICAL: Don't use shell on Windows
+            }
+            
+            # On Windows, prevent console window and ensure proper pipe behavior
+            if is_windows:
+                # CREATE_NO_WINDOW prevents a console window from appearing
+                # This also helps with proper pipe buffering
+                CREATE_NO_WINDOW = 0x08000000
+                popen_kwargs['creationflags'] = CREATE_NO_WINDOW
+            
+            self.mcp_process = subprocess.Popen(cmd, **popen_kwargs)
 
             # Give it a moment to start
             time.sleep(3)  # Increased startup time
@@ -170,6 +186,9 @@ class ZAIMCPClient:
                 stderr_thread = threading.Thread(target=monitor_stderr, daemon=True, name="MCP-stderr-monitor")
                 stderr_thread.start()
                 log.info("Started MCP stderr monitor thread")
+
+                # Start the robust persistent reader thread
+                self._start_reader_thread()
             else:
                 log.error(f"MCP server exited with code: {self.mcp_process.returncode}")
                 # Read stderr to see what went wrong
@@ -207,11 +226,157 @@ class ZAIMCPClient:
         self._available_tools = None
         self._attempt_count = 0
         self.is_connected = False
+        self._reader_running = False  # Stop the reader loop
         
         # Restart
         log.info("🔄 Starting fresh MCP server subprocess...")
         self._start_mcp_server_sync()
         log.info(f"🔄 MCP server restart #{self._restart_count} complete")
+
+    def _start_reader_thread(self):
+        """Start the persistent reader thread that consumes stdout"""
+        if self._reader_thread and self._reader_thread.is_alive():
+            return
+            
+        self._reader_running = True
+        self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True, name="MCP-stdout-reader")
+        self._reader_thread.start()
+        log.info("Started persistent MCP stdout reader thread")
+
+    def _reader_loop(self):
+        """
+        Persistent loop to read from MCP stdout and push to queue.
+        Handles both Windows (PeekNamedPipe) and Unix (read1) robustly.
+        """
+        import sys
+        import os
+        import json
+        
+        buffer = b''
+        silence_ticks = 0
+        
+        # Windows-specific setup
+        PeekNamedPipe = None
+        ReadFile = None
+        pipe_handle = None
+        
+        if sys.platform == 'win32':
+            try:
+                import ctypes
+                from ctypes import wintypes
+                import msvcrt
+                
+                kernel32 = ctypes.windll.kernel32
+                
+                # Get the OS handle for the pipe
+                fd = self.mcp_process.stdout.fileno()
+                pipe_handle = msvcrt.get_osfhandle(fd)
+                
+                # PeekNamedPipe function signature
+                PeekNamedPipe = kernel32.PeekNamedPipe
+                PeekNamedPipe.argtypes = [
+                    wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
+                    ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD),
+                    ctypes.POINTER(wintypes.DWORD)
+                ]
+                PeekNamedPipe.restype = wintypes.BOOL
+                
+                # ReadFile function signature
+                ReadFile = kernel32.ReadFile
+                ReadFile.argtypes = [
+                    wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD,
+                    ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p
+                ]
+                ReadFile.restype = wintypes.BOOL
+            except Exception as e:
+                log.error(f"Failed to setup Windows pipe logging: {e}")
+                return
+
+        log.info(f"Reader loop starting (Platform: {sys.platform})")
+        
+        while self._reader_running and self.mcp_process and self.mcp_process.poll() is None:
+            try:
+                if sys.platform == 'win32':
+                    # --- WINDOWS PATH ---
+                    bytes_available = ctypes.wintypes.DWORD()
+                    result = PeekNamedPipe(pipe_handle, None, 0, None, ctypes.byref(bytes_available), None)
+                    
+                    if not result:
+                        log.error(f"PeekNamedPipe failed. Result={result}")
+                        break
+                        
+                    if bytes_available.value == 0:
+                        # No data available
+                        if buffer:
+                            # Check for stalled buffer (Soft Flush)
+                            silence_ticks += 1
+                            if silence_ticks >= 10:  # 500ms
+                                stripped = buffer.strip()
+                                if stripped.endswith(b'}'):
+                                    log.debug(f"⚠️ WinPipe: Soft Flush triggered for {len(buffer)} bytes")
+                                    # Process immediately
+                                    self._process_buffer_line(buffer)
+                                    buffer = b''
+                        else:
+                            silence_ticks = 0
+                            
+                        import time as time_mod
+                        time_mod.sleep(0.05)
+                        continue
+                        
+                    # Data available
+                    silence_ticks = 0
+                    read_size = min(bytes_available.value, 4096)
+                    read_buf = ctypes.create_string_buffer(read_size)
+                    bytes_read = ctypes.wintypes.DWORD()
+                    
+                    success = ReadFile(pipe_handle, read_buf, read_size, ctypes.byref(bytes_read), None)
+                    
+                    if not success or bytes_read.value == 0:
+                        break
+                        
+                    chunk = read_buf.raw[:bytes_read.value]
+                    buffer += chunk
+                    
+                else:
+                    # --- UNIX PATH ---
+                    try:
+                        chunk = self.mcp_process.stdout.read1(4096)
+                    except AttributeError:
+                        chunk = self.mcp_process.stdout.read(1)
+                        
+                    if not chunk:
+                        break
+                        
+                    buffer += chunk
+                
+                # Common line processing
+                while b'\n' in buffer:
+                    line, buffer = buffer.split(b'\n', 1)
+                    self._process_buffer_line(line + b'\n')
+                    
+            except Exception as e:
+                log.error(f"Reader loop error: {e}")
+                import time as time_mod
+                time_mod.sleep(1)
+        
+        log.info("Reader loop terminated")
+
+    def _process_buffer_line(self, line_bytes):
+        """Process a raw line from the pipe and put into queue"""
+        try:
+            line = line_bytes.decode('utf-8').strip()
+            if not line:
+                return
+                
+            try:
+                data = json.loads(line)
+                self.response_queue.put(data)
+                # log.debug(f"Queue push: {data.get('id', 'unknown')}")
+            except json.JSONDecodeError:
+                log.warning(f"Failed to parse MCP JSON: {line[:100]}...")
+        except Exception as e:
+            log.error(f"Error processing line: {e}")
 
     def handle_vision_failure(self, error_message: str) -> bool:
         """
@@ -239,97 +404,43 @@ class ZAIMCPClient:
 
     def _read_response_with_id_match(self, expected_id: int, timeout: float = 30.0) -> Optional[dict]:
         """
-        Read responses from MCP server until we get one with the matching ID.
-        This drains any stale responses that may be buffered from previous cycles.
+        Read responses from Queue until we get one with the matching ID.
+        Drains queue of stale responses.
         
         Args:
             expected_id: The request ID we're looking for
             timeout: Maximum time to wait for matching response
-            
-        Returns:
-            The response dict if found, None if timeout or error
         """
         import time as time_module
-        import threading
-        
         start_time = time_module.time()
         stale_count = 0
-        iteration = 0
         
-        log.info(f"🔍 Starting to wait for MCP response id={expected_id} (timeout={timeout}s)")
+        log.info(f"🔍 Waiting for response id={expected_id} (timeout={timeout}s)")
         
         while True:
-            iteration += 1
             elapsed = time_module.time() - start_time
-            remaining_timeout = timeout - elapsed
+            remaining = timeout - elapsed
             
-            if remaining_timeout <= 0:
-                log.error(f"Timeout waiting for response with id={expected_id} after {iteration} iterations, {stale_count} stale responses, {elapsed:.1f}s elapsed")
+            if remaining <= 0:
+                log.error(f"Timeout waiting for response id={expected_id}")
                 return None
-            
-            # Use threaded readline with timeout (cross-platform)
-            response_line = [None]
-            read_error = [None]
-            thread_completed = [False]
-            
-            def read_line():
-                try:
-                    response_line[0] = self.mcp_process.stdout.readline()
-                    thread_completed[0] = True
-                except Exception as e:
-                    read_error[0] = e
-                    thread_completed[0] = True
-            
-            read_thread = threading.Thread(target=read_line, daemon=True)
-            read_thread.start()
-            
-            # Wait up to 5 seconds per iteration
-            wait_time = min(remaining_timeout, 5.0)
-            read_thread.join(timeout=wait_time)
-            
-            if read_thread.is_alive():
-                # Thread is still running (blocked on readline), timeout occurred
-                log.debug(f"⏳ Iteration {iteration}: Thread still reading after {wait_time}s (elapsed: {elapsed:.1f}s)")
-                if remaining_timeout <= 5.0:
-                    log.error(f"Final timeout waiting for response id={expected_id} - thread never completed after {iteration} iterations")
-                    return None
-                continue  # Try again with remaining timeout
-            
-            # Thread completed - check what we got
-            if read_error[0]:
-                log.error(f"Error reading from MCP (iteration {iteration}): {read_error[0]}")
-                return None
-            
-            # Log what we received
-            raw_data = response_line[0]
-            if not raw_data:
-                log.error(f"MCP server returned empty response (iteration {iteration}, {elapsed:.1f}s elapsed)")
-                log.error(f"Process still running: {self.mcp_process.poll() is None}")
-                return None
-            
-            # Log first 200 chars of raw response for debugging
-            try:
-                decoded = raw_data.decode('utf-8', errors='replace')
-                log.info(f"📥 Received MCP data (iteration {iteration}, {len(raw_data)} bytes): {decoded[:200]}...")
-            except Exception as e:
-                log.error(f"Could not decode response: {e}")
-            
-            try:
-                response_data = json.loads(response_line[0].decode())
-                response_id = response_data.get('id')
                 
-                if response_id == expected_id:
-                    log.info(f"✅ Found matching response id={expected_id} after {iteration} iterations, {elapsed:.1f}s")
-                    if stale_count > 0:
-                        log.info(f"(drained {stale_count} stale responses)")
-                    return response_data
+            try:
+                # Wait for next message from the reader thread
+                data = self.response_queue.get(timeout=remaining)
+                
+                # Check ID
+                msg_id = data.get('id')
+                if msg_id == expected_id:
+                    log.info(f"✅ Matched response id={expected_id} after {elapsed:.2f}s")
+                    return data
                 else:
                     stale_count += 1
-                    log.warning(f"⏭️ Draining stale response id={response_id} (looking for id={expected_id}, drained {stale_count} so far)")
-                    # Continue loop to read next response
-                    
-            except json.JSONDecodeError as e:
-                log.error(f"Failed to parse MCP response: {e}")
+                    if stale_count % 5 == 0:
+                        log.debug(f"Skipping stale message id={msg_id} (looking for {expected_id})")
+                        
+            except queue.Empty:
+                log.error(f"Timeout (Queue Empty) waiting for response id={expected_id}")
                 return None
 
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
@@ -393,6 +504,7 @@ class ZAIMCPClient:
 
     async def stop_mcp_server(self):
         """Stop the MCP server"""
+        self._reader_running = False
         if self.mcp_process:
             try:
                 self.mcp_process.terminate()
@@ -500,7 +612,7 @@ class ZAIMCPClient:
 
             # Read response, draining any stale responses
             log.info(f"Waiting for MCP server response for {tool_name}...")
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=120.0)
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=90.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")
