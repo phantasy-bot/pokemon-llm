@@ -229,6 +229,7 @@ export function PokemonStreamOverlay({
           <div className="pokemon-analysis-panel">
             <AnalysisPanel
               logs={logs}
+              totalActions={gameState.actions}
               isProcessing={
                 !!gameState.processingStatus ||
                 gameState.gameStatus === "Thinking..." || 
@@ -240,8 +241,7 @@ export function PokemonStreamOverlay({
               onMemoryWriteClear={onMemoryWriteClear}
               debugMode={gameState.debugMode}
             />
-            {/* Recent Actions - moved here */}
-            <RecentActions logs={logs} totalActions={gameState.actions} />
+            {/* Recent Actions is now inside AnalysisPanel */}
           </div>
         </div>
 
