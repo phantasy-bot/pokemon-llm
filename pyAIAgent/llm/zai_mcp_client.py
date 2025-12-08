@@ -153,6 +153,23 @@ class ZAIMCPClient:
                 self.is_connected = True
                 log.info("Z.AI MCP vision server started successfully")
                 log.info(f"MCP server PID: {self.mcp_process.pid}")
+                
+                # Start a background thread to monitor stderr for errors
+                def monitor_stderr():
+                    try:
+                        while self.mcp_process and self.mcp_process.poll() is None:
+                            if self.mcp_process.stderr:
+                                line = self.mcp_process.stderr.readline()
+                                if line:
+                                    stderr_text = line.decode('utf-8', errors='replace').strip()
+                                    if stderr_text:
+                                        log.warning(f"MCP STDERR: {stderr_text}")
+                    except Exception as e:
+                        log.debug(f"MCP stderr monitor stopped: {e}")
+                
+                stderr_thread = threading.Thread(target=monitor_stderr, daemon=True, name="MCP-stderr-monitor")
+                stderr_thread.start()
+                log.info("Started MCP stderr monitor thread")
             else:
                 log.error(f"MCP server exited with code: {self.mcp_process.returncode}")
                 # Read stderr to see what went wrong
@@ -237,52 +254,74 @@ class ZAIMCPClient:
         
         start_time = time_module.time()
         stale_count = 0
+        iteration = 0
+        
+        log.info(f"🔍 Starting to wait for MCP response id={expected_id} (timeout={timeout}s)")
         
         while True:
+            iteration += 1
             elapsed = time_module.time() - start_time
             remaining_timeout = timeout - elapsed
             
             if remaining_timeout <= 0:
-                log.error(f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses")
+                log.error(f"Timeout waiting for response with id={expected_id} after {iteration} iterations, {stale_count} stale responses, {elapsed:.1f}s elapsed")
                 return None
             
             # Use threaded readline with timeout (cross-platform)
             response_line = [None]
             read_error = [None]
+            thread_completed = [False]
             
             def read_line():
                 try:
                     response_line[0] = self.mcp_process.stdout.readline()
+                    thread_completed[0] = True
                 except Exception as e:
                     read_error[0] = e
+                    thread_completed[0] = True
             
             read_thread = threading.Thread(target=read_line, daemon=True)
             read_thread.start()
-            read_thread.join(timeout=min(remaining_timeout, 5.0))
+            
+            # Wait up to 5 seconds per iteration
+            wait_time = min(remaining_timeout, 5.0)
+            read_thread.join(timeout=wait_time)
             
             if read_thread.is_alive():
-                # Thread is still running, timeout occurred
+                # Thread is still running (blocked on readline), timeout occurred
+                log.debug(f"⏳ Iteration {iteration}: Thread still reading after {wait_time}s (elapsed: {elapsed:.1f}s)")
                 if remaining_timeout <= 5.0:
-                    log.error(f"Timeout waiting for response id={expected_id}")
+                    log.error(f"Final timeout waiting for response id={expected_id} - thread never completed after {iteration} iterations")
                     return None
                 continue  # Try again with remaining timeout
             
+            # Thread completed - check what we got
             if read_error[0]:
-                log.error(f"Error reading from MCP: {read_error[0]}")
+                log.error(f"Error reading from MCP (iteration {iteration}): {read_error[0]}")
                 return None
             
-            # Use the result from the thread
-            if not response_line[0]:
-                log.error("No response from MCP server (empty readline)")
+            # Log what we received
+            raw_data = response_line[0]
+            if not raw_data:
+                log.error(f"MCP server returned empty response (iteration {iteration}, {elapsed:.1f}s elapsed)")
+                log.error(f"Process still running: {self.mcp_process.poll() is None}")
                 return None
+            
+            # Log first 200 chars of raw response for debugging
+            try:
+                decoded = raw_data.decode('utf-8', errors='replace')
+                log.info(f"📥 Received MCP data (iteration {iteration}, {len(raw_data)} bytes): {decoded[:200]}...")
+            except Exception as e:
+                log.error(f"Could not decode response: {e}")
             
             try:
                 response_data = json.loads(response_line[0].decode())
                 response_id = response_data.get('id')
                 
                 if response_id == expected_id:
+                    log.info(f"✅ Found matching response id={expected_id} after {iteration} iterations, {elapsed:.1f}s")
                     if stale_count > 0:
-                        log.info(f"✅ Found matching response id={expected_id} after draining {stale_count} stale responses")
+                        log.info(f"(drained {stale_count} stale responses)")
                     return response_data
                 else:
                     stale_count += 1
