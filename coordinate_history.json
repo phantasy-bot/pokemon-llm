@@ -1,0 +1,76 @@
+{
+  "history": [
+    {
+      "cycle": 1196,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:25:36.374516"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:25:05.831240"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:23:25.041903"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:21:44.280102"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:20:03.539377"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:18:22.735493"
+    },
+    {
+      "cycle": 1195,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:16:42.002869"
+    },
+    {
+      "cycle": 1194,
+      "x": 4,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:15:59.750619"
+    },
+    {
+      "cycle": 1193,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T12:15:29.620337"
+    },
+    {
+      "cycle": 1193,
+      "x": 2,
+      "y": 7,
+      "map_name": "VIRIDIAN_MART",
+      "timestamp": "2025-12-08T11:34:30.260999"
+    }
+  ],
+  "target": null,
+  "last_updated": "2025-12-08T12:25:36.374665"
+}

@@ -34,7 +34,7 @@ function App() {
 
   useEffect(() => {
     let websocket: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
 
     const connectWebSocket = () => {
       websocket = new WebSocket("ws://localhost:8765");

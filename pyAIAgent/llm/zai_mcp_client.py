@@ -370,6 +370,10 @@ class ZAIMCPClient:
             log.error(f"Current image not found for diff: {curr_image_path}")
             return None
         
+        # CRITICAL: Convert to absolute paths - MCP server requires absolute paths
+        prev_abs_path = os.path.abspath(prev_image_path)
+        curr_abs_path = os.path.abspath(curr_image_path)
+        
         try:
             tool_name = "ui_diff_check"
             request_id = self._get_next_request_id()
@@ -383,8 +387,8 @@ class ZAIMCPClient:
                 "params": {
                     "name": tool_name,
                     "arguments": {
-                        "expected_image_source": prev_image_path,
-                        "actual_image_source": curr_image_path,
+                        "expected_image_source": prev_abs_path,
+                        "actual_image_source": curr_abs_path,
                         "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements."
                     }
                 }

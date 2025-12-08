@@ -168,6 +168,10 @@ export function PokemonStreamOverlay({
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
+            {/* Cycle timing info - small, light text on the right */}
+            {gameState.cycleTiming && (
+              <span className="cycle-timing">{gameState.cycleTiming}</span>
+            )}
           </div>
 
           <div className="pokemon-game-feed">

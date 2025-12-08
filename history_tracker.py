@@ -17,17 +17,17 @@ class ScreenshotHistoryTracker:
     """
     Tracks screenshot paths across agent cycles.
     
-    Keeps references to the last N cycles (configurable, default 5) to enable
-    multi-diff UI analysis for detecting movement patterns and loops.
+    Keeps references to the last N cycles (configurable, default 2) to enable
+    single-diff UI analysis for detecting movement changes.
     """
     
-    def __init__(self, snapshot_dir: str = "snapshots", max_history: int = 5):
+    def __init__(self, snapshot_dir: str = "snapshots", max_history: int = 2):
         """
         Initialize the tracker.
         
         Args:
             snapshot_dir: Directory where snapshots are stored
-            max_history: Number of cycles to keep (default 5 for N through N-4)
+            max_history: Number of cycles to keep (default 2 for current + previous)
         """
         self.snapshot_dir = snapshot_dir
         self.max_history = max_history
@@ -103,12 +103,15 @@ class ScreenshotHistoryTracker:
                 result.append((cycle_num, path))
         return result
     
-    def get_diff_pairs(self) -> List[Tuple[int, str, str]]:
+    def get_diff_pairs(self, max_pairs: int = 2) -> List[Tuple[int, str, str]]:
         """
-        Get all screenshot pairs for diff analysis.
+        Get screenshot pairs for diff analysis.
+        
+        Args:
+            max_pairs: Maximum number of diff pairs to return (default 2 to prevent timeouts)
         
         Returns:
-            List of (prev_cycle, prev_path, curr_path) tuples for all available diffs
+            List of (prev_cycle, prev_path, curr_path) tuples for available diffs
         """
         if not self.history:
             return []
@@ -118,7 +121,7 @@ class ScreenshotHistoryTracker:
             return []
         
         pairs = []
-        for prev_cycle, prev_path in self.get_all_previous():
+        for prev_cycle, prev_path in self.get_all_previous()[:max_pairs]:
             pairs.append((prev_cycle, prev_path, curr_path))
         
         return pairs
