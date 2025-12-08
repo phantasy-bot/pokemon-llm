@@ -29,7 +29,7 @@ python run.py --mode ZAI
 Install the MCP server globally:
 
 ```bash
-npm install -g @z_ai/mcp-server
+npm install -g @z_ai/mcp-server@latest  # Requires version >=0.1.1 for GLM-4.6V
 ```
 
 ## Usage
@@ -51,6 +51,7 @@ When using Z.AI mode, the system will:
 ### Network Issues
 
 If MCP server has connectivity issues:
+
 1. Check internet connection
 2. Verify Z.AI API key is valid
 3. Check Z.AI service status
@@ -58,6 +59,7 @@ If MCP server has connectivity issues:
 ### Fallback Mode
 
 The system will automatically fallback to direct API calls if:
+
 - Node.js is not available
 - MCP server fails to start
 - Network connectivity issues
