@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
+import { LassMinimapOverlay } from "./LassMinimapOverlay";
 
 interface MinimapProps {
   location: string;
   visible?: boolean;
   className?: string;
   timestamp?: string; // Add timestamp prop
+  explorationPct?: number; // Exploration percentage for current map
+  lassMarkings?: Array<{
+    x: number;
+    y: number;
+    type: 'N' | 'O';
+    opacity: number;
+    age_hours?: number;
+  }>;
 }
 
 // Removed MINIMAP_POLL_INTERVAL
@@ -14,6 +23,8 @@ export function Minimap({
   visible = true,
   className = "",
   timestamp,
+  explorationPct,
+  lassMarkings,
 }: MinimapProps) {
   const [minimapSrc, setMinimapSrc] = useState<string>("");
   const [minimapVisible, setMinimapVisible] = useState<boolean>(visible);
@@ -119,14 +130,20 @@ export function Minimap({
         )}
 
         {minimapSrc && (
-          <img
-            src={minimapSrc}
-            alt="Pokemon world minimap"
-            className={`minimap__image ${minimapVisible ? "minimap__image--visible" : "minimap__image--hidden"}`}
-            onLoad={handleMinimapLoad}
-            onError={handleMinimapError}
-            style={{ display: minimapVisible ? "block" : "none" }}
-          />
+          <>
+            <img
+              src={minimapSrc}
+              alt="Pokemon world minimap"
+              className={`minimap__image ${minimapVisible ? "minimap__image--visible" : "minimap__image--hidden"}`}
+              onLoad={handleMinimapLoad}
+              onError={handleMinimapError}
+              style={{ display: minimapVisible ? "block" : "none" }}
+            />
+            {/* Lass's pink overlay with N/O markers */}
+            {minimapVisible && lassMarkings && lassMarkings.length > 0 && (
+              <LassMinimapOverlay markings={lassMarkings} />
+            )}
+          </>
         )}
 
         {!minimapVisible && !isLoading && !error && (
@@ -137,6 +154,14 @@ export function Minimap({
               className="minimap__placeholder-image"
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
+          </div>
+        )}
+        
+        {/* Exploration percentage display - below minimap image */}
+        {explorationPct !== undefined && (
+          <div className="minimap__exploration">
+            <span className="minimap__exploration-label">EXPLORED</span>
+            <span className="minimap__exploration-value">{explorationPct.toFixed(0)}%</span>
           </div>
         )}
       </div>

@@ -146,6 +146,14 @@ export interface PokemonGameState {
   mapHeight?: number;
   cursorPosition?: [number, number];
   cameraPosition?: [number, number];
+  explorationPct?: number; // Percentage of current map explored (0-100)
+  lassMarkings?: Array<{  // Lass's minimap overlay markers
+    x: number;
+    y: number;
+    type: 'N' | 'O'; // N=NPC, O=Opening/Exit
+    opacity: number; // 0.0-1.0 (decays over time)
+    age_hours?: number;
+  }>;
 
   // Pokemon Team
   currentTeam: Pokemon[]; // From backend WebSocket

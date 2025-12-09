@@ -11,6 +11,14 @@ interface ExtendedPokemonTeamBarProps extends PokemonTeamBarProps {
   minimapLocation?: string;
   minimapTimestamp?: string;
   minimapVisible?: boolean;
+  explorationPct?: number; // Exploration percentage for current map
+  lassMarkings?: Array<{  // Lass's minimap overlay markers
+    x: number;
+    y: number;
+    type: 'N' | 'O';
+    opacity: number;
+    age_hours?: number;
+  }>;
 }
 
 export function PokemonTeamBar({ 
@@ -18,6 +26,8 @@ export function PokemonTeamBar({
   minimapLocation = "Unknown Area",
   minimapTimestamp,
   minimapVisible = true,
+  explorationPct,
+  lassMarkings,
 }: ExtendedPokemonTeamBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -138,6 +148,8 @@ export function PokemonTeamBar({
           location={minimapLocation}
           visible={minimapVisible}
           timestamp={minimapTimestamp}
+          explorationPct={explorationPct}
+          lassMarkings={lassMarkings}
           className="pokemon-team-bar__minimap-component"
         />
       </div>
