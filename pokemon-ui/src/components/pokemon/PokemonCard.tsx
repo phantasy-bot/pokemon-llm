@@ -60,11 +60,21 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
             {pokemon.nickname || pokemon.name}
           </span>
           
+          {/* Types next to name */}
+          <div className="pokemon-card__type-row">
+            <span className="pokemon-card__type">{pokemon.type}</span>
+            {pokemon.type2 && (
+              <span className="pokemon-card__type pokemon-card__type--secondary">
+                {pokemon.type2}
+              </span>
+            )}
+          </div>
+
           {/* Level pushed to right */}
           <span className="pokemon-card__level">Lv.{pokemon.level}</span>
         </div>
 
-        {/* HP Bar and Types Row */}
+        {/* HP Bar Row */}
         <div className="pokemon-card__stats-row">
           <div className="pokemon-card__hp-container">
             <HPBar
@@ -73,16 +83,6 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
               showNumbers={!compact}
               size={compact ? "sm" : "md"}
             />
-          </div>
-
-          {/* Types next to HP */}
-          <div className="pokemon-card__type-row">
-            <span className="pokemon-card__type">{pokemon.type}</span>
-            {pokemon.type2 && (
-              <span className="pokemon-card__type pokemon-card__type--secondary">
-                {pokemon.type2}
-              </span>
-            )}
           </div>
         </div>
 

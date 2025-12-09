@@ -3,7 +3,7 @@
   gap: var(--space-lg);
   background: var(--bg-panel);
   /* border-top removed as requested */
-  padding: var(--space-md) var(--space-lg);
+  padding: 4px var(--space-lg); /* even smaller vertical padding */
 }
 
 .pokemon-team-bar__main {
@@ -12,8 +12,11 @@
   padding-right: var(--space-lg);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden; /* Contain grid */
+  padding-right: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  /* Removed height: 100% to allow auto sizing */
+  overflow: visible; 
 }
 
 .pokemon-team-bar__header {
@@ -44,11 +47,11 @@
 .pokemon-team-bar__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); /* Force rows to fit container */
-  gap: var(--space-sm);
+  grid-template-rows: auto auto; /* Auto height rows */
+  gap: 2px;
   width: 100%;
-  flex: 1; /* Fill remaining height */
-  min-height: 0; /* Allow shrinking */
+  /* Removed flex: 1 so it doesn't stretch */
+  min-height: 0; 
 }
 
 .pokemon-team-grid-item {
@@ -72,7 +75,9 @@
 /* Empty slot styling - adapted for grid */
 .pokemon-empty-slot {
   width: 100%;
-  height: 100%; /* Fill grid cell */
+  height: auto; /* Match auto height of cards */
+  align-self: center; /* Center like cards */
+  min-height: 46px; /* Approx height of compact card (20+20+4+2) */
   /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;

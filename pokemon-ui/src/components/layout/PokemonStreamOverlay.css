@@ -23,7 +23,7 @@
 
 /* T3 Folder Container Styles */
 .folder-container {
-  flex: 1;
+  flex: 1; /* RESTORED: Fill available height */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -327,7 +327,7 @@
 .title {
   font-family: var(--font-display);
   font-size: 27px; /* Reduced from 28px */
-  font-style: italic; /* Italic as requested */
+  font-style: normal; /* Normal as requested */
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -338,6 +338,9 @@
 
 .title-accent {
   color: var(--accent-primary-bright);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  font-style: italic;
 }
 
 /* Main Content Area */
@@ -454,7 +457,8 @@
   margin-top: 10px; /* Space for sheared label */
   
   /* TUI Box Style */
-  border: 1px dotted rgba(0, 0, 0, 0.5);
+  border: 1px dashed rgba(0, 0, 0, 0.5); /* Dashed border */
+  background: white; /* Experimental white bg */
   position: relative;
   overflow: visible; /* Allow label to show */
 }
@@ -470,14 +474,15 @@
   
   /* Sheared position on top border */
   position: absolute;
-  top: -8px;
+  top: -9px; /* Adjusted for border */
   left: var(--space-md);
-  background: var(--accent-primary-bright);
+  background: black; /* Black bg */
+  color: white; /* White text */
+  border: 1px solid rgba(0, 0, 0, 0.5); /* Solid border */
   padding: 0 6px;
   border-radius: 4px;
   z-index: 2;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.9);
   text-transform: uppercase;
 }
 
@@ -629,8 +634,9 @@
 
 .pokemon-game-feed {
   position: relative;
-  /* Fixed 60vh height, don't grow or shrink */
-  flex: 0 0 60vh;
+  /* Flex 1 to take all available space, pushing team bar down */
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -656,10 +662,11 @@
 /* ... minimap overlay ... */
 
 .pokemon-team-section {
-  margin-top: 0; /* Let flex handle spacing */
+  margin-top: 0;
   padding-top: 0;
-  flex: 1 1 0; /* Grow, Shrink, Start from 0 to force fitting */
-  min-height: 0; /* Allow robust shrinking */
+  /* Auto height - only take what is needed */
+  flex: 0 0 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Ensure content is clipped if it somehow overflows */
