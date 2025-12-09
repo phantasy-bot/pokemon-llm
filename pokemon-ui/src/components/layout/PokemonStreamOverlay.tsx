@@ -8,7 +8,6 @@ import type {
 import type { PokemonDisplay } from "../../types/display";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
-import { RecentActions } from "../shared/RecentActions";
 import "./PokemonStreamOverlay.css";
 
 // Extract commentary from LLM response text
@@ -122,14 +121,19 @@ export function PokemonStreamOverlay({
   
   useEffect(() => {
     // Find the most recent response log entry with commentary
-    for (let i = logs.length - 1; i >= 0; i--) {
+    // Logs are prepended, so index 0 is newest - iterate from newest to oldest
+    for (let i = 0; i < logs.length; i++) {
       const entry = logs[i];
       if (entry.is_response && entry.text) {
         const commentary = extractCommentary(entry.text);
-        if (commentary && commentary !== lastCommentaryRef.current) {
-          lastCommentaryRef.current = commentary;
-          setCurrentCommentary(commentary);
-          break;
+        if (commentary) {
+          // Always update if we found commentary - even if same as last
+          // This ensures the display stays in sync with the latest log
+          if (commentary !== lastCommentaryRef.current) {
+            lastCommentaryRef.current = commentary;
+            setCurrentCommentary(commentary);
+          }
+          break; // Found the newest commentary, stop looking
         }
       }
     }
@@ -161,71 +165,15 @@ export function PokemonStreamOverlay({
 
   return (
     <div className="pokemon-stream-overlay">
-      {/* Header with Pokemon theming */}
-      <div className="pokemon-header">
-        {/* Left side - Title with Model Badge */}
-        <div className="pokemon-header__left">
-          <div className="title-section">
+      {/* Main content area - no header, each column has its own header content */}
+      <div className="pokemon-content">
+        {/* Left Column - Title + LLM Analysis */}
+        <div className="pokemon-left-col">
+          {/* Title at top of left column */}
+          <div className="column-header">
             <div className="title">LLM LETS PLAY: POKEMON RED</div>
           </div>
-        </div>
-
-        {/* Center - Badges */}
-        <div className="pokemon-header__center">
-          <div className="badges-widget">
-            <div className="widget-title">BADGES - {badges.length}/8</div>
-            <div className="gym-badges">
-              {ALL_BADGE_TYPES.map((badgeType) => {
-                const badgeInfo = KANTO_BADGES[badgeType];
-                const isEarned = badges.includes(badgeType);
-                return (
-                  <div
-                    key={badgeType}
-                    className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
-                  >
-                    <img 
-                      src={badgeInfo.image} 
-                      alt=""
-                      className="gym-badge-image"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Right side - Tokens and Actions */}
-        <div className="pokemon-header__right">
-          <div className="stats-row">
-            <div className="stat-item">
-              <div className="stat-count">
-                {gameState.cycle || 0}
-              </div>
-              <div className="stat-label">CYCLE</div>
-            </div>
-            <div className="stats-separator" />
-            <div className="stat-item">
-              <div className="stat-count">
-                {formatLargeNumber(gameState.tokensUsed)}
-              </div>
-              <div className="stat-label">TOKENS</div>
-            </div>
-            <div className="stats-separator" />
-            <div className="stat-item">
-              <div className="stat-count">
-                {gameState.actions.toLocaleString()}
-              </div>
-              <div className="stat-label">ACTIONS</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content area */}
-      <div className="pokemon-content">
-        {/* Left Column - LLM Analysis (now fills full height, no recent actions) */}
-        <div className="pokemon-left-col">
+          
           <div className="pokemon-analysis-panel">
             <AnalysisPanel
               logs={logs}
@@ -241,12 +189,36 @@ export function PokemonStreamOverlay({
               onMemoryWriteClear={onMemoryWriteClear}
               debugMode={gameState.debugMode}
             />
-            {/* Recent Actions is now inside AnalysisPanel */}
           </div>
         </div>
 
-        {/* Center Column - Game Status, Game Feed and Team */}
+        {/* Center Column - Badges + Game Feed and Team */}
         <div className="pokemon-right-col">
+          {/* Badges at top of center column */}
+          <div className="column-header column-header--center">
+            <div className="badges-widget">
+              <div className="widget-title">BADGES - {badges.length}/8</div>
+              <div className="gym-badges">
+                {ALL_BADGE_TYPES.map((badgeType) => {
+                  const badgeInfo = KANTO_BADGES[badgeType];
+                  const isEarned = badges.includes(badgeType);
+                  return (
+                    <div
+                      key={badgeType}
+                      className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
+                    >
+                      <img 
+                        src={badgeInfo.image} 
+                        alt=""
+                        className="gym-badge-image"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           <div className="status">
             <span>Game Status: {gameState.gameStatus}</span>
             <span
@@ -254,7 +226,6 @@ export function PokemonStreamOverlay({
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {/* Cycle timing info - current, previous, and average cycle times */}
             {gameState.currentCycleTime !== undefined && gameState.currentCycleTime > 0 && (
               <span className="cycle-timing">
                 Cycle: {gameState.currentCycleTime}s
@@ -274,63 +245,109 @@ export function PokemonStreamOverlay({
             </div>
           </div>
 
-          {/* Pokemon Team Bar with Minimap */}
           <div className="pokemon-team-section">
             <PokemonTeamBar 
               pokemon={currentPokemon}
               minimapLocation={location}
               minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
               minimapVisible={gameState.minimapVisible}
+              explorationPct={gameState.explorationPct}
+              lassMarkings={gameState.lassMarkings}
             />
           </div>
         </div>
 
-        {/* Right Column - Goals and Character */}
+        {/* Right Column - T3 Folder Container with Goals and Character */}
         <div className="pokemon-goals">
-          {/* Top Section - Goals only */}
-          <div className="pokemon-goals__top">
-            {/* Recent Actions removed from here */}
-
-            {/* Goals with TUI box styling */}
-            <div className="goals-log">
-              <span className="goals-log__label">GOALS</span>
-              {gameState.goals.primary === "Initializing..." ? (
-                <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
-              ) : (
-                <>
-                  <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
-                  <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
-                  <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
-                  <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
-                </>
-              )}
+          {/* T3 Folder Container */}
+          <div className="folder-container">
+            {/* SVG Corner Cutout */}
+            <div className="corner-container">
+              <svg viewBox="0 0 140 48" className="corner-svg" preserveAspectRatio="none">
+                {/* Path 1: The Mask - fills the corner with background color */}
+                <path 
+                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H134 Q140,36 140,42 L140,0 Z" 
+                  fill="var(--bg-panel)" 
+                  stroke="none"
+                />
+                {/* Path 2: The Border (main curve) */}
+                <path 
+                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H134" 
+                  fill="none" 
+                  stroke="var(--border-default)" 
+                  strokeWidth="1"
+                  transform="translate(0, 0.5)"
+                />
+                {/* Path 3: The Rounded Corner Tip */}
+                <path 
+                  d="M134,36 Q140,36 140,42" 
+                  fill="none" 
+                  stroke="var(--border-default)" 
+                  strokeWidth="1"
+                  transform="translate(-0.5, 0.5)"
+                />
+              </svg>
             </div>
-          </div>
 
-          {/* Bottom Section - Character Container (2-column layout) */}
-          <div className="character-container">
-            {/* Left Column - Commentary */}
-            <div className="character-container__left">
-              {/* Commentary text box - only show when we have commentary */}
-              {currentCommentary && (
-                <div className="character-container__commentary">
-                  <span className="character-container__commentary-label">COMMENTARY</span>
-                  <p className="character-container__commentary-text">
-                    <TypewriterText text={currentCommentary} speed={25} />
-                  </p>
+            {/* Stats positioned in the cutout space */}
+            <div className="folder-stats">
+              <div className="stat-item">
+                <div className="stat-count">{gameState.cycle || 0}</div>
+                <div className="stat-label">CYCLE</div>
+              </div>
+              <div className="stats-separator" />
+              <div className="stat-item">
+                <div className="stat-count">{formatLargeNumber(gameState.tokensUsed)}</div>
+                <div className="stat-label">TOKENS</div>
+              </div>
+              <div className="stats-separator" />
+              <div className="stat-item">
+                <div className="stat-count">{gameState.actions.toLocaleString()}</div>
+                <div className="stat-label">ACTIONS</div>
+              </div>
+            </div>
+
+            {/* Folder Content */}
+            <div className="folder-content">
+              {/* Goals with TUI box styling */}
+              <div className="goals-log">
+                <span className="goals-log__label">GOALS</span>
+                {gameState.goals.primary === "Initializing..." ? (
+                  <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
+                ) : (
+                  <>
+                    <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
+                    <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
+                    <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
+                    <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
+                  </>
+                )}
+              </div>
+
+              {/* Character Container (2-column layout) */}
+              <div className="character-container">
+                {/* Left Column - Commentary */}
+                <div className="character-container__left">
+                  {currentCommentary && (
+                    <div className="character-container__commentary">
+                      <span className="character-container__commentary-label">COMMENTARY</span>
+                      <p className="character-container__commentary-text">
+                        <TypewriterText text={currentCommentary} speed={25} />
+                      </p>
+                    </div>
+                  )}
+                  <div className="character-container__spacer" />
                 </div>
-              )}
-              {/* Empty bottom row for spacing */}
-              <div className="character-container__spacer" />
-            </div>
-            
-            {/* Right Column - Character Image */}
-            <div className="character-container__right">
-              <img 
-                src="/lass/lass-default.png" 
-                alt="Lass Pokemon Trainer" 
-                className="lass-character"
-              />
+                
+                {/* Right Column - Character Image */}
+                <div className="character-container__right">
+                  <img 
+                    src="/lass/lass-default.png" 
+                    alt="Lass Pokemon Trainer" 
+                    className="lass-character"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

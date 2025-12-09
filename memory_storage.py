@@ -168,6 +168,12 @@ class MemoryManager:
         # Key: (map_name, coords_tuple), Value: set of directions tried
         self.tried_approach_directions: Dict[tuple, set] = {}
         
+        # === LASS MARKINGS: Visual overlay markers for minimap ===
+        # Key: (map_name, (x, y)), Value: {"type": "N"|"O", "timestamp": iso_str, "confidence": 0.0-1.0}
+        # N = NPC (discovered via A-press dialogue)
+        # O = Opening/Exit (verified transition or known exit)
+        self.lass_markings: Dict[tuple, Dict] = {}
+        
         # === Strategy Learning System ===
         # Stores learned strategies (discovered through experience)
         self.strategies: List[StrategyMemory] = []
@@ -441,6 +447,98 @@ class MemoryManager:
         if avoided:
             return f"🚫 NPCs TO AVOID: {', '.join(avoided)}"
         return ""
+    
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # LASS MARKINGS: Visual overlay markers for UI minimap
+    # ═══════════════════════════════════════════════════════════════════════════════
+    
+    def add_lass_marking(self, map_name: str, coords: List[int], marking_type: str, 
+                         confidence: float = 1.0) -> bool:
+        """
+        Add a Lass marking for the minimap overlay.
+        
+        Args:
+            map_name: Name of the map
+            coords: [x, y] coordinates
+            marking_type: "N" for NPC, "O" for Opening/Exit
+            confidence: Initial confidence (0.0-1.0)
+        
+        Returns:
+            True if marking was added/updated
+        """
+        if not map_name or not coords or len(coords) < 2:
+            return False
+        
+        key = (map_name.upper(), tuple(coords))
+        
+        self.lass_markings[key] = {
+            "type": marking_type,
+            "timestamp": datetime.now().isoformat(),
+            "confidence": min(1.0, max(0.0, confidence)),
+            "x": coords[0],
+            "y": coords[1]
+        }
+        
+        log.info(f"📍 Lass marked {marking_type} at {map_name} {coords} (confidence: {confidence:.1f})")
+        return True
+    
+    def get_lass_markings_for_map(self, map_name: str, decay_hours: float = 24.0) -> List[Dict]:
+        """
+        Get all Lass markings for a specific map with decay-adjusted confidence.
+        
+        Args:
+            map_name: Name of the map to get markings for
+            decay_hours: Hours after which marks fully decay (confidence → 0)
+        
+        Returns:
+            List of marking dicts with opacity calculated from age
+        """
+        if not map_name:
+            return []
+        
+        map_upper = map_name.upper()
+        markings = []
+        now = datetime.now()
+        
+        for (stored_map, coords), data in self.lass_markings.items():
+            if stored_map == map_upper:
+                # Calculate decay based on age
+                try:
+                    created = datetime.fromisoformat(data["timestamp"])
+                    age_hours = (now - created).total_seconds() / 3600
+                    decay_factor = max(0.0, 1.0 - (age_hours / decay_hours))
+                    
+                    # Apply decay to confidence for opacity
+                    opacity = data["confidence"] * decay_factor
+                    
+                    if opacity > 0.1:  # Only include visible markers
+                        markings.append({
+                            "x": coords[0],
+                            "y": coords[1],
+                            "type": data["type"],
+                            "opacity": round(opacity, 2),
+                            "age_hours": round(age_hours, 1)
+                        })
+                except (ValueError, KeyError):
+                    # If timestamp is invalid, include with base confidence
+                    markings.append({
+                        "x": coords[0],
+                        "y": coords[1], 
+                        "type": data["type"],
+                        "opacity": data.get("confidence", 0.5),
+                        "age_hours": 0
+                    })
+        
+        return markings
+    
+    def mark_npc_discovered(self, map_name: str, coords: List[int]) -> None:
+        """Convenience method to mark an NPC location (discovered via A-press dialogue)."""
+        self.add_lass_marking(map_name, coords, "N", confidence=0.9)
+    
+    def mark_exit_discovered(self, map_name: str, coords: List[int], 
+                              confidence: float = 0.8) -> None:
+        """Convenience method to mark an exit/opening location."""
+        self.add_lass_marking(map_name, coords, "O", confidence=confidence)
     
     def should_trust_transition(self, from_map: str, from_pos: List[int], 
                                  to_map: str, to_pos: List[int],
@@ -858,7 +956,7 @@ class MemoryManager:
 
         # Extract gameplay memories
         gameplay_memories = self._extract_gameplay_memories(
-            analysis_text, current_location, current_position, game_state
+            analysis_text, current_location, current_position, game_state, vision_analysis
         )
         extracted_memories.extend(gameplay_memories)
         
@@ -1052,9 +1150,14 @@ class MemoryManager:
         analysis_text: str,
         current_location: str,
         current_position: List[int],
-        game_state: Dict[str, Any]
+        game_state: Dict[str, Any],
+        vision_analysis: Optional[str] = None
     ) -> List[GameplayMemory]:
-        """Extract gameplay memories from analysis text"""
+        """Extract gameplay memories from analysis text and vision analysis.
+        
+        NOTE: Quest items are ONLY detected from vision_analysis (actual in-game dialogue)
+        to prevent false positives from goal/planning text in analysis_text.
+        """
 
         memories = []
         
@@ -1230,18 +1333,26 @@ class MemoryManager:
             }
         }
         
+        # ═══════════════════════════════════════════════════════════════════════════════
+        # QUEST ITEM DETECTION - ONLY from vision_analysis (actual in-game dialogue)
+        # DO NOT search analysis_text as it contains goal descriptions that cause false matches
+        # e.g., "deliver Oak's Parcel" in goals was matching as if we received the parcel
+        # ═══════════════════════════════════════════════════════════════════════════════
+        
+        # Only check vision_analysis for quest items - NOT analysis_text
+        if not vision_analysis:
+            return memories  # Skip quest detection if no vision analysis available
+        
         # Patterns for detecting quest item acquisition in vision/dialogue
         # Matches: "Red Got Oak's Parcel!", "Got Pokedex!", "Received Town Map!", etc.
         quest_patterns = [
             r"(?:Red\s+)?Got\s+([^!]+?)!",  # "Red Got Oak's Parcel!"
             r"(?:Red\s+)?Received\s+([^!]+?)!",  # "Received Town Map!"
             r"(?:Red\s+)?Obtained\s+([^!]+?)!",  # "Obtained Pokedex!"
-            r"got\s+the\s+([^!.]+)",  # "got the Parcel"
-            r"received\s+(?:a\s+)?([^!.]+?)(?:\s+from|\s*!|\s*\.)",  # "received a Town Map from"
         ]
         
         for pattern in quest_patterns:
-            matches = re.finditer(pattern, analysis_text, re.IGNORECASE)
+            matches = re.finditer(pattern, vision_analysis, re.IGNORECASE)
             for match in matches:
                 item_found = match.group(1).strip().lower()
                 

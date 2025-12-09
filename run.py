@@ -166,6 +166,7 @@ def graceful_save_and_exit(sock, signum=None, frame=None):
 # Initialize state - llmdriver will update this
 state = {
     "actions": 0,
+    "cycle": 0,  # Current cycle number - persisted for reconnect
     "badges": [],
     "gameStatus": "0h 0m 0s",
     "processingStatus": "",  # Detailed status: "SENDING VISION...", "RETRYING VISION (2/5)...", "THINKING..."

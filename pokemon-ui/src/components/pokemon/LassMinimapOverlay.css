@@ -1,0 +1,38 @@
+.lass-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.lass-overlay__marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+/* Pink color for Lass's markings */
+.lass-overlay__marker--N {
+  background-color: rgba(255, 105, 180, 0.6); /* Hot pink for NPCs */
+  border: 1px solid rgba(255, 20, 147, 0.8);
+}
+
+.lass-overlay__marker--O {
+  background-color: rgba(255, 182, 193, 0.6); /* Light pink for Openings */
+  border: 1px solid rgba(255, 105, 180, 0.8);
+}
+
+.lass-overlay__marker-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 
+    -1px -1px 0 rgba(0, 0, 0, 0.5),
+    1px -1px 0 rgba(0, 0, 0, 0.5),
+    -1px 1px 0 rgba(0, 0, 0, 0.5),
+    1px 1px 0 rgba(0, 0, 0, 0.5);
+}

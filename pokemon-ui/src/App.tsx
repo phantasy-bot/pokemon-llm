@@ -161,9 +161,21 @@ function App() {
          is_vision: log.is_vision,
          is_response: log.is_response,
          type: log.is_vision ? "vision" : log.is_response ? "response" : "action",
+         screenshot_base64: log.screenshot_base64, // Preserve if present
        }));
-       // Replace logs entirely on initial history load to avoid dupes? 
-       // Or prepend? Usually this comes once. Let's set it.
+       
+       // Inject latest screenshot into first vision log if missing
+       // This handles reconnect where DB logs don't have screenshot data
+       if (data.latest_screenshot_base64) {
+         for (let i = 0; i < historyLogs.length; i++) {
+           if (historyLogs[i].is_vision && !historyLogs[i].screenshot_base64) {
+             historyLogs[i].screenshot_base64 = data.latest_screenshot_base64;
+             break; // Only inject into first (most recent) vision log
+           }
+         }
+       }
+       
+       // Replace logs entirely on initial history load to avoid dupes
        setLogs(historyLogs);
     }
 

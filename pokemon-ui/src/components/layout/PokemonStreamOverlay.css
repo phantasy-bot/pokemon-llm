@@ -7,17 +7,108 @@
   overflow: hidden;
 }
 
-/* Pokemon Header Section */
-.pokemon-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--bg-panel);
-  gap: var(--space-lg);
+/* Column Header Styles - replaces unified header */
+.column-header {
+  padding: var(--space-md) 0;
+  margin-bottom: var(--space-md);
   flex-shrink: 0;
-  height: auto;
-  min-height: 80px;
+}
+
+.column-header--center {
+  display: flex;
+  justify-content: center;
+}
+
+/* T3 Folder Container Styles */
+.folder-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-top-right-radius: 0; /* Cutout corner */
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  overflow: visible;
+}
+
+/* SVG Corner Container - masks the top-right corner */
+.corner-container {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 140px;
+  height: 48px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.corner-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Stats positioned in the cutout space */
+.folder-stats {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 20;
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.folder-stats .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.folder-stats .stat-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-primary-bright);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.folder-stats .stat-label {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.folder-stats .stats-separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(208, 202, 200, 0.3);
+  margin: 0 var(--space-xs);
+}
+
+/* Folder Content - the actual content inside the folder */
+.folder-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  padding-top: calc(var(--space-lg) + 20px); /* Extra top padding to clear the corner cutout */
+  gap: var(--space-md);
+  overflow: visible;
+}
+
+/* Pokemon Header Section - DEPRECATED, kept for reference */
+.pokemon-header {
+  display: none; /* Hidden - using column headers now */
 }
 
 .pokemon-header__left {
@@ -282,10 +373,10 @@
   display: flex;
   flex-direction: column;
   flex: 32.5; /* 32.5% */
-  padding: var(--space-md); /* Match other columns padding */
+  padding: var(--space-md);
+  padding-top: var(--space-md);
   background: var(--bg-panel);
-  /* No borders - positioned last, no separator needed on right */
-  overflow: visible; /* Allow labels to show above containers */
+  overflow: visible;
 }
 
 /* Top section - Actions and Goals (40%) */
@@ -365,24 +456,22 @@
   flex: 1; /* Smaller than commentary */
 }
 
-/* Right column - Character image (overlaps left but stays in viewport) */
-/* Right column - Character image (overlaps left but stays in viewport) */
+/* Right column - Character image - positioned fixed to bottom of page */
 .character-container__right {
-  flex: 0 0 350px; /* Wider column for massive character */
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end; /* Align to right edge */
-  overflow: visible; /* Allow image to overflow left */
-  position: relative;
-  z-index: 2; /* Above left column */
-  margin-left: -200px; /* Massive overlap into left column */
-  margin-right: -40px; /* Extend right */
+  position: fixed;
+  bottom: 0;
+  right: -40px; /* Push further right */
+  width: auto;
+  height: auto;
+  z-index: 100; /* High z-index to be above everything */
+  pointer-events: none; /* Allow clicks to pass through */
 }
 
-/* Lass character image */
+/* Lass character image - massive and anchored to bottom edge */
 .lass-character {
-  width: 1000px; /* A lot a lot a lot a lot larger */
-  max-height: 160%;
+  width: auto;
+  height: 55vh; /* 55% of viewport height */
+  max-width: none;
   object-fit: contain;
   object-position: bottom right;
 }
@@ -418,7 +507,7 @@
   position: absolute;
   top: -8px;
   left: var(--space-md);
-  background: var(--bg-panel);
+  background: var(--bg-card); /* Match folder container background */
   padding: 0 6px;
   z-index: 2;
 }
