@@ -60,7 +60,7 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-md);
-  padding-top: var(--space-lg); /* Space for sheared label */
+  padding-top: var(--space-md); /* Space for sheared label */
   /* Add top margin to prevent label cutoff by parent overflow */
   margin-top: var(--space-md);
   margin-bottom: 12px; /* Increased from 8px */
@@ -200,7 +200,7 @@
   flex-shrink: 0;
   margin-bottom: var(--space-md);
   padding: var(--space-md);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-md);
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
@@ -269,7 +269,7 @@
   border: 1px dotted var(--border-subtle);
   position: relative;
   padding: var(--space-md);
-  padding-top: var(--space-lg); /* Space for title */
+  padding-top: var(--space-md); /* Space for title */
   /* Ensure height matches screenshot mostly */
   /* We allow it to expand but the content inside controls layout */
 }
@@ -336,7 +336,7 @@
   margin-top: var(--space-md);
   margin-bottom: var(--space-sm);
   padding: var(--space-md);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-md);
   background: transparent;
   
   /* TUI Box Style */

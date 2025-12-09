@@ -3,6 +3,8 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { VisionScreenshot } from "../vision/VisionScreenshot";
 import "./LogEntry.css";
+// Import Pokemon Data
+import { POKEMON_TYPE_MAP, TYPE_COLORS } from "../../data/pokemonData";
 
 interface LogEntryProps {
   entry: LogEntry;
@@ -298,7 +300,7 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(townRegex, (match, cityName) => {
      const key = cityName.toUpperCase();
      const color = TOWN_COLORS[key] || "#ffffff";
-     return `<span class="town-name" style="color: ${color};">${match}</span>`;
+     return `<span class="town-name" style="background-color: ${color}; color: rgba(0,0,0,0.85); padding: 0 4px; border-radius: 3px; font-weight: 600;">${match}</span>`;
   });
 
   // Highlight action sequences
@@ -337,6 +339,28 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/<\/div><br\/>/g, '</div>');
   // Also cleanup double brs
   formattedText = formattedText.replace(/<br\/><br\/>/g, '<br/>');
+
+
+  // Highlight Pokemon Names
+  // Build regex dynamically or use a broad text match if performance allows
+  // For 151 items, regex is fine
+  const pokemonNames = Object.keys(POKEMON_TYPE_MAP).join("|");
+  // Use word boundary to avoid partial matches
+  const pokemonRegex = new RegExp(`\\b(${pokemonNames})\\b`, 'gi');
+  
+  formattedText = formattedText.replace(pokemonRegex, (match) => {
+      const upperName = match.toUpperCase();
+      const types = POKEMON_TYPE_MAP[upperName];
+      if (types) {
+          const type1 = types[0];
+          const color = TYPE_COLORS[type1] || "#888888";
+          // Use white text for dark backgrounds, or black for light. 
+          // Most type colors are mid-tone, so white often works or we can check brightness.
+          // For simplicity, let's use a semi-transparent background and keep text readable, or solid pill.
+          return `<span class="pokemon-name" style="background-color: ${color}; color: white; padding: 0 4px; border-radius: 3px; font-weight: 600;">${match}</span>`;
+      }
+      return match;
+  });
 
   return `<div class="formatted-log-content">${formattedText}</div>`;
 }

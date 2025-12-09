@@ -44,32 +44,38 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
     >
       <div className="pokemon-card__info">
         <div className="pokemon-card__header">
-          <span className="pokemon-card__name">
-            {pokemon.nickname || pokemon.name}
-          </span>
-          <span className="pokemon-card__level">Lv.{pokemon.level}</span>
-        </div>
-
-        <HPBar
-          current={pokemon.hp}
-          max={pokemon.maxHp}
-          showNumbers={!compact}
-          size={compact ? "sm" : "md"}
-        />
-
-        {/* Bottom row: sprite + type badges */}
-        <div className="pokemon-card__bottom-row">
+          {/* Sprite now on left of name */}
           <div className="pokemon-card__sprite-container">
             <img
               src={spriteUrl}
               alt={pokemon.name}
               className="pokemon-card__sprite"
               onError={(e) => {
-                // Hide broken images
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
           </div>
+          
+          <span className="pokemon-card__name">
+            {pokemon.nickname || pokemon.name}
+          </span>
+          
+          {/* Level pushed to right */}
+          <span className="pokemon-card__level">Lv.{pokemon.level}</span>
+        </div>
+
+        {/* HP Bar and Types Row */}
+        <div className="pokemon-card__stats-row">
+          <div className="pokemon-card__hp-container">
+            <HPBar
+              current={pokemon.hp}
+              max={pokemon.maxHp}
+              showNumbers={!compact}
+              size={compact ? "sm" : "md"}
+            />
+          </div>
+
+          {/* Types next to HP */}
           <div className="pokemon-card__type-row">
             <span className="pokemon-card__type">{pokemon.type}</span>
             {pokemon.type2 && (
@@ -79,6 +85,8 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
             )}
           </div>
         </div>
+
+        {/* Removed bottom row as requested */}
 
         {/* Status condition display */}
         {pokemon.status && pokemon.status !== "None" && (

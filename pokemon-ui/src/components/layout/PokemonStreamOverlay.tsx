@@ -171,7 +171,7 @@ export function PokemonStreamOverlay({
         <div className="pokemon-left-col">
           {/* Title at top of left column */}
           <div className="column-header">
-            <div className="title">LLM LETS PLAY: POKEMON RED</div>
+            <div className="title">LLM LETS PLAY: <span className="title-accent">POKEMON RED</span></div>
           </div>
           
           <div className="pokemon-analysis-panel">
@@ -193,11 +193,11 @@ export function PokemonStreamOverlay({
         </div>
 
         {/* Center Column - Badges + Game Feed and Team */}
-        <div className="pokemon-right-col">
+        <div className="pokemon-center-col">
           {/* Badges at top of center column */}
           <div className="column-header column-header--center">
             <div className="badges-widget">
-              <div className="widget-title">BADGES - {badges.length}/8</div>
+
               <div className="gym-badges">
                 {ALL_BADGE_TYPES.map((badgeType) => {
                   const badgeInfo = KANTO_BADGES[badgeType];
@@ -219,14 +219,24 @@ export function PokemonStreamOverlay({
             </div>
           </div>
 
+
+
+          <div className="pokemon-game-feed">
+            <div className="game-placeholder">
+              Pokemon Game Feed Placeholder
+            </div>
+          </div>
+
           <div className="status">
-            <span>Game Status: {gameState.gameStatus}</span>
+            <span>
+              Game Status: {wsConnected ? gameState.gameStatus : "Connecting..."}
+            </span>
             <span
               className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {gameState.currentCycleTime !== undefined && gameState.currentCycleTime > 0 && (
+            {wsConnected && gameState.currentCycleTime !== undefined && gameState.currentCycleTime > 0 && (
               <span className="cycle-timing">
                 Cycle: {gameState.currentCycleTime}s
                 {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
@@ -237,12 +247,6 @@ export function PokemonStreamOverlay({
                 )}
               </span>
             )}
-          </div>
-
-          <div className="pokemon-game-feed">
-            <div className="game-placeholder">
-              Pokemon Game Feed Placeholder
-            </div>
           </div>
 
           <div className="pokemon-team-section">
@@ -258,21 +262,24 @@ export function PokemonStreamOverlay({
         </div>
 
         {/* Right Column - T3 Folder Container with Goals and Character */}
-        <div className="pokemon-goals">
+        <div className="pokemon-right-col">
           {/* T3 Folder Container */}
           <div className="folder-container">
+            {/* Title in the header bar */}
+            <div className="folder-title">Lass ✿</div>
+
             {/* SVG Corner Cutout */}
             <div className="corner-container">
-              <svg viewBox="0 0 140 48" className="corner-svg" preserveAspectRatio="none">
+              <svg viewBox="0 0 200 48" className="corner-svg" preserveAspectRatio="none">
                 {/* Path 1: The Mask - fills the corner with background color */}
                 <path 
-                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H134 Q140,36 140,42 L140,0 Z" 
+                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H194 Q200,36 200,42 L200,0 Z" 
                   fill="var(--bg-panel)" 
                   stroke="none"
                 />
                 {/* Path 2: The Border (main curve) */}
                 <path 
-                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H134" 
+                  d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H194" 
                   fill="none" 
                   stroke="var(--border-default)" 
                   strokeWidth="1"
@@ -280,7 +287,7 @@ export function PokemonStreamOverlay({
                 />
                 {/* Path 3: The Rounded Corner Tip */}
                 <path 
-                  d="M134,36 Q140,36 140,42" 
+                  d="M194,36 Q200,36 200,42" 
                   fill="none" 
                   stroke="var(--border-default)" 
                   strokeWidth="1"
@@ -297,13 +304,13 @@ export function PokemonStreamOverlay({
               </div>
               <div className="stats-separator" />
               <div className="stat-item">
-                <div className="stat-count">{formatLargeNumber(gameState.tokensUsed)}</div>
-                <div className="stat-label">TOKENS</div>
+                <div className="stat-count">{gameState.actions.toLocaleString()}</div>
+                <div className="stat-label">ACTIONS</div>
               </div>
               <div className="stats-separator" />
               <div className="stat-item">
-                <div className="stat-count">{gameState.actions.toLocaleString()}</div>
-                <div className="stat-label">ACTIONS</div>
+                <div className="stat-count">{formatLargeNumber(gameState.tokensUsed)}</div>
+                <div className="stat-label">TOKENS</div>
               </div>
             </div>
 
@@ -312,14 +319,14 @@ export function PokemonStreamOverlay({
               {/* Goals with TUI box styling */}
               <div className="goals-log">
                 <span className="goals-log__label">GOALS</span>
-                {gameState.goals.primary === "Initializing..." ? (
-                  <p style={{ textAlign: 'center', opacity: 0.7 }}>Goals initializing...</p>
+                {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
+                  <p style={{ textAlign: 'center', opacity: 0.7 }}>Initializing goals...</p>
                 ) : (
                   <>
-                    <p><strong>PRIMARY:</strong> {gameState.goals.primary}</p>
-                    <p><strong>SECONDARY:</strong> {gameState.goals.secondary}</p>
-                    <p><strong>TERTIARY:</strong> {gameState.goals.tertiary}</p>
-                    <p><strong>NOTES:</strong> {gameState.otherGoals}</p>
+                    <p><strong>1. </strong> {gameState.goals.primary}</p>
+                    <p><strong>2. </strong> {gameState.goals.secondary}</p>
+                    <p><strong>3. </strong> {gameState.goals.tertiary}</p>
+                    <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
                   </>
                 )}
               </div>
