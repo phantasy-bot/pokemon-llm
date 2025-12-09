@@ -2,7 +2,7 @@
   display: flex;
   gap: var(--space-lg);
   background: var(--bg-panel);
-  border-top: 1px solid rgba(208, 202, 200, 0.5);
+  /* border-top removed as requested */
   padding: var(--space-md) var(--space-lg);
 }
 
@@ -12,6 +12,8 @@
   padding-right: var(--space-lg);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* Contain grid */
 }
 
 .pokemon-team-bar__header {
@@ -42,10 +44,11 @@
 .pokemon-team-bar__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); /* Force rows to fit container */
   gap: var(--space-sm);
   width: 100%;
   flex: 1; /* Fill remaining height */
-  align-content: space-between; /* Push rows to top and bottom */
+  min-height: 0; /* Allow shrinking */
 }
 
 .pokemon-team-grid-item {
@@ -69,7 +72,7 @@
 /* Empty slot styling - adapted for grid */
 .pokemon-empty-slot {
   width: 100%;
-  height: 70px;
+  height: 100%; /* Fill grid cell */
   /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;
@@ -167,9 +170,10 @@
 
 /* Override minimap body height to fit the fixed container */
 .pokemon-team-bar__minimap-component .minimap__body {
-  height: 140px;
-  min-height: 140px;
-  max-height: 140px;
+  /* Removed fixed height allow flex to fill available space */
+  height: auto;
+  min-height: 0;
+  max-height: none;
 }
 
 /* Ensure the minimap image scales properly within the fixed space */

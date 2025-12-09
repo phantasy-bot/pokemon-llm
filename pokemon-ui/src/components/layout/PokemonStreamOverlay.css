@@ -9,7 +9,7 @@
 
 /* Column Header Styles - replaces unified header */
 .column-header {
-  padding: var(--space-md) 0;
+  padding: var(--space-xl) 0 var(--space-lg) 0; /* More padding top */
   margin-bottom: var(--space-md);
   flex-shrink: 0;
 }
@@ -17,6 +17,8 @@
 .column-header--center {
   display: flex;
   justify-content: center;
+  padding-top: var(--space-md); /* Reduced top padding override */
+  margin-bottom: 0; /* Reduced margin override as requested */
 }
 
 /* T3 Folder Container Styles */
@@ -25,7 +27,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--bg-card);
+  background: var(--accent-primary-bright); /* Bright red accent */
   border: 1px solid var(--border-default);
   border-top-right-radius: 0; /* Cutout corner */
   border-top-left-radius: 12px;
@@ -39,9 +41,27 @@
   position: absolute;
   top: -1px;
   right: -1px;
-  width: 140px;
-  height: 48px;
+  width: 260px;
   z-index: 10;
+  pointer-events: none;
+}
+
+/* Folder Title in the top bar */
+.folder-title {
+  position: absolute;
+  top: 4.5px; /* Lifted up 2px more (6.5 -> 4.5) */
+  left: 0;
+  width: calc(100% - 260px); /* Center in available space (minus cutout) */
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: normal; /* Regular font as requested */
+  font-size: 36px;
+  font-weight: 700; /* Bold to match "UltraHyper" weight usually needed */
+  color: rgba(0, 0, 0, 0.9);
+  z-index: 20;
+  line-height: 1;
   pointer-events: none;
 }
 
@@ -59,7 +79,7 @@
   right: 8px;
   z-index: 20;
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   align-items: center;
 }
 
@@ -71,7 +91,7 @@
 }
 
 .folder-stats .stat-count {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--accent-primary-bright);
   font-family: var(--font-mono);
@@ -79,7 +99,7 @@
 }
 
 .folder-stats .stat-label {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -90,8 +110,8 @@
 
 .folder-stats .stats-separator {
   width: 1px;
-  height: 24px;
-  background: rgba(208, 202, 200, 0.3);
+  height: 28px;
+  background: rgba(208, 202, 200, 0.5);
   margin: 0 var(--space-xs);
 }
 
@@ -101,9 +121,13 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: calc(var(--space-lg) + 20px); /* Extra top padding to clear the corner cutout */
+  padding-top: var(--space-lg);
   gap: var(--space-md);
   overflow: visible;
+  background: transparent;
+  border-radius: 10px;
+  margin: var(--space-sm);
+  margin-top: calc(var(--space-sm) + 36px); /* Clear the cutout area */
 }
 
 /* Pokemon Header Section - DEPRECATED, kept for reference */
@@ -302,13 +326,18 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: 36px;
+  font-size: 27px; /* Reduced from 28px */
+  font-style: italic; /* Italic as requested */
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: center;
-  line-height: 0;
+  line-height: 1; /* Improved line-height for larger text */
+}
+
+.title-accent {
+  color: var(--accent-primary-bright);
 }
 
 /* Main Content Area */
@@ -322,7 +351,7 @@
 .pokemon-left-col {
   display: flex;
   flex-direction: column;
-  flex: 32.5; /* 32.5% */
+  flex: 29; /* 29% */
   padding: 0 var(--space-md); /* Horizontal padding only */
   background: var(--bg-panel);
   border-right: none; /* No border - middle column will have left border */
@@ -339,11 +368,17 @@
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: 4px;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 0; /* Reduced to close gap */
+  margin-top: var(--space-md); /* Added separation from game feed */
 }
 
 .ws-status {
   color: var(--text-secondary);
+}
+
+/* When disconnected, push to the right */
+.ws-status.disconnected {
+  margin-left: auto;
 }
 
 .ws-status.connected {
@@ -356,7 +391,7 @@
 
 /* Cycle timing display - small, light text on the right */
 .cycle-timing {
-  margin-left: auto;
+  margin-left: auto; /* Push to the right when visible */
   font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -369,10 +404,10 @@
   padding: 0;
 }
 
-.pokemon-goals {
+.pokemon-right-col {
   display: flex;
   flex-direction: column;
-  flex: 32.5; /* 32.5% */
+  flex: 29; /* 29% */
   padding: var(--space-md);
   padding-top: var(--space-md);
   background: var(--bg-panel);
@@ -415,11 +450,11 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-md);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-md);
   margin-top: 10px; /* Space for sheared label */
   
   /* TUI Box Style */
-  border: 1px dotted var(--border-subtle);
+  border: 1px dotted rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: visible; /* Allow label to show */
 }
@@ -437,16 +472,20 @@
   position: absolute;
   top: -8px;
   left: var(--space-md);
-  background: var(--bg-panel);
+  background: var(--accent-primary-bright);
   padding: 0 6px;
+  border-radius: 4px;
   z-index: 2;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  text-transform: uppercase;
 }
 
 .character-container__commentary-text {
   font-family: var(--font-mono);
   font-size: 16px; /* Larger */
   line-height: 1.6;
-  color: var(--text-normal); /* Darker/brighter depending on theme (more contrast) */
+  color: rgba(0, 0, 0, 0.85); /* Dark text for contrast on bright accent */
   font-weight: 600; /* Bolder */
   margin: 0;
 }
@@ -470,7 +509,7 @@
 /* Lass character image - massive and anchored to bottom edge */
 .lass-character {
   width: auto;
-  height: 55vh; /* 55% of viewport height */
+  height: 50vh; /* Reduced from 55vh */
   max-width: none;
   object-fit: contain;
   object-position: bottom right;
@@ -482,14 +521,14 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-md);
-  padding-top: var(--space-lg); /* Space for label */
+  padding-top: var(--space-md); /* Space for label */
   /* Remove duplicates and fix margin */
-  margin-top: 0; /* Align with AnalysisPanel (offset by container padding) */
+  margin-top: var(--space-lg); /* Add spacing above goals as requested */
   flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
   overflow: visible; /* Allow label to show above */
   
   /* TUI Box Style */
-  border: 1px dotted var(--border-subtle);
+  border: 1px dotted rgba(0, 0, 0, 0.5);
   position: relative;
 }
 
@@ -507,9 +546,13 @@
   position: absolute;
   top: -8px;
   left: var(--space-md);
-  background: var(--bg-card); /* Match folder container background */
+  background: var(--accent-primary-bright); /* Match folder container background */
   padding: 0 6px;
+  border-radius: 4px;
   z-index: 2;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  text-transform: uppercase;
 }
 
 /* Removed old h3 styling - using __label now */
@@ -521,13 +564,13 @@
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.4;
-  color: var(--text-secondary);
+  color: rgba(0, 0, 0, 0.75);
   margin: 0 0 var(--space-xs);
 }
 
 .goals-log p strong {
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: rgba(0, 0, 0, 0.9);
+  font-weight: 700;
 }
 
 
@@ -553,21 +596,21 @@
   color: var(--accent-primary);
 }
 
-.pokemon-right-col {
+.pokemon-center-col {
   display: flex;
   flex-direction: column;
-  flex: 35; /* 35% */
+  flex: 42; /* 42% */
   padding: var(--space-md);
   background: var(--bg-panel);
   border-left: none; /* Removed - using pseudo-elements for partial borders */
   border-right: none;
-  overflow-y: auto;
+  overflow: hidden; /* Force content to shrink/fit instead of scroll */
   position: relative;
 }
 
 /* Partial column separators - don't extend to bottom */
-.pokemon-right-col::before,
-.pokemon-right-col::after {
+.pokemon-center-col::before,
+.pokemon-center-col::after {
   content: '';
   position: absolute;
   top: var(--space-md);
@@ -576,30 +619,30 @@
   background: rgba(208, 202, 200, 0.5); /* Lighter, blends with --bg-panel */
 }
 
-.pokemon-right-col::before {
+.pokemon-center-col::before {
   left: 0;
 }
 
-.pokemon-right-col::after {
+.pokemon-center-col::after {
   right: 0;
 }
 
-
-
 .pokemon-game-feed {
-  position: relative; /* Required for absolute positioning of children */
-  flex: 1;
+  position: relative;
+  /* Fixed 60vh height, don't grow or shrink */
+  flex: 0 0 60vh;
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  margin-bottom: 0; /* Remove spacing below feed as requested */
 }
 
 .game-placeholder {
   background: #000000;
   border: 1px dashed var(--border-subtle);
-  border-radius: 0; /* Removed rounded corners as requested */
-  flex: 1;
-  min-height: 400px; /* Increased from fixed 200px to allow full height */
+  border-radius: 0;
+  width: 100%;
+  height: 100%; /* Fill container */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -610,22 +653,16 @@
   text-align: center;
 }
 
-.pokemon-minimap {
-  align-self: flex-start;
-}
-
-/* Minimap Overlay Styles */
-.minimap-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  margin: var(--space-md) 0 0 0;
-}
+/* ... minimap overlay ... */
 
 .pokemon-team-section {
-  margin-top: auto;
-  padding-top: var(--space-md);
+  margin-top: 0; /* Let flex handle spacing */
+  padding-top: 0;
+  flex: 1 1 0; /* Grow, Shrink, Start from 0 to force fitting */
+  min-height: 0; /* Allow robust shrinking */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Ensure content is clipped if it somehow overflows */
 }
 
 /* Pokemon-specific styling */

@@ -1,7 +1,7 @@
 .pokemon-card {
   display: flex;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
+  gap: 2px; /* Very tight gap */
+  padding: 4px; /* Reduced padding */
   background: linear-gradient(
     135deg,
     var(--bg-card) 0%,
@@ -15,9 +15,9 @@
   transition: all var(--transition-fast);
   /* Pokemon card corner style - rounded for friendlier look */
   border-radius: 6px;
-  /* Smaller height to fit in grid slots */
-  height: 70px;
-  max-height: 70px;
+  /* Adaptive height for grid slots */
+  height: 100%;
+  min-height: 0; /* Allow shrinking */
 }
 
 .pokemon-card::before {
@@ -56,13 +56,15 @@
 }
 
 /* Pokemon sprite - now in bottom row with type badges */
+/* Sprite container for inline display */
 .pokemon-card__sprite-container {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 20px; /* Smaller size */
+  height: 20px;
+  margin-right: 2px;
 }
 
 .pokemon-card__sprite {
@@ -102,9 +104,9 @@
 
 .pokemon-card__header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-xs);
+  width: 100%;
 }
 
 .pokemon-card__name {
@@ -116,10 +118,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-transform: capitalize;
-}
-
-.pokemon-card--compact .pokemon-card__name {
-  font-size: 11px;
+  line-height: 1;
 }
 
 .pokemon-card__level {
@@ -128,22 +127,37 @@
   color: var(--text-secondary);
   flex-shrink: 0;
   font-weight: 500;
+  margin-left: auto; /* Push to far right */
 }
 
 .pokemon-card--compact .pokemon-card__level {
   font-size: 10px;
 }
 
+/* Stats row containing HP and Types */
+.pokemon-card__stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.pokemon-card__hp-container {
+  flex: 1; /* Take available space */
+  min-width: 0;
+}
+
 .pokemon-card__type-row {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0; /* Prevents types from shrinking */
 }
 
 .pokemon-card__type {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 7px; /* Smaller font */
   color: white;
   background: rgba(0, 0, 0, 0.7);
   padding: 1px 4px;

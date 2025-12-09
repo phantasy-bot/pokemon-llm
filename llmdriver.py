@@ -1728,7 +1728,17 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         
         if pos and len(pos) >= 2:
             # Record this tile as visited
-            exploration_tracker.record_visit(map_id, map_name, pos[0], pos[1])
+            # NEW: Calculate total walkable tiles in the local minimap/window to allow % calculation
+            total_walkable = 0
+            if minimap_2d:
+                 # Count walkable chars found in typical minimap string
+                 # is_walkable(tile) usually includes: W, P, O, D, E, >, <, ^, v
+                 # We simply count chars that are in this set
+                 for char in minimap_2d:
+                     if char in ['W', 'P', 'O', 'D', 'E', '>', '<', '^', 'v']:
+                         total_walkable += 1
+                         
+            exploration_tracker.record_visit(map_id, map_name, pos[0], pos[1], total_walkable=total_walkable)
             
             # Add exploration context to LLM input
             exploration_context = exploration_tracker.get_context_for_llm(
@@ -1777,7 +1787,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 adj = minimap_analysis['adjacent_tiles']
                 passages = minimap_analysis.get('passages', [])
                 npcs = minimap_analysis.get('npc_tiles', [])
-                
+
+                # Retrieve current exploration percentage for frontend display
+                exp_map = exploration_tracker.maps.get(map_id)
+                if exp_map:
+                    # Set in state for persistence
+                    state["explorationPct"] = exp_map.exploration_pct
+                    # Add to update payload for frontend
+                    update_payload["explorationPct"] = exp_map.exploration_pct
+                    log.info(f"🌍 Exploration: {exp_map.exploration_pct:.1f}% ({len(exp_map.visited_tiles)}/{exp_map.total_walkable})")
+
                 analysis_str = (
                     f"⚠️ MINIMAP DATA (USE THIS - DO NOT PARSE RAW MINIMAP!) ⚠️\n"
                     f"Grid: {minimap_analysis['grid_size']} | Player: {minimap_analysis['player_position']}\n"
