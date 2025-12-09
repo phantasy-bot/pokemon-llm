@@ -7,7 +7,7 @@ __pycache__
 *.sav
 *.log
 ui.log
-snapshots/
+# snapshots/
 
 # Runtime Screenshots
 latest.png

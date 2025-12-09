@@ -15,42 +15,60 @@ SIZE_MAP = {
     GB_RASTER_SIZE: (GB_WIDTH, GB_HEIGHT),
 }
 
-def capture(sock, filename: str = "latest.png", cell_size: int = 16) -> None:
+def capture(sock, filename: str = "latest.png", cell_size: int = 16, timeout: float = 10.0) -> None:
+    """
+    Capture a screenshot from the mGBA socket.
+    
+    Args:
+        sock: The socket connected to mGBA
+        filename: Output filename for the screenshot
+        cell_size: Grid cell size (unused, kept for compatibility)
+        timeout: Socket timeout in seconds to prevent indefinite blocking
+    """
     from pyAIAgent.utils.socket_utils import _flush_socket
     # flush any leftover bytes
     _flush_socket(sock)
 
-    sock.sendall(b"CAP\n")
-    hdr = sock.recv(4)
-    if len(hdr) < 4:
-        raise RuntimeError("socket closed during CAP header")
-    length = struct.unpack(">I", hdr)[0]
+    # Store and set socket timeout to prevent indefinite blocking
+    original_timeout = sock.gettimeout()
+    sock.settimeout(timeout)
+    
+    try:
+        sock.sendall(b"CAP\n")
+        hdr = sock.recv(4)
+        if len(hdr) < 4:
+            raise RuntimeError("socket closed during CAP header")
+        length = struct.unpack(">I", hdr)[0]
 
-    data = bytearray()
-    while len(data) < length:
-        chunk = sock.recv(length - len(data))
-        if not chunk:
-            raise RuntimeError("socket closed mid-image")
-        data.extend(chunk)
+        data = bytearray()
+        while len(data) < length:
+            chunk = sock.recv(length - len(data))
+            if not chunk:
+                raise RuntimeError("socket closed mid-image")
+            data.extend(chunk)
 
-    size = SIZE_MAP.get(length)
-    if size is None:
-        raise RuntimeError(f"unexpected raster size {length} bytes")
+        size = SIZE_MAP.get(length)
+        if size is None:
+            raise RuntimeError(f"unexpected raster size {length} bytes")
 
-    # build image from raw data
-    img = Image.frombytes("RGBA", size, bytes(data), "raw", "ARGB")
+        # build image from raw data
+        img = Image.frombytes("RGBA", size, bytes(data), "raw", "ARGB")
 
-    # NOTE: Grid overlay disabled to prevent coordinate confusion
-    # The minimap shows world coordinates while screen coordinates are relative
-    # draw = ImageDraw.Draw(img)
-    # w, h = img.size
-    # grid_color = (255, 0, 0, 128)  # semi-transparent red
+        # NOTE: Grid overlay disabled to prevent coordinate confusion
+        # The minimap shows world coordinates while screen coordinates are relative
+        # draw = ImageDraw.Draw(img)
+        # w, h = img.size
+        # grid_color = (255, 0, 0, 128)  # semi-transparent red
 
-    # for x in range(0, w + 1, cell_size):
-    #     draw.line(((x, 0), (x, h)), fill=grid_color)
-    # for y in range(0, h + 1, cell_size):
-    #     draw.line(((0, y), (w, y)), fill=grid_color)
+        # for x in range(0, w + 1, cell_size):
+        #     draw.line(((x, 0), (x, h)), fill=grid_color)
+        # for y in range(0, h + 1, cell_size):
+        #     draw.line(((0, y), (w, y)), fill=grid_color)
 
-    # save
-    path = pathlib.Path(filename)
-    img.save(path)
+        # save
+        path = pathlib.Path(filename)
+        img.save(path)
+    finally:
+        # Restore original socket timeout
+        sock.settimeout(original_timeout)
+

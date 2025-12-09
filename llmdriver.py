@@ -625,15 +625,15 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "{\n"
                     '  "screen_type": "title|overworld|battle|menu|dialogue|name_entry",\n'
                     '  "readable_text": "any visible text, semicolon separated. ONLY what is perfectly legible.",\n'
-                    '  "player_position": "description using directional terms (north/south/east/west)",\n'
-                    '  "nearby_objects": "objects near player - use SPECULATIVE language (maybe, possibly, looks like)",\n'
-                    '  "npcs": "visible NPCs and positions, semicolon separated",\n'
-                    '  "obstacles": "walls/trees/barriers, semicolon separated",\n'
+                    '  "player_position": "describe player location in the scene",\n'
+                    '  "nearby_objects": "objects RELATIVE TO PLAYER - e.g. bookshelf north of player, table to player east",\n'
+                    '  "npcs": "NPCs RELATIVE TO PLAYER - e.g. NPC standing south of player; NPC to player left",\n'
+                    '  "obstacles": "walls/trees/barriers RELATIVE TO PLAYER, semicolon separated",\n'
                     '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
                     '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
                     '  "menu_cursor": "if menu: which option is highlighted",\n'
-                    '  "navigation_notes": "doors/exits/red mats/stairs - only if clearly visible",\n'
-                    '  "black_space": "list any large black cut-off areas (e.g. east side, bottom half)"\n'
+                    '  "navigation_notes": "doors/exits/red mats/stairs RELATIVE TO PLAYER - e.g. possible exit south of player",\n'
+                    '  "black_space": "MAP BOUNDARIES - black areas are the edge of the map, NOT walkable or interactable"\n'
                     "}\n\n"
                     "CRITICAL RULES:\n"
                     "- Output ONLY valid JSON, no markdown formatting\n"
@@ -646,10 +646,13 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- Example: 'maybe a toilet or plant; possibly a bookshelf' instead of 'toilet; bookshelf'\n"
                     "- Pixel art is ambiguous - express uncertainty appropriately\n\n"
                     "EXIT DETECTION (navigation_notes) - SECONDARY TO MINIMAP:\n"
-                    "- **CRITICAL**: Look for RED FLOOR MATS - these are warping tiles/entrances!\n"
-                    "- If you see a Red Mat, report it: 'Red Mat at [dir] - warp tile to enter/exit'\n"
-                    "- Look for door frames, stairs, or cave openings\n"
-                    "- Report these as hints: 'red mat at bottom edge; possible door south'\n"
+                    "- **CRITICAL**: Any RED RECTANGLE on the floor is likely an EXIT MAT (doormat)\n"
+                    "- Red floor mats are warping tiles that teleport the player in/out of buildings\n"
+                    "- If you see a red rectangular shape on the floor, report: 'possibly exit mat at [direction]'\n"
+                    "- Do NOT just say 'red rectangular object' - infer it may be an EXIT MAT\n"
+                    "- These mats are typically near the bottom/south edge of indoor areas\n"
+                    "- Look for door frames, stairs, or cave openings as secondary exit indicators\n"
+                    "- Report exits as possibilities: 'red shape at south - possibly exit mat'\n"
                     "- **BUILDING IDENTIFICATION BY TEXT SIGNS**: Roof colors vary by city - do NOT use roof color!\n"
                     "- Identify buildings by TEXT on facade: 'POKE' = Pokemon Center, 'MART' = Shop, 'GYM' = Gym\n"
                     "- If a building does NOT have 'POKE' text visible, it is likely NOT a Pokemon Center\n"
@@ -674,13 +677,27 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "  * NEVER report 'NPC in red clothing' if they are at screen center - that IS the player\n"
                     "  * In the 'npcs' field, do NOT list the player - only list OTHER characters\n"
                     "- Empty fields should be empty strings\n\n"
-                    "SCREEN TYPES:\n"
+                    "SCREEN TYPES (CRITICAL - read carefully before classifying):\n"
                     "- title: Pokemon logo, copyright text, no gameplay\n"
-                    "- overworld: player sprite visible, walking around\n"
-                    "- battle: HP bars, pokemon sprites, move menu\n"
+                    "- overworld: Player sprite visible walking around in the world. NPCs may be present.\n"
                     "- menu: START menu, item list, pokemon list\n"
-                    "- dialogue: REQUIRE visible text box at bottom. If no box, it is NOT dialogue.\n"
-                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters.\n\n"
+                    "- dialogue: REQUIRE visible text box at bottom with black borders. If no box, it is NOT dialogue.\n"
+                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters.\n"
+                    "- **battle**: VERY STRICT REQUIREMENTS - ALL of these must be present:\n"
+                    "  1. The screen is mostly WHITE/light colored (not the colorful overworld)\n"
+                    "  2. Pokemon sprites are shown LARGE - not small 16x16 overworld sprites\n"
+                    "  3. HP bars are visible showing HP values (e.g. 'HP: 25/25')\n"
+                    "  4. Pokemon NAMES are displayed as text (e.g. 'CHARMANDER', 'PIDGEY')\n"
+                    "  5. A battle menu (FIGHT/PKMN/ITEM/RUN) appears in the bottom-right\n"
+                    "  OR dialogue text boxes with battle narration ('Wild PIDGEY appeared!')\n\n"
+                    "**BATTLE vs OVERWORLD - DO NOT CONFUSE THESE:**\n"
+                    "- If you see a COLORFUL TILED FLOOR (grass, buildings, paths) → it is OVERWORLD, not battle\n"
+                    "- If you see small 16x16 pixel character sprites walking around → it is OVERWORLD\n"
+                    "- NPCs in the overworld are NOT 'enemy sprites' - they are just NPCs\n"
+                    "- Lab interiors, houses, caves with walkable floors are OVERWORLD\n"
+                    "- Battle screens have a PLAIN WHITE/LIGHT background, not detailed tile graphics\n"
+                    "- If there is no HP bar visible, it is NOT a battle\n"
+                    "- If there is no Pokemon name text visible, it is NOT a battle\n\n"
                     "BATTLE MENU CURSOR DETECTION (CRITICAL - reduces hallucination):\n"
                     "- The battle menu is a 2x2 grid in the bottom-right corner:\n"
                     "  TOP ROW:    FIGHT  |  PKMN\n"
@@ -1034,39 +1051,43 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                         "Content-Type": "application/json"
                     }
 
+                    t_llm_start = time.time()
                     with httpx.Client(timeout=30.0) as http_client:
                         response = http_client.post(
                             f"{client.base_url}chat/completions",
                             json=api_data,
                             headers=headers
                         )
+                    t_llm_end = time.time()
+                    cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
+                    log.info(f"⏱️ LLM Analysis: {t_llm_end - t_llm_start:.2f}s")
 
-                        if response.status_code == 200:
-                            response_data = response.json()
-                            log.info("Z.AI API call successful via raw HTTP")
-                            log.info(f"Z.AI API response - Keys: {list(response_data.keys())}")
+                    if response.status_code == 200:
+                        response_data = response.json()
+                        log.info("Z.AI API call successful via raw HTTP")
+                        log.info(f"Z.AI API response - Keys: {list(response_data.keys())}")
 
-                            # Create mock classes outside the class definition
-                            class MockMessage:
-                                def __init__(self, message_data):
-                                    self.content = message_data.get('content', None)
+                        # Create mock classes outside the class definition
+                        class MockMessage:
+                            def __init__(self, message_data):
+                                self.content = message_data.get('content', None)
 
-                            class MockChoice:
-                                def __init__(self, choice_data):
-                                    self.message = MockMessage(choice_data.get('message', {}))
-                                    self.finish_reason = choice_data.get('finish_reason', 'unknown')
+                        class MockChoice:
+                            def __init__(self, choice_data):
+                                self.message = MockMessage(choice_data.get('message', {}))
+                                self.finish_reason = choice_data.get('finish_reason', 'unknown')
 
-                            class MockResponse:
-                                def __init__(self, data):
-                                    self.choices = []
-                                    if 'choices' in data and data['choices']:
-                                        self.choices = [MockChoice(choice) for choice in data['choices']]
+                        class MockResponse:
+                            def __init__(self, data):
+                                self.choices = []
+                                if 'choices' in data and data['choices']:
+                                    self.choices = [MockChoice(choice) for choice in data['choices']]
 
-                            response = MockResponse(response_data)
-                        else:
-                            log.error(f"Z.AI API HTTP request failed: {response.status_code}")
-                            log.error(f"Z.AI API response: {response.text}")
-                            raise Exception(f"HTTP {response.status_code}: {response.text}")
+                        response = MockResponse(response_data)
+                    else:
+                        log.error(f"Z.AI API HTTP request failed: {response.status_code}")
+                        log.error(f"Z.AI API response: {response.text}")
+                        raise Exception(f"HTTP {response.status_code}: {response.text}")
 
                 except Exception as e:
                     log.error(f"Z.AI API call failed with raw HTTP: {str(e)}")
@@ -1311,6 +1332,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
     
     cycle_count = 0
+    
+    # Track if we're resuming a run - don't increment cycle on first iteration
+    # because the restored cycle was interrupted and should be completed first
+    is_first_cycle_after_continue = False
 
     # Restore state from persistence if available
     if run_state and run_state.action_count > 0:
@@ -1324,6 +1349,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             chat_history = run_state.chat_history
             log.info(f"🔄 Restored chat history: {len(chat_history)} messages")
         log.info(f"🔄 Restored from persistence: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}")
+        # Flag to skip cycle increment on first loop iteration
+        is_first_cycle_after_continue = True
 
     # Initialize memory manager - persist memories when continuing a run
     is_continuing_run = run_state and run_state.action_count > 0
@@ -1484,7 +1511,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
     while action_count < max_loops:
         loop_start_time = time.time()
-        cycle_count += 1
+        
+        # Skip cycle increment on first iteration when continuing a run
+        # The restored cycle was interrupted and should be completed first
+        if is_first_cycle_after_continue:
+            is_first_cycle_after_continue = False
+            log.info(f"🔄 Resuming interrupted cycle {cycle_count}")
+        else:
+            cycle_count += 1
         current_cycle = cycle_count
         log.info(f"--- Loop Cycle {current_cycle} ---")
         
@@ -1496,6 +1530,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         
         # Broadcast cycle count immediately
         update_payload = {"cycle": current_cycle}
+        await broadcast_func({"cycle": current_cycle})  # Actually broadcast immediately
         action_payload = {}
         
         # Performance metrics container
@@ -1761,6 +1796,55 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 llm_input_state["minimap_data"] = analysis_str
                 log.info(f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
                         f"blocked: {blocked}, npcs: {len(npcs)}, passages: {len(passages)}")
+                
+                # === INVISIBLE OBSTACLE DETECTION ===
+                # If stuck but minimap shows walkable directions, there might be an invisible NPC/object
+                # BUT: Only suggest A-press if NOT at a map boundary (black edge)
+                if stuck_info.get("is_stuck") and walkable:
+                    # Get the direction(s) we've been trying to move
+                    # Check if any walkable direction is actually blocked (invisible obstacle)
+                    stuck_warning_lower = llm_input_state.get("stuck_warning", "").lower()
+                    
+                    # Check if player is facing a map boundary (black area)
+                    # If so, don't suggest A-press - it's just the edge of the map
+                    facing = current_mGBA_state.get('facing', 'down')
+                    is_at_map_boundary = False
+                    
+                    # Check if the blocked direction matches a map edge
+                    # Map boundaries are indicated by 'X' tiles in the minimap
+                    if minimap_analysis and 'blocked' in minimap_analysis:
+                        blocked_directions = minimap_analysis.get('blocked', [])
+                        facing_to_dir = {'up': 'N', 'down': 'S', 'left': 'W', 'right': 'E'}
+                        if facing_to_dir.get(facing) in blocked_directions:
+                            is_at_map_boundary = True
+                            log.info(f"📍 At map boundary facing {facing} - NOT an invisible obstacle")
+                    
+                    # Suggest A-press to interact with potential NPC/object ONLY if not at map boundary
+                    if ("position unchanged" in stuck_warning_lower or "movement blocked" in stuck_warning_lower) and not is_at_map_boundary:
+                        log.warning(f"👻 INVISIBLE OBSTACLE: Minimap shows walkable tiles but movement blocked. Try pressing A to interact!")
+                        llm_input_state["invisible_obstacle_hint"] = (
+                            "👻 INVISIBLE OBSTACLE DETECTED: The minimap shows walkable tiles ahead, "
+                            "but you can't move. There may be an NPC or object blocking you that isn't shown. "
+                            "TRY PRESSING 'A' to interact with the invisible obstacle. If dialogue appears, "
+                            "press B to close it and try moving again."
+                        )
+                        
+                        # Mark this location as potential NPC for Lass overlay
+                        # The actual confirmation happens when vision detects dialogue
+                        current_pos = current_mGBA_state.get('position', [])
+                        if current_pos and len(current_pos) >= 2:
+                            # Mark the tile in front based on facing direction
+                            dx, dy = 0, 0
+                            if facing == 'up': dy = -1
+                            elif facing == 'down': dy = 1
+                            elif facing == 'left': dx = -1
+                            elif facing == 'right': dx = 1
+                            
+                            potential_npc_coords = [current_pos[0] + dx, current_pos[1] + dy]
+                            # Store as potential NPC (will be confirmed if dialogue detected)
+                            memory_manager.add_lass_marking(
+                                map_name, potential_npc_coords, "N", confidence=0.5
+                            )
         
         # Add battle context using game memory (more accurate than vision)
         try:
@@ -1901,6 +1985,18 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         minimap_ts = int(time.time() * 1000)
         state['minimapTimestamp'] = minimap_ts
         update_payload['minimapTimestamp'] = minimap_ts
+        
+        # Broadcast exploration percentage for current map
+        if map_id in exploration_tracker.maps:
+            exp_pct = exploration_tracker.maps[map_id].exploration_pct
+            state['explorationPct'] = round(exp_pct, 1)
+            update_payload['explorationPct'] = state['explorationPct']
+        
+        # Broadcast Lass markings for current map (N=NPC, O=Opening)
+        lass_marks = memory_manager.get_lass_markings_for_map(map_name)
+        if lass_marks:
+            state['lassMarkings'] = lass_marks
+            update_payload['lassMarkings'] = lass_marks
 
         # Default: Analysis uses the clean snapshot unless combined
         ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
@@ -2130,6 +2226,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             }
             log_entries.append(vision_log)
             log.info(f"📸 Vision log created: {len(vision_analysis_for_ui)} chars")
+            
+            # CRITICAL: Store latest screenshot in state for new WebSocket connections
+            # This allows reconnecting clients to display the most recent screenshot
+            if b64_ss:
+                state["latest_screenshot_base64"] = b64_ss
 
 
 
