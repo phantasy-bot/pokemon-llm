@@ -603,7 +603,18 @@
   width: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
+  gap: 4px 12px; /* Reduced row gap */
+  
+  /* Max 5 rows limit (approx height calc or fixed) */
+  /* Assuming approx 32px per item + 4px gap = ~180px for 5 rows */
+  /* We use a mask to fade out the bottom if strictly needed, or just cut off */
+  max-height: 175px; 
+  overflow: hidden;
+  position: relative;
+  
+  /* Fade out bottom to indicate more content */
+  mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
 }
 
 /* Ensure formatting is clean */
