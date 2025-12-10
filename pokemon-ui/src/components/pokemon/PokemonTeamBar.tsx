@@ -19,6 +19,7 @@ interface ExtendedPokemonTeamBarProps extends PokemonTeamBarProps {
     opacity: number;
     age_hours?: number;
   }>;
+  minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay
 }
 
 export function PokemonTeamBar({ 
@@ -28,6 +29,7 @@ export function PokemonTeamBar({
   minimapVisible = true,
   explorationPct,
   lassMarkings,
+  minimapGridSize,
 }: ExtendedPokemonTeamBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -150,6 +152,7 @@ export function PokemonTeamBar({
           timestamp={minimapTimestamp}
           explorationPct={explorationPct}
           lassMarkings={lassMarkings}
+          minimapGridSize={minimapGridSize}
           className="pokemon-team-bar__minimap-component"
         />
       </div>

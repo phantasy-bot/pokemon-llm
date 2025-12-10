@@ -2128,6 +2128,18 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 log.info(f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
                         f"blocked: {blocked}, npcs: {len(npcs)}, passages: {len(passages)}")
                 
+                # Store grid dimensions for lassMarkings overlay positioning
+                # Parse "21x19" format into separate width/height
+                try:
+                    grid_dims = minimap_analysis['grid_size'].split('x')
+                    state['minimapGridSize'] = {
+                        'width': int(grid_dims[0]),
+                        'height': int(grid_dims[1])
+                    }
+                    update_payload['minimapGridSize'] = state['minimapGridSize']
+                except (ValueError, IndexError):
+                    pass  # Keep existing or default
+                
                 # === INVISIBLE OBSTACLE DETECTION ===
                 # If stuck but minimap shows walkable directions, there might be an invisible NPC/object
                 # BUT: Only suggest A-press if NOT at a map boundary (black edge)
