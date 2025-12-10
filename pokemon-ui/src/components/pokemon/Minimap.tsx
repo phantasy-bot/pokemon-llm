@@ -130,7 +130,7 @@ export function Minimap({
         )}
 
         {minimapSrc && (
-          <>
+          <div className="minimap__image-container">
             <img
               src={minimapSrc}
               alt="Pokemon world minimap"
@@ -139,11 +139,11 @@ export function Minimap({
               onError={handleMinimapError}
               style={{ display: minimapVisible ? "block" : "none" }}
             />
-            {/* Lass's pink overlay with N/O markers */}
+            {/* Lass's pink overlay with N/O markers - positioned over the image */}
             {minimapVisible && lassMarkings && lassMarkings.length > 0 && (
               <LassMinimapOverlay markings={lassMarkings} />
             )}
-          </>
+          </div>
         )}
 
         {!minimapVisible && !isLoading && !error && (

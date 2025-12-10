@@ -122,6 +122,14 @@
   transition: all var(--transition-normal);
 }
 
+/* Container for image + overlay - establishes positioning context */
+.minimap__image-container {
+  position: relative;
+  display: inline-block; /* Shrink to fit the image */
+  max-width: 100%;
+  max-height: 100%;
+}
+
 .minimap__image--visible {
   opacity: 1;
   filter: brightness(1);
