@@ -2,10 +2,13 @@ import os
 import sys
 import struct
 import time
+import logging
 from pyAIAgent.game.graphics import dump_minimal_map, dump_minimap_map_array
 from pyAIAgent.utils.socket_utils import readrange, send_command, _flush_socket
 from pyAIAgent.utils.image_utils import capture
 from pyAIAgent.game.data import get_species_map, get_location_name, decode_pokemon_text
+
+log = logging.getLogger(__name__)
 
 DEFAULT_ROM = 'red.gb'
 
