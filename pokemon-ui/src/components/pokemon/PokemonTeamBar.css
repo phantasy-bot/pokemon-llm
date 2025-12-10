@@ -11,13 +11,9 @@
 .pokemon-team-bar__main {
   flex: 1;
   min-width: 0;
-  padding-right: var(--space-lg);
   display: flex;
   flex-direction: column;
-  padding-right: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  /* Removed height: 100% to allow auto sizing */
+  /* Removed padding-right and height: 100% */
   overflow: visible; 
 }
 
