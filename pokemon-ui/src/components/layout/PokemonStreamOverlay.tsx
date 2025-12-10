@@ -396,12 +396,12 @@ export function PokemonStreamOverlay({
                     </p>
                   </div>
                 ) : (
-                  <>
+                  <div className="goals-log__content">
                     <p><strong>1. </strong> {gameState.goals.primary}</p>
                     <p><strong>2. </strong> {gameState.goals.secondary}</p>
                     <p><strong>3. </strong> {gameState.goals.tertiary}</p>
                     <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
-                  </>
+                  </div>
                 )}
               </div>
 
