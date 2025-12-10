@@ -12,7 +12,7 @@
 .recent-actions__label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px; /* Matched to Goals label */
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -30,7 +30,7 @@
 .recent-actions__label-right {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px; /* Matched to Goals label */
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -104,7 +104,7 @@
 
 @keyframes flash-action {
   0% {
-    background-color: #FFFFFF;
+    background-color: #000000; /* Black flash */
     transform: scale(1.1);
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
   }

@@ -93,7 +93,7 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
                     <div 
                       key={idx} 
                       className={`recent-actions__square ${isLatest ? 'flash' : ''}`}
-                      style={isLatest ? { animationDelay: `${idx}s` } : undefined}
+                      style={isLatest ? { animationDelay: `${idx * 0.5}s` } : undefined}
                     >
                       {k}
                     </div>

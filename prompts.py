@@ -190,6 +190,7 @@ You are exploring the game world. Focus on:
 - Use U/D/L/R to move
 - Walk INTO door/exit tiles (O on minimap)
 - Press A facing NPCs to talk
+- ⚠️ NPCs block movement - walk AROUND them, do not try to walk through them!
 """
 
 TITLE_PROMPT = """
