@@ -85,7 +85,24 @@ const formatLargeNumber = (num: number): string => {
   return num.toString();
 };
 
-// Live cycle timer component that ticks every second
+// Animated dots component for loading states
+function AnimatedDots() {
+  const [dots, setDots] = useState('');
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '...') return '';
+        return prev + '.';
+      });
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+  
+  return <span>{dots}</span>;
+}
+
+// Live cycle timer component that ticks every 0.1 seconds
 function LiveCycleTimer({ 
   cycleNumber, 
   currentCycleTime 
@@ -93,16 +110,16 @@ function LiveCycleTimer({
   cycleNumber: number; 
   currentCycleTime: number;
 }) {
-  const [elapsedTime, setElapsedTime] = useState(currentCycleTime);
+  const [elapsedTime, setElapsedTime] = useState(0); // Start at 0
   const [isFlashing, setIsFlashing] = useState(false);
   const lastCycleRef = useRef(cycleNumber);
   const timerRef = useRef<number | null>(null);
 
-  // Tick every second
+  // Tick every 0.1 second
   useEffect(() => {
     timerRef.current = window.setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
+      setElapsedTime(prev => prev + 0.1);
+    }, 100); // 100ms = 0.1s
 
     return () => {
       if (timerRef.current) {
@@ -114,7 +131,7 @@ function LiveCycleTimer({
   // Reset timer and flash when cycle changes
   useEffect(() => {
     if (cycleNumber !== lastCycleRef.current) {
-      // Cycle completed - flash and reset
+      // Cycle completed - flash and reset to 0
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 500);
       setElapsedTime(0);
@@ -122,16 +139,16 @@ function LiveCycleTimer({
     }
   }, [cycleNumber]);
 
-  // Sync with backend time if significantly different
+  // Sync with backend time if significantly different (but not when starting fresh)
   useEffect(() => {
-    if (Math.abs(elapsedTime - currentCycleTime) > 3) {
+    if (currentCycleTime > 0 && Math.abs(elapsedTime - currentCycleTime) > 3) {
       setElapsedTime(currentCycleTime);
     }
   }, [currentCycleTime]);
 
   return (
     <span className={`cycle-timer ${isFlashing ? 'cycle-timer--flash' : ''}`}>
-      {elapsedTime}s
+      {elapsedTime.toFixed(1)}s
     </span>
   );
 }
@@ -374,7 +391,17 @@ export function PokemonStreamOverlay({
               <div className="goals-log">
                 <span className="goals-log__label">LONG-TERM GOALS</span>
                 {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
-                  <p style={{ textAlign: 'center', opacity: 0.7 }}>Initializing goals...</p>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    height: '100%',
+                    opacity: 0.7 
+                  }}>
+                    <p style={{ textAlign: 'center' }}>
+                      Initializing goals<AnimatedDots />
+                    </p>
+                  </div>
                 ) : (
                   <>
                     <p><strong>1. </strong> {gameState.goals.primary}</p>

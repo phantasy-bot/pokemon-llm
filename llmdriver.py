@@ -1390,7 +1390,7 @@ def backup_save_state():
 
 
 
-async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None, mgba_proc = None):
+async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None, mgba_proc = None):
     """Main async loop: Get state, call LLM, send action, update/broadcast state.
     
     Args:
@@ -2804,17 +2804,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
         # Auto-save game state at end of each cycle
         try:
-            # User requested to turn off autosave to debug crashes
-            # backup_save_state()
-            # save_game_state(sock_ref["socket"], slot=1)  # Use slot 1 for regular saves
-            pass
+            # AUTOSAVE enabled: save to slot 1 every cycle for safety
+            save_game_state(sock_ref["socket"], slot=1)  # Use slot 1 for regular saves
         except Exception as e:
             log.warning(f"⚠️ Save operation failed: {e} - continuing cycle")
 
         elapsed_loop_time = time.time() - loop_start_time
         # ORIGINAL llmdriver.py used max(10, ...). 
-        # We use 5s to be safer than 2s but faster than 10s. This helps mGBA Lua GC keep up.
-        wait_time = max(5, interval - elapsed_loop_time) # Ensure at least 5 seconds wait
+        # Changed to 10s minimum wait as requested.
+        wait_time = max(10, interval - elapsed_loop_time) # Ensure at least 10 seconds wait
         if result and result.get("stats", {}).get("action_count", 0) > 0:
             log.info(f"💾 Cycle {current_cycle} action execution successful")
             

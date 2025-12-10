@@ -163,6 +163,18 @@
   /* Removed shadow */
 }
 
+.character-container__commentary-text {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.9);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Move content down from label */
+  padding-top: 8px;
+}
+
 .folder-sponsor__link {
   font-family: var(--font-mono);
   font-size: 10px;
