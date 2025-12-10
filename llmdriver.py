@@ -154,6 +154,10 @@ action_count = 0
 tokens_used_session = 0
 start_time = datetime.datetime.now()
 
+# Agent-requested ui_diff flag - Only run diff when agent asks for it
+# This saves 10-20s per cycle when diff is not needed
+agent_requested_diff = False
+
 # Global status callback for real-time processing status updates
 # Set by run_auto_loop, called by llm_stream_action during vision processing
 _status_callback = None
@@ -774,10 +778,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                             payload["detected_screen_type"] = detected_screen_type
                     
                     # ═══════════════════════════════════════════════════════════════
-                    # SINGLE DIFF CHECK - Compare current to previous cycle (N-1 only)
+                    # SINGLE DIFF CHECK - Only run when agent requested it
                     # Sequential execution to prevent MCP response ID conflicts
                     # ═══════════════════════════════════════════════════════════════
-                    if diff_pairs:
+                    global agent_requested_diff
+                    if agent_requested_diff and diff_pairs:
+                        log.info("🔄 Agent requested diff - running ui_diff_check")
                         try:
                             # Only use the most recent diff pair (N-1)
                             single_pair = diff_pairs[0] if diff_pairs else None
@@ -815,6 +821,11 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                                 
                         except Exception as diff_error:
                             log.warning(f"Multi-diff failed (non-critical): {diff_error}")
+                        
+                        # Reset flag after running
+                        agent_requested_diff = False
+                    elif diff_pairs:
+                        log.debug("⏭️ Skipping ui_diff (agent did not request it) - saves ~15s")
                     else:
                         log.debug("No diff pairs available (first few cycles?)")
 
@@ -1051,16 +1062,37 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                         "Content-Type": "application/json"
                     }
 
-                    t_llm_start = time.time()
-                    with httpx.Client(timeout=30.0) as http_client:
-                        response = http_client.post(
-                            f"{client.base_url}chat/completions",
-                            json=api_data,
-                            headers=headers
-                        )
-                    t_llm_end = time.time()
-                    cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
-                    log.info(f"⏱️ LLM Analysis: {t_llm_end - t_llm_start:.2f}s")
+                    # LLM API retry logic - retry up to 2 times on timeout
+                    LLM_API_TIMEOUT = 40.0  # 40s timeout as requested
+                    LLM_MAX_RETRIES = 2
+                    response = None
+                    last_error = None
+                    
+                    for llm_attempt in range(LLM_MAX_RETRIES + 1):
+                        try:
+                            t_llm_start = time.time()
+                            with httpx.Client(timeout=LLM_API_TIMEOUT) as http_client:
+                                response = http_client.post(
+                                    f"{client.base_url}chat/completions",
+                                    json=api_data,
+                                    headers=headers
+                                )
+                            t_llm_end = time.time()
+                            cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
+                            log.info(f"⏱️ LLM Analysis: {t_llm_end - t_llm_start:.2f}s")
+                            break  # Success - exit retry loop
+                            
+                        except httpx.ReadTimeout as e:
+                            last_error = e
+                            if llm_attempt < LLM_MAX_RETRIES:
+                                log.warning(f"🔄 LLM API timeout (attempt {llm_attempt + 1}/{LLM_MAX_RETRIES + 1}). Retrying...")
+                                time.sleep(1)  # Brief pause before retry
+                            else:
+                                log.error(f"❌ LLM API timeout after {LLM_MAX_RETRIES + 1} attempts")
+                                raise e
+                    
+                    if response is None:
+                        raise last_error or Exception("LLM API call failed with no response")
 
                     if response.status_code == 200:
                         response_data = response.json()
@@ -1226,6 +1258,14 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 act = parsed.get("action")
                 touch = parsed.get("touch")
                 vision_from_json = parsed.get("vision_analysis")
+                
+                # Check if agent requested a diff for next cycle
+                # Output format: {"action":"U;U;U;", "request_diff": true}
+                request_diff_flag = parsed.get("request_diff", False)
+                if request_diff_flag:
+                    global agent_requested_diff
+                    agent_requested_diff = True
+                    log.info("🔍 Agent requested ui_diff for next cycle")
 
                 # Use vision analysis from JSON if provided
                 if vision_from_json and isinstance(vision_from_json, str):
