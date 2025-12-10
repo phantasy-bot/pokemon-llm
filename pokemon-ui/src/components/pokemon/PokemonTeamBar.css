@@ -4,7 +4,8 @@
   background: var(--bg-panel);
   /* border-top removed as requested */
   padding: 4px 2px; /* Slight padding */
-  /* Removed max-height - let content determine size */
+  height: 160px; /* Default fixed height for consistent minimap scaling */
+  min-height: 160px;
 }
 
 .pokemon-team-bar__main {
