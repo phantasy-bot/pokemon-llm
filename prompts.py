@@ -157,6 +157,12 @@ MENU_PROMPT = """
 ## 📋 MENU SCREEN (ACTIVE)
 The START menu or a submenu is open:
 
+### DID YOU OPEN THIS BY ACCIDENT?
+If you were trying to MOVE SOUTH but a menu opened:
+- You typed S (START) instead of D (Down)!
+- Press B; to close this menu
+- Then use D; to move south, NOT S;
+
 ### MENU NAVIGATION
 - D-pad to move between options
 - A to select highlighted option
@@ -222,9 +228,23 @@ def get_base_prompt() -> str:
     return """You are playing Pokémon Red. Analyze input and output actions to progress.
 
 ## CONTROLS
-U/D/L/R = movement | A = confirm | B = cancel | S = START | s = SELECT
+**MOVEMENT: U = Up/North | D = Down/South | L = Left/West | R = Right/East**
+**BUTTONS: A = confirm | B = cancel | S = START menu | s = SELECT**
 Chain with semicolons: U;U;R;A; (use 2-5 actions per turn, never single moves)
-⚠️ NEVER use N/S/E/W - only U/D/L/R! (S = START button, not South)
+
+⚠️⚠️⚠️ **CRITICAL - DO NOT CONFUSE THESE:** ⚠️⚠️⚠️
+- **D = DOWN/SOUTH movement** (NOT S!)
+- **S = START button** (opens menu, NOT movement!)
+- If you want to move south, use D;D;D; NOT S;S;S;
+- WRONG: "S;S;S;" to move south → this opens START menu 3 times!
+- RIGHT: "D;D;D;" to move south
+
+### MENU RECOVERY (if menu opened unexpectedly)
+If you tried to move but a MENU opened instead:
+1. You probably typed S instead of D for south movement
+2. Press B; to close the menu
+3. Then retry your MOVEMENT with D; (not S!)
+4. Example: Wanted to go south but menu opened → B;D;D;D;
 
 ## COORDINATES (3 Systems)
 | Type | Description | Example | Use For |
