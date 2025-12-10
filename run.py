@@ -251,6 +251,7 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
             sock = socket.create_connection(('localhost', port), timeout=2)
             # Keep blocking for simplicity in current setup (console/llmdriver manage reads)
             sock.setblocking(True)
+            sock.settimeout(30.0)  # CRITICAL: Set timeout to prevent indefinite blocking
             log.info(f"Connected to mGBA scripting server on port {port}")
             
             # Store global reference for graceful shutdown
