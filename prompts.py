@@ -59,27 +59,32 @@ NAME_ENTRY_PROMPT = """
 
 **Navigate to the preset name and press A. Do NOT enter the keyboard unless forced!**
 
-### IF YOU'RE NAMING YOUR OWN CHARACTER (and must type):
-- Type "Lass" (your persona name) - just 4 letters: L, A, S, S
-- Then press START to confirm immediately
+### ⚠️ CRITICAL: KEYBOARD NAVIGATION RULES
+**You CANNOT type letters directly! You must NAVIGATE the grid:**
+1. The cursor starts at 'A' in the top-left
+2. Use D-pad (U/D/L/R) to move the cursor to each letter
+3. Press A to select the letter under the cursor
+4. Repeat for each letter in the name
 
-### ⚠️ CRITICAL: NO GOING BACK
-- Once in the keyboard grid, pressing B only DELETES characters
-- You CANNOT return to preset names by pressing B!
-- If stuck: Just spam A on any letters, then press START to confirm
-- Commentary can be funny: "Well THIS is a disaster, let me just mash some buttons!"
+**EXAMPLE - To type "RED":**
+1. Cursor at A → Move RIGHT 1 (to B), then DOWN 2 (through J, to S), then RIGHT 5 (to R) → Press A
+2. Move LEFT 1 (to Q), UP 1 (to H), RIGHT 3 (to E) → Press A  
+3. Move DOWN 1 (to N), LEFT 4 (to D) → Press A
+4. Navigate to "ED" (bottom-right) and press A to confirm
 
-### ESCAPE HATCH - IF STUCK:
-1. Press A a few times to add random letters
-2. Press START to confirm the name (works if at least 1 char entered)
-3. Move on with the game - names don't matter that much!
-4. Be funny about it: "Oops, I guess my rival is now named 'AAA'! Classic!"
+**ACTION FORMAT:** Use D-pad + A, e.g.: "R;R;D;D;D;D;D;A;R;R;R;R;A;ED;"
 
-### KEYBOARD LAYOUT (if you really need it)
+### IF STUCK IN KEYBOARD:
+1. Just navigate to "ED" in bottom-right corner
+2. Press A on ED to confirm (works even with partial/no name)
+3. Move on with the game!
+
+### KEYBOARD LAYOUT (9 columns, 6 rows)
 Row 1: A B C D E F G H I
 Row 2: J K L M N O P Q R  
 Row 3: S T U V W X Y Z (space)
-ED = End/Confirm (bottom-right)
+Row 4: x ( ) : ; [ ] PK MN
+Row 5: - ? ! ♂ ♀ / . , ED
 """
 
 BATTLE_PROMPT = """
