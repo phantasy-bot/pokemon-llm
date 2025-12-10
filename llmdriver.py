@@ -572,7 +572,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
     """
     if cycle_metrics is None:
         cycle_metrics = {}
-    global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE
+    global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE, agent_requested_diff
 
     summary_json = None
     vision_analysis_for_ui = None  # Store raw vision analysis for UI display
@@ -1263,7 +1263,6 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 # Output format: {"action":"U;U;U;", "request_diff": true}
                 request_diff_flag = parsed.get("request_diff", False)
                 if request_diff_flag:
-                    global agent_requested_diff
                     agent_requested_diff = True
                     log.info("🔍 Agent requested ui_diff for next cycle")
 
