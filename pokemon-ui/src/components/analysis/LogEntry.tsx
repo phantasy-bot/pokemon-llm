@@ -283,13 +283,19 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/<game_analysis>/gi, '');
   formattedText = formattedText.replace(/<\/game_analysis>/gi, '');
 
-  // Highlight coordinates like [7,1]
-  const coordRegex = /(\[\d+,\s*\d+\])/g;
+  // Highlight plain coordinates like [7,1] (bold)
+  const coordRegex = /(?<![A-Za-z])(\[\d+,\s*\d+\])/g;
   formattedText = formattedText.replace(coordRegex, (match) => {
     return `<span class="grid-coordinate">${match}</span>`;
   });
   
-  // Highlight Grid coordinates like Grid[2,7]
+  // Highlight World coordinates like World[2,7] (blue bold)
+  const worldCoordRegex = /(World\s*\[\d+,\s*\d+\])/gi;
+  formattedText = formattedText.replace(worldCoordRegex, (match) => {
+    return `<span class="world-coordinate">${match}</span>`;
+  });
+  
+  // Highlight Grid coordinates like Grid[2,7] (bold, same as plain)
   const gridCoordRegex = /(Grid\s*\[\d+,\s*\d+\])/gi;
   formattedText = formattedText.replace(gridCoordRegex, (match) => {
     return `<span class="grid-coordinate">${match}</span>`;

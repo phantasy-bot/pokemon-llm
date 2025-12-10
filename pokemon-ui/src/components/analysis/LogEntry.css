@@ -107,16 +107,20 @@
   color: inherit;
 }
 
+/* World coordinates like World[7,1] - bold with blue tint */
+.log-entry__text :global(.world-coordinate),
+.formatted-log-content .world-coordinate {
+  font-weight: 700;
+  color: #2563eb; /* Blue color for World coordinates */
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
 /* Town names - bold with color, NO shadow */
 .log-entry__text :global(.town-name),
 .formatted-log-content .town-name {
   font-weight: 700;
-}
-
-/* Legacy coordinate class */
-.log-entry__text :global(.coordinate) {
-  font-weight: 700;
-  color: inherit;
 }
 
 /* Summary mode - larger text for LLM response when showing just summary */

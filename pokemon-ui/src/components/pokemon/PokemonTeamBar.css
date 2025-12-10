@@ -204,3 +204,10 @@
   height: 100%;
   object-fit: contain;
 }
+
+/* Center the exploration % below minimap */
+.pokemon-team-bar__minimap-component .minimap__exploration {
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+}
