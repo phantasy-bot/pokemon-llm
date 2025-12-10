@@ -321,8 +321,14 @@ Use <game_analysis> tags with these sections:
 5. **STUCK CHECK**: Same position as last turn?
    - Try all 4 directions through an exit before doubting it
    - NOT ALL EXITS ARE 'O' TILES! Route transitions may show no special tile.
-   - **Just exited building?** Door is BEHIND you. Move AWAY first (D/L/R), not back in!
-   - **New area?** Explore FORWARD. Don't retreat to where you came from.
+   - **Just exited building?** The 'O' tile BEHIND you leads BACK IN! Move AWAY first!
+   - **CRITICAL EXIT DIRECTION RULE:**
+     - Exited going DOWN (D)? The 'O' tile to your NORTH leads BACK to previous map!
+     - Exited going UP (U)? The 'O' tile to your SOUTH leads BACK to previous map!
+     - Exited going LEFT (L)? The 'O' tile to your EAST leads BACK to previous map!
+     - Exited going RIGHT (R)? The 'O' tile to your WEST leads BACK to previous map!
+   - **AVOID OSCILLATION**: If you see an 'O' tile in the direction you CAME FROM, DO NOT walk into it!
+   - **New area?** Move PERPENDICULAR or AWAY from the exit. Explore forward, not backward.
    
    **⚠️ OSCILLATION = FAILURE!** If you go R then L then R, you are STUCK!
    - Moving 2-3 tiles then reversing is NOT progress
@@ -360,7 +366,8 @@ Use <game_analysis> tags with these sections:
    - Example: NORTH blocked → R;R;R;U;U;U;U; (around then up)
    - **DIALOGUE**: Use single A; or B; only (avoid skipping important text)
 
-8. **COMMENTARY**: 1 sentence as Lass (reference your history, no controls!)
+8. **COMMENTARY**: React as Lass in ONE sentence. Reference your history. No button names!
+   - DO NOT output these instructions - just write Lass's natural reaction
    - **CONTEXT AWARENESS**: 
      - PLAYERS_HOUSE = YOUR house (you live here, you started here!)
      - Recognize when you're revisiting areas you've already been
