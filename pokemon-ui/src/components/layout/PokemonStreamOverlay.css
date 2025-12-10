@@ -466,7 +466,7 @@
 .character-container__commentary-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px; /* Increased from 10px */
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -488,7 +488,7 @@
 
 .character-container__commentary-text {
   font-family: var(--font-mono);
-  font-size: 16px; /* Larger */
+  font-size: 18px; /* Increased from 16px */
   line-height: 1.6;
   color: rgba(0, 0, 0, 0.85); /* Dark text for contrast on bright accent */
   font-weight: 600; /* Bolder */
@@ -520,44 +520,47 @@
   object-position: bottom right;
 }
 
-/* Goals section with TUI box styling */
+/* Goals section with TUI box styling - Fixed height, truncate overflow */
 .goals-log {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-md);
-  padding-top: var(--space-md); /* Space for label */
-  /* Remove duplicates and fix margin */
-  margin-top: var(--space-lg); /* Add spacing above goals as requested */
-  flex: 0 1 auto; /* Don't grow, allow shrink, fit content */
-  overflow: visible; /* Allow label to show above */
+  padding-top: calc(var(--space-md) + 10px); /* Extra space for label content */
+  /* Add margin-top to make room for sheared label that sits ABOVE the box */
+  margin-top: calc(var(--space-lg) + 16px); /* Extra margin for label visibility */
   
-  /* TUI Box Style */
+  /* FIXED HEIGHT - increased for more content */
+  height: 220px; /* Increased from 180px */
+  min-height: 220px;
+  max-height: 220px;
+  /* Use overflow-y only so the label positioned above isn't clipped */
+  overflow-y: hidden; /* Truncate content that goes beyond */
+  overflow-x: visible; /* Allow horizontal overflow for label */
+  
+  /* TUI Box Style - dotted border like other sections */
   border: 1px dotted rgba(0, 0, 0, 0.5);
   position: relative;
 }
 
-/* TUI label for Goals section */
+/* TUI label for Goals section - sheared ASCII style matching other labels */
 .goals-log__label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(0, 0, 0, 0.9); /* Dark text for contrast */
   text-transform: uppercase;
   letter-spacing: 0.1em;
   
-  /* Sheared position on top border */
+  /* Sheared position on top border - NO border-radius for ASCII look */
   position: absolute;
-  top: -8px;
+  top: -9px;
   left: var(--space-md);
-  background: var(--accent-primary-bright); /* Match folder container background */
-  padding: 0 6px;
-  border-radius: 4px;
+  /* Use folder-container background so dotted border goes THROUGH the label */
+  background: var(--accent-primary-bright);
+  padding: 0 8px;
   z-index: 2;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.9);
-  text-transform: uppercase;
 }
 
 /* Removed old h3 styling - using __label now */
@@ -636,7 +639,7 @@
   position: relative;
   /* Flex 1 to take all available space, pushing team bar down */
   flex: 1;
-  min-height: 0;
+  min-height: 300px; /* Increased minimum height for taller game feed */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);

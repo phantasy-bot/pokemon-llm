@@ -318,7 +318,7 @@ export function PokemonStreamOverlay({
             <div className="folder-content">
               {/* Goals with TUI box styling */}
               <div className="goals-log">
-                <span className="goals-log__label">GOALS</span>
+                <span className="goals-log__label">LONG-TERM GOALS</span>
                 {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
                   <p style={{ textAlign: 'center', opacity: 0.7 }}>Initializing goals...</p>
                 ) : (

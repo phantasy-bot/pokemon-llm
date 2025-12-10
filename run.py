@@ -382,13 +382,13 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=N
                 send_command(sock, "INPUT_DISPLAY_ON")
                 log.info(f"Starting LLM driver loop (max_loops: {max_loops_arg})...")
                 llm_task = asyncio.create_task(
-                    run_auto_loop(sock, state, broadcast_message, interval=13.0, max_loops=max_loops_arg, benchmark=benchmark, persistence=persistence, run_state=run_state),
+                    run_auto_loop(sock, state, broadcast_message, interval=13.0, max_loops=max_loops_arg, benchmark=benchmark, persistence=persistence, run_state=run_state, mgba_proc=proc),
                     name="LLMDriverLoop"
                 )
             else:
                 log.info("Starting LLM driver loop...")
                 llm_task = asyncio.create_task(
-                    run_auto_loop(sock, state, broadcast_message, interval=13.0, persistence=persistence, run_state=run_state),
+                    run_auto_loop(sock, state, broadcast_message, interval=13.0, persistence=persistence, run_state=run_state, mgba_proc=proc),
                     name="LLMDriverLoop"
                 )
             tasks_to_await.append(llm_task)

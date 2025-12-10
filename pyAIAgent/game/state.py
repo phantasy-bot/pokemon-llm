@@ -174,6 +174,10 @@ def prep_llm(sock) -> dict:
     
     try:
         t_start = time.time()
+        
+        # Don't override socket timeout - trust the driver (llmdriver.py) to set it correctly
+        # This prevents prep_llm from timing out prematurely (e.g. at 8s instead of 15s)
+        
         log.info("prep_llm: flushing socket...")
         _flush_socket(sock)
         
@@ -182,12 +186,14 @@ def prep_llm(sock) -> dict:
         capture(sock, "latest.png")
         log.info(f"prep_llm: capture took {time.time() - t_cap:.2f}s")
         
-        time.sleep(1.5) # Increased wait to let game UI fully load after actions
+        # Removed sleep(1.0) - capture is synchronous and complete, no need to wait
+        # This saves 1s of timeout budget
         _flush_socket(sock)
         
         log.info("prep_llm: getting location...")
         t_loc = time.time()
         loc = get_location(sock)
+
         log.info(f"prep_llm: get_location took {time.time() - t_loc:.2f}s")
         
         mid = None

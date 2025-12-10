@@ -1,23 +1,39 @@
 import struct
+import socket
 
 def _flush_socket(sock) -> None:
     """
     Drain any pending data from sock so that our next recv()
     only sees the fresh response to the command we send.
+    
+    Handles dead sockets gracefully to prevent exceptions during cleanup.
     """
-    # Switch to non-blocking so recv() returns immediately if no data
-    sock.setblocking(False)
+    # Store original timeout and use non-blocking via timeout=0
     try:
-        while True:
-            data = sock.recv(4096)
-            if not data:
-                break
-    except (BlockingIOError, OSError):
-        # No more data to read
+        original_timeout = sock.gettimeout()
+    except (OSError, socket.error):
+        return  # Socket already dead, nothing to flush
+    
+    try:
+        sock.settimeout(0)  # Non-blocking mode via zero timeout
+        try:
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+        except (BlockingIOError, socket.timeout, OSError):
+            # No more data to read, or socket error - both OK for flush
+            pass
+    except (OSError, socket.error):
+        # Socket died during flush - acceptable
         pass
     finally:
-        # Go back to blocking mode
-        sock.setblocking(True)
+        # Go back to original timeout mode
+        try:
+            sock.settimeout(original_timeout)
+        except (OSError, socket.error):
+            pass  # Socket may have died
+
 
 def readrange(sock, address: str, length: str) -> bytes:
     _flush_socket(sock)

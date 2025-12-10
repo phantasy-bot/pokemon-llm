@@ -263,9 +263,11 @@ Use <game_analysis> tags with these sections:
    - **PLAYER CHECK**: Red-clothed sprite at screen center = YOU (RED), not an NPC!
 
 3. **MINIMAP**: Copy blocked/walkable from minimap_data. List exits with World coords.
-   - Check memory_context for VERIFIED exits (e.g., "[Verified] [5,6] -> ROUTE_1")
+   - Verified exits in memory are APPROXIMATE (±2 tiles) - look for nearby 'O' tiles!
+   - E.g., memory says [5,7] but minimap shows exit at [5,5] → same entrance area
 
 4. **MEMORY**: What do you KNOW from memory_context? Unexplored 'O' tiles = explore these!
+   - Match memory exits (approx coords) to nearby minimap 'O' tiles for navigation
 
 5. **STUCK CHECK**: Same position as last turn?
    - Try all 4 directions through an exit before doubting it
@@ -306,7 +308,7 @@ Optional: {"action":"U;U;", "request_diff": true} if stuck (adds 15s delay)
 ## DATA TRUST HIERARCHY
 1. **game_state** = ABSOLUTE TRUTH (map_name, position)
 2. **minimap** = Reliable ('O'/'W'/'B' tiles)
-3. **memory_context** = Reliable (verified exits)
+3. **memory_context** = Reliable (verified exits are APPROXIMATE ±2 tiles)
 4. **vision** = UNRELIABLE - often hallucinates. Cross-check vs game_state always.
 
 ## BUILDING IDENTIFICATION
@@ -315,10 +317,11 @@ Don't trust roof colors! Identify by TEXT SIGNS:
 - No "POKE" sign? NOT the Pokemon Center.
 
 ## EXIT PROTOCOL
-- Move toward 'O' with repeated moves: U;U;U;
-- Standing on 'O' isn't enough - STEP THROUGH in exit direction
-- **Interior exits**: D; to exit | **Exterior doors**: U; to enter
-- **Red mat/warp**: Take ONE MORE STEP in mat direction (D;D; to exit south)
+- **STEP ONTO exits** - don't press A! Walk INTO 'O' tiles/red mats.
+- Move toward exit with repeated moves: D;D;D; (south exits) or U;U;U; (north entries)
+- **Interior exits (red mats at bottom)**: Step THROUGH the mat going D; (south)
+- **Exterior doors**: Walk INTO the building going U; (north)
+- If standing ON an exit tile, take ONE MORE step in exit direction
 
 If memory_context appears, USE IT for navigation.
 """
@@ -376,6 +379,7 @@ def get_summary_prompt():
         {
             "summary": "Your summary ideally under 300 words : string",
             "primaryGoal": "2 sentences MAXIMUM : string",
+            "plan_target_tile": "The specific tile [x,y] you are trying to reach (e.g. '[12,15]') : string",
             "current_state": "Briefly describe current location, map features (exits/stairs), and status : string",
             "secondaryGoal": "2 sentences MAXIMUM: string",
             "tertiaryGoal": "2 sentences MAXIMUM : string",

@@ -13,6 +13,8 @@ import re
 import math
 import concurrent.futures
 import functools
+import subprocess
+import threading
 
 from PIL import Image
 from token_counter import count_tokens, calculate_prompt_tokens
@@ -1381,8 +1383,12 @@ def backup_save_state():
 
 
 
-async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None):
-    """Main async loop: Get state, call LLM, send action, update/broadcast state."""
+async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0, max_loops = math.inf, benchmark: Benchmark = None, persistence = None, run_state = None, mgba_proc = None):
+    """Main async loop: Get state, call LLM, send action, update/broadcast state.
+    
+    Args:
+        mgba_proc: The mGBA subprocess - needed for auto-restart on failures for 24/7 operation.
+    """
     global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
     
     cycle_count = 0
@@ -1523,7 +1529,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     cycle_times_history = []  # List of recent cycle times for average calculation
     
     # mGBA timeout - if no response in this time, restart the cycle
-    MGBA_TIMEOUT = 5  # seconds - reduced for faster cycles
+    # INCREASED from 5s to 15s - screenshot capture can take 4+ seconds after restart
+    # and thread race conditions caused false timeouts when old threads kept running
+    MGBA_TIMEOUT = 15  # seconds - must be enough for full prep_llm sequence
 
     benchInstructions = ""
     if benchmark is not None:
@@ -1561,17 +1569,142 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     # Track consecutive mGBA failures across cycle retries
     # This persists across loop iterations so we can detect when mGBA is completely dead
     consecutive_mgba_failures = 0
-    MAX_CONSECUTIVE_FAILURES = 10  # Exit after 10 consecutive mGBA failures
-    RECONNECT_THRESHOLD = 3  # Try to reconnect socket after 3 failures
+    # Reduced to 3 - mGBA Lua socket callbacks may occasionally timeout
+    # but if it fails 3 times in a row, it's likely frozen
+    MAX_CONSECUTIVE_FAILURES = 3  # Restart mGBA after 3 consecutive failures
+    RECONNECT_THRESHOLD = 3  # Skip socket reconnection - go straight to restart
     
-    def reconnect_socket(old_sock, port=8888):
-        """Attempt to reconnect to mGBA socket. Returns new socket or None."""
+    # Use mutable containers for socket and process so restarts update all references
+    sock_ref = {"socket": sock}
+    proc_ref = {"proc": mgba_proc}
+    
+    # Socket lock to prevent race condition where old ThreadPoolExecutor threads
+    # continue using the socket after asyncio timeout, corrupting data for new threads.
+    # ThreadPoolExecutor doesn't cancel running threads on timeout - they keep running!
+    socket_lock = threading.Lock()
+    
+    def prep_llm_locked(sock):
+        """Wrapper that acquires lock before accessing socket.
+        
+        This prevents race conditions where an old prep_llm thread (that didn't
+        get cancelled by asyncio timeout) corrupts socket data for new calls.
+        """
+        with socket_lock:
+            return prep_llm(sock)
+    
+    # Import config for mGBA paths
+    import config
+    
+    def restart_mgba(port=8888):
+        """
+        Kill and restart the entire mGBA process for 24/7 autonomous operation.
+        This is called when socket reconnection fails - mGBA Lua script is probably frozen.
+        """
+        nonlocal sock_ref, proc_ref
+        log.warning("🔄 RESTARTING MGBA PROCESS (Lua script may be frozen)...")
+        
+        # 1. Close old socket
+        try:
+            sock_ref["socket"].close()
+            log.info("🔌 Old socket closed")
+        except Exception as e:
+            log.warning(f"Error closing old socket: {e}")
+        
+        # 2. Kill old process
+        if proc_ref["proc"] and proc_ref["proc"].poll() is None:
+            try:
+                proc_ref["proc"].terminate()
+                proc_ref["proc"].wait(timeout=5)
+                log.info("💀 Old mGBA process terminated")
+            except subprocess.TimeoutExpired:
+                log.warning("mGBA didn't terminate gracefully, killing...")
+                proc_ref["proc"].kill()
+                proc_ref["proc"].wait()
+            except Exception as e:
+                log.error(f"Error terminating mGBA: {e}")
+        
+        # 3. Wait a moment for cleanup
+        time.sleep(2)
+        
+        # 4. Start new mGBA process
+        rom_path = get_rom_path()
+        # Construct path to slot 1 save state (e.g. roms/red.gb -> roms/red.ss1)
+        # Using CLI load avoids the socket LOADSTATE pause/freeze issue
+        import os
+        ss1_path = os.path.splitext(rom_path)[0] + ".ss1"
+        
+        cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT]
+        
+        # If save state exists, load it via CLI
+        if os.path.exists(ss1_path):
+            log.info(f"Using CLI to load save state: {ss1_path}")
+            cmd.extend(['-t', ss1_path])
+        else:
+            log.warning(f"Save state not found at {ss1_path}, starting fresh")
+            
+        cmd.append(rom_path)
+        
+        log.info(f"Starting new mGBA: {' '.join(cmd)}")
+        try:
+            proc_ref["proc"] = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        except Exception as e:
+            log.error(f"Failed to start mGBA: {e}")
+            return False
+        
+        # 5. Wait for mGBA to initialize
+        log.info("⏳ Waiting for mGBA to initialize...")
+        time.sleep(4)
+        
+        # Check if mGBA started successfully
+        if proc_ref["proc"].poll() is not None:
+            log.error(f"mGBA exited immediately with code {proc_ref['proc'].returncode}")
+            return False
+        
+        # 6. Connect to new socket
+        import socket as sock_module
+        for attempt in range(5):
+            try:
+                new_sock = sock_module.create_connection(('localhost', port), timeout=5)
+                new_sock.setblocking(True)
+                new_sock.settimeout(10.0)
+                sock_ref["socket"] = new_sock
+                log.info(f"✅ Connected to new mGBA socket (fd={new_sock.fileno()})")
+                break
+            except Exception as e:
+                log.warning(f"Socket connection attempt {attempt+1}/5 failed: {e}")
+                time.sleep(1)
+        else:
+            log.error("Failed to connect to new mGBA socket after 5 attempts")
+            return False
+        
+        # 7. Load save state (SKIPPED - handled via CLI to prevent freeze)
+        # try:
+        #     response = send_command(sock_ref["socket"], "LOADSTATE 1")
+        #     if response and "OK" in response:
+        #         log.info("✅ Save state loaded successfully!")
+        #     else:
+        #         log.warning(f"Save state load response: {response}")
+        # except Exception as e:
+        #     log.error(f"Failed to load save state: {e}")
+        
+        # 8. Enable input display
+        try:
+            send_command(sock_ref["socket"], "INPUT_DISPLAY_ON")
+        except:
+            pass
+        
+        log.info("🎮 MGBA RESTART COMPLETE - Resuming game loop!")
+        return True
+    
+    def reconnect_socket(port=8888):
+        """Attempt to reconnect to mGBA socket. Updates sock_ref in place."""
+        nonlocal sock_ref
         log.warning("🔌 Attempting to reconnect to mGBA socket...")
         import socket as sock_module
         try:
             # Close old socket cleanly
             try:
-                old_sock.close()
+                sock_ref["socket"].close()
             except:
                 pass
             
@@ -1579,11 +1712,25 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             time.sleep(1)  # Give mGBA time to clean up
             new_sock = sock_module.create_connection(('localhost', port), timeout=5)
             new_sock.setblocking(True)
-            log.info("✅ Successfully reconnected to mGBA socket!")
-            return new_sock
+            new_sock.settimeout(10.0)  # Set default timeout to prevent indefinite blocking
+            sock_ref["socket"] = new_sock  # Update the shared reference
+            log.info(f"✅ Successfully reconnected to mGBA socket! (new fd={new_sock.fileno()})")
+            return True
         except Exception as e:
             log.error(f"❌ Failed to reconnect to mGBA: {e}")
-            return None
+            return False
+    
+    def check_socket_health():
+        """Quick check if socket is still valid before operations."""
+        try:
+            fd = sock_ref["socket"].fileno()
+            if fd < 0:
+                log.warning(f"🔌 Socket fd is invalid ({fd})")
+                return False
+            return True
+        except Exception as e:
+            log.warning(f"🔌 Socket health check failed: {e}")
+            return False
 
     while action_count < max_loops:
         loop_start_time = time.time()
@@ -1622,11 +1769,33 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log.info("Requesting game state from mGBA...")
             t_mgba_start = time.time()
             
+            # Check socket health before attempting prep_llm
+            if not check_socket_health():
+                log.warning("🔌 Socket unhealthy before prep_llm, attempting reconnection...")
+                if reconnect_socket():
+                    log.info("✅ Socket reconnected before prep_llm")
+                else:
+                    consecutive_mgba_failures += 1
+                    if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                        log.warning(f"🔄 mGBA unresponsive after {MAX_CONSECUTIVE_FAILURES} failures - attempting full restart...")
+                        if restart_mgba():
+                            consecutive_mgba_failures = 0  # Reset counter after successful restart
+                            log.info("✅ mGBA restarted! Continuing 24/7 operation.")
+                        else:
+                            log.error("❌ mGBA restart failed! Waiting 30s before retry...")
+                            await asyncio.sleep(30)
+                    cycle_count -= 1
+                    await asyncio.sleep(2)
+                    continue
+            
             # Wrap prep_llm in async timeout to prevent indefinite blocking
+            # Use sock_ref["socket"] to ensure we use the current socket (may be reconnected)
+            # Use prep_llm_locked to prevent race condition with old threads
             loop = asyncio.get_event_loop()
+            current_socket = sock_ref["socket"]  # Capture current socket for executor
             try:
                 current_mGBA_state = await asyncio.wait_for(
-                    loop.run_in_executor(None, prep_llm, sock),
+                    loop.run_in_executor(None, prep_llm_locked, current_socket),
                     timeout=MGBA_TIMEOUT
                 )
             except asyncio.TimeoutError:
@@ -1638,17 +1807,20 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 # Try to reconnect socket after RECONNECT_THRESHOLD failures
                 if consecutive_mgba_failures == RECONNECT_THRESHOLD:
                     log.warning(f"🔌 Socket may be dead after {RECONNECT_THRESHOLD} failures. Attempting reconnection...")
-                    new_sock = reconnect_socket(sock)
-                    if new_sock:
-                        sock = new_sock
+                    if reconnect_socket():
                         log.info("✅ Socket reconnected! Continuing cycle retries...")
                     else:
                         log.error("❌ Socket reconnection failed. Will keep trying...")
                 
-                # Check if mGBA is completely dead
+                # Check if mGBA is completely dead - trigger restart
                 if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
-                    log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
-                    break
+                    log.warning(f"🔄 mGBA unresponsive after {MAX_CONSECUTIVE_FAILURES} failures - attempting full restart...")
+                    if restart_mgba():
+                        consecutive_mgba_failures = 0  # Reset counter after successful restart
+                        log.info("✅ mGBA restarted! Continuing 24/7 operation.")
+                    else:
+                        log.error("❌ mGBA restart failed! Waiting 30s before retry...")
+                        await asyncio.sleep(30)
                 
                 # Decrement cycle_count to retry the same cycle number (it was incremented at loop start)
                 cycle_count -= 1
@@ -1673,8 +1845,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 log.error(f"Failed to get state from mGBA (prep_llm returned None). Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}).")
                 
                 if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
-                    log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
-                    break
+                    log.warning(f"🔄 mGBA unresponsive - attempting full restart...")
+                    if restart_mgba():
+                        consecutive_mgba_failures = 0
+                        log.info("✅ mGBA restarted! Continuing 24/7 operation.")
+                    else:
+                        await asyncio.sleep(30)
                 
                 cycle_count -= 1  # Retry same cycle number
                 await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
@@ -1701,8 +1877,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
              log.error(f"Socket timeout getting state from mGBA ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}). Retrying...")
              
              if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
-                 log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive timeouts. Stopping loop.")
-                 break
+                 log.warning(f"🔄 mGBA unresponsive - attempting full restart...")
+                 if restart_mgba():
+                     consecutive_mgba_failures = 0
+                 else:
+                     await asyncio.sleep(30)
              
              cycle_count -= 1  # Retry same cycle
              await asyncio.sleep(2)  # Brief pause before retry
@@ -1712,8 +1891,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
              log.error(f"Socket error getting state from mGBA: {se} ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}). Retrying...")
              
              if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
-                 log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive socket errors. Stopping loop.")
-                 break
+                 log.warning(f"🔄 mGBA unresponsive - attempting full restart...")
+                 if restart_mgba():
+                     consecutive_mgba_failures = 0
+                 else:
+                     await asyncio.sleep(30)
              
              cycle_count -= 1  # Retry same cycle
              await asyncio.sleep(2)  # Brief pause before retry
@@ -1723,8 +1905,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
             log.error(f"Error getting state from mGBA: {e} - Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES})", exc_info=True)
             
             if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
-                log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping loop.")
-                break
+                log.warning(f"🔄 mGBA unresponsive - attempting full restart...")
+                if restart_mgba():
+                    consecutive_mgba_failures = 0
+                else:
+                    await asyncio.sleep(30)
             
             cycle_count -= 1  # Retry same cycle number
             await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
@@ -1969,7 +2154,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         
         # Add battle context using game memory (more accurate than vision)
         try:
-            battle_context = get_battle_context(sock)
+            battle_context = get_battle_context(sock_ref["socket"])
             if battle_context:
                 llm_input_state["battle_context"] = battle_context
                 log.info(f"⚔️ Battle detected: {battle_context[:80]}...")
@@ -2612,13 +2797,17 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
         # Auto-save game state at end of each cycle
         try:
-            backup_save_state()
-            save_game_state(sock, slot=1)  # Use slot 1 for regular saves
+            # User requested to turn off autosave to debug crashes
+            # backup_save_state()
+            # save_game_state(sock_ref["socket"], slot=1)  # Use slot 1 for regular saves
+            pass
         except Exception as e:
             log.warning(f"⚠️ Save operation failed: {e} - continuing cycle")
 
         elapsed_loop_time = time.time() - loop_start_time
-        wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
+        # ORIGINAL llmdriver.py used max(10, ...). 
+        # We use 5s to be safer than 2s but faster than 10s. This helps mGBA Lua GC keep up.
+        wait_time = max(5, interval - elapsed_loop_time) # Ensure at least 5 seconds wait
         if result and result.get("stats", {}).get("action_count", 0) > 0:
             log.info(f"💾 Cycle {current_cycle} action execution successful")
             
