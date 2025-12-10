@@ -368,6 +368,12 @@ Use <game_analysis> tags with these sections:
 
 9. **SUMMARY**: 2-3 sentences for UI. Describe what you see, action, expected result. No markdown.
 
+10. **MEMORY_WRITE**: (Optional) Save IMPORTANT narrative events/choices to long-term memory?
+    - "I named the rival AB by accident"
+    - "Professor Oak gave me the Pokedex"
+    - "I chose Charmander as my starter"
+    - If nothing new/important happened, write "None"
+
 ## OUTPUT
 <game_analysis>
 [Analysis]
