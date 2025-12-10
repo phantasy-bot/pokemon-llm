@@ -206,6 +206,39 @@ class TwitchChatService:
         
         return past[-count:]  # Return most recent 'count' messages
     
+    def get_messages_for_cycle(self) -> List[dict]:
+        """
+        Get all messages since the last commentary timestamp, formatted for processing.
+        
+        Returns messages as dicts for compatibility with chat_response_service.
+        Sorted by timestamp (oldest first).
+        
+        Returns:
+            List of message dicts with username, display_name, message, timestamp
+        """
+        cutoff = self._last_commentary_timestamp
+        
+        # Get all messages (not just mentions) since last commentary
+        messages = [
+            msg for msg in self._message_queue
+            if not msg.responded and msg.timestamp > cutoff
+        ]
+        
+        # Sort oldest first
+        messages.sort(key=lambda m: m.timestamp)
+        
+        # Convert to dicts for chat_response_service
+        return [
+            {
+                "username": msg.username,
+                "display_name": msg.display_name,
+                "message": msg.message,
+                "timestamp": msg.timestamp,
+                "_original": msg  # Keep reference for marking responded
+            }
+            for msg in messages
+        ]
+    
     def mark_responded(self, msg: ChatMessage):
         """Mark a message as responded to."""
         msg.responded = True

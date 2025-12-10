@@ -10,7 +10,9 @@ import json
 import time
 import uuid
 import logging
-from typing import Optional, Dict, Any
+import subprocess
+import platform
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
 import httpx
@@ -65,9 +67,17 @@ class ComfyUITTSService:
         self.timeout = timeout
         
         # Request queue (priority queue simulation with sorting)
-        self._queue: list[TTSRequest] = []
+        self._queue: List[TTSRequest] = []
         self._processing = False
         self._client: Optional[httpx.AsyncClient] = None
+        
+        # Audio playback process tracking for cancellation
+        self._audio_process: Optional[subprocess.Popen] = None
+        self._current_request: Optional[TTSRequest] = None
+        self._cancelled = False
+        
+        # Lock to ensure TTS requests are serialized (no overlap)
+        self._tts_lock = asyncio.Lock()
         
         # Cached workflow template
         self._workflow_template: Optional[dict] = None
@@ -91,6 +101,97 @@ class ComfyUITTSService:
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
+    
+    def cancel_current(self):
+        """
+        Cancel the currently playing audio.
+        Called when a higher priority TTS request comes in (e.g., new cycle commentary).
+        """
+        self._cancelled = True
+        
+        if self._audio_process and self._audio_process.poll() is None:
+            try:
+                self._audio_process.terminate()
+                log.info("🔇 Cancelled current TTS playback")
+            except Exception as e:
+                log.warning(f"Error terminating audio process: {e}")
+        
+        self._audio_process = None
+    
+    def play_audio_ephemeral(self, audio_path: str) -> bool:
+        """
+        Play audio file ephemerally (no file retention).
+        Uses system audio player (afplay on macOS, aplay/paplay on Linux).
+        
+        Args:
+            audio_path: Path to the audio file
+        
+        Returns:
+            True if playback started successfully
+        """
+        if not os.path.exists(audio_path):
+            log.warning(f"Audio file not found: {audio_path}")
+            return False
+        
+        try:
+            system = platform.system()
+            
+            if system == "Darwin":  # macOS
+                cmd = ["afplay", audio_path]
+            elif system == "Linux":
+                # Try paplay (PulseAudio) first, fall back to aplay
+                cmd = ["paplay", audio_path]
+            else:
+                log.warning(f"Unsupported platform for audio playback: {system}")
+                return False
+            
+            # Start audio playback as subprocess
+            self._audio_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            log.info(f"🔊 Playing audio: {os.path.basename(audio_path)}")
+            return True
+            
+        except FileNotFoundError:
+            log.warning(f"Audio player not found. Install afplay (macOS) or paplay/aplay (Linux)")
+            return False
+        except Exception as e:
+            log.error(f"Error playing audio: {e}")
+            return False
+    
+    async def wait_for_playback(self, timeout: float = 30.0) -> bool:
+        """
+        Wait for current audio playback to complete.
+        
+        Args:
+            timeout: Maximum seconds to wait
+        
+        Returns:
+            True if playback completed, False if cancelled or timeout
+        """
+        if not self._audio_process:
+            return True
+        
+        start = time.time()
+        while time.time() - start < timeout:
+            if self._cancelled:
+                return False
+            
+            if self._audio_process.poll() is not None:
+                return True
+            
+            await asyncio.sleep(0.1)
+        
+        # Timeout - kill process
+        try:
+            self._audio_process.terminate()
+        except:
+            pass
+        
+        return False
     
     async def check_connection(self) -> bool:
         """
@@ -375,6 +476,69 @@ class ComfyUITTSService:
         cleared = len(self._queue)
         self._queue.clear()
         log.info(f"Cleared {cleared} pending TTS requests")
+    
+    async def synthesize_and_play(
+        self,
+        text: str,
+        priority: int = None,
+        wait: bool = True
+    ) -> bool:
+        """
+        Synthesize speech and play it ephemerally (no file retention needed by caller).
+        
+        This is the main method for TTS playback - handles synthesis, playback,
+        and waiting for completion.
+        
+        Args:
+            text: Text to synthesize
+            priority: Priority level (PRIORITY_COMMENTARY or PRIORITY_CHAT_RESPONSE)
+            wait: If True, wait for playback to complete before returning
+        
+        Returns:
+            True if synthesis and playback started successfully
+        """
+        if not self.is_available:
+            log.warning("TTS service not available")
+            return False
+        
+        if priority is None:
+            priority = self.PRIORITY_CHAT_RESPONSE
+        
+        # Acquire lock to ensure TTS requests are serialized (no overlap)
+        async with self._tts_lock:
+            # Reset cancelled flag for new request
+            self._cancelled = False
+            
+            # Log the request
+            log.info(f"🔊 TTS synthesizing (priority={priority}): {text[:50]}...")
+            
+            try:
+                # Synthesize speech
+                audio_path = await self.synthesize_speech(text)
+                
+                if not audio_path:
+                    log.warning("TTS synthesis returned no audio path")
+                    return False
+                
+                # Check if cancelled during synthesis
+                if self._cancelled:
+                    log.info("🔇 TTS cancelled during synthesis")
+                    return False
+                
+                # Play the audio
+                if not self.play_audio_ephemeral(audio_path):
+                    return False
+                
+                # Wait for playback if requested
+                if wait:
+                    completed = await self.wait_for_playback()
+                    return completed
+                
+                return True
+                
+            except Exception as e:
+                log.error(f"TTS synthesize_and_play error: {e}")
+                return False
     
     async def close(self):
         """Close the HTTP client."""
