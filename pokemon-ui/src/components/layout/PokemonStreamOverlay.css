@@ -522,18 +522,18 @@
 
 /* Commentary text box in left column */
 .character-container__commentary {
-  flex: 1.5; /* Between 1 and 2 */
+  flex: 1.5;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-md); /* Restored padding */
+  padding: var(--space-md);
   padding-top: var(--space-sm);
-  margin-top: 8px; /* Space for sheared label */
-  max-height: 120px; /* Increased from 80px */
+  margin-top: 8px;
+  max-height: 140px; /* Taller than 120px */
   
-  /* TUI Box Style - more rounded */
+  /* TUI Box Style - less rounded than 12px */
   border: 1px dashed rgba(0, 0, 0, 0.5);
-  border-radius: 12px; /* More rounded */
+  border-radius: 8px; /* Less rounded than 12px */
   background: white;
   position: relative;
   overflow: visible;
@@ -606,10 +606,10 @@
   /* FIXED: Remove excessive margin - align with other columns */
   margin-top: 0;
   
-  /* Fixed height for consistency - 300px */
-  height: 300px;
-  min-height: 300px;
-  max-height: 300px;
+  /* Fixed height for consistency - reduced from 300px */
+  height: 250px;
+  min-height: 250px;
+  max-height: 250px;
   /* Use overflow: visible so the label positioned above isn't clipped */
   overflow: visible;
   
