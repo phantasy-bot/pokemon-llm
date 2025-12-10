@@ -143,7 +143,7 @@
   pointer-events: auto;
 }
 
-/* Sponsor heading on TOP of image */
+/* Sponsor heading BELOW the URL */
 .folder-sponsor__heading {
   font-family: var(--font-mono);
   font-size: 8px;
@@ -152,7 +152,7 @@
   color: rgba(0, 0, 0, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  order: -1; /* Move to top */
+  order: 2; /* Move below URL */
 }
 
 .folder-sponsor__image {
@@ -580,10 +580,10 @@
   /* FIXED: Remove excessive margin - align with other columns */
   margin-top: 0;
   
-  /* Fixed height for consistency - increased to 250px */
-  height: 250px;
-  min-height: 250px;
-  max-height: 250px;
+  /* Fixed height for consistency - 275px */
+  height: 275px;
+  min-height: 275px;
+  max-height: 275px;
   /* Use overflow: visible so the label positioned above isn't clipped */
   overflow: visible;
   
