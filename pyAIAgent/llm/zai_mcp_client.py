@@ -324,6 +324,9 @@ class ZAIMCPClient:
             overall_start = time_module.time()
             max_overall_time = 55.0  # Max time before releasing lock (under 60s llmdriver timeout)
             
+            # Track if we've tried Flash fallback
+            tried_flash = False
+            
             while True:
                 # Check overall timeout to prevent infinite blocking
                 elapsed = time_module.time() - overall_start
@@ -345,15 +348,39 @@ class ZAIMCPClient:
                         log.info("✅ Vision analysis completed successfully!")
                         return result
                     else:
+                        # MCP failed - try Flash fallback BEFORE restarting MCP
+                        if not tried_flash:
+                            log.info("⚡ MCP timeout - trying GLM-4.6V-Flash fallback via direct API...")
+                            flash_result = self._try_flash_fallback(image_path, prompt)
+                            tried_flash = True
+                            if flash_result:
+                                log.info("✅ Flash fallback succeeded!")
+                                self.handle_vision_success()
+                                return flash_result
+                            else:
+                                log.warning("⚠️ Flash fallback also failed, will restart MCP")
+                        
                         should_restart = self.handle_vision_failure("Vision analysis returned None/empty result")
                         if should_restart:
+                            tried_flash = False  # Reset Flash flag after MCP restart
                             self.restart_mcp_server()
 
                 except Exception as e:
                     error_msg = f"Vision analysis exception: {str(e)}"
+                    # Try Flash fallback on exception too
+                    if not tried_flash:
+                        log.info("⚡ MCP exception - trying GLM-4.6V-Flash fallback...")
+                        flash_result = self._try_flash_fallback(image_path, prompt)
+                        tried_flash = True
+                        if flash_result:
+                            log.info("✅ Flash fallback succeeded after exception!")
+                            self.handle_vision_success()
+                            return flash_result
+                    
                     should_restart = self.handle_vision_failure(error_msg)
                     log.error(f"❌ {error_msg}", exc_info=True)
                     if should_restart:
+                        tried_flash = False
                         self.restart_mcp_server()
                 
                 # Brief delay between attempts to prevent hammering
@@ -362,6 +389,77 @@ class ZAIMCPClient:
             # CRITICAL: Always release the lock, even on exceptions
             self._mcp_lock.release()
             log.debug("🔓 MCP lock released")
+    
+    def _try_flash_fallback(self, image_path: str, prompt: str) -> Optional[str]:
+        """
+        Try GLM-4.6V-Flash via direct API call as fallback when MCP is slow/failing.
+        Uses the general paas endpoint (not coding) for Flash model access.
+        
+        Args:
+            image_path: Path to the image file
+            prompt: Text prompt for analysis
+            
+        Returns:
+            Analysis result or None if failed
+        """
+        import base64
+        import httpx
+        
+        try:
+            api_key = os.getenv("ZAI_API_KEY") or self.api_key
+            if not api_key:
+                log.warning("No API key for Flash fallback")
+                return None
+            
+            # Read and encode image
+            if not os.path.exists(image_path):
+                log.warning(f"Image not found for Flash fallback: {image_path}")
+                return None
+                
+            with open(image_path, 'rb') as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+            
+            # Build request for GLM-4.6V-Flash
+            messages = [{
+                "role": "user", 
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}},
+                    {"type": "text", "text": prompt}
+                ]
+            }]
+            
+            api_data = {
+                "model": "glm-4.6v-flash",  # Flash model for faster response
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Use general endpoint for Flash (not coding endpoint)
+            endpoint = "https://api.z.ai/api/paas/v4/chat/completions"
+            log.info(f"⚡ Flash API call to: {endpoint}")
+            
+            with httpx.Client(timeout=15.0) as http_client:  # Shorter timeout for Flash
+                response = http_client.post(endpoint, json=api_data, headers=headers)
+                
+                if response.status_code == 200:
+                    response_data = response.json()
+                    if 'choices' in response_data and response_data['choices']:
+                        result = response_data['choices'][0]['message']['content']
+                        log.info(f"⚡ Flash returned {len(result)} chars")
+                        return result
+                else:
+                    log.warning(f"Flash API error: {response.status_code} - {response.text[:200]}")
+                    return None
+                    
+        except Exception as e:
+            log.warning(f"Flash fallback exception: {e}")
+            return None
 
     async def ui_diff_check(self, prev_image_path: str, curr_image_path: str) -> Optional[str]:
         """
