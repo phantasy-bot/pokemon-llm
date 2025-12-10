@@ -85,7 +85,7 @@ const formatLargeNumber = (num: number): string => {
   return num.toString();
 };
 
-// Animated dots component for loading states
+// Animated dots component for loading states - fixed width so text doesn't shift
 function AnimatedDots() {
   const [dots, setDots] = useState('');
   
@@ -95,22 +95,21 @@ function AnimatedDots() {
         if (prev === '...') return '';
         return prev + '.';
       });
-    }, 500);
+    }, 800); // Slower animation (was 500ms)
     return () => clearInterval(interval);
   }, []);
   
-  return <span>{dots}</span>;
+  // Fixed width span with dots left-aligned so text before doesn't shift
+  return <span style={{ display: 'inline-block', width: '1.5em', textAlign: 'left' }}>{dots}</span>;
 }
 
 // Live cycle timer component that ticks every 0.1 seconds
 function LiveCycleTimer({ 
   cycleNumber, 
-  currentCycleTime 
 }: { 
   cycleNumber: number; 
-  currentCycleTime: number;
 }) {
-  const [elapsedTime, setElapsedTime] = useState(0); // Start at 0
+  const [elapsedTime, setElapsedTime] = useState(0); // Always start at 0
   const [isFlashing, setIsFlashing] = useState(false);
   const lastCycleRef = useRef(cycleNumber);
   const timerRef = useRef<number | null>(null);
@@ -139,12 +138,7 @@ function LiveCycleTimer({
     }
   }, [cycleNumber]);
 
-  // Sync with backend time if significantly different (but not when starting fresh)
-  useEffect(() => {
-    if (currentCycleTime > 0 && Math.abs(elapsedTime - currentCycleTime) > 3) {
-      setElapsedTime(currentCycleTime);
-    }
-  }, [currentCycleTime]);
+  // No backend sync - timer is purely client-side from 0
 
   return (
     <span className={`cycle-timer ${isFlashing ? 'cycle-timer--flash' : ''}`}>
@@ -307,8 +301,7 @@ export function PokemonStreamOverlay({
             {wsConnected && (
               <span className="cycle-timing">
                 Cycle: <LiveCycleTimer 
-                  cycleNumber={gameState.cycle || 0} 
-                  currentCycleTime={gameState.currentCycleTime || 0} 
+                  cycleNumber={gameState.cycle} 
                 />
                 {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
                   <> | Prev: {gameState.prevCycleTime}s</>
