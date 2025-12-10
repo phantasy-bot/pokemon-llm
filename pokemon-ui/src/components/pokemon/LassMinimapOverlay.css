@@ -1,5 +1,6 @@
 .lass-overlay {
   /* Grid stacking - fills same cell as image (grid-area: 1/1 inherited from parent rule) */
+  position: relative; /* CRITICAL: Establishes positioning context for absolute children */
   width: 100%;
   height: 100%;
   pointer-events: none;

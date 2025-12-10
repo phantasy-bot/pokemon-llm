@@ -673,11 +673,26 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     "- Do NOT try to identify what building/location you are in - the game state provides the map name\n"
                     "- Vision frequently hallucinates location names like 'Pokemon Center' - be extremely cautious\n"
                     "- If no visible text box with black borders exists, readable_text MUST be empty\n\n"
-                    "POSITION RULES:\n"
-                    "- For positions, use DISTANCE-AWARE terms:\n"
-                    "  * Use 'adjacent' or 'immediate' ONLY if right next to player (1 tile away)\n"
-                    "  * Use 'in the distance', 'far', or 'upper/lower area' for non-adjacent items\n"
-                    "  * AVOID 'directly north' etc as it implies immediate adjacency - be precise about distance\n"
+                    "POSITION RULES (CRITICAL - BE SPECIFIC):\n"
+                    "- The PLAYER is ALWAYS at SCREEN CENTER. All positions are RELATIVE to the player.\n"
+                    "- Use PRECISE DISTANCE + DIRECTION format:\n"
+                    "  * 'directly 1 tile NORTH' = immediately above player (adjacent)\n"
+                    "  * 'directly 1 tile EAST' = immediately right of player (adjacent)\n"
+                    "  * 'directly 1 tile SOUTH' = immediately below player (adjacent)\n"
+                    "  * 'directly 1 tile WEST' = immediately left of player (adjacent)\n"
+                    "- For DIAGONAL positions, use COMPOUND directions:\n"
+                    "  * 'NORTHEAST' = above and to the right\n"
+                    "  * 'SOUTHWEST' = below and to the left\n"
+                    "  * 'NORTHWEST' = above and to the left\n"
+                    "  * 'SOUTHEAST' = below and to the right\n"
+                    "- For DISTANCE, be specific:\n"
+                    "  * 'directly 1 tile X' = immediately adjacent (touchingplayer)\n"
+                    "  * '2-3 tiles X' = close but not adjacent\n"
+                    "  * '4-6 tiles X' = moderate distance\n"
+                    "  * 'far X' or 'distant X' = across the screen (7+ tiles)\n"
+                    "- EXAMPLE FORMAT: 'NPC directly 1 tile SOUTH of player'\n"
+                    "- EXAMPLE: 'bookshelf 3 tiles NORTHEAST of player'\n"
+                    "- EXAMPLE: 'exit mat far SOUTH of player (at screen edge)'\n"
                     "- **PLAYER IDENTIFICATION (CRITICAL)**:\n"
                     "  * The RED-CLOTHED sprite at SCREEN CENTER is ALWAYS the PLAYER CHARACTER\n"
                     "  * The player's name is 'RED' and they wear red clothing with a hat\n"
@@ -2844,7 +2859,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         elapsed_loop_time = time.time() - loop_start_time
         # ORIGINAL llmdriver.py used max(10, ...). 
         # Changed to 10s minimum wait as requested.
-        wait_time = max(5, interval - elapsed_loop_time) # Ensure at least 5 seconds wait
+        wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
         if result and result.get("stats", {}).get("action_count", 0) > 0:
             log.info(f"💾 Cycle {current_cycle} action execution successful")
             
