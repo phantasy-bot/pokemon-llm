@@ -444,7 +444,7 @@ def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
-LLM_TOTAL_TIMEOUT = 60  # Fixed 60s cycle timeout
+LLM_TOTAL_TIMEOUT = 75  # Extended to 75s cycle timeout
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 async def call_llm_with_timeout(state_data: dict,
@@ -2457,6 +2457,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log_action_text = f"Action: {action}"
             log.info(f"LLM proposed action: {action}")
             try:
+                # Wait 2s before sending action to let game state settle
+                time.sleep(2)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
                 log.info(f"Action '{action_to_send}' sent to mGBA.")
                 # Track for failure replay

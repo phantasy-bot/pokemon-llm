@@ -581,6 +581,8 @@
   color: rgba(0, 0, 0, 0.85); /* Dark text for contrast on bright accent */
   font-weight: 600; /* Bolder */
   margin: 0;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 /* Empty spacer at bottom of left column */
