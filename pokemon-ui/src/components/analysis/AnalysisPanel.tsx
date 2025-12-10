@@ -69,7 +69,9 @@ export function AnalysisPanel({
   // Persist memory - update when new memory arrives, keep visible until replaced
   useEffect(() => {
     if (memoryWrite) {
-      setPersistedMemory(memoryWrite);
+      // Clean up potential garbage (tags, 'None')
+      const clean = memoryWrite.replace(/<\/?[^>]+(>|$)/g, "").replace(/^None$/i, "").replace(/NONE/g, "").trim();
+      setPersistedMemory(clean.length > 3 ? clean : null);
     }
   }, [memoryWrite]);
 

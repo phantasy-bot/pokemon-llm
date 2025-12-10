@@ -160,7 +160,8 @@
   height: 64px;
   object-fit: contain;
   image-rendering: pixelated;
-  /* Removed shadow */
+  /* Solid white drop shadow popping out bottom-right */
+  filter: drop-shadow(4px 4px 0px #FFFFFF);
 }
 
 .character-container__commentary-text {
@@ -534,14 +535,10 @@
 
 /* Commentary text box in left column */
 .character-container__commentary {
-  flex: 1.5;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-md);
-  padding-top: var(--space-sm);
-  margin-top: 8px;
-  max-height: 140px; /* Taller than 120px */
+  /* Fluid height: starts at ~4 rows (140px) and grows up to double (280px) */
+  min-height: 140px;
+  max-height: 280px;
+  flex: 0 0 auto; /* Don't stretch purely by flex ratio, allow auto-sizing */
   
   /* TUI Box Style - less rounded than 12px */
   border: 1px dashed rgba(0, 0, 0, 0.5);
