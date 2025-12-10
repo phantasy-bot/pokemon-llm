@@ -2579,10 +2579,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
 
         # Auto-save game state at end of each cycle
-        # First, backup the current save (previous cycle becomes backup)
-        backup_save_state()
-        # Then save current state to slot 1
-        save_game_state(sock, slot=0)  # Use QUICKSAVE for faster saves
+        # DISABLED: Auto-save causing mGBA socket to become unresponsive
+        # Enable with AUTOSAVE_ENABLED = True if needed
+        AUTOSAVE_ENABLED = False  # Set to True to re-enable auto-save
+        if AUTOSAVE_ENABLED:
+            # First, backup the current save (previous cycle becomes backup)
+            backup_save_state()
+            # Then save current state
+            save_game_state(sock, slot=0)  # Use QUICKSAVE for faster saves
+            # Give mGBA time to complete the save operation
+            time.sleep(0.5)
 
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
