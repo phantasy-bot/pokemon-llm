@@ -1562,6 +1562,28 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     # This persists across loop iterations so we can detect when mGBA is completely dead
     consecutive_mgba_failures = 0
     MAX_CONSECUTIVE_FAILURES = 10  # Exit after 10 consecutive mGBA failures
+    RECONNECT_THRESHOLD = 3  # Try to reconnect socket after 3 failures
+    
+    def reconnect_socket(old_sock, port=8888):
+        """Attempt to reconnect to mGBA socket. Returns new socket or None."""
+        log.warning("🔌 Attempting to reconnect to mGBA socket...")
+        import socket as sock_module
+        try:
+            # Close old socket cleanly
+            try:
+                old_sock.close()
+            except:
+                pass
+            
+            # Try to create a new connection
+            time.sleep(1)  # Give mGBA time to clean up
+            new_sock = sock_module.create_connection(('localhost', port), timeout=5)
+            new_sock.setblocking(True)
+            log.info("✅ Successfully reconnected to mGBA socket!")
+            return new_sock
+        except Exception as e:
+            log.error(f"❌ Failed to reconnect to mGBA: {e}")
+            return None
 
     while action_count < max_loops:
         loop_start_time = time.time()
@@ -1612,6 +1634,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 consecutive_mgba_failures += 1
                 log.error(f"⏱️ mGBA TIMEOUT after {mgba_duration:.1f}s (limit: {MGBA_TIMEOUT}s) - Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES})")
                 cycle_metrics["mGBA"] = mgba_duration * 1000  # Store in ms for consistency
+                
+                # Try to reconnect socket after RECONNECT_THRESHOLD failures
+                if consecutive_mgba_failures == RECONNECT_THRESHOLD:
+                    log.warning(f"🔌 Socket may be dead after {RECONNECT_THRESHOLD} failures. Attempting reconnection...")
+                    new_sock = reconnect_socket(sock)
+                    if new_sock:
+                        sock = new_sock
+                        log.info("✅ Socket reconnected! Continuing cycle retries...")
+                    else:
+                        log.error("❌ Socket reconnection failed. Will keep trying...")
                 
                 # Check if mGBA is completely dead
                 if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
@@ -2579,16 +2611,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
 
 
         # Auto-save game state at end of each cycle
-        # DISABLED: Auto-save causing mGBA socket to become unresponsive
-        # Enable with AUTOSAVE_ENABLED = True if needed
-        AUTOSAVE_ENABLED = False  # Set to True to re-enable auto-save
-        if AUTOSAVE_ENABLED:
-            # First, backup the current save (previous cycle becomes backup)
+        try:
             backup_save_state()
-            # Then save current state
-            save_game_state(sock, slot=0)  # Use QUICKSAVE for faster saves
-            # Give mGBA time to complete the save operation
-            time.sleep(0.5)
+            save_game_state(sock, slot=1)  # Use slot 1 for regular saves
+        except Exception as e:
+            log.warning(f"⚠️ Save operation failed: {e} - continuing cycle")
 
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
