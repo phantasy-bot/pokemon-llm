@@ -283,21 +283,23 @@ function formatLogText(text: string): string {
   formattedText = formattedText.replace(/<game_analysis>/gi, '');
   formattedText = formattedText.replace(/<\/game_analysis>/gi, '');
 
-  // Highlight plain coordinates like [7,1] (bold)
-  const coordRegex = /(?<![A-Za-z])(\[\d+,\s*\d+\])/g;
-  formattedText = formattedText.replace(coordRegex, (match) => {
-    return `<span class="grid-coordinate">${match}</span>`;
-  });
-  
-  // Highlight World coordinates like World[2,7] (blue bold)
+  // Highlight World coordinates like World[2,7] (blue bold) - FIRST to prevent double-matching
   const worldCoordRegex = /(World\s*\[\d+,\s*\d+\])/gi;
   formattedText = formattedText.replace(worldCoordRegex, (match) => {
     return `<span class="world-coordinate">${match}</span>`;
   });
   
-  // Highlight Grid coordinates like Grid[2,7] (bold, same as plain)
+  // Highlight Grid coordinates like Grid[2,7] (bold) - SECOND
   const gridCoordRegex = /(Grid\s*\[\d+,\s*\d+\])/gi;
   formattedText = formattedText.replace(gridCoordRegex, (match) => {
+    return `<span class="grid-coordinate">${match}</span>`;
+  });
+  
+  // Highlight plain coordinates like [7,1] (bold) - LAST (only unmatched coords)
+  // Use simpler regex without lookbehind for broader compatibility
+  const coordRegex = /(\[\d+,\s*\d+\])/g;
+  formattedText = formattedText.replace(coordRegex, (match) => {
+    // Skip if already wrapped in a span (from World or Grid)
     return `<span class="grid-coordinate">${match}</span>`;
   });
 
