@@ -76,6 +76,12 @@ class ChatResponseService:
         self._recent_commentary: str = ""
         self._response_count: int = 0
         
+        # Enhanced context for better chat responses
+        self._player_location: str = ""
+        self._player_team: str = ""
+        self._recent_history: str = ""  # Brief summary of recent actions
+        self._memory_context: str = ""  # Important events/milestones
+        
         if not self._is_configured:
             env_prefix = "ALKAHEST" if is_production else "FEATHERLESS"
             log.warning(f"Chat response service not configured. Set {env_prefix}_API_KEY in .env")
@@ -96,12 +102,37 @@ class ChatResponseService:
             )
         return self._client
     
-    def update_context(self, game_context: str = None, commentary: str = None):
-        """Update context for more coherent responses."""
+    def update_context(
+        self, 
+        game_context: str = None, 
+        commentary: str = None,
+        location: str = None,
+        team: str = None,
+        history: str = None,
+        memory: str = None
+    ):
+        """Update context for more coherent responses.
+        
+        Args:
+            game_context: Current game state summary
+            commentary: Most recent Lass commentary
+            location: Current map/location name
+            team: Pokemon team summary (e.g., "Charmander Lv5, Pidgey Lv3")
+            history: Brief summary of recent actions
+            memory: Important events/milestones
+        """
         if game_context:
             self._recent_game_context = game_context
         if commentary:
             self._recent_commentary = commentary
+        if location:
+            self._player_location = location
+        if team:
+            self._player_team = team
+        if history:
+            self._recent_history = history
+        if memory:
+            self._memory_context = memory
     
     def _get_lass_personality_prompt(self) -> str:
         """Get Lass personality context for consistent responses."""
@@ -115,17 +146,35 @@ PERSONALITY TRAITS:
 - Never breaks character or mentions being an AI
 - Keeps responses SHORT (under 100 chars for TTS)
 
-CURRENT GAME CONTEXT:
+CURRENT GAME STATE:
 """
         context = base_personality
         
-        if self._recent_game_context:
-            context += f"{self._recent_game_context}\n\n"
-        else:
-            context += "Playing Pokemon Red, exploring the world!\n\n"
+        # Add location
+        if self._player_location:
+            context += f"Location: {self._player_location}\n"
         
+        # Add team
+        if self._player_team:
+            context += f"My team: {self._player_team}\n"
+        
+        # Add game context
+        if self._recent_game_context:
+            context += f"Status: {self._recent_game_context}\n"
+        else:
+            context += "Status: Exploring the world of Pokemon!\n"
+        
+        # Add recent history for context awareness
+        if self._recent_history:
+            context += f"\nRecent events: {self._recent_history}\n"
+        
+        # Add memory/milestones
+        if self._memory_context:
+            context += f"\nMilestones: {self._memory_context}\n"
+        
+        # Add commentary for continuity
         if self._recent_commentary:
-            context += f"My last commentary: \"{self._recent_commentary}\"\n"
+            context += f"\nMy last commentary: \"{self._recent_commentary}\"\n"
         
         return context
     

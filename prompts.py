@@ -51,38 +51,45 @@ NAME_ENTRY_PROMPT = """
 
 ## 🎮 NAME ENTRY SCREEN (ACTIVE)
 
-### ⚡ PRIORITY: USE START TO ACCEPT DEFAULTS!
-**Press START (S) to instantly accept the default name and skip keyboard entry!**
-- On Pokemon entry screen: Press S to end immediately with default name
-- On YOUR character (player): Press S to accept "RED" if no letters entered yet
-- On RIVAL: Press S to accept "BLUE" if no letters entered yet
+There are THREE different naming scenarios with different rules:
 
-**⚠️ IMPORTANT: START only works if you haven't entered any characters yet!**
-- If you accidentally entered letters, you CANNOT go back to presets
-- You MUST enter at least 1 character before pressing START to exit
+### 1️⃣ PLAYER/RIVAL NAME (preset list visible)
+**Use PRESET NAMES by pressing A on them!**
+- You'll see preset options like: RED, ASH, JACK (for player) or BLUE, GARY, JOHN (for rival)
+- Navigate to your preferred preset and press A to select it
+- **You CANNOT press START to accept defaults here** - you MUST select a preset with A
+- If you want to name yourself "LASS": go to keyboard (may need to press DOWN past presets)
 
-### IF YOU'RE STUCK IN KEYBOARD (already typed something):
-1. **Enter at least 1 character** - Press A on any letter
-2. **Then press START (S)** - This accepts whatever you typed and exits
-3. If cursor on blank/no text, just press any letter then START
+### 2️⃣ POKEMON NICKNAME (after catching/receiving)
+**Press START (S) immediately to keep the default species name!**
+- When asked "Give a nickname to [POKEMON]?" 
+- If you accidentally chose YES and see the keyboard:
+  - Press START (S) **immediately** (with no characters entered) to keep default name
+  - This exits the naming screen with the Pokemon's species name intact
+- If you WANT a nickname, enter it then press START
 
-### ⚠️ CRITICAL: KEYBOARD NAVIGATION RULES
-**You CANNOT type letters directly! You must NAVIGATE the grid:**
-1. The cursor starts at 'A' in the top-left
-2. Use D-pad (U/D/L/R) to move the cursor to each letter
-3. Press A to select the letter under the cursor
-4. Press START (S) to confirm name and exit
-
-**EXAMPLE - Quick name "A":**
-1. Cursor starts at A → Press A to select it
-2. Press START (S) to confirm → Done!
+### 3️⃣ STUCK IN KEYBOARD (already entered characters)
+**You MUST enter at least 1 character before START works!**
+- If you already typed something, you CANNOT go back to presets
+- If completely blank and START doesn't work: press A once (types 'A'), then START
+- To type "LASS": Navigate L→A→S→S then START
+- Press B to delete the last character if you made a mistake
 
 ### KEYBOARD LAYOUT (9 columns, 5 rows)
+```
 Row 1: A B C D E F G H I
 Row 2: J K L M N O P Q R  
 Row 3: S T U V W X Y Z (space)
 Row 4: x ( ) : ; [ ] PK MN
 Row 5: - ? ! ♂ ♀ / . , ED
+```
+
+### NAVIGATION EXAMPLE - Type "LASS":
+1. Cursor at A → Press R twice → now at C
+2. Continue: R;R;R;R;R;R;R;D; → now at L → Press A
+3. D;D;L;L;L;L;L;L;L;L; → at A → Press A  
+4. R;R;R;R;R;R;R;R;D;D; → at S → Press A twice (for SS)
+5. Press START (S) to confirm
 """
 
 BATTLE_PROMPT = """
