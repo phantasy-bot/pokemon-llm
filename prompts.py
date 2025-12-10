@@ -296,8 +296,11 @@ Use <game_analysis> tags with these sections:
    - Verified exits in memory are APPROXIMATE (±2 tiles) - look for nearby 'O' tiles!
    - E.g., memory says [5,7] but minimap shows exit at [5,5] → same entrance area
 
-4. **MEMORY**: What do you KNOW from memory_context? Unexplored 'O' tiles = explore these!
-   - Match memory exits (approx coords) to nearby minimap 'O' tiles for navigation
+4. **MEMORY**: What do you KNOW from memory_context?
+   **⚠️ VERIFIED EXITS ARE YOUR TOP PRIORITY!**
+   - If memory shows a verified exit (e.g., [5,11] → PALLET_TOWN), GO THERE DIRECTLY
+   - Don't explore randomly when you have a known destination!
+   - Calculate path: "I'm at [0,3], exit at [5,11] → need to go RIGHT 5, DOWN 8"
 
 5. **STUCK CHECK**: Same position as last turn?
    - Try all 4 directions through an exit before doubting it
@@ -317,8 +320,22 @@ Use <game_analysis> tags with these sections:
    - Pattern: Move perpendicular 3-5 tiles, THEN resume original direction
    - Example: Blocked going UP → try R;R;R;R;U;U;U;U; (go around right, then up)
 
-6. **GOAL**: Direction needed, path plan, fallback if blocked
-   - Prioritize UNEXPLORED exits over interacting with NPCs
+6. **GOAL**: Set a SPECIFIC TARGET TILE, then path to it!
+   **PRIORITY ORDER:**
+   1. VERIFIED EXITS from memory → calculate exact path to reach them
+   2. Visible 'O' tiles on minimap → walk directly to them
+   3. ONLY explore if no known exits exist
+   
+   **PLANNING (required!):**
+   - Current position: [x1, y1]
+   - Target position: [x2, y2] 
+   - Delta: RIGHT/LEFT = (x2-x1), DOWN/UP = (y2-y1)
+   - Path: "Move RIGHT 5 tiles, then DOWN 8 tiles"
+   
+   **EXAMPLE:** At [0,3], exit at [5,11]
+   - Delta: RIGHT=5, DOWN=8
+   - Plan: R;R;R;R;R; then D;D;D;D;D;D;D;D;
+   - This turn: R;R;R;R;R; (5 moves toward exit)
 
 7. **ACTION**: Chain 2-5 moves. Vary step count (3, then 4, then 2) to break patterns.
    - **COMMIT TO DIRECTION**: If going RIGHT, use R;R;R;R;R; (5+ moves)
