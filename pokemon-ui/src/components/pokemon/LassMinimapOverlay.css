@@ -1,10 +1,9 @@
 .lass-overlay {
   position: absolute;
-  /* Fill the entire minimap__body container */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  /* Center within minimap__body, matching the img's centered positioning */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 10;
 }
