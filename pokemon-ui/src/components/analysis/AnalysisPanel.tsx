@@ -206,7 +206,7 @@ export function AnalysisPanel({
               ) : (
                 <div className="analysis-panel__vision-placeholder">
                   <span className="analysis-panel__vision-placeholder-text">
-                    waiting for vision input...
+                    waiting for vision input<AnimatedDots />
                   </span>
                 </div>
               )}

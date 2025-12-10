@@ -537,9 +537,9 @@
   align-items: center;
   flex: 1; /* Fill available height */
   padding: var(--space-md);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed var(--border-subtle);
-  border-radius: 6px;
+  background: transparent;
+  border: none; /* Removed dotted border */
+  border-radius: 0;
   margin: 0;
   width: 100%;
   min-height: 150px; /* Fallback minimum height */
