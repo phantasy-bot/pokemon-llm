@@ -78,14 +78,13 @@
 /* Empty slot styling - adapted for grid */
 .pokemon-empty-slot {
   width: 100%;
-  height: auto; /* Match auto height of cards */
-  align-self: center; /* Center like cards */
-  min-height: 64px; /* Increased height for taller team cards */
-  /* Removed min-width to allow grid to control sizing */
+  height: 100px; /* Fixed height as requested */
+  min-height: 100px;
+  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-panel); /* Flat color as requested */
+  background: var(--bg-panel);
   border: 1px dashed var(--border-subtle);
   border-radius: 6px;
   opacity: 0.5;

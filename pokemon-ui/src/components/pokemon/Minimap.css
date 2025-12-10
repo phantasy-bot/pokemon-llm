@@ -293,6 +293,7 @@
   background: var(--bg-panel);
   border-top: 1px solid var(--border-subtle);
   width: 100%;
+  flex-shrink: 0; /* Never shrink - always show */
 }
 
 .minimap__exploration-label {
