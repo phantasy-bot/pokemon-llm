@@ -578,8 +578,9 @@
   color: rgba(0, 0, 0, 0.85); /* Dark text for contrast on bright accent */
   font-weight: 600; /* Bolder */
   margin: 0;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-left: 8px; /* Increased padding-x */
+  padding-right: 8px;
+  padding-top: 10px; /* Increased from 8px for label breathing room */
 }
 
 /* Empty spacer at bottom of left column */

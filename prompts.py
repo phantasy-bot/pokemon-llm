@@ -180,10 +180,11 @@ OVERWORLD_PROMPT = """
 You are exploring the game world. Focus on:
 
 ### NAVIGATION PRIORITY
+### NAVIGATION PRIORITY
 1. Check minimap for exits (O tiles)
 2. Avoid revisiting areas you just came from
-3. Talk to NPCs for hints
-4. Enter buildings/dungeons to progress
+3. Enter buildings/dungeons to progress
+4. Talk to NPCs (LAST RESORT - only if completely stuck/lost)
 
 ### MOVEMENT
 - Use U/D/L/R to move
@@ -338,7 +339,8 @@ Use <game_analysis> tags with these sections:
    **PRIORITY ORDER:**
    1. VERIFIED EXITS from memory → calculate exact path to reach them
    2. Visible 'O' tiles on minimap → walk directly to them
-   3. ONLY explore if no known exits exist
+   3. Explore unseen areas (maximize map exploration %)
+   4. Talk to NPCs (Last Resort) / Explore randomly
    
    **PLANNING (required!):**
    - Current position: [x1, y1]
