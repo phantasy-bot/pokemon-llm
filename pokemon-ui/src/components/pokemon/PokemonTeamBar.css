@@ -3,7 +3,7 @@
   gap: var(--space-lg);
   background: var(--bg-panel);
   /* border-top removed as requested */
-  padding: 4px var(--space-lg); /* even smaller vertical padding */
+  padding: 4px 2px; /* 2px horizontal padding as requested */
 }
 
 .pokemon-team-bar__main {

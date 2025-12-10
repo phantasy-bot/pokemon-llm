@@ -161,7 +161,7 @@ export function Minimap({
         {explorationPct !== undefined && (
           <div className="minimap__exploration">
             <span className="minimap__exploration-label">EXPLORED</span>
-            <span className="minimap__exploration-value">{explorationPct.toFixed(0)}%</span>
+            <span className="minimap__exploration-value">&nbsp;{explorationPct.toFixed(0)}%</span>
           </div>
         )}
       </div>
