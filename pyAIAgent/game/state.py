@@ -182,7 +182,7 @@ def prep_llm(sock) -> dict:
         capture(sock, "latest.png")
         log.info(f"prep_llm: capture took {time.time() - t_cap:.2f}s")
         
-        time.sleep(0.5) # Increased wait to ensure FS sync
+        time.sleep(1.5) # Increased wait to let game UI fully load after actions
         _flush_socket(sock)
         
         log.info("prep_llm: getting location...")
