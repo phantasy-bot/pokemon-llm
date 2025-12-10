@@ -14,6 +14,7 @@ interface MinimapProps {
     opacity: number;
     age_hours?: number;
   }>;
+  minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay
 }
 
 // Removed MINIMAP_POLL_INTERVAL
@@ -25,6 +26,7 @@ export function Minimap({
   timestamp,
   explorationPct,
   lassMarkings,
+  minimapGridSize,
 }: MinimapProps) {
   const [minimapSrc, setMinimapSrc] = useState<string>("");
   const [minimapVisible, setMinimapVisible] = useState<boolean>(visible);
@@ -141,7 +143,10 @@ export function Minimap({
             />
             {/* Lass's pink overlay with N/O markers - positioned over the image */}
             {minimapVisible && lassMarkings && lassMarkings.length > 0 && (
-              <LassMinimapOverlay markings={lassMarkings} />
+              <LassMinimapOverlay 
+                markings={lassMarkings} 
+                gridSize={minimapGridSize}
+              />
             )}
           </div>
         )}

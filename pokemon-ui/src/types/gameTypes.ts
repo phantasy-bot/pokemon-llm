@@ -154,6 +154,7 @@ export interface PokemonGameState {
     opacity: number; // 0.0-1.0 (decays over time)
     age_hours?: number;
   }>;
+  minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay positioning
 
   // Pokemon Team
   currentTeam: Pokemon[]; // From backend WebSocket

@@ -321,6 +321,7 @@ export function PokemonStreamOverlay({
               minimapVisible={gameState.minimapVisible}
               explorationPct={gameState.explorationPct}
               lassMarkings={gameState.lassMarkings}
+              minimapGridSize={gameState.minimapGridSize}
             />
           </div>
         </div>
