@@ -411,6 +411,35 @@ local function parse(line, sock, sockId)
       return
    end
 
+   -- QUICKSAVE command: Save using quicksave (slot 0, faster than slot saves)
+   if line:match("^[Qq][Uu][Ii][Cc][Kk][Ss][Aa][Vv][Ee]$") then
+      console:log("[DEBUG] parse: QUICKSAVE command received")
+      -- Use slot 0 which is typically the quicksave slot
+      local success = emu:saveStateSlot(0)
+      if success then
+         console:log("[INFO ] parse: QUICKSAVE successful")
+         sock:send("OK QUICKSAVE\n")
+      else
+         local err_msg = "QUICKSAVE failed"
+         err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n")
+      end
+      return
+   end
+
+   -- QUICKLOAD command: Load using quicksave (slot 0)
+   if line:match("^[Qq][Uu][Ii][Cc][Kk][Ll][Oo][Aa][Dd]$") then
+      console:log("[DEBUG] parse: QUICKLOAD command received")
+      local success = emu:loadStateSlot(0)
+      if success then
+         console:log("[INFO ] parse: QUICKLOAD successful")
+         sock:send("OK QUICKLOAD\n")
+      else
+         local err_msg = "QUICKLOAD failed"
+         err(sockId, err_msg); sock:send("ERR " .. err_msg .. "\n")
+      end
+      return
+   end
+
    local num_str = line:match("^SET%s+(%S+)$")
    if num_str then
       console:log("[DEBUG] parse: SET command received with value: " .. num_str)
