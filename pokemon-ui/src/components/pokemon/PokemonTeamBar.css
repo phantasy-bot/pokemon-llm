@@ -46,7 +46,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
   grid-template-rows: 1fr 1fr; /* Equal height rows */
-  gap: 0; /* Remove gap - using align-content for spacing */
+  gap: 2px; /* Small gap between columns */
   align-content: space-between; /* Space between rows, not at bottom */
   width: 100%;
   height: 100%; /* Fill container height */

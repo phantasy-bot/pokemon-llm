@@ -1221,7 +1221,7 @@ class MemoryManager:
         # Look for section 10
         # Matches: 10. **MEMORY_WRITE**: content... (until next section or end)
         # Handle optional bolding: 10. MEMORY_WRITE: or 10. **MEMORY_WRITE**:
-        match = re.search(r'10\.\s*(?:\*\*)?MEMORY_WRITE(?:\*\*)?:\s*(.*?)(?:\n\d+\.|\n<|\Z)', analysis_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r'10\.\s*(?:\*\*)?MEMORY_WRITE(?:\*\*)?:\s*(.*?)(?:\n\d+\.|\n<|<|\Z)', analysis_text, re.DOTALL | re.IGNORECASE)
         
         if match:
             content = match.group(1).strip()
