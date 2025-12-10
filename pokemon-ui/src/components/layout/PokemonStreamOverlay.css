@@ -660,11 +660,14 @@
 /* Inner content wrapper with overflow handling and fade effect */
 .goals-log__content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Distribute items to fill container */
   overflow: hidden;
   position: relative;
-  /* CSS mask for fade effect at bottom */
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
+  /* CSS mask for fade effect at bottom when content overflows */
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
 }
 
 .goals-log p {

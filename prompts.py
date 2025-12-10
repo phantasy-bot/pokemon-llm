@@ -51,35 +51,33 @@ NAME_ENTRY_PROMPT = """
 
 ## 🎮 NAME ENTRY SCREEN (ACTIVE)
 
-### ⚡ PRIORITY: USE DEFAULT NAMES!
-**ALWAYS prefer the preset/default names when available:**
-- For YOUR character (player): Select "RED" from the preset list
-- For RIVAL: Select "BLUE" from the preset list  
-- For Pokemon nicknames: Select "NO" to keep their species name
+### ⚡ PRIORITY: USE START TO ACCEPT DEFAULTS!
+**Press START (S) to instantly accept the default name and skip keyboard entry!**
+- On Pokemon entry screen: Press S to end immediately with default name
+- On YOUR character (player): Press S to accept "RED" if no letters entered yet
+- On RIVAL: Press S to accept "BLUE" if no letters entered yet
 
-**Navigate to the preset name and press A. Do NOT enter the keyboard unless forced!**
+**⚠️ IMPORTANT: START only works if you haven't entered any characters yet!**
+- If you accidentally entered letters, you CANNOT go back to presets
+- You MUST enter at least 1 character before pressing START to exit
+
+### IF YOU'RE STUCK IN KEYBOARD (already typed something):
+1. **Enter at least 1 character** - Press A on any letter
+2. **Then press START (S)** - This accepts whatever you typed and exits
+3. If cursor on blank/no text, just press any letter then START
 
 ### ⚠️ CRITICAL: KEYBOARD NAVIGATION RULES
 **You CANNOT type letters directly! You must NAVIGATE the grid:**
 1. The cursor starts at 'A' in the top-left
 2. Use D-pad (U/D/L/R) to move the cursor to each letter
 3. Press A to select the letter under the cursor
-4. Repeat for each letter in the name
+4. Press START (S) to confirm name and exit
 
-**EXAMPLE - To type "RED":**
-1. Cursor at A → Move RIGHT 1 (to B), then DOWN 2 (through J, to S), then RIGHT 5 (to R) → Press A
-2. Move LEFT 1 (to Q), UP 1 (to H), RIGHT 3 (to E) → Press A  
-3. Move DOWN 1 (to N), LEFT 4 (to D) → Press A
-4. Navigate to "ED" (bottom-right) and press A to confirm
+**EXAMPLE - Quick name "A":**
+1. Cursor starts at A → Press A to select it
+2. Press START (S) to confirm → Done!
 
-**ACTION FORMAT:** Use D-pad + A, e.g.: "R;R;D;D;D;D;D;A;R;R;R;R;A;ED;"
-
-### IF STUCK IN KEYBOARD:
-1. Just navigate to "ED" in bottom-right corner
-2. Press A on ED to confirm (works even with partial/no name)
-3. Move on with the game!
-
-### KEYBOARD LAYOUT (9 columns, 6 rows)
+### KEYBOARD LAYOUT (9 columns, 5 rows)
 Row 1: A B C D E F G H I
 Row 2: J K L M N O P Q R  
 Row 3: S T U V W X Y Z (space)
