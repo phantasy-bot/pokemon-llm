@@ -1513,7 +1513,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
     cycle_times_history = []  # List of recent cycle times for average calculation
     
     # mGBA timeout - if no response in this time, restart the cycle
-    MGBA_TIMEOUT = 20  # seconds
+    MGBA_TIMEOUT = 5  # seconds - reduced for faster cycles
 
     benchInstructions = ""
     if benchmark is not None:
@@ -2575,7 +2575,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         save_game_state(sock, slot=1)
 
         elapsed_loop_time = time.time() - loop_start_time
-        wait_time = max(5, interval - elapsed_loop_time) # Ensure at least 5 seconds wait
+        wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
         if result and result.get("stats", {}).get("action_count", 0) > 0:
             log.info(f"💾 Cycle {current_cycle} action execution successful")
             
