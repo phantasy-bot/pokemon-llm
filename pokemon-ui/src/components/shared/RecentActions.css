@@ -101,3 +101,25 @@
   color: transparent;
   box-shadow: none;
 }
+
+@keyframes flash-action {
+  0% {
+    background-color: #FFFFFF;
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  }
+  30% {
+    background-color: var(--accent-primary-bright);
+    transform: scale(1);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+  }
+  100% {
+    background-color: var(--accent-primary-bright);
+    transform: scale(1);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+  }
+}
+
+.recent-actions__square.flash {
+  animation: flash-action 0.5s ease-out forwards;
+}

@@ -79,6 +79,10 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
             });
             if (keys.length === 0 && cleanText) keys.push(cleanText.charAt(0));
 
+
+            // Check if this is the most recent action
+            const isLatest = action.id === actionEntries[0]?.id;
+
             return (
               <div key={action.id} className="recent-actions__item">
                 <span className="recent-actions__number">
@@ -86,7 +90,11 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
                 </span>
                 <div className="recent-actions__group">
                   {keys.map((k: string, idx: number) => (
-                    <div key={idx} className="recent-actions__square">
+                    <div 
+                      key={idx} 
+                      className={`recent-actions__square ${isLatest ? 'flash' : ''}`}
+                      style={isLatest ? { animationDelay: `${idx}s` } : undefined}
+                    >
                       {k}
                     </div>
                   ))}
