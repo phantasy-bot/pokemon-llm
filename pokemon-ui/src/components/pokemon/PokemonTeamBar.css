@@ -4,8 +4,8 @@
   background: var(--bg-panel);
   /* border-top removed as requested */
   padding: 4px 2px; /* Slight padding */
-  height: 160px; /* Default fixed height for consistent minimap scaling */
-  min-height: 160px;
+  height: 300px; /* Fixed height for consistent layout */
+  min-height: 300px;
 }
 
 .pokemon-team-bar__main {
@@ -103,13 +103,13 @@
 /* Minimap section - replaces sponsor section */
 .pokemon-team-bar__minimap {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: column; /* Stack header, image, and exploration vertically */
+  align-items: center; /* Center content horizontally */
   padding-left: var(--space-lg);
   border-left: 1px solid rgba(208, 202, 200, 0.5);
   flex-shrink: 0;
-  /* Dimensions - height matches team section */
-  width: 200px;
+  /* Dimensions - width fixed, height fills container */
+  width: 220px;
   height: 100%;
   /* Removed max-height - let content fill naturally */
 }
