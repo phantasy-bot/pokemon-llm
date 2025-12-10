@@ -761,9 +761,18 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     # Filter out Japanese characters and non-English text
                     processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
 
-                    # Remove first 17 and last 14 characters as specified
-                    if len(processed_vision_result) > 31:
-                        processed_vision_result = processed_vision_result[17:-14]
+                    global agent_requested_diff
+                    # Robust JSON extraction instead of brittle slicing
+                    json_start = processed_vision_result.find('{')
+                    json_end = processed_vision_result.rfind('}')
+                    
+                    if json_start != -1 and json_end != -1:
+                        # Extract just the JSON part
+                        processed_vision_result = processed_vision_result[json_start:json_end+1]
+                    else:
+                        # Fallback: legacy slicing if braces not found (unlikely but safe)
+                        if len(processed_vision_result) > 31:
+                            processed_vision_result = processed_vision_result[17:-14]
 
                     vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
                     vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
@@ -2915,7 +2924,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                         map_name = current_mGBA_state.get('map_name', 'unknown')
                         chat_response_service.update_context(
                             game_context=f"Currently in {map_name}",
-                            commentary=commentary_text
+                            commentary=commentary_text,
+                            location=map_name,
+                            memory=memory_manager.get_narrative_context()
                         )
                     
                     # Synthesize and play the commentary audio (don't wait - play in background)

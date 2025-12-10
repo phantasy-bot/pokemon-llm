@@ -68,6 +68,20 @@ class QuestMemory(Memory):
 
 
 @dataclass
+class NarrativeMemory(Memory):
+    """Narrative memory for story events, dialogue, and player mistakes.
+    
+    Used for:
+    - Remembering rival name choices ("Named rival AB")
+    - Significant dialogue events ("Oak forgot grandson's name")
+    - Funny mistakes ("I walked into a wall for 5 minutes")
+    """
+    event_type: str = "general"  # narrative, dialogue, mistake, milestone
+    characters_involved: Optional[List[str]] = None
+    emotional_tone: str = "neutral"  # happy, frustrated, confused, proud
+
+
+@dataclass
 class StrategyMemory:
     """
     Memory for learned strategies - discovered through experience, not hard-coded.
@@ -642,6 +656,51 @@ class MemoryManager:
         self._save_memories()
         return memory
 
+    def add_narrative_memory(
+        self,
+        location: str,
+        description: str,
+        event_type: str = "general",
+        characters: Optional[List[str]] = None,
+        emotional_tone: str = "neutral",
+        importance: float = 1.0
+    ) -> NarrativeMemory:
+        """Add a narrative memory (story, dialogue, mistakes)"""
+        
+        memory = NarrativeMemory(
+            type="narrative",
+            location=location,
+            description=description,
+            coordinates=None,  # Narrative memories are less strictly bound to coords
+            timestamp=datetime.now().isoformat(),
+            importance=importance,
+            event_type=event_type,
+            characters_involved=characters,
+            emotional_tone=emotional_tone,
+            context={
+                "event_type": event_type,
+                "emotional_tone": emotional_tone,
+                "characters": characters
+            }
+        )
+        
+        self.memories["narrative"].append(memory)
+        self._save_memories()
+        
+        # Log it prominently
+        log.info(f"📖 NARRATIVE MEMORY ADDED: {description} (Tone: {emotional_tone})")
+        return memory
+
+    def get_narrative_context(self, limit: int = 5) -> str:
+        """Get summary of recent narrative events/memories for chat context."""
+        mems = self.memories.get("narrative", [])
+        if not mems:
+            return ""
+        
+        # Get most recent ones
+        recent = mems[-limit:]
+        return "\n".join([f"- {m.description}" for m in recent])
+
     def add_gameplay_memory(
         self,
         location: str,
@@ -960,6 +1019,10 @@ class MemoryManager:
         )
         extracted_memories.extend(gameplay_memories)
         
+        # Extract narrative memories (story events, choices, mistakes)
+        narrative_memories = self._extract_narrative_memories(analysis_text, current_location)
+        extracted_memories.extend(narrative_memories)
+        
         # NOTE: Fallback memories disabled - they create too many duplicates
         # Only record significant events like verified transitions, battles, items
         
@@ -1144,6 +1207,42 @@ class MemoryManager:
                         )
 
         return memories
+
+    def _extract_narrative_memories(
+        self,
+        analysis_text: str,
+        current_location: str
+    ) -> List[NarrativeMemory]:
+        """Extract value from 10. MEMORY_WRITE section in analysis text"""
+        memories = []
+        if not analysis_text:
+            return memories
+            
+        # Look for section 10
+        # Matches: 10. **MEMORY_WRITE**: content... (until next section or end)
+        # Handle optional bolding: 10. MEMORY_WRITE: or 10. **MEMORY_WRITE**:
+        match = re.search(r'10\.\s*(?:\*\*)?MEMORY_WRITE(?:\*\*)?:\s*(.*?)(?:\n\d+\.|\n<|\Z)', analysis_text, re.DOTALL | re.IGNORECASE)
+        
+        if match:
+            content = match.group(1).strip()
+            # Ignore "None", "Nothing", etc.
+            if content and content.lower() not in ["none", "nothing", "n/a", "no", "no new memories", "no changes", "none."]:
+                # Clean up lines - handle bullet points
+                lines = [line.strip().lstrip('-').lstrip('*').strip() for line in content.split('\n') if line.strip()]
+                
+                for line in lines:
+                    if len(line) > 5 and line.lower() != "none":  # Ignore very short junk
+                         # Add memory and track it
+                         log.info(f"🧠 Parsed Narrative Memory: {line}")
+                         memories.append(self.add_narrative_memory(
+                             location=current_location,
+                             description=line,
+                             event_type="narrative_choice",
+                             importance=2.0  # High default importance for explicitly written memories
+                         ))
+                         
+        return memories
+
 
     def _extract_gameplay_memories(
         self,
