@@ -1334,16 +1334,26 @@ def encode_image_base64(image_path: str) -> str | None:
         return None
 
 
-def save_game_state(sock, slot: int = 1) -> bool:
-    """Save game state to specified slot. Returns True if successful."""
+def save_game_state(sock, slot: int = 0) -> bool:
+    """Save game state. slot=0 uses QUICKSAVE (faster), slot>0 uses regular SAVESTATE."""
     try:
-        response = send_command(sock, f"SAVESTATE {slot}")
-        if response and "OK" in response:
-            log.info(f"💾 Game state saved to slot {slot}")
-            return True
+        if slot == 0:
+            # Use QUICKSAVE for faster saves
+            response = send_command(sock, "QUICKSAVE")
+            if response and "OK" in response:
+                log.info(f"💾 Game state quicksaved")
+                return True
+            else:
+                log.warning(f"Failed to quicksave: {response}")
+                return False
         else:
-            log.warning(f"Failed to save game state to slot {slot}: {response}")
-            return False
+            response = send_command(sock, f"SAVESTATE {slot}")
+            if response and "OK" in response:
+                log.info(f"💾 Game state saved to slot {slot}")
+                return True
+            else:
+                log.warning(f"Failed to save game state to slot {slot}: {response}")
+                return False
     except Exception as e:
         log.error(f"Error saving game state: {e}")
         return False
@@ -2572,7 +2582,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
         # First, backup the current save (previous cycle becomes backup)
         backup_save_state()
         # Then save current state to slot 1
-        save_game_state(sock, slot=1)
+        save_game_state(sock, slot=0)  # Use QUICKSAVE for faster saves
 
         elapsed_loop_time = time.time() - loop_start_time
         wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
