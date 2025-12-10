@@ -1673,7 +1673,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             try:
                 new_sock = sock_module.create_connection(('localhost', port), timeout=5)
                 new_sock.setblocking(True)
-                new_sock.settimeout(10.0)
+                new_sock.settimeout(30.0)
                 sock_ref["socket"] = new_sock
                 log.info(f"✅ Connected to new mGBA socket (fd={new_sock.fileno()})")
                 break
@@ -1719,7 +1719,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             time.sleep(1)  # Give mGBA time to clean up
             new_sock = sock_module.create_connection(('localhost', port), timeout=5)
             new_sock.setblocking(True)
-            new_sock.settimeout(10.0)  # Set default timeout to prevent indefinite blocking
+            new_sock.settimeout(30.0)  # Set default timeout to prevent indefinite blocking
             sock_ref["socket"] = new_sock  # Update the shared reference
             log.info(f"✅ Successfully reconnected to mGBA socket! (new fd={new_sock.fileno()})")
             return True
