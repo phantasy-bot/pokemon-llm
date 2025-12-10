@@ -107,10 +107,8 @@
   flex: 1; /* Fill remaining space after header */
   min-height: 60px; /* Minimum readable size */
   background: var(--bg-input);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  /* NO flex centering - use grid for overlay stacking */
 }
 
 .minimap__image {
@@ -122,12 +120,17 @@
   transition: all var(--transition-normal);
 }
 
-/* Container for image + overlay - establishes positioning context */
+/* Container for image + overlay - uses CSS Grid to stack elements */
 .minimap__image-container {
-  position: relative;
-  display: inline-block; /* Shrink to fit the image */
-  max-width: 100%;
-  max-height: 100%;
+  display: grid;
+  place-items: center; /* Center the image */
+  width: 100%;
+  height: 100%;
+}
+
+/* Both image and overlay occupy the same grid cell */
+.minimap__image-container > * {
+  grid-area: 1 / 1;
 }
 
 .minimap__image--visible {
