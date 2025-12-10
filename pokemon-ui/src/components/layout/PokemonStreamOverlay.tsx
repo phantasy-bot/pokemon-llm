@@ -85,6 +85,57 @@ const formatLargeNumber = (num: number): string => {
   return num.toString();
 };
 
+// Live cycle timer component that ticks every second
+function LiveCycleTimer({ 
+  cycleNumber, 
+  currentCycleTime 
+}: { 
+  cycleNumber: number; 
+  currentCycleTime: number;
+}) {
+  const [elapsedTime, setElapsedTime] = useState(currentCycleTime);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const lastCycleRef = useRef(cycleNumber);
+  const timerRef = useRef<number | null>(null);
+
+  // Tick every second
+  useEffect(() => {
+    timerRef.current = window.setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  // Reset timer and flash when cycle changes
+  useEffect(() => {
+    if (cycleNumber !== lastCycleRef.current) {
+      // Cycle completed - flash and reset
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 500);
+      setElapsedTime(0);
+      lastCycleRef.current = cycleNumber;
+    }
+  }, [cycleNumber]);
+
+  // Sync with backend time if significantly different
+  useEffect(() => {
+    if (Math.abs(elapsedTime - currentCycleTime) > 3) {
+      setElapsedTime(currentCycleTime);
+    }
+  }, [currentCycleTime]);
+
+  return (
+    <span className={`cycle-timer ${isFlashing ? 'cycle-timer--flash' : ''}`}>
+      {elapsedTime}s
+    </span>
+  );
+}
+
 // Kanto gym badges with image paths (1.png - 8.png in order)
 const KANTO_BADGES: Record<BadgeType, { image: string; name: string; index: number }> = {
   Boulder: { image: "/badges/1.png", name: "Boulder Badge", index: 1 },
@@ -236,9 +287,12 @@ export function PokemonStreamOverlay({
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {wsConnected && gameState.currentCycleTime !== undefined && gameState.currentCycleTime > 0 && (
+            {wsConnected && (
               <span className="cycle-timing">
-                Cycle: {gameState.currentCycleTime}s
+                Cycle: <LiveCycleTimer 
+                  cycleNumber={gameState.cycle || 0} 
+                  currentCycleTime={gameState.currentCycleTime || 0} 
+                />
                 {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
                   <> | Prev: {gameState.prevCycleTime}s</>
                 )}

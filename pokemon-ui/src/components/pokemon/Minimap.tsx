@@ -108,7 +108,7 @@ export function Minimap({
       <div className="minimap__header">
         <div className="minimap__header-left">
             <span className="minimap__location">{mapName}</span>
-            {mapNumber && <span className="minimap__location-number">{mapNumber}</span>}
+            {mapNumber && <span className="minimap__location-number">Map {mapNumber.replace(/[()]/g, '')}</span>}
         </div>
         {coords && <span className="minimap__coords">{coords}</span>}
       </div>
@@ -156,15 +156,15 @@ export function Minimap({
             />
           </div>
         )}
-        
-        {/* Exploration percentage display - below minimap image */}
-        {explorationPct !== undefined && (
-          <div className="minimap__exploration">
-            <span className="minimap__exploration-label">EXPLORED</span>
-            <span className="minimap__exploration-value">&nbsp;{explorationPct.toFixed(0)}%</span>
-          </div>
-        )}
       </div>
+
+      {/* Exploration percentage display - OUTSIDE body, below it */}
+      {explorationPct !== undefined && (
+        <div className="minimap__exploration">
+          <span className="minimap__exploration-label">EXPLORED</span>
+          <span className="minimap__exploration-value">&nbsp;{explorationPct.toFixed(0)}%</span>
+        </div>
+      )}
     </div>
   );
 }

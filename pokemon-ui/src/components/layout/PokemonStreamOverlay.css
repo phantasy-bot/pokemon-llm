@@ -121,7 +121,7 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: calc(var(--space-lg) + 8px); /* Increased top padding to align goals with other columns */
+  padding-top: calc(var(--space-xl) + 12px); /* More top padding to align goals with other columns */
   gap: var(--space-md);
   overflow: visible;
   background: transparent;
@@ -446,6 +446,30 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   opacity: 0.7;
+}
+
+/* Live ticking timer */
+.cycle-timer {
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Flash animation when cycle completes */
+.cycle-timer--flash {
+  font-weight: 700;
+  color: var(--accent-primary);
+  animation: cycle-flash 0.5s ease-out;
+}
+
+@keyframes cycle-flash {
+  0% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .pokemon-analysis-panel {
