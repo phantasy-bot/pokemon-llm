@@ -15,7 +15,7 @@ SIZE_MAP = {
     GB_RASTER_SIZE: (GB_WIDTH, GB_HEIGHT),
 }
 
-def capture(sock, filename: str = "latest.png", cell_size: int = 16, timeout: float = 10.0) -> None:
+def capture(sock, filename: str = "latest.png", cell_size: int = 16, timeout: float = 30.0) -> None:
     """
     Capture a screenshot from the mGBA socket.
     
