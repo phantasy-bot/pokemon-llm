@@ -505,6 +505,17 @@ Use this structure in <game_analysis> tags:
 
 {"action":"U;R;A;"}
 
+## OPTIONAL: REQUEST UI DIFF (Use Sparingly)
+If you're STUCK or suspect the screen didn't change, you can request a diff analysis:
+{"action":"U;U;U;", "request_diff": true}
+
+This compares current vs previous screenshot. Use when:
+- You're repeating the same action with no progress
+- You suspect a menu opened/closed but aren't sure
+- Movement seems blocked and you need to verify
+
+**DO NOT use every turn** - it adds 15-20s delay! Only when genuinely stuck.
+
 ### BUTTON USAGE
 - **A Button**: Interact, Confirm choices (YES), Talk to NPCs.
 - **B Button**: Cancel, Back, Run (hold), **ESCAPE DIALOG LOOPS**, Select 'NO'.
