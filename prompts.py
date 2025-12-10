@@ -274,20 +274,26 @@ Use <game_analysis> tags with these sections:
    - NOT ALL EXITS ARE 'O' TILES! Route transitions may show no special tile.
    - **Just exited building?** Door is BEHIND you. Move AWAY first (D/L/R), not back in!
    - **New area?** Explore FORWARD. Don't retreat to where you came from.
-   - **Oscillating between 2-3 positions?** STOP! Commit to ONE direction for 5+ moves.
-   - **Entered same building 2+ times?** Blacklist it, explore elsewhere.
    
-   **DIRECTIONAL PROGRESS**: Check your [x,y] history:
-   - Y decreasing = NORTH progress | Y increasing = SOUTH progress
-   - X increasing = EAST progress | X decreasing = WEST progress
-   Keep patterns that show progress; change ones that don't.
+   **⚠️ OSCILLATION = FAILURE!** If you go R then L then R, you are STUCK!
+   - Moving 2-3 tiles then reversing is NOT progress
+   - Pick ONE direction and commit to 5-8 tiles minimum
+   - Only change direction when you hit an ACTUAL blocked tile (❌)
+   - Your goal: MAXIMIZE distance traveled in one direction!
+   
+   **L-SHAPED PATHFINDING** (when blocked):
+   - Destination is NORTH but path blocked? Go EAST/WEST first until past obstacle, THEN go NORTH
+   - Think: "I need to go AROUND the blocked tiles, not through them"
+   - Pattern: Move perpendicular 3-5 tiles, THEN resume original direction
+   - Example: Blocked going UP → try R;R;R;R;U;U;U;U; (go around right, then up)
 
 6. **GOAL**: Direction needed, path plan, fallback if blocked
    - Prioritize UNEXPLORED exits over interacting with NPCs
 
 7. **ACTION**: Chain 2-5 moves. Vary step count (3, then 4, then 2) to break patterns.
-   - If last action was RRRRR, don't do LLLLL unless intentionally backtracking
-   - If blocked, move PERPENDICULAR (e.g., NORTH blocked → try R;R;R;U;U;)
+   - **COMMIT TO DIRECTION**: If going RIGHT, use R;R;R;R;R; (5+ moves)
+   - If blocked, move PERPENDICULAR first then resume (L-shaped path)
+   - Example: NORTH blocked → R;R;R;U;U;U;U; (around then up)
    - **DIALOGUE**: Use single A; or B; only (avoid skipping important text)
 
 8. **COMMENTARY**: 1 sentence as Lass (reference your history, no controls!)

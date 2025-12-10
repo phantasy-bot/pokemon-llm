@@ -74,27 +74,27 @@ export function Minimap({
   };
 
   // Parse location to split map name, number and coordinates
-  // Format expected: "MAP_NAME (Map ID) (X, Y)" or similar
+  // Format expected: "MAP_NAME (Map ID) (X, Y)" or "MAP_NAME (ID) (X, Y)"
   const parseLocation = (loc: string): { mapName: string; mapNumber: string; coords: string } => {
     let coords = '';
     let rest = loc;
     
-    // 1. Extract Coords: (X, Y) at end
+    // 1. Extract Coords: (X, Y) at end - look for two numbers with comma
     const coordMatch = loc.match(/\((\d+),?\s*(\d+)\)\s*$/);
     if (coordMatch) {
       coords = `(${coordMatch[1]}, ${coordMatch[2]})`;
       rest = loc.replace(/\((\d+),?\s*(\d+)\)\s*$/, '').trim();
     }
     
-    // 2. Extract Map Number from rest: NAME (NUMBER)
+    // 2. Extract Map Number from rest: NAME (Map NUMBER) or NAME (NUMBER)
     let mapNumber = '';
     let mapName = rest;
     
-    // Regex for "Name (123)"
-    const numMatch = rest.match(/^(.*)\s+\((\d+)\)$/);
+    // Match "Name (Map 123)" or "Name (123)" - capture just the number
+    const numMatch = rest.match(/^(.*?)\s*\((?:Map\s*)?([\d]+)\)\s*$/i);
     if (numMatch) {
         mapName = numMatch[1].trim();
-        mapNumber = `(${numMatch[2]})`; // Keep parens
+        mapNumber = numMatch[2]; // Just the number
     }
     
     return { mapName, mapNumber, coords };

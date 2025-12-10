@@ -121,7 +121,7 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: calc(var(--space-xl) + 12px); /* More top padding to align goals with other columns */
+  padding-top: calc(var(--space-xl) + 10px); /* Reduced slightly for better alignment */
   gap: var(--space-md);
   overflow: visible;
   background: transparent;
