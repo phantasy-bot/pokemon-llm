@@ -356,6 +356,19 @@ export function PokemonStreamOverlay({
                 </div>
               </div>
             </div>
+
+            {/* Sponsor Section - Bottom Right */}
+            <div className="folder-sponsor">
+              <img 
+                src="/sponsors/mystery-gift.png" 
+                alt="Mystery Gift Sponsor" 
+                className="folder-sponsor__image"
+              />
+              <span className="folder-sponsor__heading">SPONSOR</span>
+              <a href="https://mysterygift.fun" target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
+                mysterygift.fun
+              </a>
+            </div>
           </div>
         </div>
       </div>

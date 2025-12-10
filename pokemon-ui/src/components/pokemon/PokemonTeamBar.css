@@ -3,8 +3,8 @@
   gap: var(--space-lg);
   background: var(--bg-panel);
   /* border-top removed as requested */
-  padding: 2px 2px; /* Reduced vertical padding */
-  max-height: 130px; /* Constrain total height */
+  padding: 4px 2px; /* Slight padding */
+  /* Removed max-height - let content determine size */
 }
 
 .pokemon-team-bar__main {
@@ -78,7 +78,7 @@
   width: 100%;
   height: auto; /* Match auto height of cards */
   align-self: center; /* Center like cards */
-  min-height: 46px; /* Approx height of compact card (20+20+4+2) */
+  min-height: 56px; /* Increased height for taller team cards */
   /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;
@@ -106,10 +106,10 @@
   padding-left: var(--space-lg);
   border-left: 1px solid rgba(208, 202, 200, 0.5);
   flex-shrink: 0;
-  /* Reduced dimensions to fit constrained team bar height */
+  /* Dimensions - height matches team section */
   width: 200px;
   height: 100%;
-  max-height: 120px; /* Constrain height */
+  /* Removed max-height - let content fill naturally */
 }
 
 .pokemon-team-bar__minimap-component {
@@ -177,10 +177,23 @@
 
 /* Override minimap body height to fit the fixed container */
 .pokemon-team-bar__minimap-component .minimap__body {
-  /* Removed fixed height allow flex to fill available space */
+  flex: 1; /* Fill remaining space */
   height: auto;
   min-height: 0;
   max-height: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure the minimap image scales properly within the fixed space */
+.pokemon-team-bar__minimap-component .minimap__image {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 /* Ensure the minimap image scales properly within the fixed space */
