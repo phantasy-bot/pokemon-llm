@@ -224,17 +224,24 @@ local function sendCapture(sock, sockId)
    end
    local w,h = img.width, img.height
    console:log("[DEBUG] sendCapture: Captured image " .. w .. "x" .. h)
-   local buf = {}
-   for y=0,h-1 do
-      for x=0,w-1 do
-         buf[#buf+1] = string_pack(">I4", img:getPixel(x,y))
-      end
-   end
-   local data = table.concat(buf)
-   local len_packed = string_pack(">I4", #data)
-   console:log("[DEBUG] sendCapture: Sending image data (" .. #data .. " bytes) to socket " .. sockId)
+   
+   -- Calculate total size first (w * h * 4 bytes per pixel)
+   local total_len = w * h * 4
+   local len_packed = string_pack(">I4", total_len)
+   
+   console:log("[DEBUG] sendCapture: Sending image data (" .. total_len .. " bytes) to socket " .. sockId)
    sock:send(len_packed)
-   sock:send(data)
+   
+   -- Optimization: Send row by row to avoid massive table/string allocation
+   -- This prevents Lua Garbage Collection pauses that cause socket timeouts
+   for y=0,h-1 do
+      local row_buf = {}
+      for x=0,w-1 do
+         row_buf[#row_buf+1] = string_pack(">I4", img:getPixel(x,y))
+      end
+      sock:send(table.concat(row_buf))
+   end
+   
    console:log("[DEBUG] sendCapture: Image data sent.")
 end
 
