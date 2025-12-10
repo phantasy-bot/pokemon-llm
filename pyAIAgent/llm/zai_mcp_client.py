@@ -281,7 +281,7 @@ class ZAIMCPClient:
             prompt: Text prompt to accompany the image
 
         Returns:
-            Analysis result as string (blocks until success)
+            Analysis result as string (blocks until success, or None if timeout exceeded)
         """
         import time as time_module
         import select
@@ -289,9 +289,14 @@ class ZAIMCPClient:
         # CRITICAL: Cancel any pending request from previous call
         self._request_cancelled = True
         
-        # Acquire lock - this will block if another analyze_image_sync is running
+        # Try to acquire lock with timeout to prevent deadlock
         log.info("🔒 Acquiring MCP lock...")
-        with self._mcp_lock:
+        lock_acquired = self._mcp_lock.acquire(timeout=30.0)  # 30s timeout for lock
+        if not lock_acquired:
+            log.error("❌ Failed to acquire MCP lock within 30s timeout - another operation may be stuck")
+            return None
+        
+        try:
             log.info("🔓 MCP lock acquired")
             self._request_cancelled = False  # Reset for this request
             
@@ -315,7 +320,17 @@ class ZAIMCPClient:
             
             log.info("🔍 Starting vision analysis (will retry forever until success)")
             
+            # Track overall time to prevent infinite blocking
+            overall_start = time_module.time()
+            max_overall_time = 55.0  # Max time before releasing lock (under 60s llmdriver timeout)
+            
             while True:
+                # Check overall timeout to prevent infinite blocking
+                elapsed = time_module.time() - overall_start
+                if elapsed > max_overall_time:
+                    log.warning(f"⏱️ Vision analysis exceeded {max_overall_time}s overall timeout, releasing lock")
+                    return None
+                
                 # Check if this request was cancelled by a newer one
                 if self._request_cancelled:
                     log.warning("⏹️ Request cancelled by newer call, exiting")
@@ -343,6 +358,10 @@ class ZAIMCPClient:
                 
                 # Brief delay between attempts to prevent hammering
                 time_module.sleep(2.0)
+        finally:
+            # CRITICAL: Always release the lock, even on exceptions
+            self._mcp_lock.release()
+            log.debug("🔓 MCP lock released")
 
     async def ui_diff_check(self, prev_image_path: str, curr_image_path: str) -> Optional[str]:
         """

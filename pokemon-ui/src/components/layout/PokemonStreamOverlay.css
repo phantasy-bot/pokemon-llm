@@ -417,14 +417,17 @@
   overflow: visible;
 }
 
-/* Top section - Actions and Goals (40%) */
+/* Top section - Actions and Goals - STATIC HEIGHT */
 .pokemon-goals__top {
-  flex: 0 0 40%; /* Fixed 40% height */
+  flex: 0 0 auto; /* Let content determine size, but goals-log has fixed height */
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   overflow: visible; /* Allow sheared labels to show */
   min-height: 0; /* Required for flex overflow to work */
+  /* Static height area - commentary always starts at same position */
+  height: 280px; /* Fixed height for the entire goals top section */
+  max-height: 280px;
 }
 
 /* Character Container - 2 column layout (60%) */
@@ -520,7 +523,7 @@
   object-position: bottom right;
 }
 
-/* Goals section with TUI box styling - Fixed height, truncate overflow */
+/* Goals section with TUI box styling - STRICTLY FIXED height, truncate overflow */
 .goals-log {
   display: flex;
   flex-direction: column;
@@ -530,10 +533,9 @@
   /* Add margin-top to make room for sheared label that sits ABOVE the box */
   margin-top: calc(var(--space-lg) + 16px); /* Extra margin for label visibility */
   
-  /* FIXED HEIGHT - increased for more content */
-  height: 220px; /* Increased from 180px */
-  min-height: 220px;
-  max-height: 220px;
+  /* STRICTLY FIXED HEIGHT - never grows or shrinks regardless of content */
+  flex: 1 1 auto; /* Fill available space in parent */
+  min-height: 0; /* Allow shrinking */
   /* Use overflow-y only so the label positioned above isn't clipped */
   overflow-y: hidden; /* Truncate content that goes beyond */
   overflow-x: visible; /* Allow horizontal overflow for label */
@@ -665,11 +667,12 @@
 /* ... minimap overlay ... */
 
 .pokemon-team-section {
-  margin-top: 0;
+  margin-top: var(--space-md); /* Add gap above pokemon team section */
   padding-top: 0;
-  /* Auto height - only take what is needed */
+  /* Reduced height - tight fit for team and minimap */
   flex: 0 0 auto;
   min-height: 0;
+  max-height: 140px; /* Limit the maximum height to reduce overall size */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Ensure content is clipped if it somehow overflows */
