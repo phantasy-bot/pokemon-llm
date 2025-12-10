@@ -36,7 +36,7 @@ class ZAIMCPClient:
         self._request_cancelled = False  # Flag to cancel pending requests
         
         # SIMPLIFIED RETRY SYSTEM: 2 attempts → restart MCP → repeat forever (never give up)
-        self.max_attempts_before_restart = 2
+        self.max_attempts_before_restart = 1  # Immediately restart MCP after first failure
         self._attempt_count = 0
         self._restart_count = 0
         
@@ -521,41 +521,10 @@ class ZAIMCPClient:
             return None
 
         try:
-            # FIX: Cache tools list - only fetch once per session, not on every analyze call
+            # SKIP tools/list request - we know we're using analyze_image, no need to waste time
             if not self._tools_cached:
-                tools_list_id = self._get_next_request_id()
-                
-                list_tools_request = {
-                    "jsonrpc": "2.0",
-                    "id": tools_list_id,
-                    "method": "tools/list",
-                    "params": {}
-                }
-
-                log.info(f"Requesting available tools (first time only): {json.dumps(list_tools_request, indent=2)}")
-
-                # Send list tools request
-                list_tools_json = json.dumps(list_tools_request) + '\n'
-                self.mcp_process.stdin.write(list_tools_json.encode())
-                self.mcp_process.stdin.flush()
-
-                # Read tools list response, draining any stale responses
-                tools_data = self._read_response_with_id_match(tools_list_id, timeout=15.0)
-                if tools_data is None:
-                    log.error("Failed to get tools list response - will retry tools fetch next call")
-                    # Don't return None - we can still try analyze_image without cached tools list
-                    # Tools caching will be retried on next call
-                elif 'result' in tools_data and 'tools' in tools_data['result']:
-                    log.info(f"Available tools: {json.dumps(tools_data, indent=2)}")
-                    self._available_tools = tools_data['result']['tools']
-                    self._tools_cached = True
-                    log.info(f"Found {len(self._available_tools)} available tools (cached for future calls)")
-                    for tool in self._available_tools:
-                        log.info(f"Tool: {tool.get('name', 'unknown')} - {tool.get('description', 'no description')}")
-                else:
-                    log.warning(f"tools/list response missing expected structure: {tools_data}")
-            else:
-                log.debug("Using cached tools list")
+                log.info("Skipping tools/list request - directly using analyze_image tool")
+                self._tools_cached = True
 
             # Use the correct tool name and parameters from the schema
             tool_name = "analyze_image"

@@ -5,6 +5,24 @@ import { VisionScreenshot } from "../vision/VisionScreenshot"; // Restored
 import { RecentActions } from "../shared/RecentActions";
 import "./AnalysisPanel.css";
 
+// Animated dots component for loading states - fixed width so text doesn't shift
+function AnimatedDots() {
+  const [dots, setDots] = useState('');
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '...') return '';
+        return prev + '.';
+      });
+    }, 800); // Slower animation
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Fixed width span so text before doesn't shift
+  return <span style={{ display: 'inline-block', width: '1.5em', textAlign: 'left' }}>{dots}</span>;
+}
+
 const POKEMON_KEYART = [
   "/keyart/pikachu.png",
   "/keyart/charizard.png",
@@ -200,7 +218,7 @@ export function AnalysisPanel({
         <div className="analysis-panel__memory-section">
           <span className="analysis-panel__section-label">LATEST MEMORY</span>
           <p className="analysis-panel__memory-text">
-            {persistedMemory || "no memories recorded yet"}
+            {persistedMemory || <>no memories recorded yet<AnimatedDots /></>}
           </p>
         </div>
 
