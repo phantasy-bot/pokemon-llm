@@ -1538,7 +1538,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # mGBA timeout - if no response in this time, restart the cycle
     # INCREASED from 5s to 15s - screenshot capture can take 4+ seconds after restart
     # and thread race conditions caused false timeouts when old threads kept running
-    MGBA_TIMEOUT = 15  # seconds - must be enough for full prep_llm sequence
+    MGBA_TIMEOUT = 35  # seconds - must exceed socket timeout (30s) to let prep_llm complete/fail naturally
 
     benchInstructions = ""
     if benchmark is not None:
