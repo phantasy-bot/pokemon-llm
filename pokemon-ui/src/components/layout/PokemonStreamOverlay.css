@@ -121,7 +121,7 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: var(--space-sm); /* Reduced top padding for better alignment */
+  padding-top: calc(var(--space-lg) + 8px); /* Increased top padding to align goals with other columns */
   gap: var(--space-md);
   overflow: visible;
   background: transparent;
@@ -580,10 +580,10 @@
   /* FIXED: Remove excessive margin - align with other columns */
   margin-top: 0;
   
-  /* Fixed height for consistency - 275px */
-  height: 275px;
-  min-height: 275px;
-  max-height: 275px;
+  /* Fixed height for consistency - 300px */
+  height: 300px;
+  min-height: 300px;
+  max-height: 300px;
   /* Use overflow: visible so the label positioned above isn't clipped */
   overflow: visible;
   
