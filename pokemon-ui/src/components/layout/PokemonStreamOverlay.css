@@ -121,13 +121,57 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-sm); /* Reduced top padding for better alignment */
   gap: var(--space-md);
   overflow: visible;
   background: transparent;
   border-radius: 10px;
   margin: var(--space-sm);
   margin-top: calc(var(--space-sm) + 36px); /* Clear the cutout area */
+}
+
+/* Sponsor Section - Fixed bottom-right corner */
+.folder-sponsor {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.folder-sponsor__image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.folder-sponsor__heading {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.folder-sponsor__link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.8);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.folder-sponsor__link:hover {
+  color: rgba(0, 0, 0, 1);
 }
 
 /* Pokemon Header Section - DEPRECATED, kept for reference */
@@ -425,9 +469,9 @@
   gap: var(--space-sm);
   overflow: visible; /* Allow sheared labels to show */
   min-height: 0; /* Required for flex overflow to work */
-  /* Static height area - commentary always starts at same position */
-  height: 280px; /* Fixed height for the entire goals top section */
-  max-height: 280px;
+  /* Reduced static height */
+  height: 180px;
+  max-height: 180px;
 }
 
 /* Character Container - 2 column layout (60%) */
@@ -523,22 +567,22 @@
   object-position: bottom right;
 }
 
-/* Goals section with TUI box styling - STRICTLY FIXED height, truncate overflow */
+/* Goals section with TUI box styling - matches other ASCII containers */
 .goals-log {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-md);
-  padding-top: calc(var(--space-md) + 10px); /* Extra space for label content */
-  /* Add margin-top to make room for sheared label that sits ABOVE the box */
-  margin-top: calc(var(--space-lg) + 16px); /* Extra margin for label visibility */
+  padding-top: var(--space-md);
+  /* FIXED: Remove excessive margin - align with other columns */
+  margin-top: 0;
   
-  /* STRICTLY FIXED HEIGHT - never grows or shrinks regardless of content */
-  flex: 1 1 auto; /* Fill available space in parent */
-  min-height: 0; /* Allow shrinking */
-  /* Use overflow-y only so the label positioned above isn't clipped */
-  overflow-y: hidden; /* Truncate content that goes beyond */
-  overflow-x: visible; /* Allow horizontal overflow for label */
+  /* Fixed height for consistency - increased from 140px */
+  height: 180px;
+  min-height: 180px;
+  max-height: 180px;
+  /* Use overflow: visible so the label positioned above isn't clipped */
+  overflow: visible;
   
   /* TUI Box Style - dotted border like other sections */
   border: 1px dotted rgba(0, 0, 0, 0.5);
@@ -669,10 +713,9 @@
 .pokemon-team-section {
   margin-top: var(--space-md); /* Add gap above pokemon team section */
   padding-top: 0;
-  /* Reduced height - tight fit for team and minimap */
+  /* Let content determine size - removed max-height constraint */
   flex: 0 0 auto;
   min-height: 0;
-  max-height: 140px; /* Limit the maximum height to reduce overall size */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* Ensure content is clipped if it somehow overflows */
