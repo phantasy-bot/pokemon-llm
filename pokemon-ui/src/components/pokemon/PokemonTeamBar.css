@@ -48,10 +48,11 @@
 .pokemon-team-bar__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
-  grid-template-rows: auto auto; /* Auto height rows */
-  gap: 2px;
+  grid-template-rows: 1fr 1fr; /* Equal height rows */
+  gap: 0; /* Remove gap - using align-content for spacing */
+  align-content: space-between; /* Space between rows, not at bottom */
   width: 100%;
-  /* Removed flex: 1 so it doesn't stretch */
+  height: 100%; /* Fill container height */
   min-height: 0; 
 }
 
@@ -78,7 +79,7 @@
   width: 100%;
   height: auto; /* Match auto height of cards */
   align-self: center; /* Center like cards */
-  min-height: 56px; /* Increased height for taller team cards */
+  min-height: 64px; /* Increased height for taller team cards */
   /* Removed min-width to allow grid to control sizing */
   display: flex;
   align-items: center;
