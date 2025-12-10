@@ -522,13 +522,14 @@
 
 /* Commentary text box in left column */
 .character-container__commentary {
-  flex: 2; /* Takes more space than spacer */
+  flex: 1; /* Reduced from 2 for smaller height */
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-md);
-  padding-top: var(--space-md);
-  margin-top: 10px; /* Space for sheared label */
+  padding: var(--space-sm); /* Reduced padding */
+  padding-top: var(--space-sm);
+  margin-top: 8px; /* Space for sheared label */
+  max-height: 80px; /* Limit height */
   
   /* TUI Box Style */
   border: 1px dashed rgba(0, 0, 0, 0.5); /* Dashed border */
