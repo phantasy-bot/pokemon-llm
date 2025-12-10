@@ -156,8 +156,8 @@
 }
 
 .folder-sponsor__image {
-  width: 48px;
-  height: 48px;
+  width: 64px; /* Increased from 48px */
+  height: 64px;
   object-fit: contain;
   image-rendering: pixelated;
   /* Removed shadow */
@@ -522,20 +522,21 @@
 
 /* Commentary text box in left column */
 .character-container__commentary {
-  flex: 1; /* Reduced from 2 for smaller height */
+  flex: 1.5; /* Between 1 and 2 */
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm); /* Reduced padding */
+  padding: var(--space-md); /* Restored padding */
   padding-top: var(--space-sm);
   margin-top: 8px; /* Space for sheared label */
-  max-height: 80px; /* Limit height */
+  max-height: 120px; /* Increased from 80px */
   
-  /* TUI Box Style */
-  border: 1px dashed rgba(0, 0, 0, 0.5); /* Dashed border */
-  background: white; /* Experimental white bg */
+  /* TUI Box Style - more rounded */
+  border: 1px dashed rgba(0, 0, 0, 0.5);
+  border-radius: 12px; /* More rounded */
+  background: white;
   position: relative;
-  overflow: visible; /* Allow label to show */
+  overflow: visible;
 }
 
 .character-container__commentary-label {
