@@ -791,7 +791,7 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                                 
                                 try:
                                     result = zai_vision_client.ui_diff_check_sync(
-                                        prev_path, curr_path, max_attempts=1, timeout=10
+                                        prev_path, curr_path, max_attempts=1, timeout=15
                                     )
                                     if result:
                                         # Clean up result
@@ -1185,7 +1185,12 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         # Cleanup history if window is reached
         response_count += 1
         if response_count >= CLEANUP_WINDOW:
+            t_summarize_start = time.time()
             summary_json = summarize_and_reset(benchmark)
+            t_summarize_end = time.time()
+            if cycle_metrics is not None:
+                cycle_metrics["summarization"] = (t_summarize_end - t_summarize_start) * 1000
+            log.info(f"⏱️ Summarization: {t_summarize_end - t_summarize_start:.2f}s")
             response_count = 0 # Reset counter
             time.sleep(5)
 
@@ -1611,11 +1616,27 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 8.0
                 log.error(f"Failed to create atomic snapshot: {e}. Falling back to global path.")
                 SCREENSHOT_PATH = SAVED_SCREENSHOT_PATH
         except socket.timeout:
-             log.error("Socket timeout getting state from mGBA. Stopping loop.")
-             break
+             consecutive_mgba_failures += 1
+             log.error(f"Socket timeout getting state from mGBA ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}). Retrying...")
+             
+             if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                 log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive timeouts. Stopping loop.")
+                 break
+             
+             cycle_count -= 1  # Retry same cycle
+             await asyncio.sleep(2)  # Brief pause before retry
+             continue
         except socket.error as se:
-             log.error(f"Socket error getting state from mGBA: {se}. Stopping loop.")
-             break
+             consecutive_mgba_failures += 1
+             log.error(f"Socket error getting state from mGBA: {se} ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES}). Retrying...")
+             
+             if consecutive_mgba_failures >= MAX_CONSECUTIVE_FAILURES:
+                 log.error(f"💀 mGBA appears dead after {MAX_CONSECUTIVE_FAILURES} consecutive socket errors. Stopping loop.")
+                 break
+             
+             cycle_count -= 1  # Retry same cycle
+             await asyncio.sleep(2)  # Brief pause before retry
+             continue
         except Exception as e:
             consecutive_mgba_failures += 1
             log.error(f"Error getting state from mGBA: {e} - Retrying same cycle ({consecutive_mgba_failures}/{MAX_CONSECUTIVE_FAILURES})", exc_info=True)
