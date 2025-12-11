@@ -17,26 +17,26 @@ import subprocess
 import threading
 
 from PIL import Image
-from token_counter import count_tokens, calculate_prompt_tokens
+from core.token_counter import count_tokens, calculate_prompt_tokens
 
 from pyAIAgent.game.state import prep_llm, get_rom_path
 from pyAIAgent.navigation import touch_controls_path_find
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
-from prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
-from client_setup import setup_llm_client, parse_mode_arg, MODES
-from benchmark import Benchmark
-from client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
+from core.prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
+from core.client_setup import setup_llm_client, parse_mode_arg, MODES
+from scripts.benchmark import Benchmark
+from core.client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
 from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
-from memory_storage import MemoryManager
-from battle_strategy import read_battle_state, choose_battle_action, get_battle_context
-from goal_tracker import GoalTracker, GoalPriority, GoalStatus
-from exploration_tracker import ExplorationTracker
-from twitch_chat_service import TwitchChatService, create_twitch_service
-from comfyui_tts_service import ComfyUITTSService, create_tts_service
-from chat_response_service import ChatResponseService, create_chat_response_service, MessageDecision
-from history_tracker import ScreenshotHistoryTracker
-from coordinate_tracker import CoordinateTracker
+from trackers.memory_storage import MemoryManager
+from core.battle_strategy import read_battle_state, choose_battle_action, get_battle_context
+from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
+from trackers.exploration_tracker import ExplorationTracker
+from services.twitch_chat_service import TwitchChatService, create_twitch_service
+from services.comfyui_tts_service import ComfyUITTSService, create_tts_service
+from services.chat_response_service import ChatResponseService, create_chat_response_service, MessageDecision
+from trackers.history_tracker import ScreenshotHistoryTracker
+from trackers.coordinate_tracker import CoordinateTracker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')

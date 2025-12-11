@@ -63,7 +63,7 @@ class ExplorationTracker:
     3. Suggest next exploration targets
     """
     
-    def __init__(self, storage_path: str = "exploration_data.json", reset_on_start: bool = False):
+    def __init__(self, storage_path: str = "data/exploration_data.json", reset_on_start: bool = False):
         self.storage_path = storage_path
         self.maps: Dict[int, MapExploration] = {}  # map_id -> MapExploration
         

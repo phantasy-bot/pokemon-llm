@@ -9,13 +9,13 @@ import sys
 import os
 import logging
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path for imports from root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 load_dotenv()
 
-from comfyui_tts_service import create_tts_service
+from services.comfyui_tts_service import create_tts_service
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("test_tts")

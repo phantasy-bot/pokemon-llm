@@ -86,10 +86,10 @@ load_dotenv()
 from pyAIAgent.utils.misc import parse_max_loops_fn
 from pyAIAgent.utils.socket_utils import send_command
 from pyAIAgent.game.state import DEFAULT_ROM, get_rom_path
-from websocket_service import broadcast_message, run_server_forever as start_websocket_service
-from benchmark import load
+from services.websocket_service import broadcast_message, run_server_forever as start_websocket_service
+from scripts.benchmark import load
 from interactive import interactive_console
-from llmdriver import run_auto_loop, MODEL
+from core.llmdriver import run_auto_loop, MODEL
 from run_persistence import RunPersistence
 
 # --- Configuration (excluding WebSocket specific) ---
@@ -467,8 +467,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Select LLM mode first (before any mGBA startup)
-    from client_setup import parse_mode_arg, MODES
-    from llmdriver import set_current_mode
+    from core.client_setup import parse_mode_arg, MODES
+    from core.llmdriver import set_current_mode
     selected_mode = parse_mode_arg(MODES, default_mode="ZAI")
 
     # Set the mode in llmdriver
