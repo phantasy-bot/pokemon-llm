@@ -50,7 +50,8 @@ class ComfyUITTSService:
         base_url: str = None,
         workflow_path: str = None,
         output_dir: str = None,
-        timeout: float = 60.0
+        timeout: float = 60.0,
+        on_playback_start: callable = None
     ):
         """
         Initialize the ComfyUI TTS service.
@@ -60,11 +61,15 @@ class ComfyUITTSService:
             workflow_path: Path to the TTS workflow JSON file
             output_dir: Directory to save generated audio files
             timeout: Request timeout in seconds
+            on_playback_start: Callback(text, duration_ms) called when audio starts playing
         """
         self.base_url = (base_url or os.getenv("COMFYUI_URL", "http://localhost:8188")).rstrip("/")
         self.workflow_path = workflow_path or os.getenv("COMFYUI_TTS_WORKFLOW", "")
         self.output_dir = output_dir or os.getenv("COMFYUI_OUTPUT_DIR", "tts_output")
         self.timeout = timeout
+        
+        # Callback for UI sync - called when playback starts with (text, duration_ms)
+        self.on_playback_start = on_playback_start
         
         # Request queue (priority queue simulation with sorting)
         self._queue: List[TTSRequest] = []
@@ -90,6 +95,40 @@ class ComfyUITTSService:
         
         if not self._is_configured:
             log.warning("ComfyUI TTS not configured. Set COMFYUI_URL in .env")
+    
+    def _get_audio_duration_ms(self, audio_path: str) -> Optional[int]:
+        """
+        Get audio duration in milliseconds.
+        Uses mutagen for FLAC/MP3/WAV support.
+        
+        Returns:
+            Duration in milliseconds, or None if detection fails
+        """
+        try:
+            from mutagen import File as MutagenFile
+            audio = MutagenFile(audio_path)
+            if audio and audio.info:
+                duration_ms = int(audio.info.length * 1000)
+                log.info(f"🔊 Audio duration: {duration_ms}ms ({audio.info.length:.2f}s)")
+                return duration_ms
+        except ImportError:
+            log.warning("mutagen not installed, trying fallback audio duration detection")
+            # Fallback for FLAC using soundfile or wave
+            try:
+                import soundfile as sf
+                with sf.SoundFile(audio_path) as f:
+                    duration_ms = int((len(f) / f.samplerate) * 1000)
+                    log.info(f"🔊 Audio duration (soundfile): {duration_ms}ms")
+                    return duration_ms
+            except ImportError:
+                log.warning("soundfile not installed, cannot detect audio duration")
+            except Exception as e:
+                log.warning(f"soundfile fallback failed: {e}")
+        except Exception as e:
+            log.warning(f"Failed to get audio duration: {e}")
+        
+        # Estimate based on text length (rough fallback: ~150ms per character)
+        return None
     
     @property
     def is_available(self) -> bool:
@@ -698,6 +737,17 @@ class ComfyUITTSService:
                     log.info("🔇 TTS cancelled during synthesis")
                     return False
                 
+                # Get audio duration for UI sync
+                duration_ms = self._get_audio_duration_ms(audio_path)
+                
+                # Notify UI that playback is about to start (for typewriter sync)
+                if self.on_playback_start and duration_ms:
+                    try:
+                        log.info(f"🔊 Calling on_playback_start callback: text={text[:30]}..., duration={duration_ms}ms")
+                        await self.on_playback_start(text, duration_ms)
+                    except Exception as cb_err:
+                        log.warning(f"🔊 on_playback_start callback error: {cb_err}")
+                
                 # Play the audio
                 playback_start = time.time()
                 if not self.play_audio_ephemeral(audio_path):
@@ -741,15 +791,20 @@ class ComfyUITTSService:
 def create_tts_service(
     base_url: str = None,
     workflow_path: str = None,
-    output_dir: str = None
+    output_dir: str = None,
+    on_playback_start: callable = None
 ) -> ComfyUITTSService:
     """
     Factory function to create a ComfyUITTSService instance.
     
     Uses environment variables if parameters not provided.
+    
+    Args:
+        on_playback_start: Async callback(text, duration_ms) called when audio starts
     """
     return ComfyUITTSService(
         base_url=base_url,
         workflow_path=workflow_path,
-        output_dir=output_dir
+        output_dir=output_dir,
+        on_playback_start=on_playback_start
     )

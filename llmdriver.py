@@ -1499,7 +1499,22 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         log.info("📺 Twitch chat service not configured (set TWITCH_* env vars to enable)")
 
     # Initialize ComfyUI TTS service (optional - gracefully disabled if not configured)
-    tts_service = create_tts_service()
+    # Create callback to notify UI when TTS starts playing (for synchronized typewriter)
+    async def on_tts_playback_start(text: str, duration_ms: int):
+        """Called when TTS audio is about to start playing. Broadcasts to UI for sync."""
+        log.info(f"🔊 Broadcasting TTS playback start: {len(text)} chars, {duration_ms}ms")
+        try:
+            await broadcast_func({
+                "tts_commentary": {
+                    "text": text,
+                    "duration_ms": duration_ms,
+                    "playing": True
+                }
+            })
+        except Exception as e:
+            log.warning(f"Failed to broadcast TTS playback start: {e}")
+    
+    tts_service = create_tts_service(on_playback_start=on_tts_playback_start)
     if tts_service.is_available:
         is_connected = await tts_service.check_connection()
         if is_connected:

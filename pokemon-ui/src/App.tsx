@@ -25,12 +25,20 @@ const INITIAL_GAME_STATE: PokemonGameState = {
   avgCycleTime: 0,
 };
 
+// TTS Commentary with duration for synced typewriter
+interface TTSCommentary {
+  text: string;
+  duration_ms: number;
+  playing: boolean;
+}
+
 function App() {
   const [gameState, setGameState] =
     useState<PokemonGameState>(INITIAL_GAME_STATE);
   const [wsConnected, setWsConnected] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [memoryWrite, setMemoryWrite] = useState<string | null>(null);
+  const [ttsCommentary, setTtsCommentary] = useState<TTSCommentary | null>(null);
   const [, setWs] = useState<WebSocket | null>(null);
   
   // Track if we have established an initial connection to detect reconnections
@@ -223,6 +231,11 @@ function App() {
       setMemoryWrite(data.memory_write.text);
     }
 
+    // Handle TTS commentary (for synchronized typewriter animation)
+    if (data.tts_commentary) {
+      console.log("TTS Commentary received:", data.tts_commentary);
+      setTtsCommentary(data.tts_commentary);
+    }
 
 
     // Handle bulk logs
@@ -249,6 +262,8 @@ function App() {
       logs={logs}
       memoryWrite={memoryWrite}
       onMemoryWriteClear={() => setMemoryWrite(null)}
+      ttsCommentary={ttsCommentary}
+      onTtsCommentaryComplete={() => setTtsCommentary(null)}
     />
   );
 }
