@@ -581,7 +581,10 @@ class MapLocation(IntEnum):
     BRUNO = 0xF6
     AGATHA = 0xF7
 
-def get_location_name(value: int) -> str | None:
+
+from typing import Optional
+
+def get_location_name(value: int) -> Optional[str]:
     """Return the enum name for a given int, or None if invalid."""
     try:
         return MapLocation(value).name

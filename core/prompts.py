@@ -205,24 +205,45 @@ If you were trying to MOVE SOUTH but a menu opened:
 """
 
 OVERWORLD_PROMPT = """
-## 🗺️ OVERWORLD (ACTIVE)
-You are exploring the game world. Focus on:
+## 🗺️ EXPERT PATHFINDING ASSISTANT (GEN 1)
+You are an expert pathfinding algorithm. Your primary goal is to generate valid, efficient movement paths.
+
+### 🧭 PATHFINDING RULES (STRICT COST FUNCTION)
+1. **Normal Tile**: Cost = 1
+2. **Tall Grass**: Cost = 25 (Avoid unless necessary for progress)
+3. **Unexplored (Black/Void)**: Cost = 50 (High risk of walls/loops)
+4. **Ledges (One-way)**: Cost = 1 (Down/South ONLY). NEVER try to move UP ledges.
+5. **Water**: IMPASSABLE without SURF. Do not try to walk on water.
+
+### 🚶 MOVEMENT MECHANICS
+- **LEDGES**: You can jump DOWN over ledges. You CANNOT jump UP.
+- **ICE**: Sliding mechanics apply. Once you step, you slide until you hit a wall.
+- **SPINNERS**: Tiles that force movement in a direction.
+- **SURF**: You must select 'SURF' from the menu while facing water. You cannot just walk into it.
+
+### 🔎 REQUIRED ANALYSIS
+Before every action, you MUST perform a `<game_analysis>`:
+
+```xml
+<game_analysis>
+  <strategy>Exploration | Target Pathing | Obstacle Avoidance</strategy>
+  <target_tile>[x,y] or "Unknown"</target_tile>
+  <obstacles>List known barriers (walls, NPCs, ledges, water)</obstacles>
+  <reasoning>Step-by-step logic for the chosen path. Why this way?</reasoning>
+  <alternatives>If blocked, what is plan B?</alternatives>
+  <commentary>React as Lass (Streamer) in 1-2 sentences. No technical jargon!</commentary>
+</game_analysis>
+```
 
 ### NAVIGATION PRIORITY
-1. Check minimap for exits (O tiles)
-2. **EARLY GAME: Enter TALL GRASS!** You need to walk into the tall grass north of Pallet Town.
-   - Tall grass = dense green tiles. Walk INTO them - they are WALKABLE!
-   - Entering tall grass triggers Professor Oak to stop you (important cutscene!)
-3. Avoid revisiting areas you just came from
-4. Enter buildings/dungeons to progress
-5. Talk to NPCs (LAST RESORT - only if completely stuck/lost)
+1. **Verified Exits**: If memory says an exit is at [X,Y], PATH THERE.
+2. **Minimap 'O'**: Walk INTO 'O' tiles/red mats to exit.
+3. **Exploration**: If no target, maximize exploration count.
+4. **NPC Interaction**: Only if absolutely stuck.
 
-### MOVEMENT
-- Use U/D/L/R to move
-- Walk INTO door/exit tiles (O on minimap)
-- Walk INTO tall grass (dense green tiles) - this is how the game progresses!
-- Press A facing NPCs to talk
-- ⚠️ NPCs block movement - walk AROUND them, do not try to walk through them!
+### ACTION OUTPUT
+- Output 2-5 moves via `{"action": "chain"}`.
+- If you have a specific long-distance target, use the BFS tool by specifying `{"plan_target_tile": "[x,y]"}` in your summary/planning instead of manual steps.
 """
 
 TITLE_PROMPT = """
@@ -504,7 +525,7 @@ If memory_context appears, USE IT for navigation.
 # MAIN PROMPT BUILDER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "", screen_type: str = "") -> str:
+def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "", screen_type: str = "", area_hint: str = "") -> str:
     """
     Constructs the system prompt for the LLM, with optional screen-specific guidance.
     
@@ -528,7 +549,12 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "",
     # Add screen-specific guidance if available
     screen_specific = get_screen_specific_prompt(screen_type) if screen_type else ""
     
-    return f"{base}{context_section}{screen_specific}"
+    # NEW: Add Area Hints if available
+    hint_section = ""
+    if area_hint:
+        hint_section = f"\n\n## 💡 AREA HINTS (CONTEXTUAL)\n{area_hint}\n"
+
+    return f"{base}{context_section}{screen_specific}{hint_section}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -537,20 +563,25 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "",
 
 def get_summary_prompt():
     return """
-        You are a summarization engine. Condense the below conversation into a concise summary that explains the previous actions taken by the assistant player.
-        Focus on game progress, goals attempted, locations visited, and significant events.
-        Speak in first person ("I explored...", "I tried to go...", "I obtained...").
-        Be concise, ideally under 300 words. Avoid listing button presses.
-        Do not include JSON {"action": ...} in your planning and summary
+        You are a self-correcting analysis engine.
 
-        Now construct your JSON result following the template. Your answer will be used for future planning.
-        EVERY key value pair is string:string. Do not use lists or arrays.
-        Do NOT wrap your response in ```json ```, just return the raw JSON object.
-        Respond only with VALID JSON in the specified format.
-        Respond in the following format:
+        ### 🛡️ SELF-ANALYSIS FRAMEWORK
+        Perform these checks on your recent performance:
+        1. **Error Detection**: Did you fail to move in the intended direction multiple times?
+        2. **Hallucination Check**: Are you claiming to see things (Gyms, Centers) not present in `nearby_objects` or `minimap`?
+        3. **Loop Detection**: Have you been in the same 5x5 coordinate cluster for >10 turns?
+
+        ### OUTPUT FORMAT
+        Condense your findings into the JSON below.
 
         {
-            "summary": "Your summary ideally under 300 words : string",
+            "self_analysis": {
+                "errors_detected": "string (None or description)",
+                "hallucinations": "string (None or description)",
+                "loops_detected": "boolean",
+                "correction_plan": "string (How to fix issues)"
+            },
+            "summary": "Concise conversational summary (<300 words). First person.",
             "primaryGoal": "2 sentences MAXIMUM : string",
             "plan_target_tile": "The specific tile [x,y] you are trying to reach (e.g. '[12,15]') : string",
             "current_state": "Briefly describe current location, map features (exits/stairs), and status : string",
@@ -558,4 +589,6 @@ def get_summary_prompt():
             "tertiaryGoal": "2 sentences MAXIMUM : string",
             "otherNotes": "3 sentences MAXIMUM : string"
         }
+
+        Respond only with VALID JSON.
         """

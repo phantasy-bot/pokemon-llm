@@ -20,10 +20,12 @@ from PIL import Image
 from core.token_counter import count_tokens, calculate_prompt_tokens
 
 from pyAIAgent.game.state import prep_llm, get_rom_path
-from pyAIAgent.navigation import touch_controls_path_find
+from pyAIAgent.game.state import prep_llm, get_rom_path
+from pyAIAgent.navigation import touch_controls_path_find, find_path
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
 from core.prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
+from pyAIAgent.game.hints import get_area_hint
 from core.client_setup import setup_llm_client, parse_mode_arg, MODES
 from scripts.benchmark import Benchmark
 from core.client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
@@ -46,6 +48,44 @@ ACTION_RE = re.compile(r'^[LRUDABSs](?:;[LRUDABSs])*(?:;)?$')
 COORD_RE = re.compile(r'^([0-9]),([0-8])$')
 ANALYSIS_RE = re.compile(r"<game_analysis>([\s\S]*?)</game_analysis>", re.IGNORECASE)
 IS_LOCAL = DEFAULT_MODE == "LMSTUDIO" or DEFAULT_MODE == "OLLAMA"
+
+
+
+def compress_chat_history(chat_history, new_assistant_content):
+    """
+    Attempts to compress chat history by merging consecutive identical assistant actions.
+    Returns True if compressed (appended to existing last msg), False otherwise.
+    """
+    if not chat_history:
+        return False
+        
+    last_msg = chat_history[-1]
+    if last_msg["role"] != "assistant":
+        return False
+
+    # Check against new content
+    content = last_msg["content"]
+    if not isinstance(content, str):
+        return False
+    
+    # Regex to find ending (xN)
+    match = re.search(r' \(x(\d+)\)$', content)
+    current_count = 1
+    clean_content = content
+    
+    if match:
+        current_count = int(match.group(1))
+        clean_content = content[:match.start()]
+    
+    if clean_content.strip() == new_assistant_content.strip():
+        # Identical content!
+        # Only compress if it's short (likely navigation)
+        if len(clean_content) < 150:
+            new_count = current_count + 1
+            last_msg["content"] = f"{clean_content} (x{new_count})"
+            return True
+            
+    return False
 
 
 def translate_cardinal_to_buttons(action_str: str) -> str:
@@ -468,7 +508,7 @@ async def call_llm_with_timeout(state_data: dict,
         log.error(f"llm_stream_action exceeded {total_timeout}s – skipping cycle.")
         return None, None, None, None
 
-def summarize_and_reset(benchmark: Benchmark = None):
+def summarize_and_reset(benchmark: Benchmark = None, state_data: dict = None):
     """Condenses history, updates system prompt, resets history, accounts for tokens."""
     global chat_history, response_count, tokens_used_session
 
@@ -542,11 +582,60 @@ def summarize_and_reset(benchmark: Benchmark = None):
     
     log.info(f"LLM Summary generated ({summary_output_tokens} tokens): {str(json_object)}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HANDLE EXPERT PATHFINDING & SELF-ANALYSIS
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    extra_context = ""
+
+    # 1. Log Self-Analysis
+    self_analysis = json_object.get("self_analysis")
+    if self_analysis:
+        log.info(f"🛡️ SELF-ANALYSIS: {json.dumps(self_analysis, indent=2)}")
+        if isinstance(self_analysis, dict):
+            correction = self_analysis.get("correction_plan")
+            if correction and correction != "None":
+                extra_context += f"\n\n🛡️ SELF-CORRECTION PLAN: {correction}"
+
+    # 2. Handle Plan Target Tile (BFS Pathfinding)
+    target_tile_str = json_object.get("plan_target_tile")
+    if target_tile_str and state_data:
+        try:
+            # Parse [x,y] from string like "[12, 15]" or "12,15"
+            coords = [int(n) for n in re.findall(r'\d+', str(target_tile_str))]
+            if len(coords) == 2:
+                target_x, target_y = coords
+                current_x, current_y = state_data.get("position", [0, 0])
+                map_id = state_data.get("map_id")
+                
+                if map_id is not None:
+                    log.info(f"🧭 Calculating BFS path from [{current_x},{current_y}] to [{target_x},{target_y}]...")
+                    rom_path = get_rom_path()
+                    # We might need to handle rom_path formatting
+                    if not os.path.exists(rom_path):
+                         # Try adding roms/ prefix if relative
+                         rom_path = os.path.join("roms", rom_path) if not rom_path.startswith("roms") else rom_path
+
+                    bfs_actions = find_path(rom_path, map_id, [current_x, current_y], [target_x, target_y])
+                    
+                    if bfs_actions:
+                        log.info(f"✅ BFS Path Found: {bfs_actions}")
+                        extra_context += f"\n\n💡 EXPERT SUGGESTED PATH to [{target_x},{target_y}]: {bfs_actions}\n(Execute this chain using specific chunks if too long)"
+                        # Update the plan_target_tile in the summary text to confirm acceptance
+                        summary_text += f"\n[System: Integrated path to {target_tile_str}]"
+                    else:
+                        log.warning(f"❌ BFS Path failed to find route to {target_tile_str}")
+                        extra_context += f"\n\n⚠️ PATHFINDING FAILED: Could not calculate route to {target_tile_str}. Destination may be unreachable or in void."
+            else:
+                 log.warning(f"Invalid target tile format: {target_tile_str}")
+        except Exception as e:
+            log.error(f"Error executing BFS pathfinding: {e}", exc_info=True)
+
     benchInstructions = ""
     if benchmark is not None:
         benchInstructions = benchmark.instructions
 
-    new_system_prompt_content = build_system_prompt(summary_text, benchInstructions)
+    new_system_prompt_content = build_system_prompt(summary_text + extra_context, benchInstructions)
     chat_history = [{"role": "system", "content": new_system_prompt_content}]
     response_count = 0
     log.info("Chat history summarized and reset.")
@@ -766,9 +855,13 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                     
                     update_processing_status("THINKING...")
 
-                    # SUCCESS: Vision analysis completed successfully (this should always happen now)
-                    log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
-                    log.info(f"Vision analysis preview: {vision_result[:200]}...")
+                    if vision_result:
+                        # SUCCESS: Vision analysis completed successfully
+                        log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
+                        log.info(f"Vision analysis preview: {vision_result[:200]}...")
+                    else:
+                        log.error("❌ Z.AI MCP vision analysis failed (returned None). Continuing without vision.")
+                        vision_result = ""
 
                     # TEXT PROCESSING: Filter Japanese characters and truncate
                     processed_vision_result = vision_result
@@ -956,17 +1049,23 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
 
     current_user_message_api = {"role": "user", "content": current_content}
     
-    # DYNAMIC SCREEN-SPECIFIC PROMPTING: Update system prompt based on detected screen type
+    # DYNAMIC PROMPT UPDATE: Rebuild system prompt with current context (Screen Type + Area Hint)
     detected_screen_type = payload.get("detected_screen_type", "")
-    if detected_screen_type and chat_history and len(chat_history) > 0:
-        screen_prompt = get_screen_specific_prompt(detected_screen_type)
-        if screen_prompt:
-            # Append screen-specific guidance to the system prompt for this call
-            base_system = chat_history[0].get("content", "")
-            if screen_prompt not in base_system:  # Avoid duplicate injection
-                enhanced_system = f"{base_system}\n{screen_prompt}"
-                chat_history[0] = {"role": "system", "content": enhanced_system}
-                log.info(f"📝 Injected screen-specific prompt for: {detected_screen_type}")
+    area_hint = state_data.get("area_hint", "")
+    
+    if chat_history and len(chat_history) > 0 and chat_history[0].get("role") == "system":
+        # extract benchmark instruction if any (passed in global or arg? arg: benchmark)
+        bench_instr = benchmark.instructions if benchmark else ""
+        
+        # Rebuild clean system prompt
+        fresh_prompt = build_system_prompt(
+            benchmarkInstruction=bench_instr,
+            screen_type=detected_screen_type,
+            area_hint=area_hint
+        )
+        
+        chat_history[0] = {"role": "system", "content": fresh_prompt}
+        log.info(f"📝 Updated System Prompt: Screen='{detected_screen_type}', Hint='{area_hint[:20] if area_hint else 'None'}...'")
     
     messages_for_api = chat_history + [current_user_message_api]
 
@@ -1245,14 +1344,22 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
         log.info(f"Used ~{output_tokens} output tokens; session total: {tokens_used_session}")
 
         user_hist_content = [text_segment] # Images are not saved in history
-        chat_history.append({"role": "user", "content": user_hist_content})
-        chat_history.append({"role": "assistant", "content": full_output})
+        
+        # Compress history if repetitive action
+        compressed = compress_chat_history(chat_history, full_output)
+        
+        if compressed:
+             log.info(f"♻️ Compressed chat history (repetitive action): {full_output[:50]}...")
+             # Do NOT append user message or new assistant message
+        else:
+             chat_history.append({"role": "user", "content": user_hist_content})
+             chat_history.append({"role": "assistant", "content": full_output})
 
         # Cleanup history if window is reached
         response_count += 1
         if response_count >= CLEANUP_WINDOW:
             t_summarize_start = time.time()
-            summary_json = summarize_and_reset(benchmark)
+            summary_json = summarize_and_reset(benchmark, state_data)
             t_summarize_end = time.time()
             if cycle_metrics is not None:
                 cycle_metrics["summarization"] = (t_summarize_end - t_summarize_start) * 1000
@@ -2221,7 +2328,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         
         # Add battle context using game memory (more accurate than vision)
         try:
-            battle_context = get_battle_context(sock_ref["socket"])
+            inventory = current_mGBA_state.get('inventory', [])
+            battle_context = get_battle_context(sock_ref["socket"], inventory=inventory)
             if battle_context:
                 llm_input_state["battle_context"] = battle_context
                 log.info(f"⚔️ Battle detected: {battle_context[:80]}...")
@@ -2464,6 +2572,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 llm_input_state["minimap"] = None
 
         log.info(f"Pre-LLM state update & image prep took {time.time() - state_update_start:.2f}s. SS:{bool(b64_ss)}, MM:{bool(b64_mm)}")
+
+        # NEW: Get Contextual Area Hint
+        area_hint = get_area_hint(llm_input_state)
+        if area_hint:
+            llm_input_state["area_hint"] = area_hint
+            log.info(f"💡 AREA HINT: {area_hint.splitlines()[0] if area_hint else 'None'}")
 
         log_id_counter = state.get("log_id_counter", 0) + 1
         state["log_id_counter"] = log_id_counter
@@ -2963,12 +3077,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         
         if game_analysis and tts_service.is_available:
             # Extract commentary from the LLM response
-            # Handle various formats: "8. COMMENTARY:", "8. **COMMENTARY**:", "8. COMMENTARY:"
-            commentary_match = re.search(
-                r'(?:7\.|8\.)\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\']?(.+?)["\']?(?=\n\d+\.|$|\n\n|</game_analysis>)',
-                game_analysis, 
-                re.IGNORECASE | re.DOTALL
-            )
+            # Priority: XML tag <commentary> (New format)
+            commentary_match = re.search(r'<commentary>([\s\S]*?)</commentary>', game_analysis, re.IGNORECASE)
+            
+            if not commentary_match:
+                # Fallback: various numbered formats: "8. COMMENTARY:", "8. **COMMENTARY**:", "8. COMMENTARY:"
+                commentary_match = re.search(
+                    r'(?:7\.|8\.)\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\']?(.+?)["\']?(?=\n\d+\.|$|\n\n|</game_analysis>)',
+                    game_analysis, 
+                    re.IGNORECASE | re.DOTALL
+                )
             
             log.info(f"🔊 TTS Regex Match: {'Found' if commentary_match else 'No match'}")
             if commentary_match:
