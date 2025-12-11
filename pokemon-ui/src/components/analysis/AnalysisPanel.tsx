@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import { LogEntryCard } from "./LogEntry";
 import { VisionScreenshot } from "../vision/VisionScreenshot"; // Restored
@@ -53,6 +53,15 @@ export function AnalysisPanel({
 
   const [currentKeyart, setCurrentKeyart] = useState(0);
   const [persistedMemory, setPersistedMemory] = useState<string | null>(null);
+  
+  // Ref for auto-scroll on typewriter updates
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -125,6 +134,11 @@ export function AnalysisPanel({
     return rawLatestEntry;
   })();
 
+  // Auto-scroll to bottom when new content arrives
+  useEffect(() => {
+    scrollToBottom();
+  }, [latestEntry, scrollToBottom]);
+
   // Note: Thinking animation moved to OBS widget (obs-widgets/status_widget.html)
 
   return (
@@ -139,11 +153,11 @@ export function AnalysisPanel({
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
         <div className="analysis-panel__history-wrapper">
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
-          <div className="analysis-panel__history-scroll">
+          <div className="analysis-panel__history-scroll" ref={scrollRef}>
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
+                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
               ) : (
                 !isProcessing && (
                   <div className="analysis-panel__empty">
