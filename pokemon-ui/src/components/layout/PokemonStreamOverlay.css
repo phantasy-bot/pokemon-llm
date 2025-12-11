@@ -740,7 +740,7 @@
   position: relative;
   /* Flex 1 to take all available space, pushing team bar down */
   flex: 1;
-  min-height: 380px; /* Increased minimum height for taller game feed */
+  min-height: 420px; /* Increased minimum height for taller game feed */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -766,10 +766,11 @@
 /* ... minimap overlay ... */
 
 .pokemon-team-section {
-  margin-top: var(--space-md); /* Add gap above pokemon team section */
+  margin-top: var(--space-sm); /* Reduced gap above pokemon team section */
   padding-top: 0;
-  /* Let content determine size - removed max-height constraint */
+  /* Constrain height to make room for larger game feed */
   flex: 0 0 auto;
+  max-height: 180px; /* Limit team section height */
   min-height: 0;
   display: flex;
   flex-direction: column;
