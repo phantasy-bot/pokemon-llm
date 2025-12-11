@@ -676,17 +676,22 @@ class ComfyUITTSService:
         async with self._tts_lock:
             # Reset cancelled flag for new request
             self._cancelled = False
+            total_start = time.time()
             
             # Log the request
-            log.info(f"🔊 TTS synthesizing (priority={priority}): {text[:50]}...")
+            log.info(f"🔊 TTS START: synthesizing (priority={priority}): {text[:50]}...")
             
             try:
                 # Synthesize speech
+                synthesis_start = time.time()
                 audio_path = await self.synthesize_speech(text)
+                synthesis_time = time.time() - synthesis_start
                 
                 if not audio_path:
-                    log.warning("TTS synthesis returned no audio path")
+                    log.warning(f"🔊 TTS FAILED: synthesis returned no audio path after {synthesis_time:.2f}s")
                     return False
+                
+                log.info(f"🔊 TTS Synthesis complete: {synthesis_time:.2f}s -> {audio_path}")
                 
                 # Check if cancelled during synthesis
                 if self._cancelled:
@@ -694,18 +699,26 @@ class ComfyUITTSService:
                     return False
                 
                 # Play the audio
+                playback_start = time.time()
                 if not self.play_audio_ephemeral(audio_path):
+                    log.warning("🔊 TTS FAILED: play_audio_ephemeral returned False")
                     return False
                 
                 # Wait for playback if requested
                 if wait:
                     completed = await self.wait_for_playback()
+                    playback_time = time.time() - playback_start
+                    total_time = time.time() - total_start
+                    log.info(f"🔊 TTS COMPLETE: synthesis={synthesis_time:.2f}s, playback={playback_time:.2f}s, total={total_time:.2f}s")
                     return completed
                 
+                total_time = time.time() - total_start
+                log.info(f"🔊 TTS STARTED PLAYBACK: synthesis={synthesis_time:.2f}s, total_so_far={total_time:.2f}s (not waiting)")
                 return True
                 
             except Exception as e:
-                log.error(f"TTS synthesize_and_play error: {e}")
+                total_time = time.time() - total_start
+                log.error(f"🔊 TTS ERROR after {total_time:.2f}s: {e}")
                 return False
     
     async def close(self):
