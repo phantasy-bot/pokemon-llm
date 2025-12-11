@@ -10,6 +10,7 @@ interface LogEntryProps {
   entry: LogEntry;
   isNew?: boolean;
   compact?: boolean;
+  onScroll?: () => void;
 }
 
 function extractLogType(
