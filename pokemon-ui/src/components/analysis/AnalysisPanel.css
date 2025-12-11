@@ -53,17 +53,17 @@
 /* Shared TUI Box Styling Pattern (Applied to sections) */
 /* Scroll area for history - TUI Box */
 /* Shared TUI Box Styling Pattern (Applied to sections) */
-/* Scroll area for history - TUI Box */
-/* Wrapper for History to handle border/label without clipping */
-.analysis-panel__history-wrapper {
+/* Scroll area for LLM analysis - TUI Box */
+/* Wrapper for LLM Analysis to handle border/label without clipping */
+.analysis-panel__llm-analysis-wrapper {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: var(--space-md);
-  padding-top: var(--space-md); /* Space for sheared label */
+  padding: var(--space-sm); /* Reduced from var(--space-md) */
+  padding-top: var(--space-sm); /* Reduced from var(--space-md) */
   /* Add top margin to prevent label cutoff by parent overflow */
-  margin-top: var(--space-md);
-  margin-bottom: 12px; /* Increased from 8px */
+  margin-top: var(--space-sm); /* Reduced from var(--space-md) */
+  margin-bottom: 8px; /* Reduced from 12px */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
@@ -71,8 +71,8 @@
   min-height: 0;
 }
 
-/* Inner scroll area for history */
-.analysis-panel__history-scroll {
+/* Inner scroll area for LLM analysis */
+.analysis-panel__llm-analysis-scroll {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -85,7 +85,7 @@
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
-.analysis-panel__history-scroll::-webkit-scrollbar {
+.analysis-panel__llm-analysis-scroll::-webkit-scrollbar {
   display: none;
 }
 

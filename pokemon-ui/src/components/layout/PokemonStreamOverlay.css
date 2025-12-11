@@ -592,7 +592,7 @@
 .character-container__right {
   position: fixed;
   bottom: 0;
-  left: 80px; /* Moved closer to center (was 180px) */
+  left: 40px; /* Moved closer to center (was 80px) */
   width: auto;
   height: auto;
   z-index: 100; /* High z-index to be above everything */
@@ -663,7 +663,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Distribute items to fill container */
+  justify-content: flex-start; /* Normal vertical stacking (was space-between) */
+  gap: var(--space-xs); /* Add small gap between items */
   overflow: hidden;
   position: relative;
   /* CSS mask for fade effect at bottom when content overflows */
@@ -674,9 +675,9 @@
 .goals-log p {
   font-family: var(--font-mono);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.3; /* Reduced from 1.4 */
   color: rgba(0, 0, 0, 0.75);
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 2px; /* Reduced from var(--space-xs) */
 }
 
 .goals-log p strong {
@@ -686,7 +687,7 @@
 
 
 .goals-log ul {
-  margin: 0 0 var(--space-md);
+  margin: 0 0 var(--space-sm); /* Reduced from var(--space-md) */
   padding-left: var(--space-md);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -695,7 +696,7 @@
 }
 
 .goals-log li {
-  padding: var(--space-xs) 0;
+  padding: 1px 0; /* Reduced from var(--space-xs) */
   position: relative;
   padding-left: 16px;
 }

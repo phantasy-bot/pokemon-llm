@@ -52,14 +52,15 @@
   bottom: 0;
   z-index: 10;
   overflow: hidden;
-  background: #1a1a1a;
-  transition: opacity 0.2s ease-in-out;
+  /* Don't use solid background - let previous image show through */
+  background: transparent;
+  transition: opacity 0.25s ease-in-out;
 }
 
 /* Fade phases for smooth transitions */
 .vision-screenshot__static--in {
   opacity: 0;
-  animation: static-fade-in 0.2s ease-out forwards;
+  animation: static-fade-in 0.25s ease-out forwards;
 }
 
 .vision-screenshot__static--full {
@@ -67,7 +68,7 @@
 }
 
 .vision-screenshot__static--out {
-  animation: static-fade-out 0.2s ease-in forwards;
+  animation: static-fade-out 0.25s ease-in forwards;
 }
 
 @keyframes static-fade-in {
@@ -88,7 +89,9 @@
   bottom: -50%;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-size: 200px 200px;
-  opacity: 0.6;
+  /* Use screen blend mode to combine with image beneath */
+  mix-blend-mode: overlay;
+  opacity: 0.7;
   animation: static-scroll 0.12s steps(8) infinite, static-flicker 0.2s linear infinite;
 }
 
