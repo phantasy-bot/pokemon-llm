@@ -1,6 +1,34 @@
 {
   "history": [
     {
+      "cycle": 76,
+      "x": 13,
+      "y": 6,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-11T00:36:58.900524"
+    },
+    {
+      "cycle": 75,
+      "x": 3,
+      "y": 7,
+      "map_name": "RIVALS_HOUSE",
+      "timestamp": "2025-12-11T00:36:33.887078"
+    },
+    {
+      "cycle": 74,
+      "x": 2,
+      "y": 7,
+      "map_name": "RIVALS_HOUSE",
+      "timestamp": "2025-12-11T00:35:49.756505"
+    },
+    {
+      "cycle": 73,
+      "x": 13,
+      "y": 6,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-11T00:35:25.635928"
+    },
+    {
       "cycle": 72,
       "x": 9,
       "y": 6,
@@ -41,36 +69,8 @@
       "y": 6,
       "map_name": "PALLET_TOWN",
       "timestamp": "2025-12-11T00:32:12.741165"
-    },
-    {
-      "cycle": 69,
-      "x": 1,
-      "y": 7,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-11T00:31:42.456496"
-    },
-    {
-      "cycle": 68,
-      "x": 1,
-      "y": 2,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-11T00:31:21.493170"
-    },
-    {
-      "cycle": 67,
-      "x": 5,
-      "y": 2,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-11T00:30:50.100502"
-    },
-    {
-      "cycle": 69,
-      "x": 4,
-      "y": 2,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-11T00:30:29.164288"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-11T00:34:51.101650"
+  "last_updated": "2025-12-11T00:36:58.900630"
 }
