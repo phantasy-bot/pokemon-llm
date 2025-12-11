@@ -163,29 +163,35 @@ class ComfyUITTSService:
             filters = []
             
             # Pitch adjustment using asetrate + aresample + atempo compensation
-            # asetrate changes both pitch AND speed, so we use atempo to compensate
-            # Formula: asetrate=rate*pitch_factor,aresample=rate,atempo=1/pitch_factor
-            # This shifts pitch by pitch_factor while keeping original tempo
+            # NOTE: Pitch shifting with asetrate is imperfect. For best results, 
+            # use small values (0.5 to 2 semitones) or install rubberband library.
             if self.audio_pitch != 0:
                 pitch_factor = 2 ** (self.audio_pitch / 12)
-                # asetrate changes sample rate which affects both pitch and speed
-                # aresample brings it back to standard rate
-                # atempo compensates for the speed change (1/pitch_factor cancels out)
-                filters.append(f"asetrate=44100*{pitch_factor:.6f}")
+                log.info(f"🔊 Pitch factor for {self.audio_pitch} semitones: {pitch_factor:.6f}")
+                
+                # Method: Change sample rate to shift pitch, then resample back and 
+                # compensate tempo with atempo (1/pitch_factor)
+                new_rate = int(44100 * pitch_factor)
+                filters.append(f"asetrate={new_rate}")
                 filters.append("aresample=44100")
-                # Compensate for tempo change: if pitch went up, tempo also went up, so slow it down
-                tempo_compensation = 1.0 / pitch_factor
-                if abs(tempo_compensation - 1.0) > 0.001:
-                    # Chain multiple atempo if needed (0.5-2.0 range)
-                    comp = tempo_compensation
-                    while comp > 2.0:
-                        filters.append("atempo=2.0")
-                        comp /= 2.0
-                    while comp < 0.5:
-                        filters.append("atempo=0.5")
-                        comp *= 2.0
-                    if abs(comp - 1.0) > 0.001:
-                        filters.append(f"atempo={comp:.6f}")
+                
+                # Tempo compensation: pitch up = speed up, so we slow down to compensate
+                tempo_comp = 1.0 / pitch_factor
+                log.info(f"🔊 Tempo compensation: {tempo_comp:.6f}")
+                
+                # Apply tempo compensation (atempo range is 0.5-2.0)
+                if tempo_comp <= 0.5 or tempo_comp >= 2.0:
+                    log.warning(f"🔊 Large pitch shift ({self.audio_pitch} semitones) may cause quality issues")
+                
+                comp = tempo_comp
+                while comp > 2.0:
+                    filters.append("atempo=2.0")
+                    comp /= 2.0
+                while comp < 0.5:
+                    filters.append("atempo=0.5")
+                    comp *= 2.0
+                if abs(comp - 1.0) > 0.001:
+                    filters.append(f"atempo={comp:.6f}")
             
             # Speed adjustment using atempo (applied after pitch compensation)
             if self.audio_speed != 1.0:
@@ -205,7 +211,7 @@ class ComfyUITTSService:
             
             filter_str = ",".join(filters)
             log.info(f"🔊 Processing audio: speed={self.audio_speed}x, pitch={self.audio_pitch} semitones")
-            log.debug(f"🔊 FFmpeg filter: {filter_str}")
+            log.info(f"🔊 FFmpeg filter chain: {filter_str}")
             
             # Run ffmpeg
             cmd = [
