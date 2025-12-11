@@ -492,58 +492,68 @@ class ZAIMCPClient:
         curr_abs_path = os.path.abspath(curr_image_path)
         
         try:
-            tool_name = "ui_diff_check"
-            request_id = self._get_next_request_id()
+            # CRITICAL: Acquire lock to prevent concurrent access with analyze_image
+            # Use shorter timeout for diff check since it's lower priority
+            if not self._mcp_lock.acquire(timeout=5.0):
+                log.warning("Skipping ui_diff_check - could not acquire MCP lock")
+                return None
             
-            # Create MCP request for UI diff check
-            # MCP requires: expected_image_source, actual_image_source, prompt
-            mcp_request = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "method": "tools/call",
-                "params": {
-                    "name": tool_name,
-                    "arguments": {
-                        "expected_image_source": prev_abs_path,
-                        "actual_image_source": curr_abs_path,
-                        "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements."
+            try:
+                tool_name = "ui_diff_check"
+                request_id = self._get_next_request_id()
+                
+                # Create MCP request for UI diff check
+                # MCP requires: expected_image_source, actual_image_source, prompt
+                mcp_request = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "method": "tools/call",
+                    "params": {
+                        "name": tool_name,
+                        "arguments": {
+                            "expected_image_source": prev_abs_path,
+                            "actual_image_source": curr_abs_path,
+                            "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements."
+                        }
                     }
                 }
-            }
-            
-            log.info(f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}")
-            
-            # Send request
-            request_json = json.dumps(mcp_request) + '\n'
-            self.mcp_process.stdin.write(request_json.encode())
-            self.mcp_process.stdin.flush()
-            
-            # Wait for response with short timeout to prevent blocking
-            response_data = self._read_response_with_id_match(request_id, timeout=20.0)
-            
-            if response_data is None:
-                log.error(f"Failed to get {tool_name} response (timeout)")
-                return None
-            
-            if 'result' in response_data:
-                result = response_data['result']
-                if isinstance(result, dict) and 'content' in result:
-                    content = result['content']
-                    if isinstance(content, list) and len(content) > 0:
-                        if isinstance(content[0], dict) and 'text' in content[0]:
-                            diff_analysis = content[0]['text']
-                            log.info(f"✅ ui_diff_check completed: {len(diff_analysis)} chars")
-                            return diff_analysis
-                # Fallback parsing
-                if isinstance(result, str):
-                    return result
-                return str(result)
-            elif 'error' in response_data:
-                log.error(f"MCP error for {tool_name}: {response_data['error']}")
-                return None
-            else:
-                log.error(f"Unexpected response for {tool_name}: {response_data}")
-                return None
+                
+                log.info(f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}")
+                
+                # Send request
+                request_json = json.dumps(mcp_request) + '\n'
+                self.mcp_process.stdin.write(request_json.encode())
+                self.mcp_process.stdin.flush()
+                
+                # Wait for response with short timeout to prevent blocking
+                # Use slightly longer timeout since we have the lock
+                response_data = self._read_response_with_id_match(request_id, timeout=20.0)
+                
+                if response_data is None:
+                    log.error(f"Failed to get {tool_name} response (timeout)")
+                    return None
+                
+                if 'result' in response_data:
+                    result = response_data['result']
+                    if isinstance(result, dict) and 'content' in result:
+                        content = result['content']
+                        if isinstance(content, list) and len(content) > 0:
+                            if isinstance(content[0], dict) and 'text' in content[0]:
+                                diff_analysis = content[0]['text']
+                                log.info(f"✅ ui_diff_check completed: {len(diff_analysis)} chars")
+                                return diff_analysis
+                    # Fallback parsing
+                    if isinstance(result, str):
+                        return result
+                    return str(result)
+                elif 'error' in response_data:
+                    log.error(f"MCP error for {tool_name}: {response_data['error']}")
+                    return None
+                else:
+                    log.error(f"Unexpected response for {tool_name}: {response_data}")
+                    return None
+            finally:
+                self._mcp_lock.release()
                 
         except Exception as e:
             log.error(f"ui_diff_check failed: {e}", exc_info=True)

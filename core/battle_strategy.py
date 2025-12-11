@@ -54,38 +54,43 @@ TYPE_CHART = {
     ("Ground", "Flying"): 0.0,
 }
 
-# Move data (power, type, PP)
+# Move data (power, type, PP, effect_type)
+# effect_type: "damage", "status", "stat", "special"
 MOVES = {
-    0x01: ("Pound", 40, "Normal", 35),
-    0x02: ("Karate Chop", 50, "Normal", 25),  # Gen 1 was Normal
-    0x03: ("Double Slap", 15, "Normal", 10),
-    0x04: ("Comet Punch", 18, "Normal", 15),
-    0x05: ("Mega Punch", 80, "Normal", 20),
-    0x06: ("Pay Day", 40, "Normal", 20),
-    0x07: ("Fire Punch", 75, "Fire", 15),
-    0x08: ("Ice Punch", 75, "Ice", 15),
-    0x09: ("Thunder Punch", 75, "Electric", 15),
-    0x0A: ("Scratch", 40, "Normal", 35),
-    0x0B: ("Vice Grip", 55, "Normal", 30),
-    0x0C: ("Guillotine", 0, "Normal", 5),  # OHKO
-    0x0D: ("Razor Wind", 80, "Normal", 10),
-    0x21: ("Tackle", 35, "Normal", 35),
-    0x22: ("Body Slam", 85, "Normal", 15),
-    0x23: ("Wrap", 15, "Normal", 20),
-    0x24: ("Take Down", 90, "Normal", 20),
-    0x25: ("Thrash", 90, "Normal", 20),
-    0x26: ("Double-Edge", 100, "Normal", 15),
-    0x33: ("Ember", 40, "Fire", 25),
-    0x34: ("Flamethrower", 95, "Fire", 15),
-    0x37: ("Water Gun", 40, "Water", 25),
-    0x38: ("Hydro Pump", 120, "Water", 5),
-    0x39: ("Surf", 95, "Water", 15),
-    0x3A: ("Ice Beam", 95, "Ice", 10),
-    0x3B: ("Blizzard", 120, "Ice", 5),
-    0x55: ("Thunderbolt", 95, "Electric", 15),
-    0x57: ("Thunder", 120, "Electric", 10),
-    0x59: ("Earthquake", 100, "Ground", 10),
-    0x5B: ("Psychic", 90, "Psychic", 10),
+    0x01: ("Pound", 40, "Normal", 35, "damage"),
+    0x02: ("Karate Chop", 50, "Normal", 25, "damage"),
+    0x03: ("Double Slap", 15, "Normal", 10, "damage"),
+    0x04: ("Comet Punch", 18, "Normal", 15, "damage"),
+    0x05: ("Mega Punch", 80, "Normal", 20, "damage"),
+    0x06: ("Pay Day", 40, "Normal", 20, "damage"),
+    0x07: ("Fire Punch", 75, "Fire", 15, "damage"),
+    0x08: ("Ice Punch", 75, "Ice", 15, "damage"),
+    0x09: ("Thunder Punch", 75, "Electric", 15, "damage"),
+    0x0A: ("Scratch", 40, "Normal", 35, "damage"),
+    0x0B: ("Vice Grip", 55, "Normal", 30, "damage"),
+    0x0C: ("Guillotine", 0, "Normal", 5, "special"),
+    0x0D: ("Razor Wind", 80, "Normal", 10, "damage"),
+    0x21: ("Tackle", 35, "Normal", 35, "damage"),
+    0x22: ("Body Slam", 85, "Normal", 15, "damage"),
+    0x23: ("Wrap", 15, "Normal", 20, "damage"),
+    0x24: ("Take Down", 90, "Normal", 20, "damage"),
+    0x25: ("Thrash", 90, "Normal", 20, "damage"),
+    0x26: ("Double-Edge", 100, "Normal", 15, "damage"),
+    0x33: ("Ember", 40, "Fire", 25, "damage"),
+    0x34: ("Flamethrower", 95, "Fire", 15, "damage"),
+    0x37: ("Water Gun", 40, "Water", 25, "damage"),
+    0x38: ("Hydro Pump", 120, "Water", 5, "damage"),
+    0x39: ("Surf", 95, "Water", 15, "damage"),
+    0x3A: ("Ice Beam", 95, "Ice", 10, "damage"),
+    0x3B: ("Blizzard", 120, "Ice", 5, "damage"),
+    0x4F: ("Sleep Powder", 0, "Grass", 15, "status"),
+    0x4E: ("Stun Spore", 0, "Grass", 30, "status"), 
+    0x55: ("Thunderbolt", 95, "Electric", 15, "damage"),
+    0x57: ("Thunder", 120, "Electric", 10, "damage"),
+    0x59: ("Earthquake", 100, "Ground", 10, "damage"),
+    0x5B: ("Psychic", 90, "Psychic", 10, "damage"),
+    0x56: ("Thunder Wave", 0, "Electric", 20, "status"),
+    0x60: ("Hypnosis", 0, "Psychic", 20, "status"),
 }
 
 
@@ -101,12 +106,14 @@ class BattleState:
     player_max_hp: int
     player_level: int
     player_types: tuple
+    player_status: str  # "OK", "SLP", "PSN", etc.
     
     # Enemy Pokemon
     enemy_pokemon: str
     enemy_hp_percent: int  # 0-100 estimated from bar
     enemy_types: tuple
     enemy_level: int
+    enemy_status: str   # "OK", "SLP", "PSN", etc.
     
     # Available moves with PP
     moves: List[Dict]  # [{"name": "Tackle", "power": 35, "type": "Normal", "pp": 20}, ...]
@@ -124,6 +131,16 @@ def get_type_effectiveness(move_type: str, defender_types: tuple) -> float:
             multiplier *= mult
     return multiplier
 
+def decode_status(status_byte: int) -> str:
+    """Decode Gen 1 status byte"""
+    if status_byte == 0:
+        return "OK"
+    if status_byte & 0x40: return "PAR" # Paralysis
+    if status_byte & 0x20: return "FRZ" # Freeze
+    if status_byte & 0x10: return "BRN" # Burn
+    if status_byte & 0x08: return "PSN" # Poison
+    if status_byte & 0x07: return "SLP" # Sleep
+    return "BAD"
 
 def read_battle_state(sock) -> Optional[BattleState]:
     """Read current battle state from game memory"""
@@ -144,7 +161,7 @@ def read_battle_state(sock) -> Optional[BattleState]:
     }
     battle_type = battle_types.get(battle_type_byte, "unknown")
     
-    # Player's active Pokemon data (from party slot 0 for simplicity)
+    # Player's active Pokemon data (from party slot 0 for simplicity, actually from battle struct)
     species_map = get_species_map()
     
     # Read player Pokemon species and stats
@@ -152,6 +169,7 @@ def read_battle_state(sock) -> Optional[BattleState]:
     player_hp = int.from_bytes(readrange(sock, "0xD015", "2"), 'big')
     player_max_hp = int.from_bytes(readrange(sock, "0xD023", "2"), 'big')
     player_level = readrange(sock, "0xD022", "1")[0]
+    player_status_byte = readrange(sock, "0xD018", "1")[0] # wBattleMonStatus
     
     player_info = species_map.get(player_species, (None, "Unknown", "Normal", None))
     player_name = player_info[1]
@@ -160,6 +178,7 @@ def read_battle_state(sock) -> Optional[BattleState]:
     # Enemy Pokemon data
     enemy_species = readrange(sock, "0xCFE5", "1")[0]
     enemy_level = readrange(sock, "0xCFF3", "1")[0]
+    enemy_status_byte = readrange(sock, "0xCFE9", "1")[0] # wEnemyMonStatus (verified 0xCFE9 is standard)
     
     # Enemy HP is tricky - read the bar position (0xCF93-0xCF94)
     enemy_hp_current = int.from_bytes(readrange(sock, "0xCFE6", "2"), 'big')
@@ -178,7 +197,7 @@ def read_battle_state(sock) -> Optional[BattleState]:
     for i, (move_id, pp) in enumerate(zip(move_bytes, pp_bytes)):
         if move_id == 0:
             continue
-        move_data = MOVES.get(move_id, (f"Move#{move_id}", 40, "Normal", 20))
+        move_data = MOVES.get(move_id, (f"Move#{move_id}", 40, "Normal", 20, "damage"))
         moves.append({
             "index": i,
             "id": move_id,
@@ -186,7 +205,8 @@ def read_battle_state(sock) -> Optional[BattleState]:
             "power": move_data[1],
             "type": move_data[2],
             "pp": pp & 0x3F,  # Lower 6 bits
-            "max_pp": move_data[3]
+            "max_pp": move_data[3],
+            "effect": move_data[4] if len(move_data) > 4 else "damage"
         })
     
     # Menu cursor (0xCC26)
@@ -200,52 +220,118 @@ def read_battle_state(sock) -> Optional[BattleState]:
         player_max_hp=player_max_hp,
         player_level=player_level,
         player_types=player_types,
+        player_status=decode_status(player_status_byte),
         enemy_pokemon=enemy_name,
         enemy_hp_percent=enemy_hp_percent,
         enemy_types=enemy_types,
         enemy_level=enemy_level,
+        enemy_status=decode_status(enemy_status_byte),
         moves=moves,
         cursor_position=cursor
     )
 
 
-def choose_battle_action(battle_state: BattleState, has_potions: bool = False) -> Dict[str, Any]:
+def choose_battle_action(battle_state: BattleState, inventory: List[Dict] = None) -> Dict[str, Any]:
     """
     Choose the best battle action based on current state.
     Returns action dict for the LLM to execute.
+    
+    inventory format: [{'name': 'POKE BALL', 'count': 5}, ...]
     """
     if not battle_state or not battle_state.in_battle:
         return {"type": "none", "reason": "Not in battle"}
     
     hp_percent = (battle_state.player_hp / max(battle_state.player_max_hp, 1)) * 100
     
-    # Priority 1: Heal if critical HP and have potions
-    if hp_percent < 20 and has_potions:
+    # Flatten inventory for easier lookup
+    inv_map = {}
+    if inventory:
+        for item in inventory:
+            inv_map[item.get('name', '').upper()] = item.get('count', 1)
+            
+    has_potions = any(k for k in inv_map.keys() if "POTION" in k)
+    
+    ball_priority = ["MASTER BALL", "ULTRA BALL", "GREAT BALL", "POKE BALL"]
+    available_balls = [b for b in ball_priority if inv_map.get(b, 0) > 0]
+    
+    # ═════════════════════════════════════════════════════════════════════════
+    # PRIORITY 1: CATCH (If Wild + Weak/Statused)
+    # ═════════════════════════════════════════════════════════════════════════
+    if battle_state.battle_type == "wild" and available_balls:
+        # Conditions to throw ball:
+        # 1. Very low HP (<25%)
+        # 2. Statused AND Low HP (<50%)
+        # 3. Rare pokemon (Not implemented yet, but could be)
+        
+        should_throw = False
+        catch_reason = ""
+        
+        if battle_state.enemy_hp_percent < 25:
+            should_throw = True
+            catch_reason = f"Enemy weak ({battle_state.enemy_hp_percent}%)"
+        elif battle_state.enemy_status != "OK" and battle_state.enemy_hp_percent < 50:
+            should_throw = True
+            catch_reason = f"Enemy statused ({battle_state.enemy_status}) and weak"
+            
+        if should_throw:
+            ball_to_use = available_balls[0] # Use best available or standard? Let's use best for now or generic logic
+            # Using safest ball logic:
+            if "POKE BALL" in available_balls and battle_state.enemy_level < 20: 
+                ball_to_use = "POKE BALL"
+            
+            return {
+                "type": "catch",
+                "action": "D;D;A;", # Navigate to Item (approximate) - LLM usually handles menu nav better with specific instruction
+                "reason": f"CATCH CHANCE! {catch_reason}. Use {ball_to_use} now!",
+                "item": ball_to_use
+            }
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # PRIORITY 2: SURVIVAL
+    # ═════════════════════════════════════════════════════════════════════════
+    # Heal if critical HP and have potions
+    if hp_percent < 25 and has_potions:
         return {
             "type": "item",
-            "action": "D;D;A;",  # Navigate to BAG, then use Potion
-            "reason": f"HP critical ({hp_percent:.0f}%), using Potion"
+            "action": "D;D;A;",  # Navigate to BAG
+            "reason": f"HP critical ({hp_percent:.0f}%), use Potion from Bag"
         }
     
-    # Priority 2: Run from wild if very weak and low level fight
-    if battle_state.battle_type == "wild" and hp_percent < 15:
+    # Run from wild if very weak and no items
+    if battle_state.battle_type == "wild" and hp_percent < 20:
         return {
             "type": "run",
             "action": "D;D;D;A;",  # Navigate to RUN
             "reason": f"HP critical ({hp_percent:.0f}%), attempting to flee"
         }
     
-    # Priority 3: Choose best move by type effectiveness and power
+    # ═════════════════════════════════════════════════════════════════════════
+    # PRIORITY 3: FIGHTING
+    # ═════════════════════════════════════════════════════════════════════════
     best_move = None
     best_score = -1
     
     for move in battle_state.moves:
         if move["pp"] <= 0:
             continue
+            
+        # Base score is power
+        score = move["power"]
         
-        effectiveness = get_type_effectiveness(move["type"], battle_state.enemy_types)
-        # Score = power * effectiveness, with bonus for high damage potential
-        score = move["power"] * effectiveness
+        # Adjust for type effectiveness
+        if move["effect"] == "damage":
+            effectiveness = get_type_effectiveness(move["type"], battle_state.enemy_types)
+            score *= effectiveness
+        
+        # Status move logic
+        if move["effect"] == "status":
+            # Don't use status if enemy already has status
+            if battle_state.enemy_status != "OK":
+                score = 0
+            else:
+                # High priority to status moves on healthy enemies
+                if battle_state.enemy_hp_percent > 50:
+                    score = 80 # Comparable to strong move
         
         if score > best_score:
             best_score = score
@@ -259,13 +345,16 @@ def choose_battle_action(battle_state: BattleState, has_potions: bool = False) -
             move_nav += "D;"
         move_nav += "A;"  # Confirm move
         
-        reason = f"Using {best_move['name']} (power={best_move['power']}, type={best_move['type']}"
-        effectiveness = get_type_effectiveness(best_move["type"], battle_state.enemy_types)
-        if effectiveness > 1:
-            reason += ", SUPER EFFECTIVE"
-        elif effectiveness < 1:
-            reason += ", not very effective"
-        reason += ")"
+        reason = f"Use {best_move['name']} "
+        
+        if best_move["effect"] == "damage":
+            effectiveness = get_type_effectiveness(best_move["type"], battle_state.enemy_types)
+            if effectiveness > 1:
+                reason += "(SUPER EFFECTIVE)"
+            elif effectiveness < 1:
+                reason += "(NVE)"
+        elif best_move["effect"] == "status":
+             reason += f"(Inflict {best_move['name']})"
         
         return {
             "type": "fight",
@@ -278,11 +367,11 @@ def choose_battle_action(battle_state: BattleState, has_potions: bool = False) -
     return {
         "type": "fight",
         "action": "A;A;",
-        "reason": "No PP left, using Struggle/first move"
+        "reason": "No optimal move/PP left, using Struggle/first move"
     }
 
 
-def get_battle_context(sock) -> Optional[str]:
+def get_battle_context(sock, inventory: List[Dict] = None) -> Optional[str]:
     """
     Get a compact battle context string for the LLM.
     Returns None if not in battle.
@@ -291,10 +380,14 @@ def get_battle_context(sock) -> Optional[str]:
     if not battle_state:
         return None
     
-    action = choose_battle_action(battle_state)
+    action = choose_battle_action(battle_state, inventory)
     
-    context = f"""🥊 BATTLE: {battle_state.player_pokemon} (Lv{battle_state.player_level}, HP:{battle_state.player_hp}/{battle_state.player_max_hp}) vs {battle_state.enemy_pokemon} (Lv{battle_state.enemy_level}, ~{battle_state.enemy_hp_percent}% HP)
+    # Format status for display
+    p_status = f"[{battle_state.player_status}]" if battle_state.player_status != "OK" else ""
+    e_status = f"[{battle_state.enemy_status}]" if battle_state.enemy_status != "OK" else ""
+    
+    context = f"""🥊 BATTLE: {battle_state.player_pokemon}{p_status} (Lv{battle_state.player_level}, HP:{battle_state.player_hp}/{battle_state.player_max_hp}) vs {battle_state.enemy_pokemon}{e_status} (Lv{battle_state.enemy_level}, ~{battle_state.enemy_hp_percent}% HP)
 RECOMMENDED: {action['reason']}
-ACTION: {action['action']}"""
+ACTION: {action.get('action', 'decide yourself')}"""
     
     return context
