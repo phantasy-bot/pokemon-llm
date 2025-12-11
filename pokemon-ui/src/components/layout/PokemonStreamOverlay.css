@@ -770,7 +770,7 @@
   padding-top: 0;
   /* Constrain height to make room for larger game feed */
   flex: 0 0 auto;
-  max-height: 200px; /* Team section height - increased by 20px */
+  max-height: 220px; /* Team section height */
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -890,7 +890,7 @@
 .pokemon-card {
   --type-color: var(--type-normal);
   --type-bg: var(--type-normal-bg);
-  max-height: 26px; /* Compact cards */
+  max-height: 22px; /* Compact cards */
 }
 
 .pokemon-card[data-type="Fire"] {
