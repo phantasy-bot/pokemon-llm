@@ -348,11 +348,19 @@ Use <game_analysis> tags with these sections:
    - Try all 4 directions through an exit before doubting it
    - NOT ALL EXITS ARE 'O' TILES! Route transitions may show no special tile.
    - **Just exited building?** The 'O' tile BEHIND you leads BACK IN! Move AWAY first!
-   - **CRITICAL EXIT DIRECTION RULE:**
-     - Exited going DOWN (D)? The 'O' tile to your NORTH leads BACK to previous map!
-     - Exited going UP (U)? The 'O' tile to your SOUTH leads BACK to previous map!
-     - Exited going LEFT (L)? The 'O' tile to your EAST leads BACK to previous map!
-     - Exited going RIGHT (R)? The 'O' tile to your WEST leads BACK to previous map!
+   
+   **🏠 BUILDING DETECTION (minimap patterns):**
+   - Large BLOCKED/obstacle areas with a SINGLE 'O' tile entry = BUILDING INTERIOR
+   - If you just entered a new map and see mostly blocked tiles on minimap → you're INSIDE a building
+   - The 'O' tile you entered through leads BACK OUTSIDE - don't re-enter!
+   - **AVOID RE-ENTERING BUILDINGS** unless they contain your goal (Oak's Lab for Pokedex, Mart for Parcel)
+   - If you just exited a building, walk AWAY from its entrance before deciding next move
+   
+   **CRITICAL EXIT DIRECTION RULE:**
+   - Exited going DOWN (D)? The 'O' tile to your NORTH leads BACK to previous map!
+   - Exited going UP (U)? The 'O' tile to your SOUTH leads BACK to previous map!
+   - Exited going LEFT (L)? The 'O' tile to your EAST leads BACK to previous map!
+   - Exited going RIGHT (R)? The 'O' tile to your WEST leads BACK to previous map!
    - **AVOID OSCILLATION**: If you see an 'O' tile in the direction you CAME FROM, DO NOT walk into it!
    - **New area?** Move PERPENDICULAR or AWAY from the exit. Explore forward, not backward.
    
