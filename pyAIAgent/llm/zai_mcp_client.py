@@ -293,8 +293,23 @@ class ZAIMCPClient:
         log.info("🔒 Acquiring MCP lock...")
         lock_acquired = self._mcp_lock.acquire(timeout=30.0)  # 30s timeout for lock
         if not lock_acquired:
-            log.error("❌ Failed to acquire MCP lock within 30s timeout - another operation may be stuck")
-            return None
+            log.error("❌ Failed to acquire MCP lock within 30s timeout - Breaking STALE LOCK and restarting MCP")
+            # Force break lock logic
+            try:
+                # Force kill process if exists
+                if self.mcp_process:
+                    self.mcp_process.kill()
+            except Exception as e:
+                log.error(f"Error killing stuck MCP process: {e}")
+            
+            # Reset lock and restart
+            self._mcp_lock = threading.Lock()
+            self.restart_mcp_server()
+            
+            # Try to acquire new lock with short timeout
+            if not self._mcp_lock.acquire(timeout=5.0):
+                log.error("❌ Failed to acquire NEW MCP lock after reset")
+                return None
         
         try:
             log.info("🔓 MCP lock acquired")
