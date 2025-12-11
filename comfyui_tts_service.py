@@ -51,7 +51,9 @@ class ComfyUITTSService:
         workflow_path: str = None,
         output_dir: str = None,
         timeout: float = 60.0,
-        on_playback_start: callable = None
+        on_playback_start: callable = None,
+        audio_speed: float = None,
+        audio_pitch: float = None
     ):
         """
         Initialize the ComfyUI TTS service.
@@ -62,6 +64,8 @@ class ComfyUITTSService:
             output_dir: Directory to save generated audio files
             timeout: Request timeout in seconds
             on_playback_start: Callback(text, duration_ms) called when audio starts playing
+            audio_speed: Playback speed multiplier (e.g., 1.1 = 10% faster)
+            audio_pitch: Pitch shift in semitones (e.g., 2 = 2 semitones higher)
         """
         self.base_url = (base_url or os.getenv("COMFYUI_URL", "http://localhost:8188")).rstrip("/")
         self.workflow_path = workflow_path or os.getenv("COMFYUI_TTS_WORKFLOW", "")
@@ -70,6 +74,10 @@ class ComfyUITTSService:
         
         # Callback for UI sync - called when playback starts with (text, duration_ms)
         self.on_playback_start = on_playback_start
+        
+        # Audio post-processing settings (from env or args)
+        self.audio_speed = audio_speed or float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
+        self.audio_pitch = audio_pitch or float(os.getenv("TTS_AUDIO_PITCH", "0"))  # In semitones
         
         # Request queue (priority queue simulation with sorting)
         self._queue: List[TTSRequest] = []
@@ -129,6 +137,92 @@ class ComfyUITTSService:
         
         # Estimate based on text length (rough fallback: ~150ms per character)
         return None
+    
+    def _process_audio_speed_pitch(self, audio_path: str) -> str:
+        """
+        Apply speed and pitch adjustments to audio using ffmpeg.
+        
+        Uses the atempo filter for speed and asetrate+aresample for pitch.
+        
+        Args:
+            audio_path: Path to the input audio file
+            
+        Returns:
+            Path to processed audio file (or original if processing fails/not needed)
+        """
+        # Skip if no processing needed
+        if self.audio_speed == 1.0 and self.audio_pitch == 0:
+            return audio_path
+        
+        try:
+            # Build output path
+            base, ext = os.path.splitext(audio_path)
+            processed_path = f"{base}_processed{ext}"
+            
+            # Build ffmpeg filter chain
+            filters = []
+            
+            # Speed adjustment using atempo (valid range 0.5-2.0, chain multiple for higher)
+            if self.audio_speed != 1.0:
+                speed = self.audio_speed
+                # atempo only supports 0.5-2.0, so chain multiple if needed
+                while speed > 2.0:
+                    filters.append("atempo=2.0")
+                    speed /= 2.0
+                while speed < 0.5:
+                    filters.append("atempo=0.5")
+                    speed *= 2.0
+                if speed != 1.0:
+                    filters.append(f"atempo={speed:.4f}")
+            
+            # Pitch adjustment using asetrate + aresample
+            # Pitch in semitones: multiply sample rate by 2^(semitones/12)
+            if self.audio_pitch != 0:
+                pitch_factor = 2 ** (self.audio_pitch / 12)
+                # Use rubberband if available for better quality, otherwise asetrate
+                filters.append(f"asetrate=44100*{pitch_factor:.4f},aresample=44100")
+            
+            if not filters:
+                return audio_path
+            
+            filter_str = ",".join(filters)
+            log.info(f"🔊 Processing audio: speed={self.audio_speed}x, pitch={self.audio_pitch} semitones")
+            log.debug(f"🔊 FFmpeg filter: {filter_str}")
+            
+            # Run ffmpeg
+            cmd = [
+                "ffmpeg", "-y", "-i", audio_path,
+                "-af", filter_str,
+                "-acodec", "flac" if audio_path.endswith(".flac") else "libmp3lame",
+                processed_path
+            ]
+            
+            result = subprocess.run(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                timeout=30
+            )
+            
+            if result.returncode == 0 and os.path.exists(processed_path):
+                log.info(f"🔊 Audio processed successfully: {processed_path}")
+                # Remove original, rename processed
+                os.remove(audio_path)
+                os.rename(processed_path, audio_path)
+                return audio_path
+            else:
+                log.warning(f"🔊 FFmpeg processing failed: {result.stderr.decode()[:200]}")
+                return audio_path
+                
+        except FileNotFoundError:
+            log.warning("🔊 ffmpeg not found, skipping audio processing. Install with: brew install ffmpeg")
+            return audio_path
+        except subprocess.TimeoutExpired:
+            log.warning("🔊 FFmpeg processing timed out")
+            return audio_path
+        except Exception as e:
+            log.warning(f"🔊 Audio processing failed: {e}")
+            return audio_path
     
     @property
     def is_available(self) -> bool:
@@ -669,6 +763,10 @@ class ComfyUITTSService:
                     f.write(response.content)
                 
                 log.info(f"Downloaded audio to: {local_path}")
+                
+                # Apply speed/pitch adjustments if configured
+                local_path = self._process_audio_speed_pitch(local_path)
+                
                 return local_path
             else:
                 log.error(f"Failed to download audio: HTTP {response.status_code}")
