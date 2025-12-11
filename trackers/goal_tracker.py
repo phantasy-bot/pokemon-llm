@@ -70,7 +70,7 @@ class GoalTracker:
             - Immediate: Exit current building
     """
     
-    def __init__(self, storage_path: str = "game_goals.json"):
+    def __init__(self, storage_path: str = "data/game_goals.json"):
         self.storage_path = storage_path
         self.goals: Dict[str, Goal] = {}
         self.goal_stack: List[str] = []  # IDs in priority order

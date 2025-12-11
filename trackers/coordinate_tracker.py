@@ -50,7 +50,7 @@ class CoordinateTracker:
     - Persists to disk for run continuity
     """
     
-    def __init__(self, storage_path: str = "coordinate_history.json", 
+    def __init__(self, storage_path: str = "data/coordinate_history.json", 
                  max_history: int = 10, reset_on_start: bool = False):
         """
         Initialize the coordinate tracker.

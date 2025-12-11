@@ -87,6 +87,7 @@ class ComfyUITTSService:
         # Audio playback process tracking for cancellation
         self._audio_process: Optional[subprocess.Popen] = None
         self._current_request: Optional[TTSRequest] = None
+        self._current_audio_path: Optional[str] = None  # Track for post-playback cleanup
         self._cancelled = False
         
         # Lock to ensure TTS requests are serialized (no overlap)
@@ -98,11 +99,46 @@ class ComfyUITTSService:
         # Create output directory
         os.makedirs(self.output_dir, exist_ok=True)
         
+        # Cleanup stale audio files from previous runs
+        self._cleanup_stale_audio()
+        
         # Check if configured
         self._is_configured = bool(self.base_url)
         
         if not self._is_configured:
             log.warning("ComfyUI TTS not configured. Set COMFYUI_URL in .env")
+    
+    def _cleanup_stale_audio(self) -> None:
+        """
+        Remove any leftover audio files from previous sessions.
+        Called on startup to ensure clean state.
+        """
+        if not os.path.exists(self.output_dir):
+            return
+        
+        cleaned = 0
+        for f in os.listdir(self.output_dir):
+            if f.endswith(('.flac', '.mp3', '.wav')):
+                try:
+                    os.remove(os.path.join(self.output_dir, f))
+                    cleaned += 1
+                except Exception as e:
+                    log.warning(f"Failed to cleanup {f}: {e}")
+        
+        if cleaned > 0:
+            log.info(f"♻️ Cleaned up {cleaned} stale audio files from {self.output_dir}")
+    
+    def _cleanup_audio_file(self, audio_path: str) -> None:
+        """
+        Remove an audio file after playback.
+        Called after wait_for_playback completes.
+        """
+        if audio_path and os.path.exists(audio_path):
+            try:
+                os.remove(audio_path)
+                log.debug(f"♻️ Cleaned up: {os.path.basename(audio_path)}")
+            except Exception as e:
+                log.warning(f"Failed to cleanup audio: {e}")
     
     def _get_audio_duration_ms(self, audio_path: str) -> Optional[int]:
         """
@@ -905,6 +941,8 @@ class ComfyUITTSService:
                     playback_time = time.time() - playback_start
                     total_time = time.time() - total_start
                     log.info(f"🔊 TTS COMPLETE: synthesis={synthesis_time:.2f}s, playback={playback_time:.2f}s, total={total_time:.2f}s")
+                    # Cleanup audio file after playback
+                    self._cleanup_audio_file(audio_path)
                     return completed
                 
                 total_time = time.time() - total_start

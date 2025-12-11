@@ -134,7 +134,7 @@ class VisionClaim:
 class MemoryManager:
     """Comprehensive memory management system for Pokemon LLM agent"""
 
-    def __init__(self, storage_path: str = "pokemon_memories.json", reset_on_start: bool = True):
+    def __init__(self, storage_path: str = "data/pokemon_memories.json", reset_on_start: bool = True):
         self.storage_path = storage_path
         self.memories = {
             "spatial": [],

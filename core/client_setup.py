@@ -35,7 +35,7 @@ DEFAULT_MODEL_BY_MODE = {
 
 MODES = list(DEFAULT_MODEL_BY_MODE.keys())
 
-REASONING_EFFORT = "low" # Default reasoning effort level, can be "low", "medium", or "high" for models that support it
+REASONING_EFFORT = "high" # Default reasoning effort level, can be "low", "medium", or "high" for models that support it
 ONE_IMAGE_PER_PROMPT = True # Set to False to allow multiple images per prompt (Often performs better with single image)
 MINIMAP_ENABLED = True # Set to False to disable minimap features
 MINIMAP_2D = True # Set to False to disable 2D minimap features
@@ -43,7 +43,7 @@ REASONING_ENABLED = True # Set to False to disable reasoning features
 MAX_TOKENS = 2048 # Default maximum tokens for model responses
 SYSTEM_PROMPT_UNSUPPORTED = False # Instead it will be injected into messages. (NOT IMPLEMENTED YET)
 TEMPERATURE = 0.7 # Default temperature for model responses
-IMAGE_DETAIL = "low" # Default image detail level can be "low", or "high"
+IMAGE_DETAIL = "high" # Default image detail level can be "low", or "high"
 USES_MAX_COMPLETION_TOKENS = True # Some models (OAI o3) require setting max_completion_tokens instead of max_tokens
 USES_DEFAULT_TEMPERATURE = True # Some models (OAI o3) don't support temperature, so we use a default value (1)
 
