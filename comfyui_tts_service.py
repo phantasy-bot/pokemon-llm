@@ -272,7 +272,7 @@ class ComfyUITTSService:
     
     def cancel_current(self):
         """
-        Cancel the currently playing audio.
+        Cancel the currently playing audio and any pending ComfyUI workflow.
         Called when a higher priority TTS request comes in (e.g., new cycle commentary).
         """
         self._cancelled = True
@@ -285,6 +285,18 @@ class ComfyUITTSService:
                 log.warning(f"Error terminating audio process: {e}")
         
         self._audio_process = None
+        
+        # Also cancel any pending ComfyUI workflow via /interrupt endpoint
+        try:
+            import httpx
+            with httpx.Client(timeout=2.0) as client:
+                response = client.post(f"{self.base_url}/interrupt")
+                if response.status_code == 200:
+                    log.info("🔇 Cancelled pending ComfyUI TTS workflow")
+                else:
+                    log.debug(f"ComfyUI interrupt returned {response.status_code}")
+        except Exception as e:
+            log.debug(f"Could not interrupt ComfyUI workflow: {e}")
     
     def play_audio_ephemeral(self, audio_path: str) -> bool:
         """
