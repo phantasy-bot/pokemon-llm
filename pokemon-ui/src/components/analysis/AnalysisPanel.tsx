@@ -52,6 +52,8 @@ export function AnalysisPanel({
   const _onMemoryWriteClear = onMemoryWriteClear;
   // @ts-expect-error - Parameter kept for future use
   const _isProcessing = isProcessing;
+  // @ts-expect-error - Parameter kept for future use
+  const _debugMode = debugMode;
 
   const [currentKeyart, setCurrentKeyart] = useState(0);
   const [persistedMemory, setPersistedMemory] = useState<string | null>(null);

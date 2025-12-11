@@ -77,7 +77,7 @@
 
 .formatted-log-content {
   font-family: var(--font-mono);
-  font-size: 13px; /* Increased from 12px */
+  font-size: 12px; /* Reduced from 13px */
   line-height: 1.4;
   color: rgba(0, 0, 0, 0.85); /* Darker text for visibility */
   /* Ensure text wraps to prevent scroll */
@@ -87,7 +87,7 @@
 
 .log-entry__text {
   font-family: var(--font-mono);
-  font-size: 13px; /* Increased from 12px */
+  font-size: 12px; /* Reduced from 13px */
   line-height: 1.4;
   color: rgba(0, 0, 0, 0.85); /* Darker text for visibility */
   /* Ensure text wraps to prevent scroll */
@@ -126,7 +126,7 @@
 /* Summary mode - larger text for LLM response when showing just summary */
 .log-entry--response .log-entry__text,
 .log-entry--response .formatted-log-content {
-  font-size: 16px;
+  font-size: 15px; /* Reduced from 16px */
   line-height: 1.5;
   font-style: italic;
   color: rgba(0, 0, 0, 0.6); /* Lighter gray as requested */

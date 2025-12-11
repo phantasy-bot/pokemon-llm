@@ -10,7 +10,7 @@ interface MinimapProps {
   lassMarkings?: Array<{
     x: number;
     y: number;
-    type: 'N' | 'O';
+    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
     opacity: number;
     age_hours?: number;
   }>;
