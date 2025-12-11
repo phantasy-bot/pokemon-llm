@@ -138,19 +138,27 @@ DIALOGUE_PROMPT = """
 ## 💬 DIALOGUE SCREEN (ACTIVE)
 A text box is visible. Handle dialogue properly:
 
+### NEW DIALOGUE - READ CAREFULLY!
+- ⚠️ **NEW dialog from NPCs is IMPORTANT** - read it slowly!
+- Use **single A;** presses to advance text one screen at a time
+- Don't spam buttons - you might miss important story or quest info!
+- The `dialog_text` field shows you what the NPC is currently saying
+
 ### ADVANCING DIALOGUE
 - Press A to advance to next text
-- Press B to try to skip/close dialogue
+- Wait and read each screen before pressing A again
 - Some dialogue requires multiple A presses
 
-### YES/NO CHOICES
+### YES/NO CHOICES  
 - If you see YES/NO options, use D-pad to highlight choice
 - A confirms the highlighted option
 - B typically selects NO
+- READ the question before answering!
 
-### ESCAPING LOOPS
-- If dialogue repeats, spam B to close
-- Then MOVE AWAY from the NPC/sign
+### REPETITIVE DIALOGUE - ESCAPE!
+- If you've seen this exact dialogue before → spam B;B;B;B; to escape
+- Then MOVE AWAY from the NPC to avoid re-triggering
+- You can tell it's repetitive if it matches your memory/journal
 """
 
 MENU_PROMPT = """
