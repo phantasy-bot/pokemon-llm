@@ -50,7 +50,7 @@ class ComfyUITTSService:
         base_url: str = None,
         workflow_path: str = None,
         output_dir: str = None,
-        timeout: float = 60.0,
+        timeout: float = 10.0,  # Reduced from 60s for faster fallback
         on_playback_start: callable = None,
         audio_speed: float = None,
         audio_pitch: float = None
