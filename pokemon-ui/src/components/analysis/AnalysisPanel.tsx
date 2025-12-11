@@ -86,32 +86,35 @@ export function AnalysisPanel({
     latestVisionEntry ||
     (logs.length > 0 ? logs[0] : null);
 
-  // Process the entry to hide COMMENTARY and SUMMARY sections
-  // (COMMENTARY is shown in the character panel, SUMMARY is redundant)  
+  // Process the entry to hide COMMENTARY, SUMMARY, and MEMORY_WRITE sections
+  // (COMMENTARY is shown in the character panel, SUMMARY/MEMORY_WRITE are redundant)  
   const latestEntry = (() => {
     if (!rawLatestEntry) return null;
     
-    // For LLM responses, strip out COMMENTARY and SUMMARY sections
+    // For LLM responses, strip out sections we don't want to display
     if (rawLatestEntry.is_response && rawLatestEntry.text) {
       let cleanedText = rawLatestEntry.text;
       
-      // Remove COMMENTARY section (section 8)
+      // Remove COMMENTARY section (captures until next numbered section or end)
       cleanedText = cleanedText.replace(
-        /\n*\d+\.\s*\*?\*?COMMENTARY\*?\*?[^\n]*\n[^\n]*/gi, 
+        /\n*\d+\.\s*\*?\*?COMMENTARY\*?\*?:?[^\n]*(?:\n(?!\d+\.).*?)*/gi, 
         ''
       );
       
-      // Remove SUMMARY section (section 9)
+      // Remove SUMMARY section
       cleanedText = cleanedText.replace(
-        /\n*\d+\.\s*\*?\*?SUMMARY\*?\*?[^\n]*\n[^\n]*/gi, 
+        /\n*\d+\.\s*\*?\*?SUMMARY\*?\*?:?[^\n]*(?:\n(?!\d+\.).*?)*/gi, 
         ''
       );
       
-      // Remove MEMORY_WRITE section (section 10) - just noise for display
+      // Remove MEMORY_WRITE section
       cleanedText = cleanedText.replace(
-        /\n*\d+\.\s*\*?\*?MEMORY_WRITE\*?\*?[^\n]*\n[^\n]*/gi, 
+        /\n*\d+\.\s*\*?\*?MEMORY_WRITE\*?\*?:?[^\n]*(?:\n(?!\d+\.).*?)*/gi, 
         ''
       );
+      
+      // Also remove trailing </game_analysis> tag if present
+      cleanedText = cleanedText.replace(/<\/game_analysis>/gi, '');
       
       return {
         ...rawLatestEntry,

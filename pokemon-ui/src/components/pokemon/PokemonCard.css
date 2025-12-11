@@ -19,7 +19,7 @@
   height: auto;
   align-self: center;
   min-height: 0;
-  max-height: 48px; /* Card height */
+  max-height: 64px; /* Card height */
 }
 
 .pokemon-card::before {
