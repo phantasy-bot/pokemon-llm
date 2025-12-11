@@ -209,20 +209,7 @@ export function AnalysisPanel({
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                // In normal mode (non-debug), show streaming text for summaries
-                !debugMode && latestEntry.is_response ? (
-                  <div className="log-entry log-entry--response log-entry--new">
-                    <div className="log-entry__content">
-                      <div className="log-entry__text">
-                        <div className="formatted-log-content">
-                          <StreamingText text={latestEntry.text || ""} speed={8} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
-                )
+                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
               ) : (
                 !isProcessing && (
                   <div className="analysis-panel__empty">
