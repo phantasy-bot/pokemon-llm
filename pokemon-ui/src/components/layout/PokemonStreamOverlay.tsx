@@ -41,7 +41,7 @@ function extractCommentary(text: string): string | null {
   return null;
 }
 
-// Typewriter text component
+// Typewriter text component - fixed speed per character
 function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
   const [displayedText, setDisplayedText] = useState("");
   const timeoutRef = useRef<number | null>(null);
@@ -70,6 +70,61 @@ function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) 
       }
     };
   }, [text, speed]);
+
+  return <>{displayedText}</>;
+}
+
+// Synced typewriter - calculates speed from audio duration
+// Starts immediately when mounted, ends when TTS audio should end
+function SyncedTypewriterText({ 
+  text, 
+  durationMs,
+  onComplete 
+}: { 
+  text: string; 
+  durationMs: number;
+  onComplete?: () => void;
+}) {
+  const [displayedText, setDisplayedText] = useState("");
+  const timeoutRef = useRef<number | null>(null);
+  const indexRef = useRef(0);
+  const startTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Reset and start animation
+    setDisplayedText("");
+    indexRef.current = 0;
+    startTimeRef.current = performance.now();
+
+    if (!text || !durationMs) {
+      setDisplayedText(text || "");
+      return;
+    }
+
+    // Calculate speed: duration / text.length = ms per character
+    // Subtract a small buffer to ensure we finish slightly before audio ends
+    const charDelayMs = Math.max(10, (durationMs - 200) / text.length);
+    console.log(`SyncedTypewriter: ${text.length} chars, ${durationMs}ms = ${charDelayMs.toFixed(1)}ms/char`);
+
+    const typeNextChar = () => {
+      if (indexRef.current < text.length) {
+        setDisplayedText(text.slice(0, indexRef.current + 1));
+        indexRef.current++;
+        timeoutRef.current = window.setTimeout(typeNextChar, charDelayMs);
+      } else {
+        // Animation complete
+        onComplete?.();
+      }
+    };
+
+    typeNextChar();
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [text, durationMs, onComplete]);
 
   return <>{displayedText}</>;
 }
@@ -162,12 +217,21 @@ const KANTO_BADGES: Record<BadgeType, { image: string; name: string; index: numb
 // All badge types in order for silhouette display
 const ALL_BADGE_TYPES: BadgeType[] = ["Boulder", "Cascade", "Thunder", "Rainbow", "Soul", "Marsh", "Volcano", "Earth"];
 
+// TTS Commentary data from backend
+interface TTSCommentary {
+  text: string;
+  duration_ms: number;
+  playing: boolean;
+}
+
 interface PokemonStreamOverlayProps {
   gameState: PokemonGameState;
   wsConnected: boolean;
   logs: LogEntry[];
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
+  ttsCommentary?: TTSCommentary | null;
+  onTtsCommentaryComplete?: () => void;
 }
 
 export function PokemonStreamOverlay({
@@ -176,6 +240,8 @@ export function PokemonStreamOverlay({
   logs,
   memoryWrite,
   onMemoryWriteClear,
+  ttsCommentary,
+  onTtsCommentaryComplete,
 }: PokemonStreamOverlayProps) {
   // Extract commentary from most recent response log
   const [currentCommentary, setCurrentCommentary] = useState<string>("");
@@ -410,7 +476,19 @@ export function PokemonStreamOverlay({
               <div className="character-container">
                 {/* Left Column - Commentary */}
                 <div className="character-container__left">
-                  {currentCommentary && (
+                  {/* Show synced typewriter when TTS is playing, otherwise show from logs */}
+                  {ttsCommentary?.playing ? (
+                    <div className="character-container__commentary">
+                      <span className="character-container__commentary-label">COMMENTARY</span>
+                      <p className="character-container__commentary-text">
+                        <SyncedTypewriterText 
+                          text={ttsCommentary.text} 
+                          durationMs={ttsCommentary.duration_ms}
+                          onComplete={onTtsCommentaryComplete}
+                        />
+                      </p>
+                    </div>
+                  ) : currentCommentary && (
                     <div className="character-container__commentary">
                       <span className="character-container__commentary-label">COMMENTARY</span>
                       <p className="character-container__commentary-text">
