@@ -890,7 +890,7 @@
 .pokemon-card {
   --type-color: var(--type-normal);
   --type-bg: var(--type-normal-bg);
-  max-height: 22px; /* Compact cards */
+  max-height: 48px; /* Card height */
 }
 
 .pokemon-card[data-type="Fire"] {
