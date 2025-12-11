@@ -2522,9 +2522,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
                 log.info(f"Action '{action_to_send}' sent to mGBA.")
                 
-                # Wait 2s AFTER sending action to let screen fully render before next screenshot
-                # This prevents cut-off/partial screenshots in vision analysis
-                time.sleep(2)
+                # Wait 3s AFTER sending action to let screen fully render before next screenshot
+                # This prevents cut-off/partial screenshots and ensures dialog text is captured
+                time.sleep(3)
                 log.info("Post-action delay complete, ready for next cycle screenshot.")
                 
                 # Track for failure replay
