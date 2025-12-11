@@ -204,20 +204,71 @@ def get_species_map():
     }
 
 def decode_pokemon_text(raw_bytes: bytes) -> str:
+    """
+    Decode Pokemon Red/Blue text encoding to ASCII.
+    
+    Pokemon Red uses custom tile indices for text:
+    - 0x50 = String terminator
+    - 0x7F = Space
+    - 0x80-0x99 = A-Z (uppercase)
+    - 0xA0-0xB9 = a-z (lowercase)
+    - 0xF6-0xFF = Numbers 0-9
+    - Various special characters
+    """
+    # Extended character mapping for dialog text
+    CHAR_MAP = {
+        0x00: ' ',      # Blank/padding
+        0x4F: ':',      # Colon
+        0x50: None,     # String terminator (stop here)
+        0x51: None,     # Paragraph break
+        0x52: None,     # Page break  
+        0x54: 'POKé',   # POKé symbol
+        0x55: '...',    # Ellipsis (cont'd)
+        0x57: None,     # Line break
+        0x58: '$',      # Pokédollar
+        0x5B: 'PC',     # PC symbol
+        0x5C: 'TM',     # TM symbol
+        0x5D: 'TRAINER',# TRAINER
+        0x5E: 'ROCKET', # ROCKET
+        0x7F: ' ',      # Space
+        0xE0: '\'',     # Apostrophe (or é)
+        0xE1: 'PK',     # PK half
+        0xE2: 'MN',     # MN half
+        0xE3: '-',      # Hyphen
+        0xE6: '?',      # Question mark
+        0xE7: '!',      # Exclamation
+        0xE8: '.',      # Period
+        0xEF: '♂',      # Male symbol
+        0xF0: '¥',      # Yen
+        0xF1: '×',      # Multiply
+        0xF3: '/',      # Slash
+        0xF4: ',',      # Comma
+        0xF5: '♀',      # Female symbol
+        # Numbers 0-9
+        0xF6: '0', 0xF7: '1', 0xF8: '2', 0xF9: '3', 0xFA: '4',
+        0xFB: '5', 0xFC: '6', 0xFD: '7', 0xFE: '8', 0xFF: '9',
+    }
+    
     out = []
     for b in raw_bytes:
+        # Check terminator first
         if b == 0x50:
             break
-        if 0x80 <= b <= 0x99:
+        # Check special mapping
+        if b in CHAR_MAP:
+            char = CHAR_MAP[b]
+            if char is None:  # Break characters
+                break
+            out.append(char)
+        # Uppercase A-Z (0x80-0x99)
+        elif 0x80 <= b <= 0x99:
             out.append(chr(ord('A') + (b - 0x80)))
+        # Lowercase a-z (0xA0-0xB9)
         elif 0xA0 <= b <= 0xB9:
             out.append(chr(ord('a') + (b - 0xA0)))
-        elif b == 0x7F:
-            out.append(' ')
-        elif b == 0xE0:
-            out.append('é')
+        # Unknown - skip silently for dialog
         else:
-            out.append('?')
+            pass  # Skip unknown tiles in dialog
     return ''.join(out)
 
 class MapLocation(IntEnum):

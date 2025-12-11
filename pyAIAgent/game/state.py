@@ -97,6 +97,134 @@ def get_facing(sock) -> str:
         return f"unknown(0x{raw:02X})"
 
 
+def get_text_state(sock) -> dict:
+    """
+    Read text/dialog related memory flags.
+    
+    Returns:
+        dict with:
+        - text_speed: Current text speed setting (0xD355)
+        - text_printing: Text printing flags (0xD358)
+        - is_printing: True if text is currently being printed
+    """
+    _flush_socket(sock)
+    try:
+        text_speed = readrange(sock, "0xD355", "1")[0]
+        text_flags = readrange(sock, "0xD358", "1")[0]
+        
+        # Bit 0 = 0 means delay limited to 1 frame
+        # Bit 1 = 0 means no delay (instant text)
+        is_printing = (text_flags & 0x03) != 0x03  # Either bit cleared = text active
+        
+        return {
+            "text_speed": text_speed,
+            "text_flags": text_flags,
+            "is_printing": is_printing
+        }
+    except Exception as e:
+        log.warning(f"Error reading text state: {e}")
+        return {"text_speed": 0, "text_flags": 0, "is_printing": False}
+
+
+def get_dialog_text(sock) -> str | None:
+    """
+    Read the tile screen buffer to extract dialog text.
+    
+    The dialog box in Pokemon Red occupies the bottom 4 rows of the screen.
+    Screen buffer is at 0xC3A0-C507 (360 bytes for 20x18 tiles).
+    
+    Returns the decoded dialog text, or None if no dialog detected.
+    """
+    _flush_socket(sock)
+    try:
+        # Read the tile buffer (360 bytes = 20 columns x 18 rows)
+        tiles = readrange(sock, "0xC3A0", "360")
+        
+        # Dialog box is typically in the bottom 4 rows (rows 14-17)
+        # Each row is 20 tiles
+        dialog_rows = []
+        for row in range(14, 18):  # Bottom 4 rows
+            start = row * 20
+            end = start + 20
+            row_tiles = tiles[start:end]
+            row_text = decode_pokemon_text(bytes(row_tiles))
+            if row_text.strip():
+                dialog_rows.append(row_text.strip())
+        
+        if dialog_rows:
+            return ' '.join(dialog_rows)
+        return None
+    except Exception as e:
+        log.warning(f"Error reading dialog text: {e}")
+        return None
+
+
+def get_battle_state(sock) -> dict:
+    """
+    Read battle-related memory.
+    
+    Returns:
+        dict with:
+        - in_battle: True if in a battle
+        - battle_type: Type of battle (wild, trainer, gym, etc.)
+        - turn_count: Number of turns in current battle
+        - move_menu_type: 0 = regular, 1 = mimic, other = text boxes
+    """
+    _flush_socket(sock)
+    try:
+        battle_flag = readrange(sock, "0xD057", "1")[0]
+        battle_type = readrange(sock, "0xD05A", "1")[0] if battle_flag else 0
+        turn_count = readrange(sock, "0xCCD5", "1")[0] if battle_flag else 0
+        move_menu = readrange(sock, "0xCCDB", "1")[0] if battle_flag else 0
+        
+        # Decode battle type
+        battle_types = {
+            0xF0: "wild",
+            0xED: "trainer", 
+            0xEA: "gym_leader",
+            0xF3: "final",
+            0xF6: "defeated_trainer",
+            0xF9: "defeated_wild",
+            0xFC: "defeated_champion"
+        }
+        
+        return {
+            "in_battle": battle_flag != 0,
+            "battle_type": battle_types.get(battle_type, f"unknown_{battle_type:02X}"),
+            "turn_count": turn_count,
+            "move_menu_type": move_menu
+        }
+    except Exception as e:
+        log.warning(f"Error reading battle state: {e}")
+        return {"in_battle": False, "battle_type": None, "turn_count": 0, "move_menu_type": 0}
+
+
+def get_menu_state(sock) -> dict:
+    """
+    Read menu-related memory for tracking menu interactions.
+    
+    Returns:
+        dict with:
+        - selected_item: Currently selected menu item (0 = topmost)
+        - last_selected: Previously selected item
+        - menu_item_count: Total items in current menu
+    """
+    _flush_socket(sock)
+    try:
+        selected = readrange(sock, "0xCC26", "1")[0]
+        last_item = readrange(sock, "0xCC28", "1")[0]
+        prev_selected = readrange(sock, "0xCC2A", "1")[0]
+        
+        return {
+            "selected_item": selected,
+            "menu_item_count": last_item + 1,  # Last item ID + 1 = count
+            "last_selected": prev_selected
+        }
+    except Exception as e:
+        log.warning(f"Error reading menu state: {e}")
+        return {"selected_item": 0, "menu_item_count": 0, "last_selected": 0}
+
+
 def get_location(sock) -> tuple[int, int, int, str] | None:
     _flush_socket(sock)
     mid = readrange(sock, "0xD35E", "1")[0]
@@ -237,6 +365,19 @@ def prep_llm(sock) -> dict:
         badges = get_badges_text(sock)
         log.info(f"prep_llm: party/badges took {time.time() - t_party:.2f}s")
 
+        # New memory reads for dialog/battle/menu state
+        log.info("prep_llm: getting extended game state...")
+        t_ext = time.time()
+        text_state = get_text_state(sock)
+        battle_state = get_battle_state(sock)
+        menu_state = get_menu_state(sock)
+        
+        # Try to extract dialog text if text appears to be printing
+        dialog_text = None
+        if text_state.get("is_printing") or battle_state.get("in_battle"):
+            dialog_text = get_dialog_text(sock)
+        log.info(f"prep_llm: extended state took {time.time() - t_ext:.2f}s")
+
         total_time = time.time() - t_start
         log.info(f"📡 prep_llm DONE: total={total_time:.2f}s location={mapName}")
         
@@ -247,7 +388,12 @@ def prep_llm(sock) -> dict:
             "position": position,
             "facing":  facing,
             "map_name": mapName,
-            "minimap_2d": map2D
+            "minimap_2d": map2D,
+            # New extended state
+            "dialog_text": dialog_text,
+            "text_state": text_state,
+            "battle_state": battle_state,
+            "menu_state": menu_state
         }
     except socket.timeout as e:
         log.error(f"📡 prep_llm: Socket TIMEOUT during operation: {e}")
