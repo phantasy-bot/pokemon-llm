@@ -227,6 +227,54 @@ export function PokemonStreamOverlay({
   ttsCommentary,
   onTtsCommentaryComplete,
 }: PokemonStreamOverlayProps) {
+  // --- DYNAMIC AVATAR LOGIC ---
+  const getAvatarImage = (): string => {
+    // 1. High Priority: Stressed/Low Health (only if active pokemon is critical)
+    const activePokemon = gameState.currentTeam?.[0];
+    if (activePokemon && activePokemon.hpStatus === "critical") {
+      return "/lass/lass-stressed.png";
+    }
+
+    // 2. Battle States
+    // gameState.battle_type usually contains "wild", "trainer", "gym"
+    // Using string matching on the battle description or type
+    if (gameState.inBattle || (gameState.battleType && gameState.battleType !== "none")) {
+      const bType = (gameState.battleType || "").toLowerCase();
+      
+      if (bType.includes("gym") || bType.includes("leader") || bType.includes("elite")) {
+        return "/lass/lass-battle-gym.png"; 
+      }
+      if (bType.includes("trainer") || bType.includes("rival")) {
+        return "/lass/lass-battle-trainer.png";
+      }
+      if (bType.includes("wild")) {
+        return "/lass/lass-battle-wild.png";
+      }
+      if (bType.includes("victory") || bType.includes("defeat")) { // Victory states often marked this way
+         return "/lass/lass-victory.png";
+      }
+      // Default battle fallback
+      return "/lass/lass-battle-wild.png";
+    }
+
+    // 3. Dialog State (New Phase 2)
+    // If text is printing and we are NOT in battle (to avoid overriding battle intensity), show speaking avatar
+    if (gameState.textState?.is_printing) {
+      return "/lass/lass-speech.png";
+    }
+
+    // 4. Menu State
+    if (gameState.inMenu) { // Fixed from menuOpen to match interface
+      return "/lass/lass-menu.png";
+    }
+
+    // 5. Default State (Overworld/Exploration)
+    // Using walking avatar for general gameplay instead of static default
+    return "/lass/lass-walking.png";
+  };
+
+  const avatarImage = getAvatarImage();
+
   // Commentary display state - controlled by TTS playback
   // lingerText: text to show after TTS completes (for 6 seconds)
   const [lingerText, setLingerText] = useState<string | null>(null);
@@ -502,9 +550,11 @@ export function PokemonStreamOverlay({
                 {/* Right Column - Character Image */}
                 <div className="character-container__right">
                   <img 
-                    src="/lass/lass-default.png" 
+                    src={avatarImage}
                     alt="Lass Pokemon Trainer" 
                     className="lass-character"
+                    // Add key to force re-animation if needed, or just let src swap
+                    key={avatarImage} 
                   />
                 </div>
               </div>
