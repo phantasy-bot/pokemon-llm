@@ -162,7 +162,32 @@ class ComfyUITTSService:
             # Build ffmpeg filter chain
             filters = []
             
-            # Speed adjustment using atempo (valid range 0.5-2.0, chain multiple for higher)
+            # Pitch adjustment using asetrate + aresample + atempo compensation
+            # asetrate changes both pitch AND speed, so we use atempo to compensate
+            # Formula: asetrate=rate*pitch_factor,aresample=rate,atempo=1/pitch_factor
+            # This shifts pitch by pitch_factor while keeping original tempo
+            if self.audio_pitch != 0:
+                pitch_factor = 2 ** (self.audio_pitch / 12)
+                # asetrate changes sample rate which affects both pitch and speed
+                # aresample brings it back to standard rate
+                # atempo compensates for the speed change (1/pitch_factor cancels out)
+                filters.append(f"asetrate=44100*{pitch_factor:.6f}")
+                filters.append("aresample=44100")
+                # Compensate for tempo change: if pitch went up, tempo also went up, so slow it down
+                tempo_compensation = 1.0 / pitch_factor
+                if abs(tempo_compensation - 1.0) > 0.001:
+                    # Chain multiple atempo if needed (0.5-2.0 range)
+                    comp = tempo_compensation
+                    while comp > 2.0:
+                        filters.append("atempo=2.0")
+                        comp /= 2.0
+                    while comp < 0.5:
+                        filters.append("atempo=0.5")
+                        comp *= 2.0
+                    if abs(comp - 1.0) > 0.001:
+                        filters.append(f"atempo={comp:.6f}")
+            
+            # Speed adjustment using atempo (applied after pitch compensation)
             if self.audio_speed != 1.0:
                 speed = self.audio_speed
                 # atempo only supports 0.5-2.0, so chain multiple if needed
@@ -174,13 +199,6 @@ class ComfyUITTSService:
                     speed *= 2.0
                 if speed != 1.0:
                     filters.append(f"atempo={speed:.4f}")
-            
-            # Pitch adjustment using asetrate + aresample
-            # Pitch in semitones: multiply sample rate by 2^(semitones/12)
-            if self.audio_pitch != 0:
-                pitch_factor = 2 ** (self.audio_pitch / 12)
-                # Use rubberband if available for better quality, otherwise asetrate
-                filters.append(f"asetrate=44100*{pitch_factor:.4f},aresample=44100")
             
             if not filters:
                 return audio_path
