@@ -1,7 +1,7 @@
 .pokemon-card {
   display: flex;
-  gap: 2px; /* Very tight gap */
-  padding: 4px; /* Reduced padding */
+  gap: 1px; /* Tighter gap */
+  padding: 3px; /* Reduced padding */
   background: linear-gradient(
     135deg,
     var(--bg-card) 0%,
@@ -15,10 +15,11 @@
   transition: all var(--transition-fast);
   /* Pokemon card corner style - rounded for friendlier look */
   border-radius: 6px;
-  /* Adaptive height for grid slots */
-  height: auto; /* Allow shrinking/fitting */
-  align-self: center; /* Prevent stretching to fill row */
-  min-height: 0; /* Allow shrinking */
+  /* Compact height */
+  height: auto;
+  align-self: center;
+  min-height: 0;
+  max-height: 28px; /* Constrain card height */
 }
 
 .pokemon-card::before {
