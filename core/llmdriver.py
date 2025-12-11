@@ -2479,6 +2479,40 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             state['lassMarkings'] = lass_marks
             update_payload['lassMarkings'] = lass_marks
 
+        # --- DYNAMIC AVATAR STATE UPDATES ---
+        # Update Battle State (camelCase for frontend)
+        battle_state = current_mGBA_state.get('battle_state')
+        if battle_state:
+            state['inBattle'] = battle_state.get('in_battle', False)
+            state['battleType'] = battle_state.get('battle_type', None)
+            
+            update_payload['inBattle'] = state['inBattle']
+            update_payload['battleType'] = state['battleType']
+            
+            if state['inBattle'] and state['battleType']:
+                 # Only log change to avoid spam
+                if state.get('_last_battle_type') != state['battleType']:
+                    log.info(f"⚔️ Battle State: {state['battleType']}")
+                    state['_last_battle_type'] = state['battleType']
+        
+        # Update Text/Dialog State for Speaking Avatar
+        text_state = current_mGBA_state.get('text_state')
+        if text_state:
+             state['textState'] = text_state
+             update_payload['textState'] = state['textState']
+             
+        # Update Menu State (simple heuristic for now)
+        menu_state = current_mGBA_state.get('menu_state')
+        if menu_state:
+            # If menu item count > 0, we can assume a menu is active? 
+            # Or use explicit flag if available. For now using item count > 0 logic as fallback
+            # But relying on vision might be safer for "inMenu". 
+            # However, memory is faster. Let's send inMenu if item_count > 0 AND text is NOT printing (menus often overlay text)
+            # Actually, let's just pass raw menu state if needed, or set inMenu
+            is_menu = menu_state.get('menu_item_count', 0) > 0
+            state['inMenu'] = is_menu
+            update_payload['inMenu'] = is_menu
+
         # Default: Analysis uses the clean snapshot unless combined
         ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
         UI_IMAGE_PATH = SCREENSHOT_PATH
