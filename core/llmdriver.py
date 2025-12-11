@@ -500,13 +500,22 @@ async def call_llm_with_timeout(state_data: dict,
     loop = asyncio.get_running_loop()
     fn   = functools.partial(llm_stream_action, state_data, llm_timeout, benchmark, cycle_metrics)
 
+    # Use custom executor to avoid blocking default executor on shutdown
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
     try:
         # run blocking LLM code in a thread, wait with an asyncio timeout
-        return await asyncio.wait_for(loop.run_in_executor(None, fn),
+        return await asyncio.wait_for(loop.run_in_executor(executor, fn),
                                       timeout=total_timeout)
     except asyncio.TimeoutError:
         log.error(f"llm_stream_action exceeded {total_timeout}s – skipping cycle.")
+        executor.shutdown(wait=False)
         return None, None, None, None
+    except Exception:
+        executor.shutdown(wait=False)
+        raise
+    finally:
+        executor.shutdown(wait=False)
 
 def summarize_and_reset(benchmark: Benchmark = None, state_data: dict = None):
     """Condenses history, updates system prompt, resets history, accounts for tokens."""
@@ -644,12 +653,18 @@ def summarize_and_reset(benchmark: Benchmark = None, state_data: dict = None):
 
 def next_with_timeout(iterator, timeout: float):
     """Attempt to pull the first chunk from `iterator` within `timeout` seconds."""
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(lambda: next(iterator))
-        try:
-            return future.result(timeout=timeout)
-        except concurrent.futures.TimeoutError:
-            raise TimeoutError(f"No chunk received in {timeout}s")
+    # Use manual executor management to avoid blocking on shutdown if thread hangs
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(lambda: next(iterator))
+    try:
+        return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+        # Don't wait for stuck thread
+        executor.shutdown(wait=False)
+        raise TimeoutError(f"No chunk received in {timeout}s")
+    finally:
+        # Always shutdown, don't wait if it's somehow still running
+        executor.shutdown(wait=False)
 
 
 def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchmark: Benchmark = None, cycle_metrics: dict = None):
@@ -2850,6 +2865,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                              last_map, 
                              list(last_pos) if isinstance(last_pos, tuple) else last_pos
                          )
+                         
+                         # Mark this as a Lass-discovered exit for the minimap overlay
+                         memory_manager.mark_lass_exit(
+                             last_map,
+                             list(last_pos) if isinstance(last_pos, tuple) else last_pos,
+                             destination=current_map,
+                             confidence=0.95 if was_on_o_tile else 0.8
+                         )
             
             # Update history for next loop
             memory_manager.last_map = current_map
@@ -3115,9 +3138,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             commentary_match = re.search(r'<commentary>([\s\S]*?)</commentary>', game_analysis, re.IGNORECASE)
             
             if not commentary_match:
-                # Fallback: various numbered formats: "8. COMMENTARY:", "8. **COMMENTARY**:", "8. COMMENTARY:"
+                # Fallback: various numbered formats: "11. COMMENTARY:", "11. **COMMENTARY**:", etc.
+                # Matches section 7, 8, 9, 10, or 11 (for compatibility with old and new formats)
                 commentary_match = re.search(
-                    r'(?:7\.|8\.)\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\']?(.+?)["\']?(?=\n\d+\.|$|\n\n|</game_analysis>)',
+                    r'(?:7|8|9|10|11)\.\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\'()]?(.+?)["\'()]?(?=\n\d+\.|$|\n\n|</game_analysis>)',
                     game_analysis, 
                     re.IGNORECASE | re.DOTALL
                 )

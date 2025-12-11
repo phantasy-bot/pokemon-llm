@@ -443,6 +443,10 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=N
         if pending_cancellations:
             await asyncio.gather(*pending_cancellations, return_exceptions=True)
 
+        # Graceful save before closing socket
+        if sock:
+             graceful_save_and_exit(sock)
+
         await shutdown_socket(sock, is_async = True)
         await terminate_process(proc, is_async = True)
         log.info("Async cleanup complete.")
@@ -519,8 +523,7 @@ if __name__ == '__main__':
             asyncio.run(main_async(auto=True, max_loops_arg=args.max_loops, selected_mode=selected_mode, persistence=persistence, run_state=run_state))
         except KeyboardInterrupt:
             log.info("KeyboardInterrupt received, stopping async tasks...")
-            # Graceful save on Ctrl+C
-            graceful_save_and_exit(_global_socket)
+            # Socket cleanup is now handled in main_async finally block
         except Exception as e:
             log.critical(f"Critical error in async execution: {e}", exc_info=True)
         finally:

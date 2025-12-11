@@ -26,6 +26,12 @@
   border: 1px solid rgba(255, 105, 180, 0.8);
 }
 
+/* Green color for Lass-discovered exits (distinct from map 'O' tiles) */
+.lass-overlay__marker--E {
+  background-color: rgba(50, 205, 50, 0.7); /* Lime green for Exits */
+  border: 1px solid rgba(34, 139, 34, 0.9);
+}
+
 .lass-overlay__marker-text {
   font-family: var(--font-mono);
   font-size: 10px;

@@ -37,6 +37,7 @@ interface AnalysisPanelProps {
   isProcessing?: boolean;
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
+  debugMode?: boolean;
 }
 
 export function AnalysisPanel({
@@ -45,6 +46,7 @@ export function AnalysisPanel({
   isProcessing = false,
   memoryWrite,
   onMemoryWriteClear,
+  debugMode,
 }: AnalysisPanelProps) {
   // @ts-expect-error - Parameter not used yet
   const _onMemoryWriteClear = onMemoryWriteClear;
