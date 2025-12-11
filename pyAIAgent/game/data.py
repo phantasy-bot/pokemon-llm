@@ -203,6 +203,89 @@ def get_species_map():
         0x15: (151, "Mew", "Psychic", None),
     }
 
+def get_item_map():
+    """
+    Returns a dictionary mapping internal Item IDs (hex) to Item Names.
+    """
+    return {
+        0x01: "Master Ball", 0x02: "Ultra Ball", 0x03: "Great Ball", 0x04: "Poké Ball",
+        0x05: "Town Map", 0x06: "Bicycle", 0x07: "Surfboard", 0x08: "Safari Ball",
+        0x09: "Pokédex", 0x0A: "Moon Stone", 0x0B: "Antidote", 0x0C: "Burn Heal",
+        0x0D: "Ice Heal", 0x0E: "Awakening", 0x0F: "Paralyz Heal", 0x10: "Full Restore",
+        0x11: "Max Potion", 0x12: "Hyper Potion", 0x13: "Super Potion", 0x14: "Potion",
+        0x15: "BoulderBadge", 0x16: "CascadeBadge", 0x17: "ThunderBadge", 0x18: "RainbowBadge",
+        0x19: "SoulBadge", 0x1A: "MarshBadge", 0x1B: "VolcanoBadge", 0x1C: "EarthBadge",
+        0x1D: "Escape Rope", 0x1E: "Repel", 0x1F: "Old Amber", 0x20: "Fire Stone",
+        0x21: "Thunder Stone", 0x22: "Water Stone", 0x23: "HP Up", 0x24: "Protein",
+        0x25: "Iron", 0x26: "Carbos", 0x27: "Calcium", 0x28: "Rare Candy",
+        0x29: "Dome Fossil", 0x2A: "Helix Fossil", 0x2B: "Secret Key", 0x2C: "Unknown",
+        0x2D: "Bike Voucher", 0x2E: "X Accuracy", 0x2F: "Leaf Stone", 0x30: "Card Key",
+        0x31: "Nugget", 0x32: "PP Up", 0x33: "Poké Doll", 0x34: "Full Heal",
+        0x35: "Revive", 0x36: "Max Revive", 0x37: "Grand Special", 0x38: "Super Repel",
+        0x39: "Max Repel", 0x3A: "Dire Hit", 0x3B: "Coin", 0x3C: "Fresh Water",
+        0x3D: "Soda Pop", 0x3E: "Lemonade", 0x3F: "S.S. Ticket", 0x40: "Gold Teeth",
+        0x41: "X Attack", 0x42: "X Defend", 0x43: "X Speed", 0x44: "X Special",
+        0x45: "Coin Case", 0x46: "Oak's Parcel", 0x47: "Itemfinder", 0x48: "Silph Scope",
+        0x49: "Poké Flute", 0x4A: "Lift Key", 0x4B: "Exp. All", 0x4C: "Old Rod",
+        0x4D: "Good Rod", 0x4E: "Super Rod", 0x4F: "PP Up", 0x50: "Ether",
+        0x51: "Max Ether", 0x52: "Elixer", 0x53: "Max Elixer", 0x54: "Floor B2F",
+        0x55: "Floor B1F", 0x56: "Floor 1F", 0x57: "Floor 2F", 0x58: "Floor 3F",
+        0x59: "Floor 4F", 0x5A: "Floor 5F", 0x5B: "Floor 6F", 0x5C: "Floor 7F",
+        0x5D: "Floor 8F", 0x5E: "Floor 9F", 0x5F: "Floor 10F", 0x60: "Floor 11F",
+        0x61: "Floor B4F",
+        0xC4: "HM01", 0xC5: "HM02", 0xC6: "HM03", 0xC7: "HM04", 0xC8: "HM05",
+        0xC9: "TM01", 0xCA: "TM02", 0xCB: "TM03", 0xCC: "TM04", 0xCD: "TM05",
+        0xCE: "TM06", 0xCF: "TM07", 0xD0: "TM08", 0xD1: "TM09", 0xD2: "TM10",
+        0xD3: "TM11", 0xD4: "TM12", 0xD5: "TM13", 0xD6: "TM14", 0xD7: "TM15",
+        0xD8: "TM16", 0xD9: "TM17", 0xDA: "TM18", 0xDB: "TM19", 0xDC: "TM20",
+        0xDD: "TM21", 0xDE: "TM22", 0xDF: "TM23", 0xE0: "TM24", 0xE1: "TM25",
+        0xE2: "TM26", 0xE3: "TM27", 0xE4: "TM28", 0xE5: "TM29", 0xE6: "TM30",
+        0xE7: "TM31", 0xE8: "TM32", 0xE9: "TM33", 0xEA: "TM34", 0xEB: "TM35",
+        0xEC: "TM36", 0xED: "TM37", 0xEE: "TM38", 0xEF: "TM39", 0xF0: "TM40",
+        0xF1: "TM41", 0xF2: "TM42", 0xF3: "TM43", 0xF4: "TM44", 0xF5: "TM45",
+        0xF6: "TM46", 0xF7: "TM47", 0xF8: "TM48", 0xF9: "TM49", 0xFA: "TM50"
+    }
+
+def get_move_map():
+    """
+    Returns a dictionary mapping internal Move IDs (int) to Move Names.
+    """
+    return {
+        1: "Pound", 2: "Karate Chop", 3: "Double Slap", 4: "Comet Punch", 5: "Mega Punch",
+        6: "Pay Day", 7: "Fire Punch", 8: "Ice Punch", 9: "Thunder Punch", 10: "Scratch",
+        11: "Vice Grip", 12: "Guillotine", 13: "Razor Wind", 14: "Swords Dance", 15: "Cut",
+        16: "Gust", 17: "Wing Attack", 18: "Whirlwind", 19: "Fly", 20: "Bind",
+        21: "Slam", 22: "Vine Whip", 23: "Stomp", 24: "Double Kick", 25: "Mega Kick",
+        26: "Jump Kick", 27: "Rolling Kick", 28: "Sand Attack", 29: "Headbutt", 30: "Horn Attack",
+        31: "Fury Attack", 32: "Horn Drill", 33: "Tackle", 34: "Body Slam", 35: "Wrap",
+        36: "Take Down", 37: "Thrash", 38: "Double-Edge", 39: "Tail Whip", 40: "Poison Sting",
+        41: "Twineedle", 42: "Pin Missile", 43: "Leer", 44: "Bite", 45: "Growl",
+        46: "Roar", 47: "Sing", 48: "Supersonic", 49: "Sonic Boom", 50: "Disable",
+        51: "Acid", 52: "Ember", 53: "Flamethrower", 54: "Mist", 55: "Water Gun",
+        56: "Hydro Pump", 57: "Surf", 58: "Ice Beam", 59: "Blizzard", 60: "Psybeam",
+        61: "Bubble Beam", 62: "Aurora Beam", 63: "Hyper Beam", 64: "Peck", 65: "Drill Peck",
+        66: "Submission", 67: "Low Kick", 68: "Counter", 69: "Seismic Toss", 70: "Strength",
+        71: "Absorb", 72: "Mega Drain", 73: "Leech Seed", 74: "Growth", 75: "Razor Leaf",
+        76: "Solar Beam", 77: "Poison Powder", 78: "Stun Spore", 79: "Sleep Powder", 80: "Petal Dance",
+        81: "String Shot", 82: "Dragon Rage", 83: "Fire Spin", 84: "Thunder Shock", 85: "Thunderbolt",
+        86: "Thunder Wave", 87: "Thunder", 88: "Rock Throw", 89: "Earthquake", 90: "Fissure",
+        91: "Dig", 92: "Toxic", 93: "Confusion", 94: "Psychic", 95: "Hypnosis",
+        96: "Meditate", 97: "Agility", 98: "Quick Attack", 99: "Rage", 100: "Teleport",
+        101: "Night Shade", 102: "Mimic", 103: "Screech", 104: "Double Team", 105: "Recover",
+        106: "Harden", 107: "Minimize", 108: "Smokescreen", 109: "Confuse Ray", 110: "Withdraw",
+        111: "Defense Curl", 112: "Barrier", 113: "Light Screen", 114: "Haze", 115: "Reflect",
+        116: "Focus Energy", 117: "Bide", 118: "Metronome", 119: "Mirror Move", 120: "Self-Destruct",
+        121: "Egg Bomb", 122: "Lick", 123: "Smog", 124: "Sludge", 125: "Bone Club",
+        126: "Fire Blast", 127: "Waterfall", 128: "Clamp", 129: "Swift", 130: "Skull Bash",
+        131: "Spike Cannon", 132: "Constrict", 133: "Amnesia", 134: "Kinesis", 135: "Soft-Boiled",
+        136: "High Jump Kick", 137: "Glare", 138: "Dream Eater", 139: "Poison Gas", 140: "Barrage",
+        141: "Leech Life", 142: "Lovely Kiss", 143: "Sky Attack", 144: "Transform", 145: "Bubble",
+        146: "Dizzy Punch", 147: "Spore", 148: "Flash", 149: "Psywave", 150: "Splash",
+        151: "Acid Armor", 152: "Crabhammer", 153: "Explosion", 154: "Fury Swipes", 155: "Bonemerang",
+        156: "Rest", 157: "Rock Slide", 158: "Hyper Fang", 159: "Sharpen", 160: "Conversion",
+        161: "Tri Attack", 162: "Super Fang", 163: "Slash", 164: "Substitute", 165: "Struggle"
+    }
+
 def decode_pokemon_text(raw_bytes: bytes) -> str:
     """
     Decode Pokemon Red/Blue text encoding to ASCII.

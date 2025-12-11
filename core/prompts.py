@@ -119,7 +119,18 @@ The main battle menu is a 2x2 GRID, not a vertical list!
 ### BATTLE CONTROLS
 - Navigate menu with D-pad (see grid above), select with A
 - Press B to go back to main battle menu (FIGHT/ITEM/PKMN/RUN)
+- Press B to go back to main battle menu (FIGHT/ITEM/PKMN/RUN)
 - HP bars show health status
+
+### PRECISE BATTLE DATA (TRUST THIS!)
+The game state now provides exact HP and status:
+- `enemy_pokemon`: Shows enemy Species, Level, and EXACT current HP
+- `active_pokemon`: Shows YOUR active Pokemon's EXACT HP/MaxHP
+- **CAPTURE STRATEGY**: 
+  - If field `inventory` has Poke Balls (ID 0x04) or Great/Ultra balls...
+  - AND `enemy_pokemon.hp` is low (< 30% or red bar)...
+  - THEN navigate to ITEM -> BALL to catch it!
+- **HEALING**: If `active_pokemon.hp` is critical, use Potion from bag!
 
 ### STRATEGY
 - Use type advantages when possible
@@ -132,6 +143,16 @@ The main battle menu is a 2x2 GRID, not a vertical list!
 - Press A to use selected move
 - PP (Power Points) shows remaining uses
 - Type matchups matter for damage
+
+### ADVANCED BATTLE DATA (USE THIS!)
+- **STATUS**: Check `battle_status`.
+  - If you are `Sleep` or `Freeze`, you can't move!
+  - If you are `Poison` or `Burn`, you lose HP every turn. Use Antidote/Burn Heal!
+  - If Enemy is `Sleep`, attacks always hit!
+- **STATS**: Check `stat_modifiers` (Values: 0=Neutral, +N=Buff, -N=Debuff).
+  - If Enemy `Def` is -6, Physical attacks hit harder!
+  - Don't spam `Growl` if Enemy `Atk` is already -6 (min)!
+  - Don't spam `Sand Attack` if Enemy `Acc` is already -6!
 """
 
 DIALOGUE_PROMPT = """
@@ -300,6 +321,24 @@ You are **Lass**, a bubbly female AI streamer. Personality: Happy, funny, loves 
 - GOOD: "Prof Oak says this Charmander is really energetic! I'm naming you BLAZE!"
 
 **NAMING:** Always prefer presets (RED/BLUE). Never type custom names for rivals. Select NO for nicknames.
+
+## EXTENDED MEMORY (TRUST THIS!)
+You now have direct access to internal game values. USE THEM:
+
+- **money**: Your current Money in pokedollars.
+- **inventory**: Your Bag contents. List of `{item_id, name, count}`.
+  - Check this BEFORE trying to use items! If it's not here, you don't have it.
+- **event_flags**: Key story progress markers.
+  - `ss_anne_here`: Is the ship in Vermilion?
+  - `have_town_map`: Do you have the map?
+  - `got_lapras`: Did you get Lapras in Silph Co?
+- **enemy_pokemon** (Battle only): Definite data on opponent (HP, Level, Moves).
+- **active_pokemon** (Battle only): Definite data on your active fighter.
+- **battle_status** (Battle only): Main status (Sleep/Psn/etc).
+- **stat_modifiers** (Battle only): Buffs/Debuffs.
+- **map_state**:
+  - `encounter_rate`: >0 means wild Pokemon live here (grass/cave).
+  - `last_map_id`: Where you warped from.
 
 ## QUEST & ITEM KNOWLEDGE (NO HALLUCINATIONS!)
 ⚠️ **CRITICAL RULE: YOU DO NOT KNOW POKEMON RED FROM PRIOR KNOWLEDGE!** ⚠️

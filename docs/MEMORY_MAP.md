@@ -14,6 +14,25 @@ Documentation of all RAM addresses currently read by the agent.
 | `0xD369` | 1    | Map width (blocks)       | `get_location()`    |
 | `0xC109` | 1    | Player facing direction  | `get_facing()`      |
 | `0xD356` | 1    | Badge flags (8 bits)     | `get_badges_text()` |
+| `0xD347` | 3    | Money (BCD encoded)      | `get_money()`       |
+| `0xD31D` | 1    | Inventory count          | `get_inventory()`   |
+| `0xD31E` | Var  | Inventory items (ID,Qty) | `get_inventory()`   |
+
+### Map Navigation State
+
+| Address  | Size | Description            | Used In           |
+| -------- | ---- | ---------------------- | ----------------- |
+| `0xD365` | 1    | Last Map ID (warp src) | `get_map_state()` |
+| `0xD887` | 1    | Wild Encounter Rate    | `get_map_state()` |
+
+### Event Flags
+
+| Address  | Size | Description             | Used In             |
+| -------- | ---- | ----------------------- | ------------------- |
+| `0xD803` | 1    | SS Anne Here (Bit 0)    | `get_event_flags()` |
+| `0xD5F3` | 1    | Have Town Map?          | `get_event_flags()` |
+| `0xD60D` | 1    | Have Oak's Parcel?      | `get_event_flags()` |
+| `0xD72E` | 1    | Got Lapras in Silph Co? | `get_event_flags()` |
 
 ### Party Data
 
@@ -48,6 +67,23 @@ Documentation of all RAM addresses currently read by the agent.
 | `0xD05A` | 1    | Battle type    | `get_battle_state()` |
 | `0xCCD5` | 1    | Turn count     | `get_battle_state()` |
 | `0xCCDB` | 1    | Move menu type | `get_battle_state()` |
+
+### Detailed Battle Data
+
+| Address  | Size | Description                   | Used In                       |
+| -------- | ---- | ----------------------------- | ----------------------------- |
+| `0xCFE5` | 1    | Enemy Species ID              | `get_enemy_pokemon()`         |
+| `0xCFE6` | 2    | Enemy Current HP (Big Endian) | `get_enemy_pokemon()`         |
+| `0xCFE8` | 1    | Enemy Level                   | `get_enemy_pokemon()`         |
+| `0xCFED` | 4    | Enemy Moves (4 bytes)         | `get_enemy_pokemon()`         |
+| `0xD014` | 1    | Player Active Party Index     | `get_active_battle_pokemon()` |
+| `0xD015` | 2    | Player Active HP (Big Endian) | `get_active_battle_pokemon()` |
+| `0xD022` | 1    | Player Active Level           | `get_active_battle_pokemon()` |
+| `0xD01C` | 4    | Player Active Moves           | `get_active_battle_pokemon()` |
+| `0xD062` | 3    | Player Status Flags           | `get_battle_status_flags()`   |
+| `0xD067` | 3    | Enemy Status Flags            | `get_battle_status_flags()`   |
+| `0xCD1A` | 6    | Player Stat Modifiers         | `get_stat_modifiers()`        |
+| `0xCD2E` | 6    | Enemy Stat Modifiers          | `get_stat_modifiers()`        |
 
 ### Menu State
 

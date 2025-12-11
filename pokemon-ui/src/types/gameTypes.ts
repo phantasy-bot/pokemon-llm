@@ -191,6 +191,12 @@ export interface PokemonGameState {
   // UI State
   inMenu?: boolean;
   menuType?: string;
+  // Text/Dialog State (added for dynamic avatars)
+  textState?: {
+    is_printing: boolean;
+    text_speed: number;
+    text_flags: number;
+  };
 
   // Display
   screenshotUrl?: string;
