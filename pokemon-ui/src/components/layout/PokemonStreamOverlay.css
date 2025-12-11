@@ -740,7 +740,7 @@
   position: relative;
   /* Flex 1 to take all available space, pushing team bar down */
   flex: 1;
-  min-height: 400px; /* Game feed height */
+  min-height: 380px; /* Game feed height */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -890,6 +890,7 @@
 .pokemon-card {
   --type-color: var(--type-normal);
   --type-bg: var(--type-normal-bg);
+  max-height: 26px; /* Compact cards */
 }
 
 .pokemon-card[data-type="Fire"] {
