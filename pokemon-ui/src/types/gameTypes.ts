@@ -150,7 +150,7 @@ export interface PokemonGameState {
   lassMarkings?: Array<{  // Lass's minimap overlay markers
     x: number;
     y: number;
-    type: 'N' | 'O'; // N=NPC, O=Opening/Exit
+    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map), E=Exit (Lass-discovered)
     opacity: number; // 0.0-1.0 (decays over time)
     age_hours?: number;
   }>;

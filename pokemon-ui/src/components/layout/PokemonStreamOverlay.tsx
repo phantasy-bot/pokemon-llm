@@ -11,37 +11,7 @@ import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
 import "./PokemonStreamOverlay.css";
 
 // Typewriter text component - fixed speed per character (kept as fallback)
-function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
-  const [displayedText, setDisplayedText] = useState("");
-  const timeoutRef = useRef<number | null>(null);
-  const indexRef = useRef(0);
 
-  useEffect(() => {
-    // Reset on new text
-    setDisplayedText("");
-    indexRef.current = 0;
-
-    if (!text) return;
-
-    const typeNextChar = () => {
-      if (indexRef.current < text.length) {
-        setDisplayedText(text.slice(0, indexRef.current + 1));
-        indexRef.current++;
-        timeoutRef.current = window.setTimeout(typeNextChar, speed);
-      }
-    };
-
-    typeNextChar();
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [text, speed]);
-
-  return <>{displayedText}</>;
-}
 
 // Animated ellipsis placeholder: '' -> '.' -> '..' -> '...' -> '' -> ...
 function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
@@ -72,13 +42,18 @@ function SyncedTypewriterText({
   const [displayedText, setDisplayedText] = useState("");
   const timeoutRef = useRef<number | null>(null);
   const indexRef = useRef(0);
-  const startTimeRef = useRef<number>(0);
+  // Use ref to avoid re-triggering useEffect when callback changes
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep ref in sync with prop
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Reset and start animation
     setDisplayedText("");
     indexRef.current = 0;
-    startTimeRef.current = performance.now();
 
     if (!text || !durationMs) {
       setDisplayedText(text || "");
@@ -96,8 +71,8 @@ function SyncedTypewriterText({
         indexRef.current++;
         timeoutRef.current = window.setTimeout(typeNextChar, charDelayMs);
       } else {
-        // Animation complete
-        onComplete?.();
+        // Animation complete - call via ref
+        onCompleteRef.current?.();
       }
     };
 
@@ -108,7 +83,7 @@ function SyncedTypewriterText({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [text, durationMs, onComplete]);
+  }, [text, durationMs]); // Removed onComplete from deps - using ref instead
 
   return <>{displayedText}</>;
 }
@@ -227,18 +202,50 @@ export function PokemonStreamOverlay({
   ttsCommentary,
   onTtsCommentaryComplete,
 }: PokemonStreamOverlayProps) {
+  // Walking animation state
+  const [walkingFrame, setWalkingFrame] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setWalkingFrame(prev => prev === 1 ? 2 : 1);
+    }, 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Extract Pokemon data from game state
+  const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
+    (p: Pokemon) => ({
+      id: p.id,
+      name: p.name,
+      nickname: p.nickname,
+      level: p.level,
+      type: p.type,
+      type2: p.type2,
+      hp: p.hp,
+      maxHp: p.maxHp,
+      hpPercent: p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 0,
+      hpStatus: (p.hp <= 0
+        ? "critical"
+        : p.hp < p.maxHp * 0.3
+          ? "wounded"
+          : "healthy") as "healthy" | "wounded" | "critical",
+      isFainted: p.hp <= 0,
+      status: p.status,
+    }),
+  );
+
   // --- DYNAMIC AVATAR LOGIC ---
   const getAvatarImage = (): string => {
     // 1. High Priority: Stressed/Low Health (only if active pokemon is critical)
-    const activePokemon = gameState.currentTeam?.[0];
+    const activePokemon = currentPokemon?.[0];
     if (activePokemon && activePokemon.hpStatus === "critical") {
       return "/lass/lass-stressed.png";
     }
 
     // 2. Battle States
-    // gameState.battle_type usually contains "wild", "trainer", "gym"
-    // Using string matching on the battle description or type
-    if (gameState.inBattle || (gameState.battleType && gameState.battleType !== "none")) {
+    // STRICT CHECK: Must be inBattle. battleType can be 'wild', 'trainer', etc.
+    // We ignore cases where battleType is set but inBattle is false (stale data/default 0 value)
+    if (gameState.inBattle) {
       const bType = (gameState.battleType || "").toLowerCase();
       
       if (bType.includes("gym") || bType.includes("leader") || bType.includes("elite")) {
@@ -250,27 +257,26 @@ export function PokemonStreamOverlay({
       if (bType.includes("wild")) {
         return "/lass/lass-battle-wild.png";
       }
-      if (bType.includes("victory") || bType.includes("defeat")) { // Victory states often marked this way
+      if (bType.includes("victory") || bType.includes("defeat")) { 
          return "/lass/lass-victory.png";
       }
       // Default battle fallback
       return "/lass/lass-battle-wild.png";
     }
 
-    // 3. Dialog State (New Phase 2)
-    // If text is printing and we are NOT in battle (to avoid overriding battle intensity), show speaking avatar
+    // 3. Dialog State
+    // If text is printing and we are NOT in battle, show speaking avatar
     if (gameState.textState?.is_printing) {
       return "/lass/lass-speech.png";
     }
 
     // 4. Menu State
-    if (gameState.inMenu) { // Fixed from menuOpen to match interface
+    if (gameState.inMenu) { 
       return "/lass/lass-menu.png";
     }
 
-    // 5. Default State (Overworld/Exploration)
-    // Using walking avatar for general gameplay instead of static default
-    return "/lass/lass-walking.png";
+    // 5. Default State (Overworld/Exploration) -> Animated
+    return `/lass/lass-walking-${walkingFrame}.png`;
   };
 
   const avatarImage = getAvatarImage();
@@ -310,27 +316,7 @@ export function PokemonStreamOverlay({
     };
   }, []);
 
-  // Extract Pokemon data from game state
-  const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
-    (p: Pokemon) => ({
-      id: p.id,
-      name: p.name,
-      nickname: p.nickname,
-      level: p.level,
-      type: p.type,
-      type2: p.type2,
-      hp: p.hp,
-      maxHp: p.maxHp,
-      hpPercent: p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 0,
-      hpStatus: (p.hp <= 0
-        ? "critical"
-        : p.hp < p.maxHp * 0.3
-          ? "wounded"
-          : "healthy") as "healthy" | "wounded" | "critical",
-      isFainted: p.hp <= 0,
-      status: p.status,
-    }),
-  );
+
   const badges = gameState.badges || [];
   const location = gameState.minimapLocation || "Unknown Area";
 
@@ -531,6 +517,7 @@ export function PokemonStreamOverlay({
                       {ttsCommentary?.playing ? (
                         // State 1: TTS is playing - show synced typewriter
                         <SyncedTypewriterText 
+                          key={ttsCommentary.text} // Force remount on new text
                           text={ttsCommentary.text} 
                           durationMs={ttsCommentary.duration_ms}
                           onComplete={() => handleTtsComplete(ttsCommentary.text)}

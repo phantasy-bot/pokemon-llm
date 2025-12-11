@@ -31,6 +31,11 @@ function getPokemonSpriteUrl(name: string): string {
 export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
   const faintedClass = pokemon.isFainted ? "fainted" : "";
   const spriteUrl = getPokemonSpriteUrl(pokemon.name);
+  
+  // Build type string for header bar
+  const typeText = pokemon.type2 
+    ? `${pokemon.type} / ${pokemon.type2}` 
+    : pokemon.type;
 
   return (
     <div
@@ -42,6 +47,11 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
           : `linear-gradient(to bottom, rgba(255,255,255,0.15), ${getPokemonTypeColor(pokemon.type)})`,
       }}
     >
+      {/* Header bar with type badge centered */}
+      <div className="pokemon-card__header-bar">
+        <span className="pokemon-card__type-text">{typeText}</span>
+      </div>
+      
       <div className="pokemon-card__info">
         <div className="pokemon-card__header">
           {/* Sprite now on left of name */}
@@ -59,16 +69,6 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
           <span className="pokemon-card__name">
             {pokemon.nickname || pokemon.name}
           </span>
-          
-          {/* Types next to name */}
-          <div className="pokemon-card__type-row">
-            <span className="pokemon-card__type">{pokemon.type}</span>
-            {pokemon.type2 && (
-              <span className="pokemon-card__type pokemon-card__type--secondary">
-                {pokemon.type2}
-              </span>
-            )}
-          </div>
 
           {/* Level pushed to right */}
           <span className="pokemon-card__level">Lv.{pokemon.level}</span>
@@ -85,8 +85,6 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
             />
           </div>
         </div>
-
-        {/* Removed bottom row as requested */}
 
         {/* Status condition display */}
         {pokemon.status && pokemon.status !== "None" && (

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import "./RecentActions.css";
 
@@ -5,6 +6,9 @@ interface RecentActionsProps {
   logs: LogEntry[];
   totalActions: number;
 }
+
+const MAX_VISIBLE_KEYS = 5;
+const SCROLL_INTERVAL_MS = 500; // Match the flash animation delay
 
 export function RecentActions({ logs, totalActions }: RecentActionsProps) {
   const actionEntries = logs.filter((log) => log.is_action).slice(0, 3);
@@ -55,6 +59,50 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
     }
   }
 
+  // Track scroll offset for latest action overflow animation
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const latestActionId = actionEntries[0]?.id;
+  
+  // Get keys for latest action to check if we need scrolling
+  const latestItem = numberedItems[2]; // Latest is always at index 2
+  const latestKeys = latestItem ? (() => {
+    const rawText = latestItem.action.text || latestItem.action.message || "";
+    const cleanText = rawText.replace("Action:", "").trim();
+    return cleanText.split(";").map((k: string) => k.trim()).filter((k: string) => k).map((k: string) => {
+      const upper = k.toUpperCase();
+      if (upper === "U") return "↑";
+      if (upper === "D") return "↓";
+      if (upper === "L") return "←";
+      if (upper === "R") return "→";
+      if (upper === "START") return "S";
+      if (upper === "SELECT") return "SEL";
+      return upper;
+    });
+  })() : [];
+  
+  const hasOverflow = latestKeys.length > MAX_VISIBLE_KEYS;
+  
+  // Reset scroll offset when new action arrives
+  useEffect(() => {
+    setScrollOffset(0);
+  }, [latestActionId]);
+  
+  // Auto-scroll through overflow keys on the latest action
+  useEffect(() => {
+    if (!hasOverflow) return;
+    
+    const maxOffset = latestKeys.length - MAX_VISIBLE_KEYS;
+    
+    const timer = setInterval(() => {
+      setScrollOffset(prev => {
+        if (prev >= maxOffset) return prev; // Stop at end
+        return prev + 1;
+      });
+    }, SCROLL_INTERVAL_MS);
+    
+    return () => clearInterval(timer);
+  }, [hasOverflow, latestKeys.length, latestActionId]);
+
   return (
     <div className="recent-actions">
       <span className="recent-actions__label">RECENT ACTIONS</span>
@@ -71,17 +119,37 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
             
             const rawText = action.text || action.message || "";
             const cleanText = rawText.replace("Action:", "").trim();
-            const keys = cleanText.split(";").map((k: string) => k.trim()).filter((k: string) => k).map((k: string) => {
+            const allKeys = cleanText.split(";").map((k: string) => k.trim()).filter((k: string) => k).map((k: string) => {
               const upper = k.toUpperCase();
+              // Convert movement keys to arrow icons
+              if (upper === "U") return "↑";
+              if (upper === "D") return "↓";
+              if (upper === "L") return "←";
+              if (upper === "R") return "→";
               if (upper === "START") return "S";
               if (upper === "SELECT") return "SEL";
               return upper;
             });
-            if (keys.length === 0 && cleanText) keys.push(cleanText.charAt(0));
-
+            if (allKeys.length === 0 && cleanText) allKeys.push(cleanText.charAt(0));
 
             // Check if this is the most recent action
             const isLatest = action.id === actionEntries[0]?.id;
+            
+            // Apply visibility window for overflow
+            let visibleKeys = allKeys;
+            let showOverflowIndicator = false;
+            
+            if (allKeys.length > MAX_VISIBLE_KEYS) {
+              if (isLatest) {
+                // For latest action, use scroll offset
+                visibleKeys = allKeys.slice(scrollOffset, scrollOffset + MAX_VISIBLE_KEYS);
+                showOverflowIndicator = scrollOffset + MAX_VISIBLE_KEYS < allKeys.length;
+              } else {
+                // For older actions, just show first 5 with indicator
+                visibleKeys = allKeys.slice(0, MAX_VISIBLE_KEYS);
+                showOverflowIndicator = true;
+              }
+            }
 
             return (
               <div key={action.id} className="recent-actions__item">
@@ -89,15 +157,20 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
                   {numberLabel}
                 </span>
                 <div className="recent-actions__group">
-                  {keys.map((k: string, idx: number) => (
+                  {visibleKeys.map((k: string, idx: number) => (
                     <div 
-                      key={idx} 
+                      key={`${scrollOffset}-${idx}`} 
                       className={`recent-actions__square ${isLatest ? 'flash' : ''}`}
                       style={isLatest ? { animationDelay: `${idx * 0.5}s` } : undefined}
                     >
                       {k}
                     </div>
                   ))}
+                  {showOverflowIndicator && (
+                    <div className="recent-actions__square recent-actions__square--overflow">
+                      ⋯
+                    </div>
+                  )}
                 </div>
               </div>
             );

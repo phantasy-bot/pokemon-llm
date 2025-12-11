@@ -3,7 +3,7 @@ import './LassMinimapOverlay.css';
 interface LassMarking {
   x: number;
   y: number;
-  type: 'N' | 'O';
+  type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
   opacity: number;
   age_hours?: number;
 }
@@ -13,9 +13,19 @@ interface LassMinimapOverlayProps {
   gridSize?: { width: number; height: number }; // Minimap grid dimensions (default 21x19)
 }
 
+// Helper to get human-readable marker name
+function getMarkerLabel(type: 'N' | 'O' | 'E'): string {
+  switch (type) {
+    case 'N': return 'NPC';
+    case 'O': return 'Opening';
+    case 'E': return 'Exit';
+    default: return type;
+  }
+}
+
 /**
  * Translucent overlay showing Lass's markings on the minimap.
- * N = NPC (pink), O = Opening/Exit (pink)
+ * N = NPC (pink), O = Opening/Exit from map data (pink), E = Lass-discovered Exit (distinct color)
  * Opacity fades as markings age/decay.
  * Uses percentage-based positioning to match the image exactly.
  */
@@ -47,7 +57,7 @@ export function LassMinimapOverlay({
               height: `${heightPct}%`,
               opacity: mark.opacity,
             }}
-            title={`${mark.type === 'N' ? 'NPC' : 'Opening'} at (${mark.x}, ${mark.y})${mark.age_hours ? ` - ${mark.age_hours}h ago` : ''}`}
+            title={`${getMarkerLabel(mark.type)} at (${mark.x}, ${mark.y})${mark.age_hours ? ` - ${mark.age_hours}h ago` : ''}`}
           >
             <span className="lass-overlay__marker-text">{mark.type}</span>
           </div>

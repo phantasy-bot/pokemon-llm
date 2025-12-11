@@ -62,6 +62,14 @@
   align-items: center;
   gap: 4px;
   min-width: 0;
+  padding: 0 var(--space-md);
+  /* Border between columns - same style as team/minimap separator */
+  border-right: 1px solid rgba(208, 202, 200, 0.5);
+}
+
+/* Remove border from last item in each row */
+.recent-actions__item:nth-child(3n) {
+  border-right: none;
 }
 
 .recent-actions__number {
@@ -122,4 +130,14 @@
 
 .recent-actions__square.flash {
   animation: flash-action 0.5s ease-out forwards;
+}
+
+/* Overflow indicator - subtle style */
+.recent-actions__square--overflow {
+  background: transparent;
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 14px;
+  box-shadow: none;
+  opacity: 0.6;
 }

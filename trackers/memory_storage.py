@@ -474,7 +474,7 @@ class MemoryManager:
         Args:
             map_name: Name of the map
             coords: [x, y] coordinates
-            marking_type: "N" for NPC, "O" for Opening/Exit
+            marking_type: "N" for NPC, "O" for Opening (map tile), "E" for Exit (Lass-discovered)
             confidence: Initial confidence (0.0-1.0)
         
         Returns:
@@ -551,8 +551,25 @@ class MemoryManager:
     
     def mark_exit_discovered(self, map_name: str, coords: List[int], 
                               confidence: float = 0.8) -> None:
-        """Convenience method to mark an exit/opening location."""
+        """Convenience method to mark an exit/opening location (map tile 'O')."""
         self.add_lass_marking(map_name, coords, "O", confidence=confidence)
+    
+    def mark_lass_exit(self, map_name: str, coords: List[int], 
+                       destination: str = "", confidence: float = 0.9) -> None:
+        """
+        Mark an exit that Lass has discovered through gameplay experience.
+        These are exits that may not be visible on the minimap as 'O' tiles
+        but have been confirmed to lead somewhere (e.g., walking off map edge).
+        
+        Args:
+            map_name: Current map name
+            coords: [x, y] coordinates of the exit
+            destination: Optional destination map name
+            confidence: How confident we are (higher = more verified)
+        """
+        self.add_lass_marking(map_name, coords, "E", confidence=confidence)
+        log.info(f"🚪 Lass discovered exit at {map_name} {coords}" + 
+                 (f" → {destination}" if destination else ""))
     
     def should_trust_transition(self, from_map: str, from_pos: List[int], 
                                  to_map: str, to_pos: List[int],
@@ -1218,10 +1235,10 @@ class MemoryManager:
         if not analysis_text:
             return memories
             
-        # Look for section 10
-        # Matches: 10. **MEMORY_WRITE**: content... (until next section or end)
+        # Look for section 10 or 12 (both formats supported)
+        # Matches: 10. **MEMORY_WRITE**: content... OR 12. **MEMORY_WRITE**: content...
         # Handle optional bolding: 10. MEMORY_WRITE: or 10. **MEMORY_WRITE**:
-        match = re.search(r'10\.\s*(?:\*\*)?MEMORY_WRITE(?:\*\*)?:\s*(.*?)(?:\n\d+\.|\n<|<|\Z)', analysis_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(r'(?:10|12)\.\s*(?:\*\*)?MEMORY_WRITE(?:\*\*)?:\s*(.*?)(?:\n\d+\.|\n<|<|\Z)', analysis_text, re.DOTALL | re.IGNORECASE)
         
         if match:
             content = match.group(1).strip()
