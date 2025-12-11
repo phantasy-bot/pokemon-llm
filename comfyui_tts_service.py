@@ -207,7 +207,10 @@ class ComfyUITTSService:
             return False
     
     def load_workflow(self) -> Optional[dict]:
-        """Load the TTS workflow template from file."""
+        """
+        Load the TTS workflow template from file.
+        Converts ComfyUI export format (nodes array) to API format (prompt dict).
+        """
         if self._workflow_template:
             return self._workflow_template
         
@@ -217,77 +220,175 @@ class ComfyUITTSService:
         
         try:
             with open(self.workflow_path, 'r') as f:
-                self._workflow_template = json.load(f)
+                raw_workflow = json.load(f)
             log.info(f"Loaded TTS workflow from: {self.workflow_path}")
+            
+            # Check if this is export format (has 'nodes' array) vs API format (has 'prompt' dict)
+            if "nodes" in raw_workflow:
+                # Convert from export format to API format
+                api_format = self._convert_export_to_api_format(raw_workflow)
+                self._workflow_template = api_format
+                log.info(f"Converted workflow from export format to API format ({len(api_format)} nodes)")
+            else:
+                self._workflow_template = raw_workflow
+            
             return self._workflow_template
         except Exception as e:
             log.error(f"Failed to load TTS workflow: {e}")
             return None
     
+    def _convert_export_to_api_format(self, export_workflow: dict) -> dict:
+        """
+        Convert ComfyUI export format (nodes array) to API prompt format (dict of node dicts).
+        
+        Export format has:
+        - "nodes": [{"id": 1, "type": "NodeType", "widgets_values": [...], "inputs": [...]}]
+        - "links": [[link_id, from_node, from_slot, to_node, to_slot, type]]
+        
+        API format expects:
+        - {"1": {"class_type": "NodeType", "inputs": {...}}}
+        """
+        nodes = export_workflow.get("nodes", [])
+        links = export_workflow.get("links", [])
+        
+        # Build link lookup: (to_node_id, to_slot_idx) -> (from_node_id, from_slot_idx)
+        link_map = {}
+        for link in links:
+            if len(link) >= 5:
+                link_id, from_node, from_slot, to_node, to_slot, *_ = link
+                link_map[link_id] = (from_node, from_slot)
+        
+        api_prompt = {}
+        
+        for node in nodes:
+            node_id = str(node.get("id"))
+            node_type = node.get("type")
+            
+            # Skip Note nodes - they're not part of the execution graph
+            if node_type == "Note":
+                continue
+            
+            # Build inputs dict from connected links and widget values
+            inputs = {}
+            
+            # Get connected inputs from links
+            node_inputs = node.get("inputs", [])
+            for input_def in node_inputs:
+                input_name = input_def.get("name")
+                link_id = input_def.get("link")
+                if link_id and link_id in link_map:
+                    from_node, from_slot = link_map[link_id]
+                    inputs[input_name] = [str(from_node), from_slot]
+            
+            # Store widget values for later text injection
+            # For ChatterboxTTS: widgets_values is [model, text, max_len, cfg_temp, temp, top_p, top_k, ...]
+            widget_values = node.get("widgets_values", [])
+            
+            # Map widget values to input names based on node type
+            if node_type == "ChatterboxTTS":
+                # Server's current ChatterboxTTS required inputs (from /object_info):
+                # model_pack_name, text, max_new_tokens, flow_cfg_scale, exaggeration, 
+                # temperature, cfg_weight, repetition_penalty, min_p, top_p, seed, use_watermark
+                # Optional: audio_prompt
+                
+                # Use server's default values to ensure compatibility
+                chatterbox_defaults = {
+                    "model_pack_name": "resembleai_default_voice",
+                    "text": "Hello, this is a test of Chatterbox TTS.",
+                    "max_new_tokens": 1000,
+                    "flow_cfg_scale": 0.7,
+                    "exaggeration": 0.5,
+                    "temperature": 0.8,
+                    "cfg_weight": 0.5,
+                    "repetition_penalty": 1.2,
+                    "min_p": 0.05,
+                    "top_p": 1.0,
+                    "seed": 0,
+                    "use_watermark": False
+                }
+                
+                # Start with defaults
+                inputs.update(chatterbox_defaults)
+                
+                # Try to map old widget values if present
+                # Old format: [model, text, max_len, cfg_temp, temp, top_p, top_k, exaggeration, speed, seed, ...]
+                if len(widget_values) >= 2:
+                    if isinstance(widget_values[0], str):
+                        inputs["model_pack_name"] = widget_values[0]
+                    if isinstance(widget_values[1], str):
+                        inputs["text"] = widget_values[1]
+            elif node_type == "LoadAudio":
+                # LoadAudio: audio file path
+                if widget_values:
+                    inputs["audio"] = widget_values[0]
+            elif node_type == "SaveAudio":
+                # SaveAudio: filename_prefix
+                if widget_values:
+                    inputs["filename_prefix"] = widget_values[0]
+            
+            api_prompt[node_id] = {
+                "class_type": node_type,
+                "inputs": inputs
+            }
+        
+        return api_prompt
+    
     def _prepare_workflow(self, text: str, workflow: dict = None) -> dict:
         """
         Prepare the workflow with the given text input.
         
-        This method should be customized based on your specific TTS workflow.
-        It looks for common TTS node patterns and injects the text.
+        For ChatterboxTTS: injects text into the 'text' field of ChatterboxTTS nodes.
         
         Args:
             text: Text to synthesize
             workflow: Workflow template (uses cached if not provided)
         
         Returns:
-            Modified workflow dict ready for execution
+            Modified workflow dict ready for execution (wrapped in {"prompt": ...})
         """
         if workflow is None:
             workflow = self.load_workflow()
         
         if workflow is None:
-            # Create a minimal default workflow structure
-            # This should be customized for your specific ComfyUI TTS setup
-            log.warning("No workflow template - using placeholder. Configure COMFYUI_TTS_WORKFLOW.")
-            return {
-                "prompt": {
-                    "1": {
-                        "class_type": "CLIPTextEncode",
-                        "inputs": {
-                            "text": text
-                        }
-                    }
-                }
-            }
+            log.warning("No workflow template - TTS cannot proceed.")
+            return None
         
         # Deep copy to avoid modifying the template
         import copy
         prepared = copy.deepcopy(workflow)
         
-        # Common patterns for TTS nodes - try to find and update text input
-        # This handles various TTS node naming conventions
+        # Text injection patterns for various TTS nodes
         text_input_keys = [
             "text", "input_text", "prompt", "tts_text", 
             "speech_text", "content", "message"
         ]
         
-        # Search through nodes for text input fields
-        if "prompt" in prepared:
-            nodes = prepared["prompt"]
-        else:
-            nodes = prepared
-        
         text_injected = False
-        for node_id, node_data in nodes.items():
+        for node_id, node_data in prepared.items():
             if isinstance(node_data, dict):
+                class_type = node_data.get("class_type", "")
                 inputs = node_data.get("inputs", {})
-                for key in text_input_keys:
-                    if key in inputs:
-                        inputs[key] = text
+                
+                # Inject text into ChatterboxTTS or similar TTS nodes
+                if "TTS" in class_type or "Chatterbox" in class_type:
+                    if "text" in inputs:
+                        inputs["text"] = text
                         text_injected = True
-                        log.debug(f"Injected text into node {node_id}, field {key}")
-                        break
+                        log.debug(f"Injected text into {class_type} node {node_id}")
+                else:
+                    # Try generic text input keys
+                    for key in text_input_keys:
+                        if key in inputs and isinstance(inputs[key], str):
+                            inputs[key] = text
+                            text_injected = True
+                            log.debug(f"Injected text into node {node_id}, field {key}")
+                            break
         
         if not text_injected:
             log.warning("Could not find text input field in workflow. TTS may not work correctly.")
         
-        return prepared
+        # Return in API format
+        return {"prompt": prepared}
     
     async def queue_tts(
         self,
@@ -374,13 +475,17 @@ class ComfyUITTSService:
         # Prepare workflow
         workflow = self._prepare_workflow(text)
         
+        if workflow is None:
+            log.error("Failed to prepare TTS workflow")
+            return None
+        
         try:
             client = await self._get_client()
             
-            # Queue the workflow
+            # Queue the workflow - _prepare_workflow already returns {"prompt": ...} format
             prompt_response = await client.post(
                 f"{self.base_url}/prompt",
-                json={"prompt": workflow.get("prompt", workflow)}
+                json=workflow
             )
             
             if prompt_response.status_code != 200:
@@ -411,7 +516,7 @@ class ComfyUITTSService:
         max_wait: float = 60.0
     ) -> Optional[str]:
         """
-        Wait for a ComfyUI workflow to complete and get output.
+        Wait for a ComfyUI workflow to complete and download the output audio.
         
         Args:
             prompt_id: The prompt ID to monitor
@@ -419,7 +524,7 @@ class ComfyUITTSService:
             max_wait: Maximum seconds to wait
         
         Returns:
-            Path to output audio file, or None if failed/timeout.
+            Path to downloaded audio file, or None if failed/timeout.
         """
         client = await self._get_client()
         start_time = time.time()
@@ -436,30 +541,42 @@ class ComfyUITTSService:
                     
                     if prompt_id in history:
                         prompt_history = history[prompt_id]
+                        outputs = prompt_history.get("outputs", {})
                         
-                        # Check if completed
-                        if prompt_history.get("status", {}).get("completed", False):
-                            # Get outputs
-                            outputs = prompt_history.get("outputs", {})
+                        # Check if we have outputs (indicates completion)
+                        if outputs:
+                            log.debug(f"Workflow completed, outputs: {list(outputs.keys())}")
                             
-                            # Look for audio output
+                            # Look for audio output in any node
                             for node_id, node_output in outputs.items():
-                                if "audio" in node_output or "audios" in node_output:
-                                    audio_data = node_output.get("audio") or node_output.get("audios", [{}])[0]
+                                # Handle both 'audio' and 'audios' keys
+                                audio_list = node_output.get("audio") or node_output.get("audios", [])
+                                if not isinstance(audio_list, list):
+                                    audio_list = [audio_list]
+                                
+                                for audio_data in audio_list:
                                     if isinstance(audio_data, dict):
                                         filename = audio_data.get("filename")
                                         subfolder = audio_data.get("subfolder", "")
+                                        audio_type = audio_data.get("type", "output")
+                                        
                                         if filename:
-                                            return os.path.join(self.output_dir, subfolder, filename)
+                                            # Download the audio file from ComfyUI server
+                                            local_path = await self._download_audio(
+                                                filename, subfolder, audio_type
+                                            )
+                                            if local_path:
+                                                return local_path
                             
-                            # No audio found in outputs, check for completion anyway
-                            log.warning("Workflow completed but no audio output found")
+                            # No audio found in outputs
+                            log.warning(f"Workflow completed but no audio output found. Outputs: {outputs}")
                             return None
                         
-                        # Check for error
-                        status_messages = prompt_history.get("status", {}).get("status_str", "")
-                        if "error" in status_messages.lower():
-                            log.error(f"Workflow error: {status_messages}")
+                        # Check for error status
+                        status_info = prompt_history.get("status", {})
+                        if status_info.get("status_str") == "error":
+                            messages = status_info.get("messages", [])
+                            log.error(f"Workflow error: {messages}")
                             return None
                 
                 await asyncio.sleep(poll_interval)
@@ -470,6 +587,57 @@ class ComfyUITTSService:
         
         log.warning(f"Timeout waiting for workflow {prompt_id}")
         return None
+    
+    async def _download_audio(
+        self,
+        filename: str,
+        subfolder: str = "",
+        file_type: str = "output"
+    ) -> Optional[str]:
+        """
+        Download audio file from ComfyUI server.
+        
+        Args:
+            filename: Name of the audio file
+            subfolder: Subfolder within output directory
+            file_type: 'output' or 'input'
+        
+        Returns:
+            Local path to downloaded file, or None if failed.
+        """
+        try:
+            client = await self._get_client()
+            
+            # Build download URL
+            params = {
+                "filename": filename,
+                "type": file_type
+            }
+            if subfolder:
+                params["subfolder"] = subfolder
+            
+            download_url = f"{self.base_url}/view"
+            log.info(f"Downloading audio from ComfyUI: {filename}")
+            
+            response = await client.get(download_url, params=params)
+            
+            if response.status_code == 200:
+                # Save to local output directory
+                local_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+                local_path = os.path.join(self.output_dir, local_filename)
+                
+                with open(local_path, 'wb') as f:
+                    f.write(response.content)
+                
+                log.info(f"Downloaded audio to: {local_path}")
+                return local_path
+            else:
+                log.error(f"Failed to download audio: HTTP {response.status_code}")
+                return None
+                
+        except Exception as e:
+            log.error(f"Error downloading audio: {e}")
+            return None
     
     async def clear_queue(self):
         """Clear all pending TTS requests."""
