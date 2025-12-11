@@ -2517,6 +2517,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log_action_text = f"Action: {action}"
             log.info(f"LLM proposed action: {action}")
             try:
+                # Wait for any current TTS commentary to finish before pressing buttons
+                # This makes the stream more coherent - commentary completes, then action
+                if tts_service and tts_service.is_available:
+                    log.info("⏳ Waiting for TTS playback to complete before action...")
+                    await tts_service.wait_for_playback(timeout=15.0)  # Wait up to 15s for speech
+                    log.info("✅ TTS complete, sending action")
+                
                 # Wait 1s before sending action to let game state settle
                 time.sleep(1)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
