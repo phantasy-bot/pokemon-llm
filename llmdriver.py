@@ -2935,19 +2935,33 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         # TTS COMMENTARY PLAYBACK (at end of cycle, before chat responses)
         # ═══════════════════════════════════════════════════════════════════════════
         commentary_text = None
+        tts_start_time = time.time()
+        
+        log.info(f"🔊 TTS Check: game_analysis={'Yes' if game_analysis else 'No'}, tts_available={tts_service.is_available}")
+        
         if game_analysis and tts_service.is_available:
             # Extract commentary from the LLM response
+            # Handle various formats: "8. COMMENTARY:", "8. **COMMENTARY**:", "8. COMMENTARY:"
             commentary_match = re.search(
-                r'(?:7\.|8\.)\s*COMMENTARY[^\n]*\n\s*[-–•]?\s*(.+?)(?=\n\d+\.|$|\n\n|</game_analysis>)',
+                r'(?:7\.|8\.)\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\']?(.+?)["\']?(?=\n\d+\.|$|\n\n|</game_analysis>)',
                 game_analysis, 
                 re.IGNORECASE | re.DOTALL
             )
+            
+            log.info(f"🔊 TTS Regex Match: {'Found' if commentary_match else 'No match'}")
+            if commentary_match:
+                log.debug(f"🔊 TTS Raw match: {commentary_match.group(0)[:100]}...")
+            
             if commentary_match:
                 commentary_text = commentary_match.group(1).strip()
                 # Clean up the commentary
                 commentary_text = re.sub(r'^[-–•]\s*', '', commentary_text)
                 commentary_text = re.sub(r'\n.*$', '', commentary_text)  # Take first line only
                 commentary_text = commentary_text.strip()
+                # Remove surrounding quotes if present
+                commentary_text = commentary_text.strip('"\'')
+                
+                log.info(f"🔊 TTS Extracted commentary ({len(commentary_text)} chars): {commentary_text[:100]}...")
                 
                 if commentary_text and len(commentary_text) > 5:
                     log.info(f"🔊 Playing TTS for commentary: {commentary_text[:50]}...")
@@ -2964,13 +2978,27 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                     
                     # Synthesize and play the commentary audio (don't wait - play in background)
                     try:
-                        asyncio.create_task(tts_service.synthesize_and_play(
+                        tts_task = asyncio.create_task(tts_service.synthesize_and_play(
                             commentary_text,
                             priority=tts_service.PRIORITY_COMMENTARY,
                             wait=True
                         ))
+                        log.info(f"🔊 TTS Task created, running in background")
                     except Exception as tts_err:
-                        log.warning(f"TTS commentary playback error: {tts_err}")
+                        log.warning(f"🔊 TTS commentary playback error: {tts_err}")
+                else:
+                    log.info(f"🔊 TTS Skipped: Commentary too short ({len(commentary_text)} chars)")
+            else:
+                # Log a sample of the game_analysis to help debug regex
+                log.info(f"🔊 TTS No commentary found. Looking for pattern in: ...{game_analysis[-500:]}...")
+        else:
+            if not game_analysis:
+                log.info("🔊 TTS Skipped: No game_analysis available")
+            if not tts_service.is_available:
+                log.info("🔊 TTS Skipped: TTS service not available")
+        
+        tts_check_time = time.time() - tts_start_time
+        log.info(f"🔊 TTS Check completed in {tts_check_time:.2f}s")
         
         # ═══════════════════════════════════════════════════════════════════════════
         # TWITCH CHAT RESPONSE PROCESSING (during wait period)
