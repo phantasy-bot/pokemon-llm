@@ -228,11 +228,11 @@ export function PokemonStreamOverlay({
   onTtsCommentaryComplete,
 }: PokemonStreamOverlayProps) {
   // Commentary display state - controlled by TTS playback
-  // lingerText: text to show after TTS completes (for 3 seconds)
+  // lingerText: text to show after TTS completes (for 6 seconds)
   const [lingerText, setLingerText] = useState<string | null>(null);
   const lingerTimerRef = useRef<number | null>(null);
   
-  // Handle TTS completion: start 3-second linger period
+  // Handle TTS completion: start 6-second linger period
   // Text is passed in because ttsCommentary may be cleared by parent before this runs
   const handleTtsComplete = (spokenText: string) => {
     if (spokenText) {
@@ -243,10 +243,10 @@ export function PokemonStreamOverlay({
         clearTimeout(lingerTimerRef.current);
       }
       
-      // After 3 seconds, clear the linger text
+      // After 6 seconds, clear the linger text
       lingerTimerRef.current = window.setTimeout(() => {
         setLingerText(null);
-      }, 3000);
+      }, 6000);
     }
     
     // Notify parent that TTS is complete
@@ -474,7 +474,7 @@ export function PokemonStreamOverlay({
                   {/* 
                     Commentary display states:
                     1. TTS playing: synced typewriter animation
-                    2. Linger period (3s after TTS): static completed text
+                    2. Linger period (6s after TTS): static completed text
                     3. Waiting: animated ellipsis placeholder
                   */}
                   <div className="character-container__commentary">
@@ -488,7 +488,7 @@ export function PokemonStreamOverlay({
                           onComplete={() => handleTtsComplete(ttsCommentary.text)}
                         />
                       ) : lingerText ? (
-                        // State 2: TTS just finished - show full text for 3 seconds
+                        // State 2: TTS just finished - show full text for 6 seconds
                         <>{lingerText}</>
                       ) : (
                         // State 3: Waiting for next TTS - show animated ellipsis
