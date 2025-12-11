@@ -770,7 +770,7 @@
   padding-top: 0;
   /* Constrain height to make room for larger game feed */
   flex: 0 0 auto;
-  max-height: 180px; /* Limit team section height */
+  max-height: 200px; /* Team section height - increased by 20px */
   min-height: 0;
   display: flex;
   flex-direction: column;
