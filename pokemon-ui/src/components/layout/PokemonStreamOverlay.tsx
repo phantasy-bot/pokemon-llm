@@ -10,38 +10,7 @@ import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
 import "./PokemonStreamOverlay.css";
 
-// Extract commentary from LLM response text
-function extractCommentary(text: string): string | null {
-  if (!text) return null;
-  
-  const patterns = [
-    // Match section number followed by COMMENTARY and capture content
-    /(?:7\.|8\.|9\.)\s*COMMENTARY[^\n]*\n\s*[-–•]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
-    // Match COMMENTARY with content after colon/dash
-    /COMMENTARY[^:]*[:\s]+[-–]?\s*(.+?)(?=\n\d+\.|$|\n\n)/is,
-    // Fallback: look for Lass persona pattern
-    /Lass persona[:\s]*(.+?)(?=\n\d+\.|$|\n\n)/is,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      let commentary = match[1].trim();
-      // Clean up
-      commentary = commentary.replace(/^[-–•]\s*/, '');
-      commentary = commentary.replace(/\n.*$/, '');
-      commentary = commentary.replace(/<\/?[^>]+>/g, '');
-      commentary = commentary.replace(/\*\*/g, '');
-      commentary = commentary.trim();
-      if (commentary.length > 5) {
-        return commentary;
-      }
-    }
-  }
-  return null;
-}
-
-// Typewriter text component - fixed speed per character
+// Typewriter text component - fixed speed per character (kept as fallback)
 function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) {
   const [displayedText, setDisplayedText] = useState("");
   const timeoutRef = useRef<number | null>(null);
@@ -72,6 +41,21 @@ function TypewriterText({ text, speed = 25 }: { text: string; speed?: number }) 
   }, [text, speed]);
 
   return <>{displayedText}</>;
+}
+
+// Animated ellipsis placeholder: '' -> '.' -> '..' -> '...' -> '' -> ...
+function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
+  const [dots, setDots] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDots((prev) => (prev + 1) % 4); // 0, 1, 2, 3, 0, 1, ...
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [interval]);
+
+  return <>{'.'.repeat(dots)}</>;
 }
 
 // Synced typewriter - calculates speed from audio duration
@@ -243,29 +227,39 @@ export function PokemonStreamOverlay({
   ttsCommentary,
   onTtsCommentaryComplete,
 }: PokemonStreamOverlayProps) {
-  // Extract commentary from most recent response log
-  const [currentCommentary, setCurrentCommentary] = useState<string>("");
-  const lastCommentaryRef = useRef<string>("");
+  // Commentary display state - controlled by TTS playback
+  // lingerText: text to show after TTS completes (for 3 seconds)
+  const [lingerText, setLingerText] = useState<string | null>(null);
+  const lingerTimerRef = useRef<number | null>(null);
   
-  useEffect(() => {
-    // Find the most recent response log entry with commentary
-    // Logs are prepended, so index 0 is newest - iterate from newest to oldest
-    for (let i = 0; i < logs.length; i++) {
-      const entry = logs[i];
-      if (entry.is_response && entry.text) {
-        const commentary = extractCommentary(entry.text);
-        if (commentary) {
-          // Always update if we found commentary - even if same as last
-          // This ensures the display stays in sync with the latest log
-          if (commentary !== lastCommentaryRef.current) {
-            lastCommentaryRef.current = commentary;
-            setCurrentCommentary(commentary);
-          }
-          break; // Found the newest commentary, stop looking
-        }
+  // Handle TTS completion: start 3-second linger period
+  const handleTtsComplete = () => {
+    if (ttsCommentary?.text) {
+      setLingerText(ttsCommentary.text);
+      
+      // Clear any existing timer
+      if (lingerTimerRef.current) {
+        clearTimeout(lingerTimerRef.current);
       }
+      
+      // After 3 seconds, clear the linger text
+      lingerTimerRef.current = window.setTimeout(() => {
+        setLingerText(null);
+      }, 3000);
     }
-  }, [logs]); // Only depend on logs, not currentCommentary
+    
+    // Notify parent that TTS is complete
+    onTtsCommentaryComplete?.();
+  };
+  
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (lingerTimerRef.current) {
+        clearTimeout(lingerTimerRef.current);
+      }
+    };
+  }, []);
 
   // Extract Pokemon data from game state
   const currentPokemon: PokemonDisplay[] = (gameState.currentTeam || []).map(
@@ -476,26 +470,31 @@ export function PokemonStreamOverlay({
               <div className="character-container">
                 {/* Left Column - Commentary */}
                 <div className="character-container__left">
-                  {/* Show synced typewriter when TTS is playing, otherwise show from logs */}
-                  {ttsCommentary?.playing ? (
-                    <div className="character-container__commentary">
-                      <span className="character-container__commentary-label">COMMENTARY</span>
-                      <p className="character-container__commentary-text">
+                  {/* 
+                    Commentary display states:
+                    1. TTS playing: synced typewriter animation
+                    2. Linger period (3s after TTS): static completed text
+                    3. Waiting: animated ellipsis placeholder
+                  */}
+                  <div className="character-container__commentary">
+                    <span className="character-container__commentary-label">COMMENTARY</span>
+                    <p className="character-container__commentary-text">
+                      {ttsCommentary?.playing ? (
+                        // State 1: TTS is playing - show synced typewriter
                         <SyncedTypewriterText 
                           text={ttsCommentary.text} 
                           durationMs={ttsCommentary.duration_ms}
-                          onComplete={onTtsCommentaryComplete}
+                          onComplete={handleTtsComplete}
                         />
-                      </p>
-                    </div>
-                  ) : currentCommentary && (
-                    <div className="character-container__commentary">
-                      <span className="character-container__commentary-label">COMMENTARY</span>
-                      <p className="character-container__commentary-text">
-                        <TypewriterText text={currentCommentary} speed={25} />
-                      </p>
-                    </div>
-                  )}
+                      ) : lingerText ? (
+                        // State 2: TTS just finished - show full text for 3 seconds
+                        <>{lingerText}</>
+                      ) : (
+                        // State 3: Waiting for next TTS - show animated ellipsis
+                        <AnimatedEllipsis interval={400} />
+                      )}
+                    </p>
+                  </div>
                   <div className="character-container__spacer" />
                 </div>
                 
