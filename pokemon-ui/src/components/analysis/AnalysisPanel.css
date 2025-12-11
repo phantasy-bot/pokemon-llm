@@ -78,6 +78,15 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  
+  /* Hide scrollbar for stream overlay presentation */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome/Safari/Opera */
+.analysis-panel__history-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /* Update list to fit in scroll */
