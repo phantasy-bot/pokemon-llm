@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import { LogEntryCard } from "./LogEntry";
 import { VisionScreenshot } from "../vision/VisionScreenshot"; // Restored
@@ -21,6 +21,51 @@ function AnimatedDots() {
   
   // Fixed width span so text before doesn't shift
   return <span style={{ display: 'inline-block', width: '1.5em', textAlign: 'left' }}>{dots}</span>;
+}
+
+// Streaming typewriter effect for LLM analysis
+function StreamingText({ text, speed = 8 }: { text: string; speed?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isComplete, setIsComplete] = useState(false);
+  const textRef = useRef(text);
+  const indexRef = useRef(0);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Reset when text changes
+    if (text !== textRef.current) {
+      textRef.current = text;
+      indexRef.current = 0;
+      setDisplayedText("");
+      setIsComplete(false);
+    }
+
+    // Stream characters
+    const streamNextChar = () => {
+      if (indexRef.current < text.length) {
+        // Stream multiple chars at once for speed
+        const charsToAdd = Math.min(3, text.length - indexRef.current);
+        const nextChars = text.slice(indexRef.current, indexRef.current + charsToAdd);
+        setDisplayedText(prev => prev + nextChars);
+        indexRef.current += charsToAdd;
+        timeoutRef.current = window.setTimeout(streamNextChar, speed);
+      } else {
+        setIsComplete(true);
+      }
+    };
+
+    if (!isComplete && indexRef.current < text.length) {
+      timeoutRef.current = window.setTimeout(streamNextChar, speed);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [text, speed, isComplete]);
+
+  return <>{displayedText}</>;
 }
 
 const POKEMON_KEYART = [
@@ -164,7 +209,20 @@ export function AnalysisPanel({
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
+                // In normal mode (non-debug), show streaming text for summaries
+                !debugMode && latestEntry.is_response ? (
+                  <div className="log-entry log-entry--response log-entry--new">
+                    <div className="log-entry__content">
+                      <div className="log-entry__text">
+                        <div className="formatted-log-content">
+                          <StreamingText text={latestEntry.text || ""} speed={8} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew />
+                )
               ) : (
                 !isProcessing && (
                   <div className="analysis-panel__empty">
