@@ -233,9 +233,10 @@ export function PokemonStreamOverlay({
   const lingerTimerRef = useRef<number | null>(null);
   
   // Handle TTS completion: start 3-second linger period
-  const handleTtsComplete = () => {
-    if (ttsCommentary?.text) {
-      setLingerText(ttsCommentary.text);
+  // Text is passed in because ttsCommentary may be cleared by parent before this runs
+  const handleTtsComplete = (spokenText: string) => {
+    if (spokenText) {
+      setLingerText(spokenText);
       
       // Clear any existing timer
       if (lingerTimerRef.current) {
@@ -484,14 +485,14 @@ export function PokemonStreamOverlay({
                         <SyncedTypewriterText 
                           text={ttsCommentary.text} 
                           durationMs={ttsCommentary.duration_ms}
-                          onComplete={handleTtsComplete}
+                          onComplete={() => handleTtsComplete(ttsCommentary.text)}
                         />
                       ) : lingerText ? (
                         // State 2: TTS just finished - show full text for 3 seconds
                         <>{lingerText}</>
                       ) : (
                         // State 3: Waiting for next TTS - show animated ellipsis
-                        <AnimatedEllipsis interval={400} />
+                        <AnimatedEllipsis interval={600} />
                       )}
                     </p>
                   </div>
