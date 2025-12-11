@@ -162,6 +162,17 @@ class ComfyUITTSService:
             # Build ffmpeg filter chain
             filters = []
             
+            # Detect actual sample rate from the audio file
+            original_sample_rate = 44100  # Default fallback
+            try:
+                from mutagen import File as MutagenFile
+                audio = MutagenFile(audio_path)
+                if audio and audio.info and hasattr(audio.info, 'sample_rate'):
+                    original_sample_rate = audio.info.sample_rate
+                    log.info(f"🔊 Detected sample rate: {original_sample_rate}Hz")
+            except Exception as e:
+                log.warning(f"🔊 Could not detect sample rate, using 44100Hz default: {e}")
+            
             # Pitch adjustment using asetrate + aresample + atempo compensation
             # NOTE: Pitch shifting with asetrate is imperfect. For best results, 
             # use small values (0.5 to 2 semitones) or install rubberband library.
@@ -171,9 +182,9 @@ class ComfyUITTSService:
                 
                 # Method: Change sample rate to shift pitch, then resample back and 
                 # compensate tempo with atempo (1/pitch_factor)
-                new_rate = int(44100 * pitch_factor)
+                new_rate = int(original_sample_rate * pitch_factor)
                 filters.append(f"asetrate={new_rate}")
-                filters.append("aresample=44100")
+                filters.append(f"aresample={original_sample_rate}")
                 
                 # Tempo compensation: pitch up = speed up, so we slow down to compensate
                 tempo_comp = 1.0 / pitch_factor

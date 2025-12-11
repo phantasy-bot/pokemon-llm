@@ -1,6 +1,55 @@
 {
   "history": [
     {
+      "cycle": 240,
+      "x": 3,
+      "y": 2,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:33:47.341096"
+    },
+    {
+      "cycle": 239,
+      "x": 4,
+      "y": 2,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:33:10.434550"
+    },
+    {
+      "cycle": 239,
+      "x": 4,
+      "y": 2,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:31:53.177033"
+    },
+    {
+      "cycle": 238,
+      "x": 8,
+      "y": 2,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:31:24.610759"
+    },
+    {
+      "cycle": 239,
+      "x": 8,
+      "y": 2,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:30:39.197236"
+    },
+    {
+      "cycle": 238,
+      "x": 8,
+      "y": 4,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:30:03.410506"
+    },
+    {
+      "cycle": 239,
+      "x": 8,
+      "y": 4,
+      "map_name": "PALLET_TOWN",
+      "timestamp": "2025-12-10T23:28:58.936084"
+    },
+    {
       "cycle": 238,
       "x": 11,
       "y": 4,
@@ -20,57 +69,8 @@
       "y": 3,
       "map_name": "PALLET_TOWN",
       "timestamp": "2025-12-10T23:26:45.721009"
-    },
-    {
-      "cycle": 235,
-      "x": 9,
-      "y": 3,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:26:23.534077"
-    },
-    {
-      "cycle": 234,
-      "x": 9,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:25:55.046144"
-    },
-    {
-      "cycle": 233,
-      "x": 6,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:25:16.036528"
-    },
-    {
-      "cycle": 232,
-      "x": 3,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:24:52.388714"
-    },
-    {
-      "cycle": 231,
-      "x": 4,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:24:29.859244"
-    },
-    {
-      "cycle": 230,
-      "x": 3,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:23:58.470508"
-    },
-    {
-      "cycle": 229,
-      "x": 7,
-      "y": 6,
-      "map_name": "PALLET_TOWN",
-      "timestamp": "2025-12-10T23:23:31.728844"
     }
   ],
   "target": null,
-  "last_updated": "2025-12-10T23:28:00.769479"
+  "last_updated": "2025-12-10T23:33:47.341222"
 }
