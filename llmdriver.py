@@ -2502,10 +2502,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log_action_text = f"Action: {action}"
             log.info(f"LLM proposed action: {action}")
             try:
-                # Wait 2s before sending action to let game state settle
-                time.sleep(2)
+                # Wait 1s before sending action to let game state settle
+                time.sleep(1)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
                 log.info(f"Action '{action_to_send}' sent to mGBA.")
+                
+                # Wait 2s AFTER sending action to let screen fully render before next screenshot
+                # This prevents cut-off/partial screenshots in vision analysis
+                time.sleep(2)
+                log.info("Post-action delay complete, ready for next cycle screenshot.")
+                
                 # Track for failure replay
                 last_action = action_to_send
                 last_position = current_pos
