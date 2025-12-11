@@ -108,7 +108,7 @@ interface TypewriterHTMLProps {
  */
 export function TypewriterHTML({
   html,
-  speed = 8,
+  speed = 20,
   className = '',
   onComplete,
 }: TypewriterHTMLProps) {
@@ -154,47 +154,77 @@ export function TypewriterHTML({
     return () => clearTimeout(timer);
   }, [revealedChars, isComplete, speed]);
   
-  // Process HTML to hide characters beyond revealedChars
+  // Process HTML to hide characters beyond revealedChars and insert cursor
   const processedHtml = useCallback(() => {
-    if (isComplete) {
-      return html; // Show full HTML when complete
-    }
-    
     const temp = document.createElement('div');
     temp.innerHTML = html;
     
+    // Create cursor element
+    const cursorSpan = document.createElement('span');
+    cursorSpan.className = "typewriter-cursor";
+    cursorSpan.textContent = "▋";
+    
+    if (isComplete) {
+      // If complete, insert cursor at the end of the last actual content
+      let target: Node = temp;
+      while (target.lastChild) {
+        if (target.lastChild.nodeType === Node.TEXT_NODE) {
+          target.appendChild(cursorSpan);
+          return temp.innerHTML;
+        }
+        target = target.lastChild;
+      }
+      target.appendChild(cursorSpan);
+      return temp.innerHTML;
+    }
+    
     let charCount = 0;
+    let cursorInserted = false;
     
-    // Walk all text nodes
-    const walker = document.createTreeWalker(
-      temp,
-      NodeFilter.SHOW_TEXT,
-      null
-    );
-    
+    const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null);
     const textNodes: Text[] = [];
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
       textNodes.push(node);
     }
     
-    // Process each text node
     textNodes.forEach(textNode => {
       const text = textNode.textContent || '';
       const startIndex = charCount;
       const endIndex = charCount + text.length;
       charCount = endIndex;
       
+      if (cursorInserted) {
+         textNode.textContent = '';
+         return;
+      }
+
       if (revealedChars <= startIndex) {
-        // Entire node is hidden
+        if (!cursorInserted) {
+            textNode.parentNode?.insertBefore(cursorSpan, textNode);
+            cursorInserted = true;
+        }
         textNode.textContent = '';
       } else if (revealedChars < endIndex) {
-        // Partially visible
         const visibleCount = revealedChars - startIndex;
         textNode.textContent = text.slice(0, visibleCount);
+        if (textNode.nextSibling) {
+            textNode.parentNode?.insertBefore(cursorSpan, textNode.nextSibling);
+        } else {
+            textNode.parentNode?.appendChild(cursorSpan);
+        }
+        cursorInserted = true;
       }
-      // else: fully visible, leave as-is
     });
+    
+    if (!cursorInserted) {
+       let target: Node = temp;
+        // Drill down to last text node or just append to end
+        while (target.lastChild && target.lastChild.nodeType !== Node.TEXT_NODE) {
+            target = target.lastChild;
+        }
+        target.appendChild(cursorSpan);
+    }
     
     return temp.innerHTML;
   }, [html, revealedChars, isComplete]);
@@ -202,8 +232,6 @@ export function TypewriterHTML({
   return (
     <div className={`typewriter-html ${className}`}>
       <span dangerouslySetInnerHTML={{ __html: processedHtml() }} />
-      {/* Always show cursor - blinks while typing and while waiting for next content */}
-      <span className="typewriter-cursor">▋</span>
     </div>
   );
 }
