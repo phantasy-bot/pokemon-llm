@@ -324,105 +324,8 @@ export function PokemonStreamOverlay({
     <div className="pokemon-stream-overlay">
       {/* Main content area - no header, each column has its own header content */}
       <div className="pokemon-content">
-        {/* Left Column - Title + LLM Analysis */}
-        <div className="pokemon-left-col">
-          {/* Title at top of left column */}
-          <div className="column-header">
-            <div className="title">LLM LETS PLAY: <span className="title-accent">POKEMON RED</span></div>
-          </div>
-          
-          <div className="pokemon-analysis-panel">
-            <AnalysisPanel
-              logs={logs}
-              totalActions={gameState.actions}
-              isProcessing={
-                !!gameState.processingStatus ||
-                gameState.gameStatus === "Thinking..." || 
-                gameState.gameStatus === "Processing..." ||
-                gameState.gameStatus === "Running..." ||
-                gameState.gameStatus.includes("Auto")
-              }
-              memoryWrite={memoryWrite}
-              onMemoryWriteClear={onMemoryWriteClear}
-              debugMode={gameState.debugMode}
-            />
-          </div>
-        </div>
-
-        {/* Center Column - Badges + Game Feed and Team */}
-        <div className="pokemon-center-col">
-          {/* Badges at top of center column */}
-          <div className="column-header column-header--center">
-            <div className="badges-widget">
-
-              <div className="gym-badges">
-                {ALL_BADGE_TYPES.map((badgeType) => {
-                  const badgeInfo = KANTO_BADGES[badgeType];
-                  const isEarned = badges.includes(badgeType);
-                  return (
-                    <div
-                      key={badgeType}
-                      className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
-                    >
-                      <img 
-                        src={badgeInfo.image} 
-                        alt=""
-                        className="gym-badge-image"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-
-
-          <div className="pokemon-game-feed">
-            <div className="game-placeholder">
-              Pokemon Game Feed Placeholder
-            </div>
-          </div>
-
-          <div className="status">
-            <span>
-              Game Status: {wsConnected ? gameState.gameStatus : "Connecting..."}
-            </span>
-            <span
-              className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
-            >
-              • {wsConnected ? "Connected" : "Disconnected"}
-            </span>
-            {wsConnected && (
-              <span className="cycle-timing">
-                Cycle: <LiveCycleTimer 
-                  cycleNumber={gameState.cycle} 
-                />
-                {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
-                  <> | Prev: {gameState.prevCycleTime}s</>
-                )}
-                {gameState.avgCycleTime !== undefined && gameState.avgCycleTime > 0 && (
-                  <> | Avg: {gameState.avgCycleTime}s</>
-                )}
-              </span>
-            )}
-          </div>
-
-          <div className="pokemon-team-section">
-            <PokemonTeamBar 
-              pokemon={currentPokemon}
-              minimapLocation={location}
-              minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
-              minimapVisible={gameState.minimapVisible}
-              explorationPct={gameState.explorationPct}
-              lassMarkings={gameState.lassMarkings}
-              minimapGridSize={gameState.minimapGridSize}
-            />
-          </div>
-        </div>
-
-        {/* Right Column - T3 Folder Container with Goals and Character */}
-        <div className="pokemon-right-col">
+        {/* Left Column - Character Panel (Lass + Goals) */}
+        <div className="pokemon-left-col character-column">
           {/* T3 Folder Container */}
           <div className="folder-container">
             {/* Title in the header bar */}
@@ -558,6 +461,103 @@ export function PokemonStreamOverlay({
                 mysterygift.fun
               </a>
             </div>
+          </div>
+        </div>
+
+        {/* Center Column - Badges + Game Feed and Team */}
+        <div className="pokemon-center-col">
+          {/* Badges at top of center column */}
+          <div className="column-header column-header--center">
+            <div className="badges-widget">
+
+              <div className="gym-badges">
+                {ALL_BADGE_TYPES.map((badgeType) => {
+                  const badgeInfo = KANTO_BADGES[badgeType];
+                  const isEarned = badges.includes(badgeType);
+                  return (
+                    <div
+                      key={badgeType}
+                      className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
+                    >
+                      <img 
+                        src={badgeInfo.image} 
+                        alt=""
+                        className="gym-badge-image"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+
+
+          <div className="pokemon-game-feed">
+            <div className="game-placeholder">
+              Pokemon Game Feed Placeholder
+            </div>
+          </div>
+
+          <div className="status">
+            <span>
+              Game Status: {wsConnected ? gameState.gameStatus : (<>Connecting<AnimatedEllipsis interval={400} /></>)}
+            </span>
+            <span
+              className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
+            >
+              • {wsConnected ? "Connected" : "Disconnected"}
+            </span>
+            {wsConnected && (
+              <span className="cycle-timing">
+                Cycle: <LiveCycleTimer 
+                  cycleNumber={gameState.cycle} 
+                />
+                {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
+                  <> | Prev: {gameState.prevCycleTime}s</>
+                )}
+                {gameState.avgCycleTime !== undefined && gameState.avgCycleTime > 0 && (
+                  <> | Avg: {gameState.avgCycleTime}s</>
+                )}
+              </span>
+            )}
+          </div>
+
+          <div className="pokemon-team-section">
+            <PokemonTeamBar 
+              pokemon={currentPokemon}
+              minimapLocation={location}
+              minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
+              minimapVisible={gameState.minimapVisible}
+              explorationPct={gameState.explorationPct}
+              lassMarkings={gameState.lassMarkings}
+              minimapGridSize={gameState.minimapGridSize}
+            />
+          </div>
+        </div>
+
+        {/* Right Column - Title + LLM Analysis */}
+        <div className="pokemon-right-col analysis-column">
+          {/* Title at top of right column */}
+          <div className="column-header">
+            <div className="title">LLM LETS PLAY: <span className="title-accent">POKEMON RED</span></div>
+          </div>
+          
+          <div className="pokemon-analysis-panel">
+            <AnalysisPanel
+              logs={logs}
+              totalActions={gameState.actions}
+              isProcessing={
+                !!gameState.processingStatus ||
+                gameState.gameStatus === "Thinking..." || 
+                gameState.gameStatus === "Processing..." ||
+                gameState.gameStatus === "Running..." ||
+                gameState.gameStatus.includes("Auto")
+              }
+              memoryWrite={memoryWrite}
+              onMemoryWriteClear={onMemoryWriteClear}
+              debugMode={gameState.debugMode}
+            />
           </div>
         </div>
       </div>

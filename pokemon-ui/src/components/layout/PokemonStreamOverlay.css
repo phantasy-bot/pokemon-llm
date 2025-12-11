@@ -130,11 +130,11 @@
   margin-top: calc(var(--space-sm) + 36px); /* Clear the cutout area */
 }
 
-/* Sponsor Section - Fixed bottom-right corner */
+/* Sponsor Section - Fixed bottom-left corner (for flipped layout) */
 .folder-sponsor {
   position: absolute;
   bottom: var(--space-md);
-  right: var(--space-md);
+  left: var(--space-md); /* Changed from right to left */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -415,10 +415,10 @@
   display: flex;
   flex-direction: column;
   flex: 29; /* 29% */
-  padding: 0 var(--space-md); /* Horizontal padding only */
+  padding: var(--space-md);
+  padding-top: var(--space-md);
   background: var(--bg-panel);
-  border-right: none; /* No border - middle column will have left border */
-  overflow-y: hidden; /* Let child handle scroll */
+  overflow: visible;
 }
 
 .status {
@@ -495,10 +495,10 @@
   display: flex;
   flex-direction: column;
   flex: 29; /* 29% */
-  padding: var(--space-md);
-  padding-top: var(--space-md);
+  padding: 0 var(--space-md); /* Horizontal padding only */
   background: var(--bg-panel);
-  overflow: visible;
+  border-left: none; /* No border - middle column has right border */
+  overflow-y: hidden; /* Let child handle scroll */
 }
 
 /* Top section - Actions and Goals - STATIC HEIGHT */
@@ -592,7 +592,7 @@
 .character-container__right {
   position: fixed;
   bottom: 0;
-  right: -40px; /* Push further right */
+  left: 80px; /* Moved closer to center (was 180px) */
   width: auto;
   height: auto;
   z-index: 100; /* High z-index to be above everything */
@@ -605,7 +605,9 @@
   height: 50vh; /* Reduced from 55vh */
   max-width: none;
   object-fit: contain;
-  object-position: bottom right;
+  object-position: bottom left; /* Anchor to bottom-left for flipped layout */
+  /* Flip the character horizontally so she faces right (toward content) */
+  transform: scaleX(-1);
 }
 
 /* Goals section with TUI box styling - matches other ASCII containers */

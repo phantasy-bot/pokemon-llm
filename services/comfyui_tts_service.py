@@ -102,10 +102,14 @@ class ComfyUITTSService:
         # Cleanup stale audio files from previous runs
         self._cleanup_stale_audio()
         
-        # Check if configured
-        self._is_configured = bool(self.base_url)
+        # Check if configured and enabled
+        # TTS_ENABLED defaults to true if not set, for backward compatibility
+        tts_enabled = os.getenv("TTS_ENABLED", "true").lower() in ("true", "1", "yes")
+        self._is_configured = bool(self.base_url) and tts_enabled
         
-        if not self._is_configured:
+        if not tts_enabled:
+            log.info("🔇 TTS disabled via TTS_ENABLED=false in .env")
+        elif not self._is_configured:
             log.warning("ComfyUI TTS not configured. Set COMFYUI_URL in .env")
     
     def _cleanup_stale_audio(self) -> None:

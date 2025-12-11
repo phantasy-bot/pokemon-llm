@@ -51,22 +51,27 @@ NAME_ENTRY_PROMPT = """
 
 ## 🎮 NAME ENTRY SCREEN (ACTIVE)
 
+⚠️ **STRONGLY PREFER DEFAULT/PRESET NAMES** ⚠️
+- Use RED for player, BLUE for rival, default species names for Pokemon
+- This keeps the classic experience and avoids input errors!
+
 There are THREE different naming scenarios with different rules:
 
 ### 1️⃣ PLAYER/RIVAL NAME (preset list visible)
-**Use PRESET NAMES by pressing A on them!**
+**ALWAYS use PRESET NAMES by pressing A on them!**
 - You'll see preset options like: RED, ASH, JACK (for player) or BLUE, GARY, JOHN (for rival)
+- **Preferred: Select "RED" for yourself, "BLUE" for rival** - these are the canon names!
 - Navigate to your preferred preset and press A to select it
-- **You CANNOT press START to accept defaults here** - you MUST select a preset with A
-- If you want to name yourself "LASS": go to keyboard (may need to press DOWN past presets)
+- **You CANNOT press START to exit here** - you MUST select a name with A
+- Only type a custom name (like "LASS") if you really want to personalize it
 
 ### 2️⃣ POKEMON NICKNAME (after catching/receiving)
 **Press START (S) immediately to keep the default species name!**
-- When asked "Give a nickname to [POKEMON]?" 
-- If you accidentally chose YES and see the keyboard:
+- When asked "Give a nickname to [POKEMON]?" - choose NO if possible
+- If you see the keyboard already:
   - Press START (S) **immediately** (with no characters entered) to keep default name
-  - This exits the naming screen with the Pokemon's species name intact
-- If you WANT a nickname, enter it then press START
+  - This exits the naming screen with the Pokemon's species name intact (CHARMANDER, PIKACHU, etc.)
+- **NEVER give custom nicknames** unless you genuinely want one - defaults are preferred!
 
 ### 3️⃣ STUCK IN KEYBOARD (already entered characters)
 **You MUST enter at least 1 character before START works!**
@@ -84,12 +89,13 @@ Row 4: x ( ) : ; [ ] PK MN
 Row 5: - ? ! ♂ ♀ / . , ED
 ```
 
-### NAVIGATION EXAMPLE - Type "LASS":
-1. Cursor at A → Press R twice → now at C
-2. Continue: R;R;R;R;R;R;R;D; → now at L → Press A
-3. D;D;L;L;L;L;L;L;L;L; → at A → Press A  
-4. R;R;R;R;R;R;R;R;D;D; → at S → Press A twice (for SS)
-5. Press START (S) to confirm
+### 📝 MEMORY_WRITE CRITICAL FOR NAMES
+After confirming ANY name, you MUST write a memory of what name was chosen:
+- "Named myself RED" or "Named myself LASS"
+- "Named rival BLUE" or "Named rival GARY"  
+- "Received CHARMANDER as starter" or "Nicknamed CHARMANDER as Blaze"
+
+This is important context for your adventure!
 """
 
 BATTLE_PROMPT = """
@@ -142,7 +148,8 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
    - NO button names!
 
 **12. MEMORY_WRITE** (optional): Save important events to long-term memory
-   - Example: "Caught my first Pikachu!", "Beat gym leader, got badge"
+   - **Record catching**: "Caught my first Pikachu!", "Caught RATTATA"
+   - Badges: "Beat Brock, got Boulder Badge"
    - If nothing important: "None"
 
 ---
@@ -217,7 +224,9 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
    - NO button names!
 
 **12. MEMORY_WRITE** (optional): Save important events to long-term memory
-   - Example: "Got Oak's Parcel!", "Professor gave me Pokedex"
+   - **ALWAYS record names**: "Named myself RED", "Named rival BLUE"
+   - Key items: "Got Oak's Parcel!", "Professor gave me Pokedex"
+   - Pokemon received: "Received CHARMANDER as starter"
    - If nothing important: "None"
 
 ---
@@ -312,7 +321,9 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 
 **12. MEMORY_WRITE** (optional): Save important events to long-term memory
    - Only write significant story events, choices, or discoveries
-   - Example: "Chose Charmander as starter", "Beat Brock, got Boulder Badge"
+   - **ALWAYS record names**: "Named myself RED", "Named rival BLUE", "Received CHARMANDER"
+   - Badges: "Beat Brock, got Boulder Badge"
+   - Key items: "Got Oak's Parcel", "Received Running Shoes"
    - If nothing important happened, just write "None"
 
 ---

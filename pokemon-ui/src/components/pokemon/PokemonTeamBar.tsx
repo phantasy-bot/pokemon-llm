@@ -15,7 +15,7 @@ interface ExtendedPokemonTeamBarProps extends PokemonTeamBarProps {
   lassMarkings?: Array<{  // Lass's minimap overlay markers
     x: number;
     y: number;
-    type: 'N' | 'O';
+    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
     opacity: number;
     age_hours?: number;
   }>;
