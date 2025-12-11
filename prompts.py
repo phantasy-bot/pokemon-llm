@@ -180,15 +180,18 @@ OVERWORLD_PROMPT = """
 You are exploring the game world. Focus on:
 
 ### NAVIGATION PRIORITY
-### NAVIGATION PRIORITY
 1. Check minimap for exits (O tiles)
-2. Avoid revisiting areas you just came from
-3. Enter buildings/dungeons to progress
-4. Talk to NPCs (LAST RESORT - only if completely stuck/lost)
+2. **EARLY GAME: Enter TALL GRASS!** You need to walk into the tall grass north of Pallet Town.
+   - Tall grass = dense green tiles. Walk INTO them - they are WALKABLE!
+   - Entering tall grass triggers Professor Oak to stop you (important cutscene!)
+3. Avoid revisiting areas you just came from
+4. Enter buildings/dungeons to progress
+5. Talk to NPCs (LAST RESORT - only if completely stuck/lost)
 
 ### MOVEMENT
 - Use U/D/L/R to move
 - Walk INTO door/exit tiles (O on minimap)
+- Walk INTO tall grass (dense green tiles) - this is how the game progresses!
 - Press A facing NPCs to talk
 - ⚠️ NPCs block movement - walk AROUND them, do not try to walk through them!
 """
@@ -260,7 +263,9 @@ Grid coords shift as you move; World coords are fixed. Use World for remembering
 ## MINIMAP
 - Player 'P' always at center. Walk INTO 'O' tiles for doors/exits (no A needed).
 - Read `minimap_data` directly for blocked/walkable directions and exit locations.
-- If direction shows ❌ BLOCKED, don't try that direction - find L-shaped path around.
+- If direction shows ❌ BLOCKED, try L-shaped path around obstacles.
+- ⚠️ **TALL GRASS IS WALKABLE!** Early game, you MUST enter tall grass to trigger Professor Oak's rescue!
+- Dense green tiles north of Pallet Town = tall grass. Walk INTO it - don't avoid it!
 
 ## INTERACTION
 - Face NPCs orthogonally, press A. Cannot interact diagonally.
