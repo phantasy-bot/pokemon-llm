@@ -2,6 +2,7 @@ import type { LogEntry } from "../../types/gameTypes";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { VisionScreenshot } from "../vision/VisionScreenshot";
+import { TypewriterReveal } from "../shared/TypewriterText";
 import "./LogEntry.css";
 // Import Pokemon Data
 import { POKEMON_TYPE_MAP, TYPE_COLORS } from "../../data/pokemonData";
@@ -73,7 +74,15 @@ export function LogEntryCard({
     if (logType === "vision") {
       return (
         <div className="log-entry log-entry--compact log-entry--vision log-entry--vision-full">
-      <div className="log-entry__compact-vision" dangerouslySetInnerHTML={{ __html: formatLogText(text) }} />
+          {isNew ? (
+            <TypewriterReveal 
+              html={formatLogText(text)}
+              speed={3}
+              className="log-entry__compact-vision"
+            />
+          ) : (
+            <div className="log-entry__compact-vision" dangerouslySetInnerHTML={{ __html: formatLogText(text) }} />
+          )}
         </div>
       );
     }
@@ -154,9 +163,18 @@ export function LogEntryCard({
           /* For non-vision entries, show text only */
           <>
             <div className="log-entry__text">
-              <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                {formatLogText(text)}
-              </ReactMarkdown>
+              {/* Use typewriter for new LLM response entries */}
+              {logType === "response" && isNew ? (
+                <TypewriterReveal 
+                  html={formatLogText(text)}
+                  speed={5}
+                  className="formatted-log-content"
+                />
+              ) : (
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                  {formatLogText(text)}
+                </ReactMarkdown>
+              )}
             </div>
 
             {/* Response details section removed - battle/item indicators no longer used */}

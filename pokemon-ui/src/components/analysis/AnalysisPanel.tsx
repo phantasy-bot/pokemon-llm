@@ -3,6 +3,7 @@ import type { LogEntry } from "../../types/gameTypes";
 import { LogEntryCard } from "./LogEntry";
 import { VisionScreenshot } from "../vision/VisionScreenshot"; // Restored
 import { RecentActions } from "../shared/RecentActions";
+import { TypewriterText } from "../shared/TypewriterText";
 import "./AnalysisPanel.css";
 
 // Animated dots component for loading states
@@ -155,9 +156,9 @@ export function AnalysisPanel({
       <div className="analysis-panel">
         
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
-        <div className="analysis-panel__history-wrapper">
+        <div className="analysis-panel__llm-analysis-wrapper">
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
-          <div className="analysis-panel__history-scroll" ref={scrollRef}>
+          <div className="analysis-panel__llm-analysis-scroll" ref={scrollRef}>
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
@@ -178,7 +179,22 @@ export function AnalysisPanel({
         {/* 2. Recent Actions Section (Inserted here) */}
         <RecentActions logs={logs} totalActions={totalActions} />
 
-        {/* 3. Vision Section (Fixed Height, Row Layout) */}
+        {/* 3. Latest Memory Section (Above Vision) */}
+        <div className="analysis-panel__memory-section">
+          <span className="analysis-panel__section-label">LATEST MEMORY</span>
+          <p className="analysis-panel__memory-text">
+            {persistedMemory ? (
+              <TypewriterText 
+                text={persistedMemory}
+                speed={20}
+              />
+            ) : (
+              <>no memories recorded yet<AnimatedDots /></>
+            )}
+          </p>
+        </div>
+
+        {/* 4. Vision Section (Fixed Height, Row Layout) */}
 
 
         <div className="analysis-panel__vision-section">
@@ -211,14 +227,6 @@ export function AnalysisPanel({
               )}
             </div>
           </div>
-        </div>
-
-        {/* 4. Latest Memory Section (Bottom Anchor) */}
-        <div className="analysis-panel__memory-section">
-          <span className="analysis-panel__section-label">LATEST MEMORY</span>
-          <p className="analysis-panel__memory-text">
-            {persistedMemory || <>no memories recorded yet<AnimatedDots /></>}
-          </p>
         </div>
 
       </div>

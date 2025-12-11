@@ -3,7 +3,7 @@
   position: relative;
   padding: var(--space-md);
   padding-top: var(--space-lg);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-xs); /* Reduced from var(--space-md) */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
@@ -96,8 +96,8 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 12px; /* Increased from 10px for larger arrows */
+  font-weight: 900; /* Increased from 800 for thicker arrows */
   color: #fff;
   background: var(--accent-primary-bright);
   box-shadow: 0 2px 0 rgba(0,0,0,0.2);
