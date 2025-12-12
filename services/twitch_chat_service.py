@@ -319,6 +319,25 @@ class TwitchChatService:
         log.info(f"🧪 Generated {count} test messages for TWITCH_TEST_MODE")
         return test_messages
     
+    def generate_single_test_message(self) -> dict:
+        """
+        Generate a single random test message for natural trickling in test mode.
+        
+        Returns:
+            A single message dict compatible with chat_response_service.
+        """
+        username = random.choice(TEST_USERNAMES)
+        message = random.choice(TEST_MESSAGES)
+        
+        return {
+            "username": username.lower(),
+            "display_name": username,
+            "message": message,
+            "timestamp": time.time(),
+            "_original": None,
+            "is_test": True
+        }
+    
     def get_messages_for_cycle_or_test(self) -> List[dict]:
         """
         Get messages for the current cycle, using test messages if TWITCH_TEST_MODE is enabled.
