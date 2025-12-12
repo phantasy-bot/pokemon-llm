@@ -3500,7 +3500,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             
             # Get all messages since last commentary for batch processing
             if chat_response_service.is_available:
-                messages_for_cycle = twitch_service.get_messages_for_cycle()
+                messages_for_cycle = twitch_service.get_messages_for_cycle_or_test()
                 
                 if messages_for_cycle:
                     # Decide SKIP/RESPOND for all messages at once
