@@ -2203,32 +2203,38 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                         
                         chat_response_count += 1
                         
-                        # Actually send to TTS! (non-blocking - don't hold up game)
+                        # Queue TTS (non-blocking) - if queue full, response will just show in UI
+                        tts_queued = False
                         if tts_service.is_available:
                             try:
-                                await tts_service.synthesize_and_play(
+                                request = await tts_service.queue_and_start_synthesis(
                                     response_text,
                                     priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                                    wait=False  # Don't block - let game proceed
+                                    cycle_id=current_cycle
                                 )
-                                log.info(f"✅ [TEST] TTS response started (non-blocking)")
+                                tts_queued = request is not None
+                                if tts_queued:
+                                    log.info(f"✅ [TEST] TTS queued (non-blocking)")
+                                else:
+                                    log.info(f"📝 [TEST] TTS queue full, response will only show in UI")
                             except Exception as tts_err:
                                 log.warning(f"🔊 [TEST] TTS error: {tts_err}")
                         
-                        # Broadcast to UI
+                        # Broadcast to UI (always - even if TTS queue full)
                         chat_response_payload = {
                             "chat_response": {
                                 "username": test_msg['display_name'],
                                 "message": test_msg['message'],
                                 "response": response_text,
                                 "is_test": True,
+                                "tts_queued": tts_queued,  # UI can show indicator
                                 "timestamp": int(time.time() * 1000)
                             }
                         }
                         await broadcast_func(chat_response_payload)
                         
-                        # Short delay before next potential message (1-3 seconds)
-                        await asyncio.sleep(random.uniform(1.0, 3.0))
+                        # Brief delay before next potential message
+                        await asyncio.sleep(random.uniform(0.5, 1.5))
                 
                 continue  # Continue the wait loop
             
@@ -2291,13 +2297,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                     
                     chat_response_count += 1
                     
-                    # Queue TTS for the response (non-blocking - don't hold up game)
+                    # Queue TTS for the response (non-blocking) - if full, text still goes to Twitch
+                    tts_queued = False
                     if tts_service.is_available:
-                        await tts_service.synthesize_and_play(
+                        request = await tts_service.queue_and_start_synthesis(
                             response_text,
                             priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                            wait=False  # Don't block - let game proceed
+                            cycle_id=current_cycle
                         )
+                        tts_queued = request is not None
                     
                     # Send response to Twitch chat
                     await twitch_service.send_response(

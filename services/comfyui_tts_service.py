@@ -56,8 +56,8 @@ class ComfyUITTSService:
         output_dir: str = None,
         timeout: float = 10.0,  # Reduced from 60s for faster fallback
         on_playback_start: callable = None,
-        audio_speed: float = 1.0,
-        audio_pitch: float = 0.0
+        audio_speed: float = None,
+        audio_pitch: float = None
     ):
         """
         Initialize the ComfyUI TTS service.
@@ -78,8 +78,8 @@ class ComfyUITTSService:
         self.on_playback_start = on_playback_start
         
         # Audio post-processing settings (from env or args)
-        self.audio_speed = audio_speed or float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
-        self.audio_pitch = audio_pitch or float(os.getenv("TTS_AUDIO_PITCH", "0"))  # In semitones
+        self.audio_speed = audio_speed if audio_speed is not None else float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
+        self.audio_pitch = audio_pitch if audio_pitch is not None else float(os.getenv("TTS_AUDIO_PITCH", "0"))  # In semitones
         
         # Request queue (priority queue simulation with sorting)
         self._queue: List[TTSRequest] = []
@@ -436,7 +436,7 @@ class ComfyUITTSService:
         return request
     
     # Maximum queue size for chat responses (persists across cycles)
-    MAX_QUEUE_SIZE = 4
+    MAX_QUEUE_SIZE = 2  # 1 commentary + 1 chat response max
     
     async def queue_and_start_synthesis(
         self,
