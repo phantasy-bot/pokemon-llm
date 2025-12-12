@@ -1998,6 +1998,44 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.warning(f"🔌 Socket health check failed: {e}")
             return False
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # STARTUP INTRO CYCLE
+    # Play an intro/reconnection message before the first real game cycle
+    # This gives mGBA time to fully load and sets the stream mood
+    # ═══════════════════════════════════════════════════════════════════════════
+    if tts_service and tts_service.is_available:
+        try:
+            # Determine intro message based on whether we're continuing or starting fresh
+            if is_first_cycle_after_continue:
+                intro_text = "Hey everyone! Lass is back! Had some connection issues but I'm ready to continue my Pokemon adventure!"
+            else:
+                intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
+            
+            log.info(f"🎬 Playing startup intro: {intro_text[:50]}...")
+            
+            # Broadcast a status update so UI shows something
+            await broadcast_func({
+                "processingStatus": "STARTING STREAM...",
+                "response_log": {"id": 0, "text": intro_text, "is_response": True, "timestamp": int(time.time() * 1000)}
+            })
+            
+            # Play the intro TTS and wait for it to complete
+            await tts_service.synthesize_and_play(
+                intro_text,
+                priority=tts_service.PRIORITY_COMMENTARY,
+                wait=True
+            )
+            log.info("✅ Startup intro complete, beginning first cycle")
+            
+            # Clear processing status
+            await broadcast_func({"processingStatus": ""})
+            
+        except Exception as e:
+            log.warning(f"Startup intro failed: {e}")
+    
+    # Small delay to let mGBA fully settle
+    await asyncio.sleep(2)
+
     while action_count < max_loops:
         loop_start_time = time.time()
         
@@ -3040,7 +3078,52 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.info(f"📡 Broadcast complete: {list(update_payload.keys())}")
         
         # ═══════════════════════════════════════════════════════════════════════════
-        # ACTION EXECUTION (now happens AFTER UI is updated)
+        # TTS COMMENTARY PLAYBACK (BEFORE action execution for proper sync)
+        # Order: UI shows reasoning/action → TTS plays → mGBA executes
+        # ═══════════════════════════════════════════════════════════════════════════
+        if game_analysis and tts_service and tts_service.is_available:
+            # Extract commentary from the LLM response
+            commentary_match = re.search(r'<commentary>([\s\S]*?)</commentary>', game_analysis, re.IGNORECASE)
+            
+            if not commentary_match:
+                # Fallback: various numbered formats
+                commentary_match = re.search(
+                    r'(?:7|8|9|10|11)\.\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\'\(]?(.+?)["\'\)]?(?=\n\d+\.|$|\n\n|</game_analysis>)',
+                    game_analysis, 
+                    re.IGNORECASE | re.DOTALL
+                )
+            
+            if commentary_match:
+                commentary_text = commentary_match.group(1).strip()
+                commentary_text = re.sub(r'^[-–•]\s*', '', commentary_text)
+                commentary_text = re.sub(r'\n.*$', '', commentary_text)  # Take first line only
+                commentary_text = commentary_text.strip().strip('"\'')
+                
+                if commentary_text and len(commentary_text) > 5:
+                    log.info(f"🔊 Playing TTS: {commentary_text[:60]}...")
+                    
+                    # Update chat response service context
+                    if chat_response_service.is_available:
+                        chat_response_service.update_context(
+                            game_context=f"Currently in {current_mGBA_state.get('map_name', 'unknown')}",
+                            commentary=commentary_text,
+                            location=current_mGBA_state.get('map_name', 'unknown'),
+                            memory=memory_manager.get_narrative_context()
+                        )
+                    
+                    # Synthesize and play TTS - WAIT for it to complete
+                    try:
+                        await tts_service.synthesize_and_play(
+                            commentary_text,
+                            priority=tts_service.PRIORITY_COMMENTARY,
+                            wait=True
+                        )
+                        log.info(f"✅ TTS playback complete")
+                    except Exception as tts_err:
+                        log.warning(f"🔊 TTS error: {tts_err}")
+        
+        # ═══════════════════════════════════════════════════════════════════════════
+        # ACTION EXECUTION (now happens AFTER TTS completes)
         # ═══════════════════════════════════════════════════════════════════════════
 
         if action:
@@ -3048,13 +3131,6 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log_action_text = f"Action: {action}"
             log.info(f"LLM proposed action: {action}")
             try:
-                # Wait for any current TTS commentary to finish before pressing buttons
-                # This makes the stream more coherent - commentary completes, then action
-                if tts_service and tts_service.is_available:
-                    log.info("⏳ Waiting for TTS playback to complete before action...")
-                    await tts_service.wait_for_playback(timeout=15.0)  # Wait up to 15s for speech
-                    log.info("✅ TTS complete, sending action")
-                
                 # Wait 1s before sending action to let game state settle
                 time.sleep(1)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
@@ -3389,80 +3465,6 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         
         # Store current cycle time as previous for next iteration - use TRUE time
         prev_cycle_time_s = true_cycle_duration_s
-        
-        # ═══════════════════════════════════════════════════════════════════════════
-        # TTS COMMENTARY PLAYBACK (at end of cycle, before chat responses)
-        # ═══════════════════════════════════════════════════════════════════════════
-        commentary_text = None
-        tts_start_time = time.time()
-        
-        log.info(f"🔊 TTS Check: game_analysis={'Yes' if game_analysis else 'No'}, tts_available={tts_service.is_available}")
-        
-        if game_analysis and tts_service.is_available:
-            # Extract commentary from the LLM response
-            # Priority: XML tag <commentary> (New format)
-            commentary_match = re.search(r'<commentary>([\s\S]*?)</commentary>', game_analysis, re.IGNORECASE)
-            
-            if not commentary_match:
-                # Fallback: various numbered formats: "11. COMMENTARY:", "11. **COMMENTARY**:", etc.
-                # Matches section 7, 8, 9, 10, or 11 (for compatibility with old and new formats)
-                commentary_match = re.search(
-                    r'(?:7|8|9|10|11)\.\s*\*{0,2}COMMENTARY\*{0,2}[:\s]*["\'()]?(.+?)["\'()]?(?=\n\d+\.|$|\n\n|</game_analysis>)',
-                    game_analysis, 
-                    re.IGNORECASE | re.DOTALL
-                )
-            
-            log.info(f"🔊 TTS Regex Match: {'Found' if commentary_match else 'No match'}")
-            if commentary_match:
-                log.debug(f"🔊 TTS Raw match: {commentary_match.group(0)[:100]}...")
-            
-            if commentary_match:
-                commentary_text = commentary_match.group(1).strip()
-                # Clean up the commentary
-                commentary_text = re.sub(r'^[-–•]\s*', '', commentary_text)
-                commentary_text = re.sub(r'\n.*$', '', commentary_text)  # Take first line only
-                commentary_text = commentary_text.strip()
-                # Remove surrounding quotes if present
-                commentary_text = commentary_text.strip('"\'')
-                
-                log.info(f"🔊 TTS Extracted commentary ({len(commentary_text)} chars): {commentary_text[:100]}...")
-                
-                if commentary_text and len(commentary_text) > 5:
-                    log.info(f"🔊 Playing TTS for commentary: {commentary_text[:50]}...")
-                    
-                    # Update chat response service with current game context
-                    if chat_response_service.is_available:
-                        map_name = current_mGBA_state.get('map_name', 'unknown')
-                        chat_response_service.update_context(
-                            game_context=f"Currently in {map_name}",
-                            commentary=commentary_text,
-                            location=map_name,
-                            memory=memory_manager.get_narrative_context()
-                        )
-                    
-                    # Synthesize and play the commentary audio (don't wait - play in background)
-                    try:
-                        tts_task = asyncio.create_task(tts_service.synthesize_and_play(
-                            commentary_text,
-                            priority=tts_service.PRIORITY_COMMENTARY,
-                            wait=True
-                        ))
-                        log.info(f"🔊 TTS Task created, running in background")
-                    except Exception as tts_err:
-                        log.warning(f"🔊 TTS commentary playback error: {tts_err}")
-                else:
-                    log.info(f"🔊 TTS Skipped: Commentary too short ({len(commentary_text)} chars)")
-            else:
-                # Log a sample of the game_analysis to help debug regex
-                log.info(f"🔊 TTS No commentary found. Looking for pattern in: ...{game_analysis[-500:]}...")
-        else:
-            if not game_analysis:
-                log.info("🔊 TTS Skipped: No game_analysis available")
-            if not tts_service.is_available:
-                log.info("🔊 TTS Skipped: TTS service not available")
-        
-        tts_check_time = time.time() - tts_start_time
-        log.info(f"🔊 TTS Check completed in {tts_check_time:.2f}s")
         
         # ═══════════════════════════════════════════════════════════════════════════
         # TWITCH CHAT RESPONSE PROCESSING (during wait period)
