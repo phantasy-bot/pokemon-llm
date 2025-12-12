@@ -497,7 +497,7 @@ class ComfyUITTSService:
         return request
     
     # Maximum queue size for chat responses (persists across cycles)
-    MAX_QUEUE_SIZE = 2  # 1 commentary + 1 chat response max
+    MAX_QUEUE_SIZE = 4  # Up to 3 message responses + 1 commentary
     
     async def queue_and_start_synthesis(
         self,
