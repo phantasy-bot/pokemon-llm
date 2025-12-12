@@ -3026,6 +3026,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         
         state["log_history"] = state["log_history"][:50]
         
+        # Include state counts in the early broadcast (with PREDICTED action count)
+        predicted_action_count = action_count + buttons_in_action
+        update_payload["cycle"] = current_cycle
+        update_payload["actions"] = predicted_action_count  # Show what it WILL be after execution
+        update_payload["tokensUsed"] = tokens_used_session
+        state["actions"] = predicted_action_count
+        state["tokensUsed"] = tokens_used_session
+        
         # BROADCAST NOW - before action execution
         if update_payload:
             await broadcast_func(update_payload)
@@ -3095,19 +3103,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             cycle_count -= 1
             log.info("Decremented cycle count to retry same cycle number on next attempt.")
 
-        # Update action_count AFTER execution (the log already showed intended action)
+        # Update the GLOBAL action_count variable after execution
+        # (state was already updated in the early broadcast with predicted value)
         if action:
             action_count += buttons_in_action
             log.info(f"📊 Actions #{action_start}-#{action_end} ({buttons_in_action} buttons) - EXECUTED")
         
-        # Update action count in state
-        if state.get('actions') != action_count:
-         state['actions'] = action_count
-        
-        # Update other state fields
-        if state.get('tokensUsed') != tokens_used_session:
-            state['tokensUsed'] = tokens_used_session
-
+        # Update elapsed time for status display
         elapsed = datetime.datetime.now() - start_time
         elapsed_seconds = elapsed.total_seconds()
         game_status_str = f"{int(elapsed_seconds // 3600)}h {int((elapsed_seconds % 3600) // 60)}m {int(elapsed_seconds % 60)}s"
