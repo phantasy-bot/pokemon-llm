@@ -160,7 +160,7 @@ function LiveCycleTimer({
 }) {
   const [elapsedTime, setElapsedTime] = useState(0); // Always start at 0
   const [isFlashing, setIsFlashing] = useState(false);
-  const lastCycleRef = useRef(cycleNumber);
+  const lastCycleRef = useRef<number | null>(null); // Start as null to detect first render
   const timerRef = useRef<number | null>(null);
 
   // Tick every 0.1 second
@@ -178,16 +178,22 @@ function LiveCycleTimer({
 
   // Reset timer and flash when cycle changes
   useEffect(() => {
+    // First render: just set the ref, don't reset (timer already at 0)
+    if (lastCycleRef.current === null) {
+      lastCycleRef.current = cycleNumber;
+      return;
+    }
+    
+    // Subsequent renders: reset if cycle changed
     if (cycleNumber !== lastCycleRef.current) {
       // Cycle completed - flash and reset to 0
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 500);
       setElapsedTime(0);
       lastCycleRef.current = cycleNumber;
+      console.log(`[CycleTimer] Reset to 0, new cycle: ${cycleNumber}`);
     }
   }, [cycleNumber]);
-
-  // No backend sync - timer is purely client-side from 0
 
   return (
     <span className={`cycle-timer ${isFlashing ? 'cycle-timer--flash' : ''}`}>
