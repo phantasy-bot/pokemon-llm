@@ -664,15 +664,23 @@
   margin-top: var(--space-md);
 }
 
-/* Processing indicator at bottom of scroll area */
+/* Processing indicator at bottom of LLM analysis wrapper */
 .analysis-panel__processing-bottom {
-  position: absolute;
-  bottom: var(--space-md);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  /* Use flexbox positioning - part of the wrapper's flex column */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 6px;
   backdrop-filter: blur(4px);
   animation: status-glow 2s ease-in-out infinite;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 /* Processing text styling */

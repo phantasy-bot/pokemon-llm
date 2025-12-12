@@ -1766,6 +1766,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             
             if commentary_match:
                 commentary_text = commentary_match.group(1).strip()
+                # Strip <think> tags that sometimes appear in commentary
+                commentary_text = re.sub(r'<think>[\s\S]*?</think>', '', commentary_text, flags=re.IGNORECASE).strip()
                 commentary_text = re.sub(r'^[-–•]\s*', '', commentary_text)
                 commentary_text = re.sub(r'\n.*$', '', commentary_text)  # Take first line only
                 commentary_text = commentary_text.strip().strip('"\'')
@@ -2080,7 +2082,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         elapsed_loop_time = time.time() - loop_start_time
         # ORIGINAL llmdriver.py used max(10, ...). 
         # Changed to 10s minimum wait as requested.
-        wait_time = max(2, interval - elapsed_loop_time) # Ensure at least 2 seconds wait
+        wait_time = max(0, interval - elapsed_loop_time)  # No minimum wait - proceed immediately if under interval
         if result and result.get("stats", {}).get("action_count", 0) > 0:
             log.info(f"💾 Cycle {current_cycle} action execution successful")
             
