@@ -18,6 +18,7 @@ log = logging.getLogger("twitch_chat")
 
 # Test mode configuration
 TWITCH_TEST_MODE = os.getenv("TWITCH_TEST_MODE", "false").lower() == "true"
+TWITCH_TEST_LLM = os.getenv("TWITCH_TEST_LLM", "false").lower() == "true"  # Use LLM for test responses
 TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("TWITCH_TEST_MESSAGES_PER_CYCLE", "10"))
 
 # Check if twitchio is available

@@ -2158,7 +2158,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 continue
             
             # Check if we're in test mode first (handles its own message generation)
-            from services.twitch_chat_service import TWITCH_TEST_MODE
+            from services.twitch_chat_service import TWITCH_TEST_MODE, TWITCH_TEST_LLM
             
             if TWITCH_TEST_MODE:
                 # Test mode: Generate message immediately, then wait for TTS
@@ -2185,21 +2185,37 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                         log.info(f"⏭️ [TEST] Skipping spam from @{test_msg['display_name']}: {test_msg['message'][:40]}...")
                         await asyncio.sleep(0.5)  # Brief pause before next message
                     else:
-                        # Generate a witty mock response in Lass's personality
-                        mock_responses = [
-                            f"Hehe, thanks for watching @{test_msg['display_name']}! You're making this adventure more fun!",
-                            f"Omg hi @{test_msg['display_name']}! I'm so happy you're here with me!",
-                            f"@{test_msg['display_name']} Aww you're so sweet! Let's catch 'em all together!",
-                            f"Thanks @{test_msg['display_name']}! I may get lost sometimes but at least we're lost together!",
-                            f"@{test_msg['display_name']} You're the Pikachu to my Ash! Well... once I actually GET a Pikachu...",
-                            f"Haha @{test_msg['display_name']}! True, but hey, every Pokemon master started somewhere!",
-                            f"Aww @{test_msg['display_name']} that's so nice! You're giving me all the encouragement I need!",
-                            f"@{test_msg['display_name']} Good question! I'm working on it, I promise! Maybe...",
-                        ]
-                        
-                        response_text = random.choice(mock_responses)
-                        log.info(f"💬 [TEST] @{test_msg['display_name']}: \"{test_msg['message']}\"")
-                        log.info(f"🎤 [TEST] Lass responds: {response_text}")
+                        # Generate response - use LLM if TWITCH_TEST_LLM=true, otherwise mock
+                        llm_start = time.time()
+                        if TWITCH_TEST_LLM and chat_response_service.is_available:
+                            # Use actual LLM (Featherless) for realistic latency testing
+                            try:
+                                response_text = await chat_response_service.generate_response(
+                                    test_msg['display_name'],
+                                    test_msg['message'],
+                                    is_past=False
+                                )
+                                llm_time = time.time() - llm_start
+                                log.info(f"💬 [TEST+LLM] @{test_msg['display_name']}: \"{test_msg['message']}\"")
+                                log.info(f"🎤 [TEST+LLM] Lass responds (LLM took {llm_time:.2f}s): {response_text}")
+                            except Exception as e:
+                                log.warning(f"[TEST+LLM] LLM error, falling back to mock: {e}")
+                                response_text = f"Hehe thanks @{test_msg['display_name']}! You're awesome!"
+                        else:
+                            # Use mock responses for speed testing
+                            mock_responses = [
+                                f"Hehe, thanks for watching @{test_msg['display_name']}! You're making this adventure more fun!",
+                                f"Omg hi @{test_msg['display_name']}! I'm so happy you're here with me!",
+                                f"@{test_msg['display_name']} Aww you're so sweet! Let's catch 'em all together!",
+                                f"Thanks @{test_msg['display_name']}! I may get lost sometimes but at least we're lost together!",
+                                f"@{test_msg['display_name']} You're the Pikachu to my Ash! Well... once I actually GET a Pikachu...",
+                                f"Haha @{test_msg['display_name']}! True, but hey, every Pokemon master started somewhere!",
+                                f"Aww @{test_msg['display_name']} that's so nice! You're giving me all the encouragement I need!",
+                                f"@{test_msg['display_name']} Good question! I'm working on it, I promise! Maybe...",
+                            ]
+                            response_text = random.choice(mock_responses)
+                            log.info(f"💬 [TEST] @{test_msg['display_name']}: \"{test_msg['message']}\"")
+                            log.info(f"🎤 [TEST] Lass responds: {response_text}")
                         
                         chat_response_count += 1
                         
