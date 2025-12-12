@@ -47,7 +47,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger('llmdriver')
 
 
-ACTION_RE = re.compile(r'^[LRUDABSs](?:;[LRUDABSs])*(?:;)?$')
+ACTION_RE = re.compile(r'^[LRUDABSTt](?:;[LRUDABSTt])*;?')  # Match action at start, allow trailing text
 COORD_RE = re.compile(r'^([0-9]),([0-8])$')
 ANALYSIS_RE = re.compile(r"<game_analysis>([\s\S]*?)</game_analysis>", re.IGNORECASE)
 IS_LOCAL = DEFAULT_MODE == "LMSTUDIO" or DEFAULT_MODE == "OLLAMA"
@@ -1457,8 +1457,9 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
                 last = lines[-1]
                 # plain "action" string - translate cardinal directions first
                 translated_last = translate_cardinal_to_buttons(last)
-                if ACTION_RE.match(translated_last) and not translated_last.startswith('{'):
-                    action = translated_last
+                match = ACTION_RE.match(translated_last)
+                if match and not translated_last.startswith('{'):
+                    action = match.group().rstrip(';') + ';'  # Normalize to end with single semicolon
 
                 # plain touch coords
                 elif COORD_RE.match(last):
