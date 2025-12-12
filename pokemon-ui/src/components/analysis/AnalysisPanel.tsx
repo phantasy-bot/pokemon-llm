@@ -6,6 +6,24 @@ import { RecentActions } from "../shared/RecentActions";
 import { TypewriterText } from "../shared/TypewriterText";
 import "./AnalysisPanel.css";
 
+// Spinning Pokeball SVG for processing status
+function SpinningPokeball() {
+  return (
+    <svg 
+      className="spinning-pokeball" 
+      viewBox="0 0 24 24" 
+      width="18" 
+      height="18"
+    >
+      <circle cx="12" cy="12" r="11" fill="#fff" stroke="#333" strokeWidth="1"/>
+      <path d="M1 12 H23" stroke="#333" strokeWidth="2"/>
+      <path d="M1 12 A11 11 0 0 1 23 12" fill="#e53935"/>
+      <circle cx="12" cy="12" r="4" fill="#fff" stroke="#333" strokeWidth="2"/>
+      <circle cx="12" cy="12" r="2" fill="#333"/>
+    </svg>
+  );
+}
+
 // Animated dots component for loading states
 function AnimatedDots() {
   const [dots, setDots] = useState('');
@@ -163,28 +181,34 @@ export function AnalysisPanel({
         <div className="analysis-panel__llm-analysis-wrapper">
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
           
-          {/* Processing Status Indicator - shows when agent is working */}
-          {processingStatus && (
-            <div className="analysis-panel__status-indicator">
-              <span className="analysis-panel__status-pulse" />
-              <span className="analysis-panel__status-text">{processingStatus}</span>
-            </div>
-          )}
-          
           <div className="analysis-panel__llm-analysis-scroll" ref={scrollRef}>
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
                 <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
               ) : (
-                !isProcessing && (
-                  <div className="analysis-panel__empty">
-                    waiting for Pokemon LLM analysis...
-                  </div>
-                )
+                /* No analysis yet - show centered processing status or waiting text */
+                <div className="analysis-panel__empty-centered">
+                  {processingStatus ? (
+                    <div className="analysis-panel__processing-indicator">
+                      <SpinningPokeball />
+                      <span className="analysis-panel__processing-text">{processingStatus}</span>
+                    </div>
+                  ) : (
+                    <span>waiting for Pokemon LLM analysis<AnimatedDots /></span>
+                  )}
+                </div>
               )}
             </div>
           </div>
+          
+          {/* Processing status at bottom when analysis is already shown */}
+          {latestEntry && processingStatus && (
+            <div className="analysis-panel__processing-bottom">
+              <SpinningPokeball />
+              <span className="analysis-panel__processing-text">{processingStatus}</span>
+            </div>
+          )}
         </div>
 
         {/* 2. Recent Actions Section (Inserted here) */}

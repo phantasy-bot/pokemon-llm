@@ -168,7 +168,7 @@ state = {
     "actions": 0,
     "cycle": 0,  # Current cycle number - persisted for reconnect
     "badges": [],
-    "gameStatus": "Starting...",
+    "gameStatus": "",
     "processingStatus": "",  # Detailed status: "SENDING VISION...", "RETRYING VISION (2/5)...", "THINKING..."
     "goals": { "primary": 'Initializing...', "secondary": 'Initializing...', "tertiary": 'Initializing...' },
     "otherGoals": 'Initializing...',

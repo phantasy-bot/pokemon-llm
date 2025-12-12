@@ -153,21 +153,24 @@ function SessionTimer({
 }
 
 // Live cycle timer component that ticks every 0.1 seconds
+// Uses timestamp-based approach for reliable reset to 0
 function LiveCycleTimer({ 
   cycleNumber, 
 }: { 
   cycleNumber: number; 
 }) {
-  const [elapsedTime, setElapsedTime] = useState(0); // Always start at 0
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [isFlashing, setIsFlashing] = useState(false);
-  const lastCycleRef = useRef<number | null>(null); // Start as null to detect first render
+  const cycleStartTimeRef = useRef<number>(Date.now()); // Track when cycle started
+  const lastCycleRef = useRef<number>(cycleNumber);
   const timerRef = useRef<number | null>(null);
 
-  // Tick every 0.1 second
+  // Tick every 0.1 second - calculate elapsed from start time
   useEffect(() => {
     timerRef.current = window.setInterval(() => {
-      setElapsedTime(prev => prev + 0.1);
-    }, 100); // 100ms = 0.1s
+      const elapsed = (Date.now() - cycleStartTimeRef.current) / 1000;
+      setElapsedTime(elapsed);
+    }, 100);
 
     return () => {
       if (timerRef.current) {
@@ -176,19 +179,13 @@ function LiveCycleTimer({
     };
   }, []);
 
-  // Reset timer and flash when cycle changes
+  // Reset timer when cycle changes
   useEffect(() => {
-    // First render: just set the ref, don't reset (timer already at 0)
-    if (lastCycleRef.current === null) {
-      lastCycleRef.current = cycleNumber;
-      return;
-    }
-    
-    // Subsequent renders: reset if cycle changed
     if (cycleNumber !== lastCycleRef.current) {
-      // Cycle completed - flash and reset to 0
+      // Cycle completed - flash and reset start time
       setIsFlashing(true);
       setTimeout(() => setIsFlashing(false), 500);
+      cycleStartTimeRef.current = Date.now(); // Reset start time
       setElapsedTime(0);
       lastCycleRef.current = cycleNumber;
       console.log(`[CycleTimer] Reset to 0, new cycle: ${cycleNumber}`);
@@ -551,9 +548,14 @@ export function PokemonStreamOverlay({
 
           <div className="status">
             <span>
-              Game Status: {wsConnected ? gameState.gameStatus : (<>Connecting<AnimatedEllipsis interval={400} /></>)}
-              {wsConnected && gameState.sessionStartTime && (
-                <> | <SessionTimer sessionStartTime={gameState.sessionStartTime} /></>
+              {wsConnected ? (
+                <>
+                  {gameState.sessionStartTime && (
+                    <SessionTimer sessionStartTime={gameState.sessionStartTime} />
+                  )}
+                </>
+              ) : (
+                <>Connecting<AnimatedEllipsis interval={400} /></>
               )}
             </span>
             <span
