@@ -3131,6 +3131,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log_action_text = f"Action: {action}"
             log.info(f"LLM proposed action: {action}")
             try:
+                # Broadcast action_execute to trigger button animation in UI
+                # This is sent right before mGBA executes so animation syncs with game
+                await broadcast_func({
+                    "action_execute": True,
+                    "action_buttons": action_to_send.replace(";", " ").strip().split(),
+                    "buttons_in_action": buttons_in_action
+                })
+                log.info(f"🎮 Broadcasted action_execute for animation trigger")
+                
                 # Wait 1s before sending action to let game state settle
                 time.sleep(1)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))

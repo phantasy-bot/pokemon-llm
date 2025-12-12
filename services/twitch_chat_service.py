@@ -2,17 +2,23 @@
 """
 Twitch Chat Service for Pokemon LLM Agent.
 Connects to Twitch IRC chat via twitchio library to read and respond to viewer messages.
+Includes test mode for generating fake messages when TWITCH_TEST_MODE=true.
 """
 
 import asyncio
 import os
 import logging
 import time
+import random
 from dataclasses import dataclass, field
 from typing import List, Optional, Callable
 from collections import deque
 
 log = logging.getLogger("twitch_chat")
+
+# Test mode configuration
+TWITCH_TEST_MODE = os.getenv("TWITCH_TEST_MODE", "false").lower() == "true"
+TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("TWITCH_TEST_MESSAGES_PER_CYCLE", "10"))
 
 # Check if twitchio is available
 try:
@@ -21,6 +27,38 @@ try:
 except ImportError:
     TWITCHIO_AVAILABLE = False
     log.warning("twitchio not installed. Twitch chat integration disabled. Install with: pip install twitchio")
+
+# Test mode usernames and message templates
+TEST_USERNAMES = [
+    "PokeFan2024", "ShinyHunter99", "GaryWasHere", "AshKetchumFan", "MistyMain",
+    "BrockFan", "TeamRocketBlasting", "PikachuLover", "MewtwoStan", "GottaCatchEmAll",
+    "PokemonMaster123", "ViridianCity420", "PalletTownBoy", "EliteFourDan", "GymLeaderSara",
+    "RandomViewer42", "TwitchChatter", "PokeNerd", "RetroGamer85", "GenOneForever"
+]
+
+TEST_MESSAGES = [
+    # Questions about game
+    "where are you going?", "what pokemon do you have?", "are you lost lol",
+    "have you beaten brock yet?", "when are you catching pikachu?",
+    "what's your team?", "how many badges?", "is this your first playthrough?",
+    # Greetings
+    "hey lass!", "hi!", "just got here what's happening", "love the stream!",
+    "first time watching!", "let's gooo", "pog", "HYPE", "hello chat!",
+    # Playful roasts
+    "you've been stuck here for 10 minutes lmao", "just go left omg",
+    "bruh moment", "lass please", "skill issue tbh", "have you tried pressing A?",
+    "my grandma could beat this game faster", "literally walking in circles",
+    # Pokemon references
+    "catch that rattata!", "WILD ENCOUNTER POG", "that pikachu is built different",
+    "this is like my childhood", "gen 1 best gen", "squirtle gang",
+    "charmander would never", "bulbasaur supremacy",
+    # Spam/memes (for SKIP testing)
+    "KEKW KEKW KEKW", "!gamble all", "LUL LUL LUL", "Kappa Kappa Kappa",
+    "asdfghjkl", "zzzzzzzzz", "first", "sub to my channel",
+    # Genuine engagement
+    "you got this!", "let's catch 'em all!", "I believe in you lass!",
+    "@Lass you're doing great!", "keep going!", "almost there!",
+]
 
 
 @dataclass
@@ -32,6 +70,7 @@ class ChatMessage:
     timestamp: float
     is_mention: bool = False
     responded: bool = False
+    is_test: bool = False  # Flag for test messages
 
 
 class TwitchChatService:
@@ -238,6 +277,51 @@ class TwitchChatService:
             }
             for msg in messages
         ]
+    
+    def generate_test_messages(self, count: int = None) -> List[dict]:
+        """
+        Generate fake test messages for development/testing.
+        
+        Args:
+            count: Number of messages to generate. Defaults to TWITCH_TEST_MESSAGES_PER_CYCLE.
+        
+        Returns:
+            List of message dicts compatible with chat_response_service.
+        """
+        if count is None:
+            count = TWITCH_TEST_MESSAGES_PER_CYCLE
+        
+        test_messages = []
+        base_time = time.time()
+        
+        for i in range(count):
+            username = random.choice(TEST_USERNAMES)
+            message = random.choice(TEST_MESSAGES)
+            timestamp = base_time - (count - i) * 0.5  # Stagger timestamps
+            
+            test_messages.append({
+                "username": username.lower(),
+                "display_name": username,
+                "message": message,
+                "timestamp": timestamp,
+                "_original": None,  # No original for test messages
+                "is_test": True
+            })
+        
+        log.info(f"🧪 Generated {count} test messages for TWITCH_TEST_MODE")
+        return test_messages
+    
+    def get_messages_for_cycle_or_test(self) -> List[dict]:
+        """
+        Get messages for the current cycle, using test messages if TWITCH_TEST_MODE is enabled.
+        
+        Returns:
+            List of message dicts (real or test) for processing.
+        """
+        if TWITCH_TEST_MODE:
+            return self.generate_test_messages()
+        else:
+            return self.get_messages_for_cycle()
     
     def mark_responded(self, msg: ChatMessage):
         """Mark a message as responded to."""

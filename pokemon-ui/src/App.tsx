@@ -237,6 +237,14 @@ function App() {
       setTtsCommentary(data.tts_commentary);
     }
 
+    // Handle action_execute (triggers button animation at correct time)
+    if (data.action_execute) {
+      console.log("Action execute received - triggering animation");
+      setGameState((prev) => ({
+        ...prev,
+        animateActions: Date.now(), // Use timestamp to trigger re-render
+      }));
+    }
 
     // Handle bulk logs
     if (data.logs && Array.isArray(data.logs)) {

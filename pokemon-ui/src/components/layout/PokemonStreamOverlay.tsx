@@ -556,6 +556,7 @@ export function PokemonStreamOverlay({
           <AnalysisPanel
               logs={logs}
               totalActions={gameState.actions}
+              animateActions={gameState.animateActions}
               isProcessing={
                 !!gameState.processingStatus ||
                 gameState.gameStatus === "Thinking..." || 

@@ -35,6 +35,7 @@ const ROTATION_INTERVAL = 15000;
 interface AnalysisPanelProps {
   logs: LogEntry[];
   totalActions: number; // For RecentActions component
+  animateActions?: number; // Timestamp when to trigger button animations
   isProcessing?: boolean;
   processingStatus?: string; // e.g., "ANALYZING VISION...", "THINKING..."
   memoryWrite?: string | null;
@@ -45,6 +46,7 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({
   logs,
   totalActions,
+  animateActions,
   isProcessing = false,
   processingStatus,
   memoryWrite,
@@ -186,7 +188,7 @@ export function AnalysisPanel({
         </div>
 
         {/* 2. Recent Actions Section (Inserted here) */}
-        <RecentActions logs={logs} totalActions={totalActions} />
+        <RecentActions logs={logs} totalActions={totalActions} animateTrigger={animateActions} />
 
         {/* 3. Latest Memory Section (Above Vision) */}
         <div className="analysis-panel__memory-section">
