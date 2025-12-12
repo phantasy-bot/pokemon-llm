@@ -115,7 +115,8 @@ function App() {
       data.avgCycleTime !== undefined ||
       data.cycleTiming !== undefined ||
       data.sessionStartTime !== undefined ||
-      data.cyclesEnabled !== undefined
+      data.cyclesEnabled !== undefined ||
+      data.processingStatus !== undefined
     ) {
       setGameState((prev) => {
         const newState = { ...prev };

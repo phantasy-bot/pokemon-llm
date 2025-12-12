@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   PokemonGameState,
   LogEntry,
@@ -9,6 +9,152 @@ import type { PokemonDisplay } from "../../types/display";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
 import "./PokemonStreamOverlay.css";
+
+/**
+ * TalkingCharacter - Animated character with mouth movement during speech
+ * 
+ * Provides smooth lip-sync animation by cycling through mouth frames.
+ * Gracefully falls back to static image if speaking frames don't exist.
+ * 
+ * Frame naming convention:
+ * - Base: /lass/lass-default.png
+ * - Speaking frames: /lass/lass-default-speak1.png, -speak2.png, etc.
+ * - Wink frame (optional): /lass/lass-default-wink.png
+ */
+interface TalkingCharacterProps {
+  baseImage: string;           // Base image path (e.g., "/lass/lass-default.png")
+  isSpeaking: boolean;         // Whether character is currently speaking
+  isWinking?: boolean;         // Whether to show wink frame
+  speakFrameCount?: number;    // Number of speaking frames (default 3)
+  speakInterval?: number;      // Ms between mouth frame changes (default 100)
+  className?: string;
+  alt?: string;
+}
+
+function TalkingCharacter({
+  baseImage,
+  isSpeaking,
+  isWinking = false,
+  speakFrameCount = 3,
+  speakInterval = 100,
+  className = "",
+  alt = "Character"
+}: TalkingCharacterProps) {
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [availableFrames, setAvailableFrames] = useState<string[]>([baseImage]);
+  const [hasCheckedFrames, setHasCheckedFrames] = useState(false);
+  const intervalRef = useRef<number | null>(null);
+  
+  // Generate frame paths based on base image
+  const getFramePaths = useCallback(() => {
+    // Extract path without extension: /lass/lass-default.png -> /lass/lass-default
+    const lastDot = baseImage.lastIndexOf('.');
+    const basePath = lastDot > 0 ? baseImage.slice(0, lastDot) : baseImage;
+    const ext = lastDot > 0 ? baseImage.slice(lastDot) : '.png';
+    
+    const frames = [baseImage]; // Frame 0 is always the base (closed mouth)
+    for (let i = 1; i <= speakFrameCount; i++) {
+      frames.push(`${basePath}-speak${i}${ext}`);
+    }
+    return frames;
+  }, [baseImage, speakFrameCount]);
+  
+  // Check which frames actually exist (preload test)
+  useEffect(() => {
+    const framePaths = getFramePaths();
+    const validFrames: string[] = [baseImage];
+    let loadedCount = 0;
+    
+    // Test load each speaking frame
+    framePaths.slice(1).forEach((framePath) => {
+      const img = new Image();
+      img.onload = () => {
+        validFrames.push(framePath);
+        loadedCount++;
+        if (loadedCount === framePaths.length - 1) {
+          // All frames checked - sort to maintain order
+          validFrames.sort((a, b) => {
+            const aNum = a.match(/-speak(\d+)/)?.[1] || '0';
+            const bNum = b.match(/-speak(\d+)/)?.[1] || '0';
+            return parseInt(aNum) - parseInt(bNum);
+          });
+          setAvailableFrames(validFrames);
+          setHasCheckedFrames(true);
+        }
+      };
+      img.onerror = () => {
+        loadedCount++;
+        if (loadedCount === framePaths.length - 1) {
+          setAvailableFrames(validFrames.length > 1 ? validFrames : [baseImage]);
+          setHasCheckedFrames(true);
+        }
+      };
+      img.src = framePath;
+    });
+    
+    // If no speaking frames to check, just use base
+    if (framePaths.length === 1) {
+      setHasCheckedFrames(true);
+    }
+  }, [baseImage, getFramePaths]);
+  
+  // Animate through frames when speaking
+  useEffect(() => {
+    if (isSpeaking && availableFrames.length > 1 && hasCheckedFrames) {
+      // Start animation
+      intervalRef.current = window.setInterval(() => {
+        setCurrentFrame(prev => {
+          // Cycle through frames 0 -> 1 -> 2 -> 1 -> 0 -> 1 -> ... for natural mouth movement
+          const maxFrame = availableFrames.length - 1;
+          if (maxFrame <= 1) return prev === 0 ? 1 : 0;
+          // Random for more natural look
+          return Math.floor(Math.random() * availableFrames.length);
+        });
+      }, speakInterval);
+      
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    } else {
+      // Not speaking - return to base frame
+      setCurrentFrame(0);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+  }, [isSpeaking, availableFrames, hasCheckedFrames, speakInterval]);
+  
+  // Determine which image to show
+  const getDisplayImage = (): string => {
+    // Wink takes priority
+    if (isWinking) {
+      const lastDot = baseImage.lastIndexOf('.');
+      const basePath = lastDot > 0 ? baseImage.slice(0, lastDot) : baseImage;
+      const ext = lastDot > 0 ? baseImage.slice(lastDot) : '.png';
+      return `${basePath}-wink${ext}`;
+    }
+    
+    // Speaking animation
+    if (isSpeaking && availableFrames.length > 1) {
+      return availableFrames[currentFrame] || baseImage;
+    }
+    
+    // Default
+    return baseImage;
+  };
+  
+  return (
+    <img 
+      src={getDisplayImage()}
+      alt={alt}
+      className={className}
+      key={baseImage} // Force remount on base image change
+    />
+  );
+}
 
 // Typewriter text component - fixed speed per character (kept as fallback)
 
@@ -274,6 +420,17 @@ export function PokemonStreamOverlay({
 
   // --- DYNAMIC AVATAR LOGIC ---
   const getAvatarImage = (): string => {
+    // 0. INTRO/TITLE SCREEN DETECTION
+    // During intro (Oak's dialogue, name entry, etc.) we don't have Pokemon yet
+    // Use static image instead of oscillating walking frames
+    const hasParty = currentPokemon && currentPokemon.length > 0 && currentPokemon.some(p => p && p.name);
+    const isInIntro = !hasParty && !gameState.inBattle && !gameState.inMenu;
+    
+    if (isInIntro) {
+      // During intro dialogue/name entry, use default static pose
+      return "/lass/lass-default.png";
+    }
+
     // 1. High Priority: Stressed/Low Health (only if active pokemon is critical)
     const activePokemon = currentPokemon?.[0];
     if (activePokemon && activePokemon.hpStatus === "critical") {
@@ -322,7 +479,7 @@ export function PokemonStreamOverlay({
       return "/lass/lass-surfing.png";
     }
 
-    // 6. Default State (Overworld/Exploration) -> Animated
+    // 6. Default State (Overworld/Exploration) -> Animated walking
     return `/lass/lass-walking-${walkingFrame}.png`;
   };
 
@@ -486,12 +643,13 @@ export function PokemonStreamOverlay({
                 
                 {/* Right Column - Character Image */}
                 <div className="character-container__right">
-                  <img 
-                    src={avatarImage}
-                    alt="Lass Pokemon Trainer" 
+                  <TalkingCharacter 
+                    baseImage={avatarImage}
+                    isSpeaking={ttsCommentary?.playing ?? false}
                     className="lass-character"
-                    // Add key to force re-animation if needed, or just let src swap
-                    key={avatarImage} 
+                    alt="Lass Pokemon Trainer"
+                    speakFrameCount={3}
+                    speakInterval={120}
                   />
                 </div>
               </div>
@@ -550,9 +708,7 @@ export function PokemonStreamOverlay({
             <span>
               {wsConnected ? (
                 <>
-                  {gameState.sessionStartTime && (
-                    <SessionTimer sessionStartTime={gameState.sessionStartTime} />
-                  )}
+                  <SessionTimer sessionStartTime={gameState.sessionStartTime} />
                 </>
               ) : (
                 <>Connecting<AnimatedEllipsis interval={400} /></>
@@ -563,7 +719,7 @@ export function PokemonStreamOverlay({
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {wsConnected && gameState.cyclesEnabled && (
+            {wsConnected && (
               <span className="cycle-timing">
                 Cycle: <LiveCycleTimer 
                   cycleNumber={gameState.cycle} 
