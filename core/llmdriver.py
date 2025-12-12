@@ -32,8 +32,9 @@ from pyAIAgent.game.hints import get_area_hint
 from core.client_setup import setup_llm_client, parse_mode_arg, MODES
 from scripts.benchmark import Benchmark
 from core.client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
-from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
-from trackers.memory_storage import MemoryManager
+# from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client # Removed, handled by VisionManager
+from core.vision_manager import VisionManager
+from core.memory.manager import MemoryManager
 from core.battle_strategy import read_battle_state, choose_battle_action, get_battle_context
 from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from trackers.exploration_tracker import ExplorationTracker
@@ -42,6 +43,9 @@ from services.comfyui_tts_service import ComfyUITTSService, create_tts_service
 from services.chat_response_service import ChatResponseService, create_chat_response_service, MessageDecision
 from trackers.history_tracker import ScreenshotHistoryTracker
 from trackers.coordinate_tracker import CoordinateTracker
+from core.background_tasks import run_chat_background_task
+from core.game_state_manager import parse_minimap
+from core.llm_controller import LLMController
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -54,41 +58,7 @@ IS_LOCAL = DEFAULT_MODE == "LMSTUDIO" or DEFAULT_MODE == "OLLAMA"
 
 
 
-def compress_chat_history(chat_history, new_assistant_content):
-    """
-    Attempts to compress chat history by merging consecutive identical assistant actions.
-    Returns True if compressed (appended to existing last msg), False otherwise.
-    """
-    if not chat_history:
-        return False
-        
-    last_msg = chat_history[-1]
-    if last_msg["role"] != "assistant":
-        return False
 
-    # Check against new content
-    content = last_msg["content"]
-    if not isinstance(content, str):
-        return False
-    
-    # Regex to find ending (xN)
-    match = re.search(r' \(x(\d+)\)$', content)
-    current_count = 1
-    clean_content = content
-    
-    if match:
-        current_count = int(match.group(1))
-        clean_content = content[:match.start()]
-    
-    if clean_content.strip() == new_assistant_content.strip():
-        # Identical content!
-        # Only compress if it's short (likely navigation)
-        if len(clean_content) < 150:
-            new_count = current_count + 1
-            last_msg["content"] = f"{clean_content} (x{new_count})"
-            return True
-            
-    return False
 
 
 def translate_cardinal_to_buttons(action_str: str) -> str:
@@ -172,18 +142,14 @@ def set_current_mode(mode):
     CURRENT_MODE = mode
 
     # Setup LLM client with the selected mode
-    global client, MODEL, supports_reasoning, zai_vision_client
+    global client, MODEL, supports_reasoning, vision_manager
     client, MODEL, supports_reasoning = setup_llm_client(CURRENT_MODE)
 
-    # Initialize Z.AI vision client if using Z.AI mode
-    zai_vision_client = None
+    # Initialize VisionManager if using ZAI mode
+    global vision_manager
+    vision_manager = None
     if CURRENT_MODE == "ZAI" and client:
-        try:
-            # Use MCP=True to get the actual MCP vision server with image_analysis tool
-            zai_vision_client = create_zai_vision_client(client, MODEL, use_mcp=True)
-            log.info("Z.AI sync vision client initialized")
-        except Exception as e:
-            log.warning(f"Failed to initialize Z.AI vision client: {e}")
+        vision_manager = VisionManager(client, MODEL, enabled=True)
 
 # Note: CURRENT_MODE should be set by set_current_mode() before using any llmdriver functions
 # This prevents duplicate mode selection prompts
@@ -192,9 +158,9 @@ def set_current_mode(mode):
 client = None
 MODEL = None
 supports_reasoning = False
-zai_vision_client = None
+vision_manager = None
 
-chat_history = []
+# chat_history = [] (Moved to controller)
 response_count = 0
 action_count = 0
 tokens_used_session = 0
@@ -223,1384 +189,10 @@ def update_processing_status(status: str):
 
 
 
-async def run_chat_background_task(stop_event: asyncio.Event, tts_service, twitch_service, cycle_id: int):
-    """
-    Background task to generate and play chat responses while LLM is thinking.
-    Runs until stop_event is set.
-    """
-    from services.twitch_chat_service import TWITCH_TEST_MODE
-    
-    if not TWITCH_TEST_MODE or not tts_service:
-        return
-
-    log.info("🚀 Starting background chat response task")
-    
-    while not stop_event.is_set():
-        try:
-            # 1. Check if we need to queue more messages (keep buffer full)
-            # queue_status = tts_service.get_queue_status()
-            # if queue_status["pending"] < 3: ...
-            
-            # Generate a message if we don't have enough pending
-            # Note: queue_and_start_synthesis checks MAX_QUEUE_SIZE internally
-            
-            # Random chance to generate a new message (don't spam too fast)
-            if random.random() < 0.3:  # 30% chance per loop iteration
-                test_msg = twitch_service.generate_single_test_message()
-                if test_msg:
-                    username = test_msg['display_name']
-                    msg_text = test_msg['message']
-                    
-                    # Generate response
-                    from services.twitch_chat_service import CHAT_RESPONSE_PROMPT
-                    # We can't use the full LLM here as it would block/compete with main analysis
-                    # In test mode, we use the simple mock response generator
-                    # But wait, twitch_service.generate_single_test_message() doesn't generate a RESPONSE
-                    # We need to generate the LASS RESPONSE to the user message
-                    
-                    # For now, let's use a simple template response or a very fast local model call?
-                    # Actually, the previous implementation used the main LLM or a mock in test mode.
-                    # In test mode we can use a simple template to avoid LLM usage during main analysis.
-                    
-                    response_text = f"Oh {username}, {msg_text}? That's exciting! I'm doing my best here!"
-                    # Or better: use the mock list from before if available, or just simple logic
-                    
-                    # Simulating the mock response logic from the main loop:
-                    # "Lass responds: ..."
-                    # let's just use a placeholder for now, the main loop had:
-                    # mock_responses = ["Omg hi @{user}!", "That's so true @{user}!", ...]
-                    
-                    mock_responses = [
-                        "Omg hi @{user}! I'm so happy you're here with me!",
-                        "@{user} that is so funny! I literally can't even right now!",
-                        "Wait @{user}, really? I had no idea about that!",
-                        "Thanks for the tip @{user}! I'll try to remember that!",
-                        "@{user} you are always so supportive, thank you!",
-                        "I'm trying my best @{user}, this game is harder than it looks!",
-                        "Haha @{user} I saw that! wild!",
-                    ]
-                    response_text = random.choice(mock_responses).format(user=username)
-                    
-                    # Queue it!
-                    await tts_service.queue_and_start_synthesis(
-                        response_text, 
-                        priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                        cycle_id=cycle_id
-                    )
-            
-            # 2. Check for ready audio to play
-            ready_request = tts_service.get_next_ready_audio()
-            if ready_request:
-                # Play it! This will block this task for the duration of playback
-                # which is exactly what we want (linear playback)
-                # But check stop_event periodically? No, play_ready_audio handles wait_for_playback
-                # which respects cancellation? Not explicitly, but we can check stop_event after.
-                
-                # Check stop event before starting playback
-                if stop_event.is_set():
-                    break
-                    
-                log.info(f"🎤 [BG] Playing chat response: {ready_request.text[:30]}...")
-                
-                # This blocks!
-                # We need to be able to interrupt this if stop_event is set.
-                # play_ready_audio calls wait_for_playback which has a loop.
-                # But we can't inject our stop_event into it easily without modifying it.
-                # However, tts_service.cancel_current() wraps clean termination.
-                
-                completed = await tts_service.play_ready_audio(ready_request, wait=True)
-                
-                if not completed:
-                    log.info("🎤 [BG] Playback interrupted or failed")
-            
-            # Brief sleep to yield to event loop and avoid busy loop
-            await asyncio.sleep(0.1)
-            
-        except Exception as e:
-            log.error(f"Error in background chat task: {e}")
-            await asyncio.sleep(1.0) # Sleep longer on error
-
-    log.info("🛑 Background chat response task stopped")
-
-
-def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
-    """
-    Pre-compute minimap analysis to reduce LLM hallucination.
-    
-    Args:
-        minimap_2d: The raw minimap string
-        world_position: Player's world coordinates [x, y] - used to convert grid coords to world coords
-    
-    Returns a dict with player position, grid dimensions, adjacent tiles, blocked directions,
-    and world coordinate mappings for exits.
-    """
-    if not minimap_2d:
-        return {}
-    
-    # Parse rows (split by semicolon, strip whitespace)
-    rows = [row.strip() for row in minimap_2d.split(';') if row.strip()]
-    if not rows:
-        return {}
-    
-    num_rows = len(rows)
-    num_cols = len(rows[0]) if rows else 0
-    
-    # Find player position (look for 'P' in the grid)
-    player_row = -1
-    player_col = -1
-    for r_idx, row in enumerate(rows):
-        p_idx = row.find('P')
-        if p_idx >= 0:
-            player_row = r_idx
-            player_col = p_idx
-            break
-    
-    if player_row < 0 or player_col < 0:
-        return {"error": "Player 'P' not found in minimap"}
-    
-    # World coordinate conversion function
-    # Grid is centered on player, so player's grid position maps to world position
-    world_x = world_position[0] if world_position and len(world_position) >= 2 else None
-    world_y = world_position[1] if world_position and len(world_position) >= 2 else None
-    
-    def grid_to_world(grid_col, grid_row):
-        """Convert grid coordinates to world coordinates"""
-        if world_x is None or world_y is None:
-            return None
-        # Offset from player's grid position
-        dx = grid_col - player_col
-        dy = grid_row - player_row
-        return [world_x + dx, world_y + dy]
-    
-    # Get adjacent tiles
-    def get_tile(row, col):
-        if 0 <= row < num_rows and 0 <= col < len(rows[row]):
-            return rows[row][col]
-        return '?'  # Out of bounds
-    
-    north_tile = get_tile(player_row - 1, player_col)
-    south_tile = get_tile(player_row + 1, player_col)
-    east_tile = get_tile(player_row, player_col + 1)
-    west_tile = get_tile(player_row, player_col - 1)
-    
-    # Determine blocked directions (B = blocked, W = walkable, O = exit)
-    def is_blocked(tile):
-        return tile == 'B'
-    
-    def is_exit(tile):
-        return tile in ('O', 'D', 'E', '>', '<', '^', 'v')
-    
-    blocked = []
-    walkable = []
-    exits = []
-    
-    if is_blocked(north_tile):
-        blocked.append("NORTH (U)")
-    elif is_exit(north_tile):
-        exits.append(f"NORTH at [{player_col},{player_row-1}]")
-        walkable.append("NORTH (U)")
-    else:
-        walkable.append("NORTH (U)")
-    
-    if is_blocked(south_tile):
-        blocked.append("SOUTH (D)")
-    elif is_exit(south_tile):
-        exits.append(f"SOUTH at [{player_col},{player_row+1}]")
-        walkable.append("SOUTH (D)")
-    else:
-        walkable.append("SOUTH (D)")
-    
-    if is_blocked(east_tile):
-        blocked.append("EAST (R)")
-    elif is_exit(east_tile):
-        exits.append(f"EAST at [{player_col+1},{player_row}]")
-        walkable.append("EAST (R)")
-    else:
-        walkable.append("EAST (R)")
-    
-    if is_blocked(west_tile):
-        blocked.append("WEST (L)")
-    elif is_exit(west_tile):
-        exits.append(f"WEST at [{player_col-1},{player_row}]")
-        walkable.append("WEST (L)")
-    else:
-        walkable.append("WEST (L)")
-    
-    # Find all O tiles in the minimap (with world coordinates and direction hints)
-    o_tiles = []
-    for r_idx, row in enumerate(rows):
-        for c_idx, char in enumerate(row):
-            if char in ('O', 'D', 'E'):
-                world_coords = grid_to_world(c_idx, r_idx)
-                
-                # Add direction hint based on position relative to grid
-                # If exit is at bottom of grid, likely a building exit (step DOWN)
-                # If exit is at top, likely an entrance from outside (step UP)
-                dir_hint = ""
-                if r_idx >= num_rows - 2:  # Bottom edge
-                    dir_hint = " (SOUTH EXIT - step DOWN)"
-                elif r_idx <= 1:  # Top edge
-                    dir_hint = " (NORTH - step UP to enter)"
-                elif c_idx >= num_cols - 2:  # Right edge
-                    dir_hint = " (EAST EXIT)"
-                elif c_idx <= 1:  # Left edge
-                    dir_hint = " (WEST EXIT)"
-                
-                if world_coords:
-                    o_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]{dir_hint}")
-                else:
-                    o_tiles.append(f"Grid[{c_idx},{r_idx}]{dir_hint}")
-    
-    # Find all NPC tiles ('N') in the minimap
-    npc_tiles = []
-    for r_idx, row in enumerate(rows):
-        for c_idx, char in enumerate(row):
-            if char == 'N':
-                world_coords = grid_to_world(c_idx, r_idx)
-                if world_coords:
-                    npc_tiles.append(f"Grid[{c_idx},{r_idx}] = World[{world_coords[0]},{world_coords[1]}]")
-                else:
-                    npc_tiles.append(f"Grid[{c_idx},{r_idx}]")
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # PASSAGE/CHOKEPOINT DETECTION
-    # Find walkable paths through blocked areas (bridges, corridors, entrances)
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    def is_walkable(tile):
-        return tile in ('W', 'P', 'O', 'D', 'E', '>', '<', '^', 'v')
-    
-    passages = []  # List of detected passages/chokepoints
-    
-    # Scan for horizontal passages (W surrounded by B above and below)
-    for r_idx in range(1, num_rows - 1):
-        row = rows[r_idx]
-        for c_idx in range(len(row)):
-            tile = row[c_idx]
-            if is_walkable(tile):
-                above = get_tile(r_idx - 1, c_idx)
-                below = get_tile(r_idx + 1, c_idx)
-                
-                # Horizontal passage: walkable with blocked above AND below
-                if above == 'B' and below == 'B':
-                    # Check if this is part of a longer passage
-                    passage_width = 1
-                    for check_col in range(c_idx + 1, min(c_idx + 10, len(row))):
-                        if (is_walkable(get_tile(r_idx, check_col)) and
-                            get_tile(r_idx - 1, check_col) == 'B' and
-                            get_tile(r_idx + 1, check_col) == 'B'):
-                            passage_width += 1
-                        else:
-                            break
-                    
-                    if passage_width >= 2:  # At least 2 tiles wide to be notable
-                        # Calculate direction from player
-                        dy = r_idx - player_row
-                        dx = c_idx - player_col
-                        direction = []
-                        if dy < 0: direction.append("NORTH")
-                        elif dy > 0: direction.append("SOUTH")
-                        if dx < 0: direction.append("WEST")
-                        elif dx > 0: direction.append("EAST")
-                        dir_str = "-".join(direction) if direction else "HERE"
-                        
-                        passages.append({
-                            "type": "horizontal_passage",
-                            "start": f"[{c_idx},{r_idx}]",
-                            "width": passage_width,
-                            "direction": dir_str,
-                            "distance": abs(dy) + abs(dx)
-                        })
-                        # Skip tiles we've already counted
-                        break
-    
-    # Scan for vertical passages (W surrounded by B left and right)
-    for c_idx in range(1, num_cols - 1):
-        for r_idx in range(num_rows):
-            if c_idx >= len(rows[r_idx]):
-                continue
-            tile = rows[r_idx][c_idx]
-            if is_walkable(tile):
-                left = get_tile(r_idx, c_idx - 1)
-                right = get_tile(r_idx, c_idx + 1)
-                
-                # Vertical passage: walkable with blocked left AND right
-                if left == 'B' and right == 'B':
-                    # Check if this is part of a longer passage
-                    passage_height = 1
-                    for check_row in range(r_idx + 1, min(r_idx + 10, num_rows)):
-                        if (check_row < num_rows and c_idx < len(rows[check_row]) and
-                            is_walkable(get_tile(check_row, c_idx)) and
-                            get_tile(check_row, c_idx - 1) == 'B' and
-                            get_tile(check_row, c_idx + 1) == 'B'):
-                            passage_height += 1
-                        else:
-                            break
-                    
-                    if passage_height >= 2:  # At least 2 tiles tall to be notable
-                        # Calculate direction from player
-                        dy = r_idx - player_row
-                        dx = c_idx - player_col
-                        direction = []
-                        if dy < 0: direction.append("NORTH")
-                        elif dy > 0: direction.append("SOUTH")
-                        if dx < 0: direction.append("WEST")
-                        elif dx > 0: direction.append("EAST")
-                        dir_str = "-".join(direction) if direction else "HERE"
-                        
-                        passages.append({
-                            "type": "vertical_passage",
-                            "start": f"[{c_idx},{r_idx}]",
-                            "height": passage_height,
-                            "direction": dir_str,
-                            "distance": abs(dy) + abs(dx)
-                        })
-                        break
-    
-    # Sort passages by distance from player
-    passages.sort(key=lambda p: p.get("distance", 999))
-    
-    # Format passages for output (top 3 closest)
-    passage_strs = []
-    for p in passages[:3]:
-        if p["type"] == "horizontal_passage":
-            passage_strs.append(f"🌉 Horizontal path at {p['start']} ({p['width']} tiles wide) - go {p['direction']}")
-        else:
-            passage_strs.append(f"🚶 Vertical path at {p['start']} ({p['height']} tiles tall) - go {p['direction']}")
-    
-    return {
-        "grid_size": f"{num_cols}x{num_rows}",
-        "player_position": f"[{player_col},{player_row}]",
-        "player_row": player_row,
-        "player_col": player_col,
-        "adjacent_tiles": {
-            "north": f"[{player_col},{player_row-1}] = '{north_tile}'",
-            "south": f"[{player_col},{player_row+1}] = '{south_tile}'",
-            "east": f"[{player_col+1},{player_row}] = '{east_tile}'",
-            "west": f"[{player_col-1},{player_row}] = '{west_tile}'"
-        },
-        "blocked_directions": blocked,
-        "walkable_directions": walkable,
-        "adjacent_exits": exits,
-        "all_exit_tiles": o_tiles,
-        "npc_tiles": npc_tiles,  # NEW: NPC positions for LLM context
-        "passages": passage_strs  # Detected passages/chokepoints
-    }
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 LLM_TOTAL_TIMEOUT = 75  # Extended to 75s cycle timeout
-
-# ─── Helper ───────────────────────────────────────────────────────────────────
-async def call_llm_with_timeout(state_data: dict,
-                                llm_timeout: float = STREAM_TIMEOUT,
-                                total_timeout: float = LLM_TOTAL_TIMEOUT,
-                                benchmark: Benchmark = None,
-                                cycle_metrics: dict = None):
-    """
-    Run `llm_stream_action` in a worker thread and abort the whole thing
-    (token‑counting, API call, streaming, parsing…) after `total_timeout` s.
-    """
-    loop = asyncio.get_running_loop()
-    fn   = functools.partial(llm_stream_action, state_data, llm_timeout, benchmark, cycle_metrics)
-
-    # Use custom executor to avoid blocking default executor on shutdown
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-
-    try:
-        # run blocking LLM code in a thread, wait with an asyncio timeout
-        return await asyncio.wait_for(loop.run_in_executor(executor, fn),
-                                      timeout=total_timeout)
-    except asyncio.TimeoutError:
-        log.error(f"llm_stream_action exceeded {total_timeout}s – skipping cycle.")
-        executor.shutdown(wait=False)
-        return None, None, None, None
-    except Exception:
-        executor.shutdown(wait=False)
-        raise
-    finally:
-        executor.shutdown(wait=False)
-
-def summarize_and_reset(benchmark: Benchmark = None, state_data: dict = None):
-    """Condenses history, updates system prompt, resets history, accounts for tokens."""
-    global chat_history, response_count, tokens_used_session
-
-    log.info(f"Summarizing chat history ({len(chat_history)} messages)...")
-
-
-    history_for_summary = []
-
-    # we convert from 'assistant' to 'user' since many API's don't like multiple 'assistant'
-    # messages and will error out.
-    for msg in chat_history:
-        if msg['role'] == 'assistant':
-            history_for_summary.append({
-                'role': 'user',
-                'content': msg['content']
-            })
-
-
-    if not history_for_summary:
-        log.info("No relevant assistant messages to summarize, skipping summarization call.")
-
-        current_system_prompt = chat_history[0]
-        chat_history = [current_system_prompt]
-        response_count = 0
-        log.info("History reset to system prompt without summarization.")
-        return None
-
-    summary_prompt = get_summary_prompt()
-    summary_input_messages = [{"role": "system", "content": summary_prompt}] + history_for_summary
-
-    logging.info(f"Messages: {summary_input_messages}")
-
-    summary_input_tokens = calculate_prompt_tokens(summary_input_messages)
-    log.info(f"Summarization estimated input tokens: {summary_input_tokens}")
-
-    summary_text = "Error generating summary."
-    summary_output_tokens = 0
-
-    kwargs = {
-        "model": MODEL,
-        "messages": summary_input_messages,
-    }
-
-    if USES_MAX_COMPLETION_TOKENS:
-        kwargs["max_completion_tokens"] = MAX_TOKENS
-    else:
-        kwargs["max_tokens"] = MAX_TOKENS
-
-    if USES_DEFAULT_TEMPERATURE:
-        kwargs["temperature"] = 1.0
-    else:
-        kwargs["temperature"] = TEMPERATURE
-
-    try:
-        summary_resp = client.chat.completions.create(**kwargs)
-        if summary_resp.choices and summary_resp.choices[0].message.content:
-            summary_text = summary_resp.choices[0].message.content.strip()
-            summary_output_tokens = count_tokens(summary_text)
-        else:
-            log.warning("LLM Summary: No choices or empty content.")
-            summary_text = "Summary generation failed."
-
-        total_summary_tokens = summary_input_tokens + summary_output_tokens
-        tokens_used_session += total_summary_tokens
-        log.info(f"Summarization call used approx. {total_summary_tokens} tokens. Session total: {tokens_used_session}")
-
-    except Exception as e:
-        log.error(f"Error during LLM summarization call: {e}", exc_info=True)
-
-    json_object = parse_optional_fenced_json(summary_text)
-    
-    log.info(f"LLM Summary generated ({summary_output_tokens} tokens): {str(json_object)}")
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # HANDLE EXPERT PATHFINDING & SELF-ANALYSIS
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    extra_context = ""
-
-    # 1. Log Self-Analysis
-    self_analysis = json_object.get("self_analysis")
-    if self_analysis:
-        log.info(f"🛡️ SELF-ANALYSIS: {json.dumps(self_analysis, indent=2)}")
-        if isinstance(self_analysis, dict):
-            correction = self_analysis.get("correction_plan")
-            if correction and correction != "None":
-                extra_context += f"\n\n🛡️ SELF-CORRECTION PLAN: {correction}"
-
-    # 2. Handle Plan Target Tile (BFS Pathfinding)
-    target_tile_str = json_object.get("plan_target_tile")
-    if target_tile_str and state_data:
-        try:
-            # Parse [x,y] from string like "[12, 15]" or "12,15"
-            coords = [int(n) for n in re.findall(r'\d+', str(target_tile_str))]
-            if len(coords) == 2:
-                target_x, target_y = coords
-                current_x, current_y = state_data.get("position", [0, 0])
-                map_id = state_data.get("map_id")
-                
-                if map_id is not None:
-                    log.info(f"🧭 Calculating BFS path from [{current_x},{current_y}] to [{target_x},{target_y}]...")
-                    rom_path = get_rom_path()
-                    # We might need to handle rom_path formatting
-                    if not os.path.exists(rom_path):
-                         # Try adding roms/ prefix if relative
-                         rom_path = os.path.join("roms", rom_path) if not rom_path.startswith("roms") else rom_path
-
-                    bfs_actions = find_path(rom_path, map_id, [current_x, current_y], [target_x, target_y])
-                    
-                    if bfs_actions:
-                        log.info(f"✅ BFS Path Found: {bfs_actions}")
-                        extra_context += f"\n\n💡 EXPERT SUGGESTED PATH to [{target_x},{target_y}]: {bfs_actions}\n(Execute this chain using specific chunks if too long)"
-                        # Update the plan_target_tile in the summary text to confirm acceptance
-                        summary_text += f"\n[System: Integrated path to {target_tile_str}]"
-                    else:
-                        log.warning(f"❌ BFS Path failed to find route to {target_tile_str}")
-                        extra_context += f"\n\n⚠️ PATHFINDING FAILED: Could not calculate route to {target_tile_str}. Destination may be unreachable or in void."
-            else:
-                 log.warning(f"Invalid target tile format: {target_tile_str}")
-        except Exception as e:
-            log.error(f"Error executing BFS pathfinding: {e}", exc_info=True)
-
-    benchInstructions = ""
-    if benchmark is not None:
-        benchInstructions = benchmark.instructions
-
-    new_system_prompt_content = build_system_prompt(summary_text + extra_context, benchInstructions)
-    chat_history = [{"role": "system", "content": new_system_prompt_content}]
-    response_count = 0
-    log.info("Chat history summarized and reset.")
-    return json_object
-
-
-def next_with_timeout(iterator, timeout: float):
-    """Attempt to pull the first chunk from `iterator` within `timeout` seconds."""
-    # Use manual executor management to avoid blocking on shutdown if thread hangs
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(lambda: next(iterator))
-    try:
-        return future.result(timeout=timeout)
-    except concurrent.futures.TimeoutError:
-        # Don't wait for stuck thread
-        executor.shutdown(wait=False)
-        raise TimeoutError(f"No chunk received in {timeout}s")
-    finally:
-        # Always shutdown, don't wait if it's somehow still running
-        executor.shutdown(wait=False)
-
-
-def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchmark: Benchmark = None, cycle_metrics: dict = None):
-    """
-    Determines and executes an action by querying an LLM.
-
-    This function intelligently switches between streaming and non-streaming API calls.
-    - For models supporting a 'reasoning_effort', it uses a non-streaming call to
-      avoid timeouts while the model "thinks".
-    - For other models, it streams the response for lower perceived latency.
-    - For Z.AI mode, it optionally uses MCP vision server for image analysis.
-    """
-    if cycle_metrics is None:
-        cycle_metrics = {}
-    global response_count, tokens_used_session, chat_history, zai_vision_client, CURRENT_MODE, agent_requested_diff
-
-    summary_json = None
-    vision_analysis_for_ui = None  # Store raw vision analysis for UI display
-    payload = copy.deepcopy(state_data)
-    screenshot = payload.pop("screenshot", None)
-    minimap = payload.pop("minimap", None)
-
-    # Extract Z.AI specific image paths for MCP processing
-    screenshot_path = payload.pop("screenshot_path", None)
-    previous_screenshot_path = payload.pop("previous_screenshot_path", None)
-    diff_pairs = payload.pop("diff_pairs", [])  # List of (prev_cycle, prev_path, curr_path) tuples
-    minimap_path = payload.pop("minimap_path", None)
-
-    if not MINIMAP_2D:
-        print("Minimap 2D disabled, removing minimap_2d from payload.")
-        payload.pop("minimap_2d", None)
-
-    if not isinstance(payload, dict):
-        log.error(f"Invalid state_data structure: {type(state_data)}")
-        return None, None, None, None
-
-    # CRITICAL: Handle Z.AI vision processing with robust retry and backoff mechanism
-    vision_analysis = ""
-    vision_analysis_for_ui = None
-
-    if CURRENT_MODE == "ZAI" and screenshot_path and os.path.exists(screenshot_path) and zai_vision_client:
-        # Check if MCP server process is still alive before attempting analysis
-        if hasattr(zai_vision_client, 'mcp_process') and zai_vision_client.mcp_process:
-            if zai_vision_client.mcp_process.poll() is not None:
-                log.warning(f"MCP server process has terminated with code: {zai_vision_client.mcp_process.returncode}")
-                log.warning("Attempting to restart MCP server...")
-                try:
-                    # Try to restart the MCP server
-                    zai_vision_client._start_mcp_server_sync()
-                    if zai_vision_client.is_connected:
-                        log.info("MCP server restarted successfully")
-                    else:
-                        log.warning("Failed to restart MCP server")
-                        zai_vision_client.handle_vision_failure("MCP server process terminated and restart failed")
-                except Exception as restart_error:
-                    log.error(f"Failed to restart MCP server: {restart_error}")
-                    zai_vision_client.handle_vision_failure(f"MCP server restart failed: {str(restart_error)}")
-
-        # CRITICAL: Use enhanced vision client with built-in retry and exponential backoff
-        try:
-            log.info("Z.AI MCP vision server analyzing screenshot with robust retry mechanism...")
-
-            # Use enhanced sync version with built-in exponential backoff
-            if hasattr(zai_vision_client, 'analyze_image_sync'):
-                # CRITICAL: Updated prompt - JSON format, no styling, no emojis, no bullets
-                # Be SPECULATIVE about uncertain objects, HIGH CONFIDENCE required for doors/exits
-                factual_prompt = (
-                    "Analyze this Pokemon Red game screenshot. Output as JSON with these fields:\n\n"
-                    "{\n"
-                    '  "screen_type": "title|overworld|battle|menu|dialogue|name_entry",\n'
-                    '  "readable_text": "any visible text, semicolon separated. ONLY what is perfectly legible.",\n'
-                    '  "player_position": "describe player location in the scene",\n'
-                    '  "nearby_objects": "objects RELATIVE TO PLAYER - e.g. bookshelf north of player, table to player east",\n'
-                    '  "npcs": "NPCs RELATIVE TO PLAYER - e.g. NPC standing south of player; NPC to player left",\n'
-                    '  "obstacles": "walls/trees/barriers RELATIVE TO PLAYER, semicolon separated",\n'
-                    '  "ui_elements": "menus/cursors/hp bars, semicolon separated",\n'
-                    '  "battle_info": "if battle: player_pokemon, player_hp, enemy_pokemon, enemy_hp, moves",\n'
-                    '  "menu_cursor": "if menu: which option is highlighted",\n'
-                    '  "navigation_notes": "doors/exits/red mats/stairs RELATIVE TO PLAYER - e.g. possible exit south of player",\n'
-                    '  "black_space": "MAP BOUNDARIES - black areas are the edge of the map, NOT walkable or interactable"\n'
-                    "}\n\n"
-                    "CRITICAL RULES:\n"
-                    "- Output ONLY valid JSON, no markdown formatting\n"
-                    "- Do NOT use bullet points, use semicolons to separate list items\n"
-                    "- Do NOT use emojis\n"
-                    "- Do NOT use headers or bold text\n\n"
-                    "UNCERTAINTY & SPECULATION (for nearby_objects):\n"
-                    "- Be SPECULATIVE about object identification - use 'maybe', 'possibly', 'looks like'\n"
-                    "- If you can't clearly identify something, say 'unclear sprite' or 'possibly a [guess]'\n"
-                    "- Example: 'maybe a toilet or plant; possibly a bookshelf' instead of 'toilet; bookshelf'\n"
-                    "- Pixel art is ambiguous - express uncertainty appropriately\n\n"
-                    "EXIT DETECTION (navigation_notes) - SECONDARY TO MINIMAP:\n"
-                    "- **CRITICAL**: Any RED RECTANGLE on the floor is likely an EXIT MAT (doormat)\n"
-                    "- Red floor mats are warping tiles that teleport the player in/out of buildings\n"
-                    "- If you see a red rectangular shape on the floor, report: 'possibly exit mat at [direction]'\n"
-                    "- Do NOT just say 'red rectangular object' - infer it may be an EXIT MAT\n"
-                    "- These mats are typically near the bottom/south edge of indoor areas\n"
-                    "- Look for door frames, stairs, or cave openings as secondary exit indicators\n"
-                    "- Report exits as possibilities: 'red shape at south - possibly exit mat'\n"
-                    "- **BUILDING IDENTIFICATION BY TEXT SIGNS**: Roof colors vary by city - do NOT use roof color!\n"
-                    "- Identify buildings by TEXT on facade: 'POKE' = Pokemon Center, 'MART' = Shop, 'GYM' = Gym\n"
-                    "- If a building does NOT have 'POKE' text visible, it is likely NOT a Pokemon Center\n"
-                    "- Use this as a BACKUP when minimap doesn't show 'O' markers\n"
-                    "- The minimap 'O' tiles are the primary navigation source\n\n"
-                    "TEXT & LOCATION - ONLY REPORT IF 100% CERTAIN:\n"
-                    "- ONLY report text if you are 100% certain it exists - otherwise leave readable_text empty\n"
-                    "- If text is unclear or questionable, use empty string - DO NOT GUESS\n"
-                    "- Text must be EXACT pixel-for-pixel match. If partially cut off, do not infer.\n"
-                    "- **NEVER** report 'POKEMON CENTER' or location names unless you CLEARLY see the text\n"
-                    "- Do NOT try to identify what building/location you are in - the game state provides the map name\n"
-                    "- Vision frequently hallucinates location names like 'Pokemon Center' - be extremely cautious\n"
-                    "- If no visible text box with black borders exists, readable_text MUST be empty\n\n"
-                    "POSITION RULES (CRITICAL - BE SPECIFIC):\n"
-                    "- The PLAYER is ALWAYS at SCREEN CENTER. All positions are RELATIVE to the player.\n"
-                    "- Use PRECISE DISTANCE + DIRECTION format:\n"
-                    "  * 'directly 1 tile NORTH' = immediately above player (adjacent)\n"
-                    "  * 'directly 1 tile EAST' = immediately right of player (adjacent)\n"
-                    "  * 'directly 1 tile SOUTH' = immediately below player (adjacent)\n"
-                    "  * 'directly 1 tile WEST' = immediately left of player (adjacent)\n"
-                    "- For DIAGONAL positions, use COMPOUND directions:\n"
-                    "  * 'NORTHEAST' = above and to the right\n"
-                    "  * 'SOUTHWEST' = below and to the left\n"
-                    "  * 'NORTHWEST' = above and to the left\n"
-                    "  * 'SOUTHEAST' = below and to the right\n"
-                    "- For DISTANCE, be specific:\n"
-                    "  * 'directly 1 tile X' = immediately adjacent (touchingplayer)\n"
-                    "  * '2-3 tiles X' = close but not adjacent\n"
-                    "  * '4-6 tiles X' = moderate distance\n"
-                    "  * 'far X' or 'distant X' = across the screen (7+ tiles)\n"
-                    "- EXAMPLE FORMAT: 'NPC directly 1 tile SOUTH of player'\n"
-                    "- EXAMPLE: 'bookshelf 3 tiles NORTHEAST of player'\n"
-                    "- EXAMPLE: 'exit mat far SOUTH of player (at screen edge)'\n"
-                    "- **PLAYER IDENTIFICATION (CRITICAL)**:\n"
-                    "  * The RED-CLOTHED sprite at SCREEN CENTER is ALWAYS the PLAYER CHARACTER\n"
-                    "  * The player's name is 'RED' and they wear red clothing with a hat\n"
-                    "  * NEVER report 'NPC in red clothing' if they are at screen center - that IS the player\n"
-                    "  * In the 'npcs' field, do NOT list the player - only list OTHER characters\n"
-                    "- Empty fields should be empty strings\n\n"
-                    "SCREEN TYPES (CRITICAL - read carefully before classifying):\n"
-                    "- title: Pokemon logo, copyright text, no gameplay\n"
-                    "- overworld: Player sprite visible walking around in the world. NPCs may be present.\n"
-                    "- menu: START menu, item list, pokemon list\n"
-                    "- dialogue: REQUIRE visible text box at bottom with black borders. If no box, it is NOT dialogue.\n"
-                    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters.\n"
-                    "- **battle**: VERY STRICT REQUIREMENTS - ALL of these must be present:\n"
-                    "  1. The screen is mostly WHITE/light colored (not the colorful overworld)\n"
-                    "  2. Pokemon sprites are shown LARGE - not small 16x16 overworld sprites\n"
-                    "  3. HP bars are visible showing HP values (e.g. 'HP: 25/25')\n"
-                    "  4. Pokemon NAMES are displayed as text (e.g. 'CHARMANDER', 'PIDGEY')\n"
-                    "  5. A battle menu (FIGHT/PKMN/ITEM/RUN) appears in the bottom-right\n"
-                    "  OR dialogue text boxes with battle narration ('Wild PIDGEY appeared!')\n\n"
-                    "**BATTLE vs OVERWORLD - DO NOT CONFUSE THESE:**\n"
-                    "- If you see a COLORFUL TILED FLOOR (grass, buildings, paths) → it is OVERWORLD, not battle\n"
-                    "- If you see small 16x16 pixel character sprites walking around → it is OVERWORLD\n"
-                    "- NPCs in the overworld are NOT 'enemy sprites' - they are just NPCs\n"
-                    "- Lab interiors, houses, caves with walkable floors are OVERWORLD\n"
-                    "- Battle screens have a PLAIN WHITE/LIGHT background, not detailed tile graphics\n"
-                    "- If there is no HP bar visible, it is NOT a battle\n"
-                    "- If there is no Pokemon name text visible, it is NOT a battle\n\n"
-                    "TALL GRASS RECOGNITION (CRITICAL for early game):\n"
-                    "- Tall grass appears as DENSE DARK GREEN patterned/textured tiles\n"
-                    "- In Pallet Town/Route 1, it looks like 'spiky' patches that stand out from flat ground\n"
-                    "- It is distinct from the smooth light-colored path tiles\n"
-                    "- If the player is standing IN tall grass, report: 'player in tall grass'\n"
-                    "- Tall grass is where WILD POKEMON appear - you usually MUST enter it to find Pokemon\n"
-                    "- If you see dense green textured tiles near the player, note: 'tall grass nearby [direction]'\n\n"
-                    "BATTLE MENU CURSOR DETECTION (CRITICAL - reduces hallucination):\n"
-                    "- The battle menu is a 2x2 grid in the bottom-right corner:\n"
-                    "  TOP ROW:    FIGHT  |  PKMN\n"
-                    "  BOTTOM ROW: ITEM   |  RUN\n"
-                    "- The CURSOR is a right-pointing triangle (▶) that appears TO THE LEFT of the selected option\n"
-                    "- Look CAREFULLY for the triangle position:\n"
-                    "  * If ▶ is left of FIGHT → menu_cursor = 'FIGHT'\n"
-                    "  * If ▶ is left of PKMN → menu_cursor = 'PKMN'\n"
-                    "  * If ▶ is left of ITEM → menu_cursor = 'ITEM'\n"
-                    "  * If ▶ is left of RUN → menu_cursor = 'RUN'\n"
-                    "- DO NOT assume FIGHT is selected - LOOK FOR THE TRIANGLE\n"
-                    "- The triangle is small but visible - check each row carefully\n"
-                    "- If cursor is in the LEFT column = FIGHT or ITEM\n"
-                    "- If cursor is in the RIGHT column = PKMN or RUN\n\n"
-                    "NAME ENTRY KEYBOARD LAYOUT (if needed):\n"
-                    "Row 1: A B C D E F G H I\n"
-                    "Row 2: J K L M N O P Q R\n"
-                    "Row 3: S T U V W X Y Z (space)\n"
-                    "Row 4: x ( ) : ; [ ] PK MN\n"
-                    "Row 5: - ? ! (boy) (girl) / . , ED\n"
-                    "Row 6: (case toggle)\n"
-                    "PREFER selecting preset names like RED or BLUE over typing custom names."
-                )
-
-              # CRITICAL: NEW MANDATORY VISION SYSTEM - Agent will NOT continue without vision
-                try:
-                    # Use the snapshot path if available, otherwise fallback (though snapshot should always be there now)
-                    target_image_path = screenshot_path if screenshot_path else SAVED_SCREENSHOT_PATH
-                    
-                    # Update status for OBS widget
-                    update_processing_status("ANALYZING VISION...")
-                    t_vision_start = time.time()
-                    vision_result = zai_vision_client.analyze_image_sync(target_image_path, factual_prompt)
-                    t_vision_end = time.time()
-                    cycle_metrics["vision"] = (t_vision_end - t_vision_start) * 1000
-                    log.info(f"⏱️ Vision Analysis: {t_vision_end - t_vision_start:.2f}s")
-                    
-                    update_processing_status("THINKING...")
-
-                    if vision_result:
-                        # SUCCESS: Vision analysis completed successfully
-                        log.info(f"✅ Z.AI MCP vision analysis completed: {len(vision_result)} chars")
-                        log.info(f"Vision analysis preview: {vision_result[:200]}...")
-                    else:
-                        log.error("❌ Z.AI MCP vision analysis failed (returned None). Continuing without vision.")
-                        vision_result = ""
-
-                    # TEXT PROCESSING: Filter Japanese characters and truncate
-                    processed_vision_result = vision_result
-
-                    # Filter out Japanese characters and non-English text
-                    processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
-
-                    global agent_requested_diff
-                    # Robust JSON extraction instead of brittle slicing
-                    json_start = processed_vision_result.find('{')
-                    json_end = processed_vision_result.rfind('}')
-                    
-                    if json_start != -1 and json_end != -1:
-                        # Extract just the JSON part
-                        processed_vision_result = processed_vision_result[json_start:json_end+1]
-                    else:
-                        # Fallback: legacy slicing if braces not found (unlikely but safe)
-                        if len(processed_vision_result) > 31:
-                            processed_vision_result = processed_vision_result[17:-14]
-
-                    vision_analysis = f"Z.AI GLM-4.6 Vision Analysis: {processed_vision_result}"
-                    vision_analysis_for_ui = processed_vision_result  # Store processed vision analysis for UI
-                    payload["vision_analysis"] = vision_analysis
-                    # Also add a more prominent vision field for better LLM recognition
-                    payload["visual_context"] = processed_vision_result
-                    
-                    # Parse screen_type from vision JSON for dynamic prompting
-                    try:
-                        # Try to parse the vision result as JSON to extract screen_type
-                        vision_json = json.loads(processed_vision_result)
-                        detected_screen_type = vision_json.get("screen_type", "")
-                        if detected_screen_type:
-                            log.info(f"🖥️ Detected screen type: {detected_screen_type}")
-                            payload["detected_screen_type"] = detected_screen_type
-                    except json.JSONDecodeError:
-                        # Vision result is not valid JSON, try regex extraction
-                        screen_type_match = re.search(r'"screen_type"\s*:\s*"([^"]+)"', processed_vision_result)
-                        if screen_type_match:
-                            detected_screen_type = screen_type_match.group(1)
-                            log.info(f"🖥️ Detected screen type (regex): {detected_screen_type}")
-                            payload["detected_screen_type"] = detected_screen_type
-                    
-                    # ═══════════════════════════════════════════════════════════════
-                    # SINGLE DIFF CHECK - Only run when agent requested it
-                    # Sequential execution to prevent MCP response ID conflicts
-                    # ═══════════════════════════════════════════════════════════════
-                    global agent_requested_diff
-                    if agent_requested_diff and diff_pairs:
-                        log.info("🔄 Agent requested diff - running ui_diff_check")
-                        try:
-                            # Only use the most recent diff pair (N-1)
-                            single_pair = diff_pairs[0] if diff_pairs else None
-                            
-                            if single_pair:
-                                prev_cycle, prev_path, curr_path = single_pair
-                                log.info(f"🔄 Running single ui_diff_check (cycle {prev_cycle} vs current)")
-                                update_processing_status(f"COMPARING TO PREVIOUS CYCLE...")
-                                
-                                t_diff_start = time.time()
-                                
-                                try:
-                                    result = zai_vision_client.ui_diff_check_sync(
-                                        prev_path, curr_path, max_attempts=1, timeout=15
-                                    )
-                                    if result:
-                                        # Clean up result
-                                        cleaned = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', result)
-                                        if len(cleaned) > 31:
-                                            cleaned = cleaned[17:-14]
-                                        log.info(f"UI Diff result: {cleaned}")
-                                        
-                                        # Add to payload
-                                        payload["ui_changes_from_previous_cycle"] = cleaned
-                                        payload["temporal_diffs"] = f"TEMPORAL CHANGES (vs cycle {prev_cycle}):\n{cleaned[:300]}"
-                                        log.info(f"🔄 Diff completed for cycle {prev_cycle}")
-                                    else:
-                                        log.info("🔄 Diff returned no result")
-                                except Exception as e:
-                                    log.warning(f"Diff for cycle {prev_cycle} failed: {e}")
-                                
-                                t_diff_end = time.time()
-                                cycle_metrics["diff"] = (t_diff_end - t_diff_start) * 1000
-                                log.info(f"⏱️ UI Diff Check: {t_diff_end - t_diff_start:.2f}s")
-                                
-                        except Exception as diff_error:
-                            log.warning(f"Multi-diff failed (non-critical): {diff_error}")
-                        
-                        # Reset flag after running
-                        agent_requested_diff = False
-                    elif diff_pairs:
-                        log.debug("⏭️ Skipping ui_diff (agent did not request it) - saves ~15s")
-                    else:
-                        log.debug("No diff pairs available (first few cycles?)")
-
-                except RuntimeError as e:
-                    # CRITICAL: ALL VISION RETRY ATTEMPTS EXHAUSTED - System cannot continue
-                    log.error("🚨 " + "="*80)
-                    log.error("🚨 CRITICAL: Vision system completely failed! Agent cannot continue without vision.")
-                    log.error(f"🚨 Error: {e}")
-                    log.error("🚨 " + "="*80)
-
-                    # This is a catastrophic failure - the agent requires vision to function
-                    # We should either:
-                    # 1. Stop the agent completely, or
-                    # 2. Try to save the game and exit gracefully
-
-                    # For now, we'll set a critical error state and stop the main loop
-                    payload["critical_system_failure"] = True
-                    payload["vision_analysis"] = "CRITICAL SYSTEM FAILURE: Vision analysis completely failed after exhaustive retry attempts. Agent cannot continue without vision input."
-                    payload["system_halt"] = True
-
-                    # Trigger immediate shutdown
-                    log.critical("🛑 Halting agent operation due to catastrophic vision system failure")
-                    return None  # This will stop the main loop in the calling code
-
-            elif hasattr(zai_vision_client, 'analyze_image'):
-                # Handle sync fallback client (ZAIVisionFallback)
-                log.warning("Using fallback vision client (ZAIVisionFallback)")
-                vision_result = zai_vision_client.analyze_image(SAVED_SCREENSHOT_PATH, factual_prompt)
-
-                if vision_result:
-                    # TEXT PROCESSING: Filter Japanese characters and truncate
-                    processed_vision_result = vision_result
-
-                    # Filter out Japanese characters and non-English text
-                    processed_vision_result = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', processed_vision_result)
-
-                    # Remove first 17 and last 14 characters as specified
-                    if len(processed_vision_result) > 31:
-                        processed_vision_result = processed_vision_result[17:-14]
-
-                    vision_analysis = f"Z.AI Vision Analysis (Fallback): {processed_vision_result}"
-                    vision_analysis_for_ui = processed_vision_result
-                    payload["vision_analysis"] = vision_analysis
-                    payload["visual_context"] = processed_vision_result
-                else:
-                    payload["vision_analysis"] = "[Fallback vision analysis failed]"
-                    log.warning("Fallback vision analysis failed")
-            else:
-                log.warning("Z.AI vision client doesn't have analyze_image method")
-                payload["vision_analysis"] = "[Vision client method unavailable]"
-
-        except Exception as e:
-            # CRITICAL: Handle vision analysis exception without crashing the app
-            error_msg = f"Vision analysis exception: {str(e)}"
-            log.error(f"CRITICAL VISION ERROR: {error_msg}", exc_info=True)
-
-            # Use the client's built-in failure handling if available
-            if hasattr(zai_vision_client, 'handle_vision_failure'):
-                zai_vision_client.handle_vision_failure(error_msg)
-
-            payload["vision_analysis"] = f"[Vision analysis failed: {error_msg}]"
-
-            # CRITICAL: DO NOT return None, None, False - continue without vision analysis
-            log.error("Vision analysis failed, but game will continue without visual input")
-
-    elif CURRENT_MODE == "ZAI":
-        # ZAI mode but no vision client available
-        log.warning("ZAI mode detected but no vision client available - continuing without vision analysis")
-        payload["vision_analysis"] = "[Vision client not initialized]"
-
-    # Build the user message with text and images
-    image_parts_for_api = []
-
-    # Include vision analysis directly in the text content for Z.AI mode
-    text_content = json.dumps(payload)
-    if CURRENT_MODE == "ZAI" and vision_analysis:
-        # Add vision analysis directly to the text for Z.AI mode
-        text_content = f"{text_content}\n\nIMPORTANT VISION ANALYSIS:\n{vision_analysis}"
-
-    text_segment = {"type": "text", "text": text_content}
-    current_content = [text_segment]
-
-    # Standard image processing for API
-    if screenshot and isinstance(screenshot.get("image_url"), dict):
-        image_parts_for_api.append({"type": "image_url", "image_url": screenshot["image_url"]})
-    if minimap and MINIMAP_ENABLED and isinstance(minimap.get("image_url"), dict):
-        image_parts_for_api.append({"type": "image_url", "image_url": minimap["image_url"]})
-
-    current_content.extend(image_parts_for_api)
-    
-    if(SYSTEM_PROMPT_UNSUPPORTED):
-        # TODO: Handle system prompt in messages
-        pass
-
-    current_user_message_api = {"role": "user", "content": current_content}
-    
-    # DYNAMIC PROMPT UPDATE: Rebuild system prompt with current context (Screen Type + Area Hint)
-    detected_screen_type = payload.get("detected_screen_type", "")
-    area_hint = state_data.get("area_hint", "")
-    
-    if chat_history and len(chat_history) > 0 and chat_history[0].get("role") == "system":
-        # extract benchmark instruction if any (passed in global or arg? arg: benchmark)
-        bench_instr = benchmark.instructions if benchmark else ""
-        
-        # Rebuild clean system prompt
-        fresh_prompt = build_system_prompt(
-            benchmarkInstruction=bench_instr,
-            screen_type=detected_screen_type,
-            area_hint=area_hint
-        )
-        
-        chat_history[0] = {"role": "system", "content": fresh_prompt}
-        log.info(f"📝 Updated System Prompt: Screen='{detected_screen_type}', Hint='{area_hint[:20] if area_hint else 'None'}...'")
-    
-    messages_for_api = chat_history + [current_user_message_api]
-
-    # Token accounting
-    call_input_tokens = calculate_prompt_tokens(messages_for_api)
-    log.info(f"LLM call estimate: {call_input_tokens} input tokens; history turns: {len(chat_history)}")
-
-    full_output = ""
-    action = None
-    analysis_text = None
-
-    try:
-        # Update status for OBS widget - now thinking
-        update_processing_status("THINKING...")
-        
-        # --- API Call Section: Conditional Streaming ---
-        kwargs = {
-            "model": MODEL,
-            "messages": messages_for_api,
-            "temperature": TEMPERATURE,
-            "timeout": timeout,
-        }
-
-        if USES_MAX_COMPLETION_TOKENS:
-            kwargs["max_completion_tokens"] = MAX_TOKENS
-        else:
-            kwargs["max_tokens"] = MAX_TOKENS
-
-        if USES_DEFAULT_TEMPERATURE:
-            kwargs["temperature"] = 1.0
-        else:
-            kwargs["temperature"] = TEMPERATURE
-
-        if supports_reasoning and REASONING_ENABLED:
-            # NON-STREAMING path for reasoning models: more robust against long "thinking" times.
-            log.info("Model supports reasoning. Making a non-streaming API call.")
-            kwargs["stream"] = False
-
-            # For Z.AI, use the correct API parameter format
-            if CURRENT_MODE == "ZAI":
-                # Create request with Z.AI GLM-4.6 specific parameters
-                zai_kwargs = {
-                    "model": kwargs.get("model"),
-                    "messages": kwargs.get("messages"),
-                    "stream": False
-                }
-
-                # Add Z.AI specific parameters according to their documentation
-                if "max_tokens" in kwargs:
-                    zai_kwargs["max_tokens"] = kwargs["max_tokens"]
-                if "temperature" in kwargs:
-                    zai_kwargs["temperature"] = kwargs["temperature"]
-
-                # Z.AI GLM-4.6 supports thinking parameter with specific format
-                if "thinking" not in zai_kwargs:
-                    zai_kwargs["thinking"] = {"type": "enabled"}
-
-                # Remove any unsupported parameters that might be in kwargs
-                for key in list(zai_kwargs.keys()):
-                    if zai_kwargs[key] is None:
-                        del zai_kwargs[key]
-
-                # Log detailed request information for debugging
-                log.info(f"Z.AI API call - Model: {zai_kwargs['model']}")
-                log.info(f"Z.AI API call - Messages count: {len(zai_kwargs['messages']) if zai_kwargs['messages'] else 0}")
-                if zai_kwargs['messages']:
-                    # Log first message content type and length
-                    first_msg = zai_kwargs['messages'][0]
-                    log.info(f"Z.AI API call - First message role: {first_msg.get('role', 'unknown')}")
-                    if 'content' in first_msg:
-                        if isinstance(first_msg['content'], list):
-                            content_types = [item.get('type') for item in first_msg['content'] if isinstance(item, dict)]
-                            log.info(f"Z.AI API call - Content types: {content_types}")
-                        else:
-                            log.info(f"Z.AI API call - Content type: {type(first_msg['content']).__name__}")
-                            log.info(f"Z.AI API call - Content preview: {str(first_msg['content'])[:200]}...")
-
-                log.info(f"Z.AI API call - Full request structure: {json.dumps({k: v if k != 'messages' else f'array[{len(zai_kwargs[k])}]' for k, v in zai_kwargs.items()}, indent=2)}")
-                log.info(f"Z.AI API call - Base URL: {client.base_url}")
-
-                try:
-                    # Use raw HTTP request for Z.AI since OpenAI client is not compatible
-                    import httpx
-
-                    # Convert to text-only messages for Z.AI coding plan API compatibility
-                    text_only_messages = []
-                    for msg in zai_kwargs["messages"]:
-                        if isinstance(msg.get("content"), list):
-                            # Extract only text content from multimodal messages
-                            text_content = ""
-                            for content_item in msg["content"]:
-                                if isinstance(content_item, dict) and content_item.get("type") == "text":
-                                    text_content += content_item.get("text", "")
-                                elif isinstance(content_item, str):
-                                    text_content += content_item
-                            if text_content.strip():
-                                text_only_messages.append({
-                                    "role": msg.get("role", "user"),
-                                    "content": text_content.strip()
-                                })
-                        else:
-                            # Handle regular text content
-                            text_only_messages.append({
-                                "role": msg.get("role", "user"),
-                                "content": msg.get("content", "")
-                            })
-
-                    api_data = {
-                        "model": zai_kwargs["model"],
-                        "messages": text_only_messages
-                    }
-
-                    # Add optional parameters if available
-                    if "max_tokens" in zai_kwargs:
-                        api_data["max_tokens"] = zai_kwargs["max_tokens"]
-                    if "temperature" in zai_kwargs:
-                        api_data["temperature"] = zai_kwargs["temperature"]
-
-                    log.info(f"Z.AI API call - Using text-only messages for coding API: {len(text_only_messages)} messages")
-
-                    log.info(f"Z.AI API call - Making raw HTTP request to: {client.base_url}chat/completions")
-                    log.info(f"Z.AI API call - Request data keys: {list(api_data.keys())}")
-
-                    # Create httpx client with headers
-                    headers = {
-                        "Authorization": f"Bearer {client.api_key}",
-                        "Content-Type": "application/json"
-                    }
-
-                    # LLM API retry logic - retry up to 2 times on timeout
-                    LLM_API_TIMEOUT = 40.0  # 40s timeout as requested
-                    LLM_MAX_RETRIES = 2
-                    response = None
-                    last_error = None
-                    
-                    for llm_attempt in range(LLM_MAX_RETRIES + 1):
-                        try:
-                            t_llm_start = time.time()
-                            with httpx.Client(timeout=LLM_API_TIMEOUT) as http_client:
-                                response = http_client.post(
-                                    f"{client.base_url}chat/completions",
-                                    json=api_data,
-                                    headers=headers
-                                )
-                            t_llm_end = time.time()
-                            cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
-                            log.info(f"⏱️ LLM Analysis: {t_llm_end - t_llm_start:.2f}s")
-                            break  # Success - exit retry loop
-                            
-                        except httpx.ReadTimeout as e:
-                            last_error = e
-                            if llm_attempt < LLM_MAX_RETRIES:
-                                log.warning(f"🔄 LLM API timeout (attempt {llm_attempt + 1}/{LLM_MAX_RETRIES + 1}). Retrying...")
-                                time.sleep(1)  # Brief pause before retry
-                            else:
-                                log.error(f"❌ LLM API timeout after {LLM_MAX_RETRIES + 1} attempts")
-                                raise e
-                    
-                    if response is None:
-                        raise last_error or Exception("LLM API call failed with no response")
-
-                    if response.status_code == 200:
-                        response_data = response.json()
-                        log.info("Z.AI API call successful via raw HTTP")
-                        log.info(f"Z.AI API response - Keys: {list(response_data.keys())}")
-
-                        # Create mock classes outside the class definition
-                        class MockMessage:
-                            def __init__(self, message_data):
-                                self.content = message_data.get('content', None)
-
-                        class MockChoice:
-                            def __init__(self, choice_data):
-                                self.message = MockMessage(choice_data.get('message', {}))
-                                self.finish_reason = choice_data.get('finish_reason', 'unknown')
-
-                        class MockResponse:
-                            def __init__(self, data):
-                                self.choices = []
-                                if 'choices' in data and data['choices']:
-                                    self.choices = [MockChoice(choice) for choice in data['choices']]
-
-                        response = MockResponse(response_data)
-                    else:
-                        log.error(f"Z.AI API HTTP request failed: {response.status_code}")
-                        log.error(f"Z.AI API response: {response.text}")
-                        raise Exception(f"HTTP {response.status_code}: {response.text}")
-
-                except Exception as e:
-                    log.error(f"Z.AI API call failed with raw HTTP: {str(e)}")
-                    log.error(f"Z.AI API request was: {json.dumps(api_data, default=str, indent=2)}")
-                    raise e
-            else:
-                kwargs["reasoning_effort"] = REASONING_EFFORT
-                t_llm_start = time.time()
-                response = client.chat.completions.create(**kwargs)
-                t_llm_end = time.time()
-                cycle_metrics["llm"] = (t_llm_end - t_llm_start) * 1000
-                log.info(f"⏱️ LLM Generation: {t_llm_end - t_llm_start:.2f}s")
-                update_processing_status("EXECUTING...")
-            choice = response.choices[0]
-            content = choice.message.content
-
-            if content:
-                full_output = content.strip()
-                print(f">>> {full_output}", end="", flush=True)
-            else:
-                log.warning(
-                    f"LLM response content was None. Finish reason: '{choice.finish_reason}'. "
-                    "This is often due to content filtering."
-                )
-                full_output = ""
-
-        else:
-            # STREAMING path for standard models: provides faster user feedback.
-            log.info("Model does not use reasoning effort. Using streaming API call.")
-            kwargs["stream"] = True
-
-            response = client.chat.completions.create(**kwargs)
-
-            iterator = iter(response)
-            collected_chunks = []
-            stream_start = time.time()
-            log.info("LLM Stream starting…")
-            print(">>> ", end="", flush=True)
-
-            # First-chunk timeout
-            try:
-                chunk = next_with_timeout(iterator, timeout)
-            except StopIteration:
-                log.warning("Stream ended immediately with no chunks.")
-                chunk = None
-            except TimeoutError:
-                log.warning(f"TIMEOUT waiting for first chunk after {timeout}s.")
-                return None, None, None, None
-
-            if chunk:
-                # Process first chunk
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    print(delta, end="", flush=True)
-                    collected_chunks.append(delta)
-                
-                # Continue until finish or total timeout
-                if not chunk.choices[0].finish_reason:
-                    for chunk in iterator:
-                        if time.time() - stream_start > timeout:
-                            print("\n[TIMEOUT]", flush=True)
-                            log.warning(f"LLM stream timed out after {timeout}s total")
-                            raise TimeoutError(f"Stream timed out after {timeout}s")
-
-                        delta = chunk.choices[0].delta.content
-                        if delta:
-                            print(delta, end="", flush=True)
-                            collected_chunks.append(delta)
-
-                        if chunk.choices[0].finish_reason:
-                            print(f"\n[END - {chunk.choices[0].finish_reason}]", flush=True)
-                            log.info(f"LLM stream finished: {chunk.choices[0].finish_reason}")
-                            break
-            
-            # Assemble final output from chunks
-            full_output = "".join(collected_chunks).strip()
-
-        # --- Post-processing Section (common to both paths) ---
-
-        if not full_output:
-            log.error("LLM call resulted in empty output.")
-            return None, None, None, None
-
-        log.info(f"LLM raw output length: {len(full_output)} chars")
-
-        # Token accounting for the output
-        output_tokens = count_tokens(full_output)
-        tokens_used_session += call_input_tokens + output_tokens
-        log.info(f"Used ~{output_tokens} output tokens; session total: {tokens_used_session}")
-
-        user_hist_content = [text_segment] # Images are not saved in history
-        
-        # Compress history if repetitive action
-        compressed = compress_chat_history(chat_history, full_output)
-        
-        if compressed:
-             log.info(f"♻️ Compressed chat history (repetitive action): {full_output[:50]}...")
-             # Do NOT append user message or new assistant message
-        else:
-             chat_history.append({"role": "user", "content": user_hist_content})
-             chat_history.append({"role": "assistant", "content": full_output})
-
-        # Cleanup history if window is reached
-        response_count += 1
-        if response_count >= CLEANUP_WINDOW:
-            t_summarize_start = time.time()
-            summary_json = summarize_and_reset(benchmark, state_data)
-            t_summarize_end = time.time()
-            if cycle_metrics is not None:
-                cycle_metrics["summarization"] = (t_summarize_end - t_summarize_start) * 1000
-            log.info(f"⏱️ Summarization: {t_summarize_end - t_summarize_start:.2f}s")
-            response_count = 0 # Reset counter
-            time.sleep(5)
-
-        # Extract analysis section
-        match = ANALYSIS_RE.search(full_output)
-        if match:
-            # Include the full tags so frontend can parse the JSON structure
-            analysis_text = f"<game_analysis>{match.group(1).strip()}</game_analysis>"
-        else:
-            # Fallback: if no game_analysis tags, try to extract content before action JSON
-            lines = full_output.strip().split('\n')
-            non_json_lines = []
-            for line in lines:
-                line = line.strip()
-                if line and not line.startswith('{') and not line.endswith('}') and not line.startswith('"action"'):
-                    non_json_lines.append(line)
-
-            if non_json_lines:
-                analysis_text = '\n'.join(non_json_lines)
-                log.info(f"🔍 Using fallback analysis extraction: {analysis_text[:100]}...")
-            else:
-                log.warning(f"⚠️ No analysis text found in LLM output. Full output: {full_output[:200]}...")
-                analysis_text = "No analysis available"
-
-        # Extract action JSON - search ANYWHERE in output (may be before closing tags)
-        action = None
-        parsed = None
-        
-        # Find all JSON-like blocks and try to parse them for action/touch
-        for json_match in re.finditer(r'\{[^{}]*\}', full_output):
-            try:
-                parsed = json.loads(json_match.group())
-                act = parsed.get("action")
-                touch = parsed.get("touch")
-                vision_from_json = parsed.get("vision_analysis")
-                
-                # Check if agent requested a diff for next cycle
-                # Output format: {"action":"U;U;U;", "request_diff": true}
-                request_diff_flag = parsed.get("request_diff", False)
-                if request_diff_flag:
-                    agent_requested_diff = True
-                    log.info("🔍 Agent requested ui_diff for next cycle")
-
-                # Use vision analysis from JSON if provided
-                if vision_from_json and isinstance(vision_from_json, str):
-                    vision_analysis_for_ui = vision_from_json
-
-                if isinstance(act, str):
-                    # Translate cardinal directions (N/S/E/W) to buttons (U/D/L/R)
-                    act = translate_cardinal_to_buttons(act)
-                    if ACTION_RE.match(act):
-                        action = act
-                        log.info(f"✅ Found action in JSON: {action}")
-                        break
-                elif isinstance(touch, str) and COORD_RE.match(touch):
-                    # handle JSON-provided touch coords
-                    x, y = state_data["position"]
-                    coords = [int(i) for i in touch.split(",")]
-                    action = touch_controls_path_find(
-                        state_data["map_id"],
-                        [x, y],
-                        coords
-                    )
-                    log.info(f"✅ Found touch in JSON, converted to action: {action}")
-                    break
-            except json.JSONDecodeError:
-                continue  # Try next JSON block
-
-        # Fallback: Find ACTION line or last line matching ACTION_RE
-        if action is None:
-            lines = [line.strip() for line in full_output.splitlines() if line.strip()]
-            if lines:
-                # First try to find explicit ACTION line (e.g., "8. **ACTION**: A;" or "**ACTION**: R;R;A;")
-                for line in lines:
-                    # Look for ACTION: pattern (with or without ** markdown)
-                    if 'ACTION' in line.upper() and ':' in line:
-                        # Extract content after the colon
-                        colon_idx = line.find(':')
-                        if colon_idx != -1:
-                            action_part = line[colon_idx + 1:].strip()
-                            # Translate and match
-                            translated = translate_cardinal_to_buttons(action_part)
-                            match = ACTION_RE.match(translated)
-                            if match:
-                                action = match.group().rstrip(';') + ';'
-                                log.info(f"✅ Found action in ACTION line: {action}")
-                                break
-                
-                # Fall back to last line if no ACTION line found
-                if action is None:
-                    last = lines[-1]
-                    translated_last = translate_cardinal_to_buttons(last)
-                    match = ACTION_RE.match(translated_last)
-                    if match and not translated_last.startswith('{'):
-                        action = match.group().rstrip(';') + ';'
-
-                # plain touch coords
-                if action is None:
-                    last = lines[-1]
-                    if COORD_RE.match(last):
-                        x, y = state_data["position"]
-                        coords = [int(i) for i in last.split(",")]
-                        action = touch_controls_path_find(
-                            state_data["map_id"],
-                            [x, y],
-                            coords
-                        )
-
-    except Exception as e:
-        log.error(f"Error during LLM interaction: {e}", exc_info=True)
-        return None, None, None, None
-
-    if action is None:
-        log.error("No valid action extracted from LLM output.")
-
-    return action, analysis_text, summary_json, vision_analysis_for_ui
-
-
 
 def encode_image_base64(image_path: str) -> str | None:
     """Reads an image file and returns its base64 encoded string."""
@@ -1667,7 +259,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     Args:
         mgba_proc: The mGBA subprocess - needed for auto-restart on failures for 24/7 operation.
     """
-    global action_count, tokens_used_session, start_time, chat_history, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
+    global action_count, tokens_used_session, start_time, SCREENSHOT_PATH, MINIMAP_PATH, SAVED_SCREENSHOT_PATH, SAVED_MINIMAP_PATH
     
     cycle_count = 0
     
@@ -1682,10 +274,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         tokens_used_session = run_state.tokens_used
         # Restore elapsed time by adjusting start_time
         start_time = datetime.datetime.now() - datetime.timedelta(seconds=run_state.elapsed_seconds)
-        # Restore chat history if available
-        if run_state.chat_history:
-            chat_history = run_state.chat_history
-            log.info(f"🔄 Restored chat history: {len(chat_history)} messages")
+        # Restore chat history logic deferred
+        restored_history = run_state.chat_history if run_state and run_state.chat_history else []
+        if restored_history:
+             log.info(f"🔄 Found persistent chat history: {len(restored_history)} messages")
+             
         log.info(f"🔄 Restored from persistence: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}")
         # Flag to skip cycle increment on first loop iteration
         is_first_cycle_after_continue = True
@@ -1723,15 +316,39 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     )
     log.info(f"📍 Coordinate tracker initialized (history: {coord_tracker.get_context_summary()[:100] if coord_tracker.history else 'empty'})")
 
-    # Set up status callback for real-time processing status updates
-    # This allows llm_stream_action to broadcast status changes during vision processing
+    # Capture the main event loop for thread-safe callbacks
+    # This MUST be done before defining callbacks that will run in executor threads
+    loop = asyncio.get_running_loop()
+    
+    # Define thread-safe status callback for vision updates (called from executor threads)
+    # Uses run_coroutine_threadsafe because LLMController.stream_action runs in ThreadPoolExecutor
     def status_callback(status: str):
         state["processingStatus"] = status
-        # Use asyncio to schedule the broadcast (we're in an async context)
-        asyncio.create_task(broadcast_func({"processingStatus": status}))
+        asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
     
     set_status_callback(status_callback)
-    log.info("📢 Processing status callback initialized")
+    log.info("📢 Processing status callback initialized (thread-safe)")
+
+    # Initialize LLM Controller - encapsulates all LLM interaction logic
+    llm_config = {
+        "mode": CURRENT_MODE,
+        "model": MODEL,
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS,
+        "is_local": IS_LOCAL,
+        "reasoning_enabled": REASONING_ENABLED,
+        "reasoning_effort": REASONING_EFFORT,
+        "uses_default_temp": USES_DEFAULT_TEMPERATURE,
+        "uses_max_completion_tokens": USES_MAX_COMPLETION_TOKENS,
+        "minimap_enabled": MINIMAP_ENABLED,
+        "minimap_2d": MINIMAP_2D,
+        "cleanup_window": CLEANUP_WINDOW,
+        "system_prompt_unsupported": SYSTEM_PROMPT_UNSUPPORTED,
+        "supports_reasoning": supports_reasoning
+    }
+    controller = LLMController(client, vision_manager, memory_manager, llm_config)
+    controller.set_status_callback(status_callback)
+    log.info("🤖 LLM Controller initialized")
 
     # Initialize Twitch chat service (optional - gracefully disabled if not configured)
     twitch_service = create_twitch_service()
@@ -1808,19 +425,6 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     last_position = None
 
     b64_mm = None
-    
-    # Capture the main event loop for thread-safe callbacks
-    loop = asyncio.get_running_loop()
-    
-    # Define thread-safe status callback for vision updates (called from executor threads)
-    def status_callback(status: str):
-        state["processingStatus"] = status
-        # Use run_coroutine_threadsafe to schedule the async broadcast on the main loop
-        # This is required because this callback is invoked from llm_stream_action running in a ThreadPoolExecutor
-        asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
-
-    # Set the global callback
-    set_status_callback(status_callback)
 
     # Persistence save interval (save every N cycles)
     PERSIST_INTERVAL = 5
@@ -1858,15 +462,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         if prompt_format_changed:
             # Prompt format changed - start fresh to avoid LLM following old patterns
             log.info("🔄 PROMPT FORMAT CHANGED - Clearing chat history to adopt new format")
-            chat_history = [{"role": "system", "content": fresh_system_prompt}]
+            controller.chat_history = [{"role": "system", "content": fresh_system_prompt}]
         else:
             # Restore chat history but replace the system prompt with fresh one
-            chat_history = run_state.chat_history
-            if chat_history and chat_history[0].get("role") == "system":
-                chat_history[0] = {"role": "system", "content": fresh_system_prompt}
+            controller.chat_history = restored_history
+            if controller.chat_history and controller.chat_history[0].get("role") == "system":
+                controller.chat_history[0] = {"role": "system", "content": fresh_system_prompt}
                 log.info("🔄 Updated system prompt to latest version")
     else:
-        chat_history = [{"role": "system", "content": fresh_system_prompt}]
+        controller.chat_history = [{"role": "system", "content": fresh_system_prompt}]
 
     # Track consecutive mGBA failures across cycle retries
     # This persists across loop iterations so we can detect when mGBA is completely dead
@@ -2893,7 +1497,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 # Fallback: Analysis path remains SCREENSHOT_PATH
 
         # Handle image processing based on provider
-        if CURRENT_MODE == "ZAI" and zai_vision_client:
+        if CURRENT_MODE == "ZAI" and vision_manager:
             # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
             # The minimap context is no longer sent to vision - user prefers clean image
             llm_input_state["screenshot_path"] = UI_IMAGE_PATH
@@ -2992,12 +1596,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         )
         
         try:
-            # Run the main LLM call
-            action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(
+            # Run the main LLM call via Controller
+            action, game_analysis, summary_json, vision_analysis_for_ui = await controller.call_with_timeout(
                 llm_input_state, 
-                benchmark=benchmark,
-                cycle_metrics=cycle_metrics
+                STREAM_TIMEOUT, 
+                LLM_TOTAL_TIMEOUT, 
+                benchmark, 
+                cycle_metrics
             )
+            tokens_used_session = controller.tokens_used_session
+            
         finally:
             # Signal chat task to stop and cancel if still running
             chat_stop_event.set()
@@ -3418,7 +2026,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             run_state.elapsed_seconds = elapsed_seconds
             run_state.goals = state.get('goals', run_state.goals)
             run_state.other_goals = state.get('otherGoals', run_state.other_goals)
-            run_state.chat_history = chat_history[-20:]  # Keep last 20 messages
+            run_state.chat_history = controller.chat_history[-20:]  # Keep last 20 messages
             run_state.recent_actions.append(action if action else 'NONE')
             run_state.recent_actions = run_state.recent_actions[-50:]  # Keep last 50
             if latest_memory:

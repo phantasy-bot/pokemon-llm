@@ -16,6 +16,8 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
 import httpx
+from services.audio.player import AudioPlayer
+from services.audio.processor import AudioProcessor
 
 log = logging.getLogger("comfyui_tts")
 
@@ -54,8 +56,8 @@ class ComfyUITTSService:
         output_dir: str = None,
         timeout: float = 10.0,  # Reduced from 60s for faster fallback
         on_playback_start: callable = None,
-        audio_speed: float = None,
-        audio_pitch: float = None
+        audio_speed: float = 1.0,
+        audio_pitch: float = 0.0
     ):
         """
         Initialize the ComfyUI TTS service.
@@ -71,10 +73,8 @@ class ComfyUITTSService:
         """
         self.base_url = (base_url or os.getenv("COMFYUI_URL", "http://localhost:8188")).rstrip("/")
         self.workflow_path = workflow_path or os.getenv("COMFYUI_TTS_WORKFLOW", "")
-        self.output_dir = output_dir or os.getenv("COMFYUI_OUTPUT_DIR", "tts_output")
+        self.output_dir = output_dir or os.path.join(os.getcwd(), "output_audio")
         self.timeout = timeout
-        
-        # Callback for UI sync - called when playback starts with (text, duration_ms)
         self.on_playback_start = on_playback_start
         
         # Audio post-processing settings (from env or args)
@@ -86,8 +86,7 @@ class ComfyUITTSService:
         self._processing = False
         self._client: Optional[httpx.AsyncClient] = None
         
-        # Audio playback process tracking for cancellation
-        self._audio_process: Optional[subprocess.Popen] = None
+        # Request tracking
         self._current_request: Optional[TTSRequest] = None
         self._current_audio_path: Optional[str] = None  # Track for post-playback cleanup
         self._cancelled = False
@@ -97,6 +96,10 @@ class ComfyUITTSService:
         
         # Cached workflow template
         self._workflow_template: Optional[dict] = None
+        
+        # Initialize audio components
+        self.audio_player = AudioPlayer()
+        self.audio_processor = AudioProcessor()
         
         # Create output directory
         os.makedirs(self.output_dir, exist_ok=True)
@@ -147,159 +150,16 @@ class ComfyUITTSService:
                 log.warning(f"Failed to cleanup audio: {e}")
     
     def _get_audio_duration_ms(self, audio_path: str) -> Optional[int]:
-        """
-        Get audio duration in milliseconds.
-        Uses mutagen for FLAC/MP3/WAV support.
-        
-        Returns:
-            Duration in milliseconds, or None if detection fails
-        """
-        try:
-            from mutagen import File as MutagenFile
-            audio = MutagenFile(audio_path)
-            if audio and audio.info:
-                duration_ms = int(audio.info.length * 1000)
-                log.info(f"🔊 Audio duration: {duration_ms}ms ({audio.info.length:.2f}s)")
-                return duration_ms
-        except ImportError:
-            log.warning("mutagen not installed, trying fallback audio duration detection")
-            # Fallback for FLAC using soundfile or wave
-            try:
-                import soundfile as sf
-                with sf.SoundFile(audio_path) as f:
-                    duration_ms = int((len(f) / f.samplerate) * 1000)
-                    log.info(f"🔊 Audio duration (soundfile): {duration_ms}ms")
-                    return duration_ms
-            except ImportError:
-                log.warning("soundfile not installed, cannot detect audio duration")
-            except Exception as e:
-                log.warning(f"soundfile fallback failed: {e}")
-        except Exception as e:
-            log.warning(f"Failed to get audio duration: {e}")
-        
-        # Estimate based on text length (rough fallback: ~150ms per character)
-        return None
+        """Get audio duration in milliseconds."""
+        return self.audio_processor.get_duration_ms(audio_path)
     
     def _process_audio_speed_pitch(self, audio_path: str) -> str:
-        """
-        Apply speed and pitch adjustments to audio using ffmpeg.
-        
-        Uses the atempo filter for speed and asetrate+aresample for pitch.
-        
-        Args:
-            audio_path: Path to the input audio file
-            
-        Returns:
-            Path to processed audio file (or original if processing fails/not needed)
-        """
-        # Skip if no processing needed
-        if self.audio_speed == 1.0 and self.audio_pitch == 0:
-            return audio_path
-        
-        try:
-            # Build output path
-            base, ext = os.path.splitext(audio_path)
-            processed_path = f"{base}_processed{ext}"
-            
-            # Build ffmpeg filter chain
-            filters = []
-            
-            # Detect actual sample rate from the audio file
-            original_sample_rate = 44100  # Default fallback
-            try:
-                from mutagen import File as MutagenFile
-                audio = MutagenFile(audio_path)
-                if audio and audio.info and hasattr(audio.info, 'sample_rate'):
-                    original_sample_rate = audio.info.sample_rate
-                    log.info(f"🔊 Detected sample rate: {original_sample_rate}Hz")
-            except Exception as e:
-                log.warning(f"🔊 Could not detect sample rate, using 44100Hz default: {e}")
-            
-            # Pitch adjustment using asetrate + aresample + atempo compensation
-            # NOTE: Pitch shifting with asetrate is imperfect. For best results, 
-            # use small values (0.5 to 2 semitones) or install rubberband library.
-            if self.audio_pitch != 0:
-                pitch_factor = 2 ** (self.audio_pitch / 12)
-                log.info(f"🔊 Pitch factor for {self.audio_pitch} semitones: {pitch_factor:.6f}")
-                
-                # Method: Change sample rate to shift pitch, then resample back and 
-                # compensate tempo with atempo (1/pitch_factor)
-                new_rate = int(original_sample_rate * pitch_factor)
-                filters.append(f"asetrate={new_rate}")
-                filters.append(f"aresample={original_sample_rate}")
-                
-                # Tempo compensation: pitch up = speed up, so we slow down to compensate
-                tempo_comp = 1.0 / pitch_factor
-                log.info(f"🔊 Tempo compensation: {tempo_comp:.6f}")
-                
-                # Apply tempo compensation (atempo range is 0.5-2.0)
-                if tempo_comp <= 0.5 or tempo_comp >= 2.0:
-                    log.warning(f"🔊 Large pitch shift ({self.audio_pitch} semitones) may cause quality issues")
-                
-                comp = tempo_comp
-                while comp > 2.0:
-                    filters.append("atempo=2.0")
-                    comp /= 2.0
-                while comp < 0.5:
-                    filters.append("atempo=0.5")
-                    comp *= 2.0
-                if abs(comp - 1.0) > 0.001:
-                    filters.append(f"atempo={comp:.6f}")
-            
-            # Speed adjustment using atempo (applied after pitch compensation)
-            if self.audio_speed != 1.0:
-                speed = self.audio_speed
-                # atempo only supports 0.5-2.0, so chain multiple if needed
-                while speed > 2.0:
-                    filters.append("atempo=2.0")
-                    speed /= 2.0
-                while speed < 0.5:
-                    filters.append("atempo=0.5")
-                    speed *= 2.0
-                if speed != 1.0:
-                    filters.append(f"atempo={speed:.4f}")
-            
-            if not filters:
-                return audio_path
-            
-            filter_str = ",".join(filters)
-            log.info(f"🔊 Processing audio: speed={self.audio_speed}x, pitch={self.audio_pitch} semitones")
-            log.info(f"🔊 FFmpeg filter chain: {filter_str}")
-            
-            # Run ffmpeg
-            cmd = [
-                "ffmpeg", "-y", "-i", audio_path,
-                "-af", filter_str,
-                "-acodec", "flac" if audio_path.endswith(".flac") else "libmp3lame",
-                processed_path
-            ]
-            
-            result = subprocess.run(
-                cmd, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE,
-                timeout=30
-            )
-            
-            if result.returncode == 0 and os.path.exists(processed_path):
-                log.info(f"🔊 Audio processed successfully: {processed_path}")
-                # Remove original, rename processed
-                os.remove(audio_path)
-                os.rename(processed_path, audio_path)
-                return audio_path
-            else:
-                log.warning(f"🔊 FFmpeg processing failed: {result.stderr.decode()[:200]}")
-                return audio_path
-                
-        except FileNotFoundError:
-            log.warning("🔊 ffmpeg not found, skipping audio processing. Install with: brew install ffmpeg")
-            return audio_path
-        except subprocess.TimeoutExpired:
-            log.warning("🔊 FFmpeg processing timed out")
-            return audio_path
-        except Exception as e:
-            log.warning(f"🔊 Audio processing failed: {e}")
-            return audio_path
+        """Apply speed and pitch adjustments to audio."""
+        return self.audio_processor.process_speed_pitch(
+            audio_path, 
+            speed=self.audio_speed, 
+            pitch=self.audio_pitch
+        )
     
     @property
     def is_available(self) -> bool:
@@ -313,20 +173,11 @@ class ComfyUITTSService:
         return self._client
     
     def cancel_current(self):
-        """
-        Cancel the currently playing audio and any pending ComfyUI workflow.
-        Called when a higher priority TTS request comes in (e.g., new cycle commentary).
-        """
+        """Cancel the currently playing audio and any pending ComfyUI workflow."""
         self._cancelled = True
         
-        if self._audio_process and self._audio_process.poll() is None:
-            try:
-                self._audio_process.terminate()
-                log.info("🔇 Cancelled current TTS playback")
-            except Exception as e:
-                log.warning(f"Error terminating audio process: {e}")
-        
-        self._audio_process = None
+        # Stop audio player
+        self.audio_player.stop_playback()
         
         # Also cancel any pending ComfyUI workflow via /interrupt endpoint
         try:
@@ -341,79 +192,15 @@ class ComfyUITTSService:
             log.debug(f"Could not interrupt ComfyUI workflow: {e}")
     
     def play_audio_ephemeral(self, audio_path: str) -> bool:
-        """
-        Play audio file ephemerally (no file retention).
-        Uses system audio player (afplay on macOS, aplay/paplay on Linux).
-        
-        Args:
-            audio_path: Path to the audio file
-        
-        Returns:
-            True if playback started successfully
-        """
-        if not os.path.exists(audio_path):
-            log.warning(f"Audio file not found: {audio_path}")
-            return False
-        
-        try:
-            system = platform.system()
+        """Play audio file ephemerally (no file retention)."""
+        if self.audio_speed != 1.0 or self.audio_pitch != 0:
+            audio_path = self._process_audio_speed_pitch(audio_path)
             
-            if system == "Darwin":  # macOS
-                cmd = ["afplay", audio_path]
-            elif system == "Linux":
-                # Try paplay (PulseAudio) first, fall back to aplay
-                cmd = ["paplay", audio_path]
-            else:
-                log.warning(f"Unsupported platform for audio playback: {system}")
-                return False
-            
-            # Start audio playback as subprocess
-            self._audio_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-            log.info(f"🔊 Playing audio: {os.path.basename(audio_path)}")
-            return True
-            
-        except FileNotFoundError:
-            log.warning(f"Audio player not found. Install afplay (macOS) or paplay/aplay (Linux)")
-            return False
-        except Exception as e:
-            log.error(f"Error playing audio: {e}")
-            return False
+        return self.audio_player.play_audio(audio_path)
     
     async def wait_for_playback(self, timeout: float = 30.0) -> bool:
-        """
-        Wait for current audio playback to complete.
-        
-        Args:
-            timeout: Maximum seconds to wait
-        
-        Returns:
-            True if playback completed, False if cancelled or timeout
-        """
-        if not self._audio_process:
-            return True
-        
-        start = time.time()
-        while time.time() - start < timeout:
-            if self._cancelled:
-                return False
-            
-            if self._audio_process.poll() is not None:
-                return True
-            
-            await asyncio.sleep(0.1)
-        
-        # Timeout - kill process
-        try:
-            self._audio_process.terminate()
-        except:
-            pass
-        
-        return False
+        """Wait for current audio playback to complete."""
+        return await self.audio_player.wait_for_playback(timeout)
     
     async def check_connection(self) -> bool:
         """
