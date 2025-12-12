@@ -453,7 +453,7 @@ def get_base_prompt() -> str:
 
 ## CONTROLS
 **MOVEMENT: U = Up/North | D = Down/South | L = Left/West | R = Right/East**
-**BUTTONS: A = confirm | B = cancel | S = START menu | s = SELECT**
+**BUTTONS: A = confirm | B = cancel | S = START menu | T = SELECT**
 Chain with semicolons: U;U;R;A; (use 2-5 actions per turn, never single moves)
 
 ⚠️⚠️⚠️ **CRITICAL - DO NOT CONFUSE THESE:** ⚠️⚠️⚠️

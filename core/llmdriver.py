@@ -2799,7 +2799,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         # 'action' is like "U;U;R;A;" - count the actual button presses
         if action:
             # Remove semicolons and whitespace, count remaining characters
-            action_buttons = [c for c in action.replace(';', '').replace(' ', '') if c in 'UDLRABSs']
+            action_buttons = [c for c in action.replace(';', '').replace(' ', '') if c in 'UDLRABST']
             buttons_in_action = len(action_buttons)
             action_start = action_count + 1
             action_count += buttons_in_action
