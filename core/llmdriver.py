@@ -3499,26 +3499,59 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 continue
             
             # Get all messages since last commentary for batch processing
-            if chat_response_service.is_available:
-                messages_for_cycle = twitch_service.get_messages_for_cycle_or_test()
+            messages_for_cycle = twitch_service.get_messages_for_cycle_or_test()
+            
+            if messages_for_cycle:
+                # Check if we're in test mode (no chat response API needed)
+                from services.twitch_chat_service import TWITCH_TEST_MODE
                 
-                if messages_for_cycle:
-                    # Decide SKIP/RESPOND for all messages at once
-                    decisions = await chat_response_service.decide_skip_or_respond(messages_for_cycle)
+                if TWITCH_TEST_MODE:
+                    # Test mode: Generate mock SKIP/RESPOND decisions without API
+                    import random
                     
-                    # Process RESPOND messages oldest first
-                    for decided in decisions:
-                        if decided.decision == MessageDecision.SKIP:
-                            log.info(f"⏭️ Skipping message from @{decided.display_name}")
-                            # Mark as responded so we don't process again
-                            original_msg = next(
-                                (m["_original"] for m in messages_for_cycle 
-                                 if m["timestamp"] == decided.timestamp), 
-                                None
-                            )
-                            if original_msg:
-                                twitch_service.mark_responded(original_msg)
-                            continue
+                    respond_count = 0
+                    skip_count = 0
+                    
+                    for msg in messages_for_cycle:
+                        # Simple heuristic: skip spam-like messages, respond to rest
+                        is_spam = any(spam in msg["message"].lower() for spam in 
+                                     ["kekw", "lul", "kappa", "!gamble", "first", "asdf", "zzz"])
+                        
+                        if is_spam or random.random() < 0.3:  # 30% skip rate
+                            skip_count += 1
+                            log.info(f"⏭️ [TEST] Skipping message from @{msg['display_name']}: {msg['message'][:40]}...")
+                        else:
+                            respond_count += 1
+                            log.info(f"💬 [TEST] Would respond to @{msg['display_name']}: {msg['message'][:40]}...")
+                            chat_response_count += 1
+                            if chat_response_count >= max_chat_responses:
+                                break
+                    
+                    log.info(f"🧪 TEST MODE: {respond_count} RESPOND, {skip_count} SKIP from {len(messages_for_cycle)} messages")
+                    await asyncio.sleep(min(remaining_wait, 2.0))
+                    continue
+                
+                # Real mode: Use chat response service for decisions
+                if not chat_response_service.is_available:
+                    await asyncio.sleep(min(remaining_wait, 2.0))
+                    continue
+                    
+                # Decide SKIP/RESPOND for all messages at once
+                decisions = await chat_response_service.decide_skip_or_respond(messages_for_cycle)
+                
+                # Process RESPOND messages oldest first
+                for decided in decisions:
+                    if decided.decision == MessageDecision.SKIP:
+                        log.info(f"⏭️ Skipping message from @{decided.display_name}")
+                        # Mark as responded so we don't process again
+                        original_msg = next(
+                            (m["_original"] for m in messages_for_cycle 
+                             if m["timestamp"] == decided.timestamp), 
+                            None
+                        )
+                        if original_msg:
+                            twitch_service.mark_responded(original_msg)
+                        continue
                         
                         # Check if we should stop for new cycle
                         if time.time() - wait_start >= wait_time:
