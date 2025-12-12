@@ -33,7 +33,11 @@ def reset_all():
     
     files_to_delete = [
         "pokemon_runs.db",
-        "pokemon_memories.json",
+        # Data directory files
+        "data/pokemon_memories.json",
+        "data/coordinate_history.json",
+        "data/exploration_data.json",
+        "data/game_goals.json",
         os.path.join(rom_dir, f"{rom_name}.ss1"),
         os.path.join(rom_dir, f"{rom_name}-backup.ss1"),
         # Also clean up minimap cache files from root

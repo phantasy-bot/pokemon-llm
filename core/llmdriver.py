@@ -1593,7 +1593,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
 
     # Initialize coordinate tracker for loop detection and target tracking
     coord_tracker = CoordinateTracker(
-        storage_path="coordinate_history.json",
+        storage_path="data/coordinate_history.json",
         max_history=10,
         reset_on_start=not is_continuing_run
     )
