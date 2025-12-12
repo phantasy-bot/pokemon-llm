@@ -1698,6 +1698,72 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.error(f"Error generating chat response: {e}")
             return ""
 
+    # Helper function for parallel chat processing during LLM wait
+    async def parallel_chat_processing(stop_event: asyncio.Event) -> int:
+        """
+        Process Twitch chat responses in parallel with the main LLM call.
+        This keeps the stream active during the 10-40s LLM thinking phase.
+        
+        Returns the number of chat responses generated.
+        """
+        responses_generated = 0
+        max_responses = 2  # Limit during parallel processing
+        
+        if not twitch_service.is_available or not chat_response_service.is_available:
+            return 0
+        
+        try:
+            while not stop_event.is_set() and responses_generated < max_responses:
+                # Check for pending mentions
+                pending = twitch_service.get_pending_mentions()
+                if not pending:
+                    # No messages - wait a bit before checking again
+                    await asyncio.sleep(2.0)
+                    continue
+                
+                # Process the oldest pending message
+                chat_msg = pending[0]
+                username = chat_msg.get("display_name", chat_msg.get("username", "viewer"))
+                message = chat_msg.get("message", "")
+                
+                if not message:
+                    twitch_service.mark_responded(chat_msg)
+                    continue
+                
+                log.info(f"💬 [PARALLEL] Responding to @{username}: {message[:50]}...")
+                
+                try:
+                    # Generate response using chat LLM (fast, not main LLM)
+                    response = await chat_response_service.generate_response(username, message)
+                    
+                    if response:
+                        # Send response to Twitch
+                        await twitch_service.send_response(response)
+                        log.info(f"💬 [PARALLEL] Sent: {response[:80]}...")
+                        
+                        # Play TTS for chat response if available
+                        if tts_service.is_available:
+                            await tts_service.synthesize(response)
+                        
+                        responses_generated += 1
+                    
+                    twitch_service.mark_responded(chat_msg)
+                    
+                except Exception as e:
+                    log.warning(f"Parallel chat response error: {e}")
+                    twitch_service.mark_responded(chat_msg)
+                
+                # Brief pause between responses
+                await asyncio.sleep(1.0)
+                
+        except asyncio.CancelledError:
+            log.info("🛑 Parallel chat processing cancelled (LLM complete)")
+        except Exception as e:
+            log.error(f"Error in parallel chat processing: {e}")
+        
+        return responses_generated
+
+
     # Position history for stuck detection
     position_history = []
     
@@ -2833,12 +2899,30 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         ]
         log.info(f"📊 LLM INPUT STATE: {' | '.join(key_fields)}")
 
-
-        action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(
-            llm_input_state, 
-            benchmark=benchmark,
-            cycle_metrics=cycle_metrics  # Pass cycle_metrics here
-        )
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PARALLEL CHAT + LLM PROCESSING
+        # Run chat responses during LLM wait to keep stream active
+        # ═══════════════════════════════════════════════════════════════════════════
+        chat_stop_event = asyncio.Event()
+        parallel_chat_task = asyncio.create_task(parallel_chat_processing(chat_stop_event))
+        
+        try:
+            # Run the main LLM call
+            action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(
+                llm_input_state, 
+                benchmark=benchmark,
+                cycle_metrics=cycle_metrics
+            )
+        finally:
+            # Signal chat task to stop and cancel if still running
+            chat_stop_event.set()
+            parallel_chat_task.cancel()
+            try:
+                parallel_responses = await parallel_chat_task
+                if parallel_responses > 0:
+                    log.info(f"💬 Sent {parallel_responses} chat responses during LLM processing")
+            except asyncio.CancelledError:
+                pass
 
         # Clear processing status after completion
         state["processingStatus"] = ""
