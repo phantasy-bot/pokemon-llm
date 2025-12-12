@@ -24,6 +24,8 @@ from pyAIAgent.game.state import prep_llm, get_rom_path
 from pyAIAgent.navigation import touch_controls_path_find, find_path
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
+from pyAIAgent.game.keyboard_tracker import get_keyboard_tracker
+
 from core.prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
 from pyAIAgent.game.hints import get_area_hint
 from core.client_setup import setup_llm_client, parse_mode_arg, MODES
@@ -2541,19 +2543,28 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         if name_entry_state:
             state['nameEntryState'] = name_entry_state
             update_payload['nameEntryState'] = name_entry_state
-            log.info(f"📝 Name entry: cursor at '{name_entry_state.get('selected_char')}' (idx {name_entry_state.get('cursor_index')})")
             
-            # Add formatted name entry context to LLM input
-            # Use row/col from state if available, otherwise calculate
-            row = name_entry_state.get('row', 1)
-            col = name_entry_state.get('col', 1)
-            selected_char = name_entry_state.get('selected_char', 'A')
-            cursor_idx = name_entry_state.get('cursor_index', 0)
+            # Activate keyboard tracker when name entry is detected
+            kb_tracker = get_keyboard_tracker()
+            kb_tracker.activate()
+            
+            # Get tracked position (more reliable than memory reads)
+            tracked_state = kb_tracker.get_state_dict()
+            row = tracked_state.get('row', 1)
+            col = tracked_state.get('col', 1)
+            selected_char = tracked_state.get('selected_char', 'A')
+            cursor_idx = tracked_state.get('cursor_index', 0)
+            
+            # Also log memory-read position for comparison/debugging
+            mem_char = name_entry_state.get('selected_char', '?')
+            mem_idx = name_entry_state.get('cursor_index', -1)
+            log.info(f"📝 Name entry: TRACKED='{selected_char}' (Row {row}, Col {col}) | MEM='{mem_char}' (idx {mem_idx})")
             
             name_entry_context = (
                 f"🎮 NAME ENTRY KEYBOARD ACTIVE!\n"
                 f"══════════════════════════════════════\n"
                 f"📍 CURSOR POSITION: Row {row}, Col {col} → currently on '{selected_char}'\n"
+                f"   (Tracked from your previous actions)\n"
                 f"\n"
                 f"⚠️ CRITICAL: If screen shows 'lower case' text, you're ALREADY in UPPERCASE!\n"
                 f"   That text is a BUTTON to switch - DON'T press SELECT!\n"
@@ -2576,8 +2587,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             )
             
             llm_input_state["name_entry_context"] = name_entry_context
-            log.info(f"✅ Added name_entry_context: cursor at Row {row}, Col {col} = '{selected_char}'")
+            log.info(f"✅ Added name_entry_context: TRACKED cursor at Row {row}, Col {col} = '{selected_char}'")
         else:
+            # Deactivate keyboard tracker when not in name entry
+            kb_tracker = get_keyboard_tracker()
+            if kb_tracker.active:
+                kb_tracker.deactivate()
+            
             # Debug: Log menu state to trace why name entry wasn't detected
             menu_state = current_mGBA_state.get('menu_state', {})
             if menu_state:
@@ -2762,6 +2778,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 time.sleep(1)
                 sock.sendall((action_to_send + "\n").encode("utf-8"))
                 log.info(f"Action '{action_to_send}' sent to mGBA.")
+                
+                # Update keyboard tracker with the action (for name entry screens)
+                kb_tracker = get_keyboard_tracker()
+                if kb_tracker.active:
+                    kb_tracker.apply_action(action_to_send)
                 
                 # Wait 4s AFTER sending action to let screen fully render before next screenshot
                 # This prevents cut-off/partial screenshots and ensures dialog text is captured
