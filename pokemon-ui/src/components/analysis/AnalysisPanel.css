@@ -59,17 +59,17 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: var(--space-xs); /* Reduced from var(--space-sm) */
-  padding-top: var(--space-xs); /* Reduced from var(--space-sm) */
-  /* Add top margin to prevent label cutoff by parent overflow */
-  margin-top: var(--space-xs); /* Reduced from var(--space-sm) */
-  margin-bottom: 0px; /* Keep as is */
+  padding: var(--space-xs);
+  padding-top: 0; /* Reduced to bring content up */
+  /* Reduced margins to bring everything up ~16px */
+  margin-top: 0;
+  margin-bottom: -8px; /* Pull up slightly */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
   min-height: 0;
-  /* REMOVED: max-height: 475px - let it stretch to fill available space */
+  /* Flex fill remaining space */
 }
 
 /* Inner scroll area for LLM analysis */
