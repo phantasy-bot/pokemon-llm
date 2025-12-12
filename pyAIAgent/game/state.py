@@ -385,15 +385,47 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         
         upper_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ×():;[]pkmn-?!♂♀/.,ED"
         
-        # Calculate row/col from selected index (9 columns per row)
-        row = selected // 9
-        col = selected % 9
-        selected_char = upper_chars[selected] if selected < len(upper_chars) else "?"
+        # FIXED: The game uses cursor_x and cursor_y directly for keyboard navigation
+        # cursor_x = column (0-indexed), cursor_y = row (0-indexed) 
+        # The 'selected' variable doesn't update during keyboard navigation
+        # Keyboard starts at screen row 3 (first letter row), so we need to offset
+        # Screen row 3 = keyboard row 0 (A-I)
+        # Screen row 5 = keyboard row 1 (J-R)
+        # And so on - there are gaps between rows on screen
         
-        log.info(f"📝 Name entry KEYBOARD detected: cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={selected})")
+        # Map screen cursor position to keyboard grid
+        # Screen Y positions for keyboard rows (observed from game):
+        # Row 0 (A-I): cursor_y = 3
+        # Row 1 (J-R): cursor_y = 5
+        # Row 2 (S-Z): cursor_y = 7
+        # Row 3 (symbols): cursor_y = 9
+        # Row 4 (more symbols): cursor_y = 11
+        # Row 5 (case toggle): cursor_y = 13
+        
+        screen_y_to_keyboard_row = {
+            3: 0,   # A-I
+            5: 1,   # J-R  
+            7: 2,   # S-Z + space
+            9: 3,   # symbols row 1
+            11: 4,  # symbols row 2
+            13: 5,  # case toggle row
+        }
+        
+        # Screen X positions are 1-indexed (1 = first column)
+        # Convert to 0-indexed column
+        col = max(0, cursor_x - 1)
+        
+        # Get keyboard row from screen Y position
+        row = screen_y_to_keyboard_row.get(cursor_y, 0)
+        
+        # Calculate character index from row and column (9 chars per row)
+        char_index = row * 9 + col
+        selected_char = upper_chars[char_index] if char_index < len(upper_chars) else "?"
+        
+        log.info(f"📝 Name entry KEYBOARD detected: cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={char_index})")
         
         return {
-            "cursor_index": selected,
+            "cursor_index": char_index,  # Fixed: was 'selected' which doesn't update during keyboard nav
             "cursor_x": cursor_x,
             "cursor_y": cursor_y,
             "grid_size": last_item + 1,
