@@ -23,6 +23,8 @@ const INITIAL_GAME_STATE: PokemonGameState = {
   currentCycleTime: 0,
   prevCycleTime: 0,
   avgCycleTime: 0,
+  sessionStartTime: undefined,  // Set by backend after intro TTS
+  cyclesEnabled: false,  // True once intro is done
 };
 
 // TTS Commentary with duration for synced typewriter
@@ -111,7 +113,9 @@ function App() {
       data.currentCycleTime !== undefined ||
       data.prevCycleTime !== undefined ||
       data.avgCycleTime !== undefined ||
-      data.cycleTiming !== undefined
+      data.cycleTiming !== undefined ||
+      data.sessionStartTime !== undefined ||
+      data.cyclesEnabled !== undefined
     ) {
       setGameState((prev) => {
         const newState = { ...prev };
