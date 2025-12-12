@@ -2034,7 +2034,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.warning(f"Startup intro failed: {e}")
     
     # Small delay to let mGBA fully settle
-    await asyncio.sleep(2)
+    await asyncio.sleep(1)
 
     while action_count < max_loops:
         loop_start_time = time.time()
@@ -3279,9 +3279,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             # CRITICAL FIX: Use current_mGBA_state which has map_name and position keys
             # Also guard against None analysis_text (occurs when vision fails)
             extracted_memories = []
-            if analysis_text:
+            if game_analysis:
                 extracted_memories = memory_manager.extract_memories_from_response(
-                    analysis_text=analysis_text,
+                    analysis_text=game_analysis,
                     game_state=current_mGBA_state,  # Fixed: was 'state' which has different keys
                     vision_analysis=vision_analysis_for_ui
                 )
