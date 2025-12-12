@@ -36,6 +36,7 @@ interface AnalysisPanelProps {
   logs: LogEntry[];
   totalActions: number; // For RecentActions component
   isProcessing?: boolean;
+  processingStatus?: string; // e.g., "ANALYZING VISION...", "THINKING..."
   memoryWrite?: string | null;
   onMemoryWriteClear?: () => void;
   debugMode?: boolean;
@@ -45,6 +46,7 @@ export function AnalysisPanel({
   logs,
   totalActions,
   isProcessing = false,
+  processingStatus,
   memoryWrite,
   onMemoryWriteClear,
   debugMode,
@@ -158,6 +160,15 @@ export function AnalysisPanel({
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
         <div className="analysis-panel__llm-analysis-wrapper">
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
+          
+          {/* Processing Status Indicator - shows when agent is working */}
+          {processingStatus && (
+            <div className="analysis-panel__status-indicator">
+              <span className="analysis-panel__status-pulse" />
+              <span className="analysis-panel__status-text">{processingStatus}</span>
+            </div>
+          )}
+          
           <div className="analysis-panel__llm-analysis-scroll" ref={scrollRef}>
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
@@ -172,8 +183,6 @@ export function AnalysisPanel({
               )}
             </div>
           </div>
-          
-          {/* Status animation moved to OBS widget (obs-widgets/status_widget.html) */}
         </div>
 
         {/* 2. Recent Actions Section (Inserted here) */}
