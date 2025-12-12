@@ -445,20 +445,34 @@ class LLMController:
         }
         
         t_start = time.time()
-        try:
-            with httpx.Client(timeout=40.0) as http_client:
-                 response = http_client.post(
-                     f"{self.client.base_url}chat/completions",
-                     json=api_data, headers=headers
-                 )
-            cycle_metrics["llm"] = (time.time() - t_start) * 1000
-            
-            if response.status_code == 200:
-                return response.json()['choices'][0]['message']['content']
-            else:
-                raise Exception(f"ZAI API Error: {response.text}")
-        except Exception as e:
-            raise e
+        max_retries = 3
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=40.0) as http_client:
+                     response = http_client.post(
+                         f"{self.client.base_url}chat/completions",
+                         json=api_data, headers=headers
+                     )
+                cycle_metrics["llm"] = (time.time() - t_start) * 1000
+                
+                if response.status_code == 200:
+                    return response.json()['choices'][0]['message']['content']
+                else:
+                    raise Exception(f"ZAI API Error: {response.text}")
+                    
+            except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadError) as e:
+                # Connection was closed by server or network error - retry
+                if attempt < max_retries - 1:
+                    log.warning(f"ZAI connection error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    log.error(f"ZAI connection failed after {max_retries} attempts: {e}")
+                    raise e
+            except Exception as e:
+                raise e
 
     def _handle_streaming(self, response, timeout) -> str:
         """Handle streaming response."""
