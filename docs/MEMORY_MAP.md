@@ -87,11 +87,44 @@ Documentation of all RAM addresses currently read by the agent.
 
 ### Menu State
 
-| Address  | Size | Description              | Used In            |
-| -------- | ---- | ------------------------ | ------------------ |
-| `0xCC26` | 1    | Selected menu item       | `get_menu_state()` |
-| `0xCC28` | 1    | Last menu item ID        | `get_menu_state()` |
-| `0xCC2A` | 1    | Previously selected item | `get_menu_state()` |
+| Address  | Size | Description                  | Used In            |
+| -------- | ---- | ---------------------------- | ------------------ |
+| `0xCC24` | 1    | Cursor Y position (screen)   | `get_menu_state()` |
+| `0xCC25` | 1    | Cursor X position (screen)   | `get_menu_state()` |
+| `0xCC26` | 1    | Selected menu item           | `get_menu_state()` |
+| `0xCC28` | 1    | Last menu item ID            | `get_menu_state()` |
+| `0xCC2A` | 1    | Previously selected item     | `get_menu_state()` |
+| `0xCC2B` | 1    | Party/Bill's PC cursor       | `get_menu_state()` |
+| `0xCC2C` | 1    | Item screen cursor           | `get_menu_state()` |
+| `0xCC2D` | 1    | START/battle menu cursor     | `get_menu_state()` |
+| `0xCC35` | 1    | Item highlighted with Select | `get_menu_state()` |
+| `0xCC36` | 1    | First displayed menu item ID | `get_menu_state()` |
+
+### Player Movement State
+
+| Address  | Size | Description           | Used In                       |
+| -------- | ---- | --------------------- | ----------------------------- |
+| `0xD700` | 1    | Bike speed (0 = off)  | `get_player_movement_state()` |
+| `0xC100` | 1    | Player picture ID     | `get_player_movement_state()` |
+| `0xC101` | 1    | Movement status (0-3) | `get_player_movement_state()` |
+| `0xC102` | 1    | Sprite image index    | `get_player_movement_state()` |
+
+Movement Status Values:
+
+- `0` = Uninitialized
+- `1` = Ready (idle)
+- `2` = Delayed
+- `3` = Moving
+
+### Name Entry State
+
+| Address       | Size | Description              | Used In                  |
+| ------------- | ---- | ------------------------ | ------------------------ |
+| `0xC3A0-C507` | 360  | Tile screen buffer       | `get_name_entry_state()` |
+| `0xCC24`      | 1    | Cursor Y on screen       | `get_name_entry_state()` |
+| `0xCC25`      | 1    | Cursor X on screen       | `get_name_entry_state()` |
+| `0xCC26`      | 1    | Selected character index | `get_name_entry_state()` |
+| `0xCC28`      | 1    | Grid size (last item ID) | `get_name_entry_state()` |
 
 ---
 

@@ -201,28 +201,210 @@ def get_battle_state(sock) -> dict:
 
 def get_menu_state(sock) -> dict:
     """
-    Read menu-related memory for tracking menu interactions.
+    Read extended menu-related memory for tracking menu interactions.
+    OPTIMIZED: Uses batched reads to avoid socket timeouts.
     
     Returns:
         dict with:
         - selected_item: Currently selected menu item (0 = topmost)
         - last_selected: Previously selected item
         - menu_item_count: Total items in current menu
+        - cursor_x: X screen position of cursor (CC25)
+        - cursor_y: Y screen position of cursor (CC24)
+        - party_cursor: Last cursor position on party/Bill's PC screen (CC2B)
+        - item_cursor: Last cursor position on item screen (CC2C)
+        - start_cursor: Last cursor position on START/battle menu (CC2D)
+        - first_displayed: ID of first displayed menu item for scrolling (CC36)
+        - select_highlight: Item highlighted with Select button (CC35)
     """
     _flush_socket(sock)
     try:
-        selected = readrange(sock, "0xCC26", "1")[0]
-        last_item = readrange(sock, "0xCC28", "1")[0]
-        prev_selected = readrange(sock, "0xCC2A", "1")[0]
+        # BATCHED READ: CC24-CC2D (10 consecutive bytes)
+        # CC24=cursor_y, CC25=cursor_x, CC26=selected, CC27=?, CC28=last_item
+        # CC29=?, CC2A=prev_selected, CC2B=party, CC2C=item, CC2D=start
+        menu_bytes = readrange(sock, "0xCC24", "10")
+        
+        cursor_y = menu_bytes[0] if len(menu_bytes) > 0 else 0
+        cursor_x = menu_bytes[1] if len(menu_bytes) > 1 else 0
+        selected = menu_bytes[2] if len(menu_bytes) > 2 else 0
+        last_item = menu_bytes[4] if len(menu_bytes) > 4 else 0  # CC28 = offset 4
+        prev_selected = menu_bytes[6] if len(menu_bytes) > 6 else 0  # CC2A = offset 6
+        party_cursor = menu_bytes[7] if len(menu_bytes) > 7 else 0  # CC2B = offset 7
+        item_cursor = menu_bytes[8] if len(menu_bytes) > 8 else 0  # CC2C = offset 8
+        start_cursor = menu_bytes[9] if len(menu_bytes) > 9 else 0  # CC2D = offset 9
+        
+        # SECOND READ: CC35-CC36 (2 bytes)
+        scroll_bytes = readrange(sock, "0xCC35", "2")
+        select_highlight = scroll_bytes[0] if len(scroll_bytes) > 0 else 0
+        first_displayed = scroll_bytes[1] if len(scroll_bytes) > 1 else 0
         
         return {
             "selected_item": selected,
             "menu_item_count": last_item + 1,  # Last item ID + 1 = count
-            "last_selected": prev_selected
+            "last_selected": prev_selected,
+            "cursor_x": cursor_x,
+            "cursor_y": cursor_y,
+            "party_cursor": party_cursor,
+            "item_cursor": item_cursor,
+            "start_cursor": start_cursor,
+            "first_displayed": first_displayed,
+            "select_highlight": select_highlight
         }
     except Exception as e:
         log.warning(f"Error reading menu state: {e}")
-        return {"selected_item": 0, "menu_item_count": 0, "last_selected": 0}
+        return {
+            "selected_item": 0, "menu_item_count": 0, "last_selected": 0,
+            "cursor_x": 0, "cursor_y": 0, "party_cursor": 0, "item_cursor": 0,
+            "start_cursor": 0, "first_displayed": 0, "select_highlight": 0
+        }
+
+
+def get_player_movement_state(sock) -> dict:
+    """
+    Read player movement state for biking/surfing detection.
+    
+    RAM Addresses:
+    - D700: Bike speed (0 = not biking, >0 = biking)
+    - C100-C10F: Player sprite data (slot 0, 16 bytes)
+      - C101: Movement status (0=uninit, 1=ready, 2=delayed, 3=moving)
+      - C102: Sprite image index (includes facing direction and animation)
+      - C109: Facing direction (0=down, 4=up, 8=left, C=right)
+    
+    Surfing detection: When surfing, the player's sprite image changes.
+    The sprite image index at C102 will have distinctive values for surf sprite.
+    
+    Returns:
+        dict with:
+        - bike_speed: D700 value (non-zero = biking)
+        - movement_status: C101 (0=uninit, 1=ready, 2=delayed, 3=moving)
+        - sprite_image_idx: C102 (sprite image with facing/animation)
+        - is_biking: Derived boolean from bike_speed
+        - is_surfing: Derived from sprite analysis
+        - movement_mode: "walking", "biking", or "surfing"
+    """
+    _flush_socket(sock)
+    try:
+        # Bike speed flag
+        bike_speed = readrange(sock, "0xD700", "1")[0]
+        
+        # Player sprite data (sprite slot 0)
+        player_sprite = readrange(sock, "0xC100", "16")
+        
+        picture_id = player_sprite[0] if len(player_sprite) > 0 else 0
+        movement_status = player_sprite[1] if len(player_sprite) > 1 else 0
+        sprite_image_idx = player_sprite[2] if len(player_sprite) > 2 else 0
+        
+        # Derive biking state
+        is_biking = bike_speed != 0
+        
+        # Surfing detection: The player's picture ID changes when surfing
+        # Normal player sprite IDs are 1-4 (depending on gender/version)
+        # Surfing uses a different sprite set - typically picture ID stays same
+        # but we can check the tile the player is on for water tiles
+        # For now, we'll use a heuristic based on sprite image patterns
+        # When surfing, certain sprite image indices are used
+        # This may need refinement based on testing
+        is_surfing = False
+        
+        # Determine movement mode
+        if is_surfing:
+            movement_mode = "surfing"
+        elif is_biking:
+            movement_mode = "biking"
+        else:
+            movement_mode = "walking"
+        
+        return {
+            "bike_speed": bike_speed,
+            "movement_status": movement_status,
+            "sprite_image_idx": sprite_image_idx,
+            "picture_id": picture_id,
+            "is_biking": is_biking,
+            "is_surfing": is_surfing,
+            "movement_mode": movement_mode
+        }
+    except Exception as e:
+        log.warning(f"Error reading player movement state: {e}")
+        return {
+            "bike_speed": 0, "movement_status": 0, "sprite_image_idx": 0,
+            "picture_id": 0, "is_biking": False, "is_surfing": False,
+            "movement_mode": "walking"
+        }
+
+
+def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
+    """
+    Detect if player is on name entry screen and get cursor position.
+    OPTIMIZED: Reuses menu_state data if provided, skips expensive tile buffer read.
+    
+    The name entry screen displays a character grid where the player selects letters.
+    Detection is done by checking menu item count and dialog text patterns.
+    
+    Args:
+        sock: Socket connection to mGBA
+        menu_state: Optional pre-read menu state to avoid redundant reads
+        dialog_text: Optional dialog text to check for name entry patterns
+    
+    Returns:
+        dict with cursor info if on name entry, None otherwise
+    """
+    try:
+        # If menu_state provided, use it; otherwise do a minimal read
+        if menu_state:
+            last_item = menu_state.get('menu_item_count', 0) - 1  # Undo the +1
+            cursor_y = menu_state.get('cursor_y', 0)
+            cursor_x = menu_state.get('cursor_x', 0)
+            selected = menu_state.get('selected_item', 0)
+            log.info(f"name_entry check: menu_item_count={last_item+1}, cursor=({cursor_x},{cursor_y}), selected={selected}")
+        else:
+            _flush_socket(sock)
+            # BATCHED: Read CC24-CC28 (5 bytes) for cursor and menu count
+            menu_bytes = readrange(sock, "0xCC24", "5")
+            cursor_y = menu_bytes[0] if len(menu_bytes) > 0 else 0
+            cursor_x = menu_bytes[1] if len(menu_bytes) > 1 else 0
+            selected = menu_bytes[2] if len(menu_bytes) > 2 else 0
+            last_item = menu_bytes[4] if len(menu_bytes) > 4 else 0
+            log.info(f"name_entry check (direct read): last_item={last_item}, cursor=({cursor_x},{cursor_y}), selected={selected}")
+        
+        # Name entry keyboard detection heuristics:
+        # When on keyboard, menu_item_count is typically 7-9 (representing visible rows)
+        # On preset menu it's 4-5 (NAME header + options)
+        # We want to detect KEYBOARD specifically (7+ items)
+        is_keyboard_likely = 7 <= last_item <= 50
+        
+        if not is_keyboard_likely:
+            log.info(f"name_entry: NOT detected (last_item={last_item} not in keyboard range 7-50)")
+            return None
+        
+        # Basic character mapping for the name entry grid (9 columns per row)
+        # Row 0: A B C D E F G H I (indices 0-8)
+        # Row 1: J K L M N O P Q R (indices 9-17)
+        # Row 2: S T U V W X Y Z _ (indices 18-26, _ = space)
+        # Row 3: × ( ) : ; [ ] pk mn (indices 27-35)
+        # Row 4: - ? ! ♂ ♀ / . , ED (indices 36-44)
+        
+        upper_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ×():;[]pkmn-?!♂♀/.,ED"
+        
+        # Calculate row/col from selected index (9 columns per row)
+        row = selected // 9
+        col = selected % 9
+        selected_char = upper_chars[selected] if selected < len(upper_chars) else "?"
+        
+        log.info(f"📝 Name entry KEYBOARD detected: cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={selected})")
+        
+        return {
+            "cursor_index": selected,
+            "cursor_x": cursor_x,
+            "cursor_y": cursor_y,
+            "grid_size": last_item + 1,
+            "selected_char": selected_char,
+            "row": row + 1,  # 1-indexed for human readability
+            "col": col + 1,  # 1-indexed for human readability
+            "is_name_entry": True
+        }
+    except Exception as e:
+        log.warning(f"Error reading name entry state: {e}")
+        return None
 
 
 def get_location(sock) -> tuple[int, int, int, str] | None:
@@ -670,8 +852,19 @@ def prep_llm(sock) -> dict:
             dialog_text = get_dialog_text(sock)
         log.info(f"prep_llm: extended state took {time.time() - t_ext:.2f}s")
 
+        # Player movement state for avatar switching (biking/surfing detection)
+        log.info("prep_llm: getting movement state...")
+        movement_state = get_player_movement_state(sock)
+        
+        # Name entry state (if on naming screen) - pass menu_state to avoid redundant reads
+        name_entry_state = get_name_entry_state(sock, menu_state)
+        if name_entry_state:
+            log.info(f"prep_llm: NAME ENTRY detected! cursor='{name_entry_state.get('selected_char')}' idx={name_entry_state.get('cursor_index')}")
+        else:
+            log.debug(f"prep_llm: name_entry=None (menu_item_count={menu_state.get('menu_item_count', 0)})")
+
         total_time = time.time() - t_start
-        log.info(f"📡 prep_llm DONE: total={total_time:.2f}s location={mapName}")
+        log.info(f"📡 prep_llm DONE: total={total_time:.2f}s location={mapName} movement={movement_state.get('movement_mode')} name_entry={bool(name_entry_state)}")
         
         return {
             "party":   party,
@@ -693,7 +886,10 @@ def prep_llm(sock) -> dict:
             "enemy_pokemon": enemy_mon,
             "active_pokemon": active_mon,
             "battle_status": battle_status,
-            "stat_modifiers": stat_mods
+            "stat_modifiers": stat_mods,
+            # Movement state for avatar switching
+            "movement_state": movement_state,
+            "name_entry_state": name_entry_state
         }
     except socket.timeout as e:
         log.error(f"📡 prep_llm: Socket TIMEOUT during operation: {e}")

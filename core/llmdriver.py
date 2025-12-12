@@ -2528,6 +2528,64 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             state['inMenu'] = is_menu
             update_payload['inMenu'] = is_menu
 
+        # Update Movement State for biking/surfing avatar switching
+        movement_state = current_mGBA_state.get('movement_state')
+        if movement_state:
+            state['movementState'] = movement_state
+            update_payload['movementState'] = movement_state
+            if movement_state.get('movement_mode') != 'walking':
+                log.info(f"🚴 Movement mode: {movement_state.get('movement_mode')}")
+
+        # Update Name Entry State (when on character naming screen)
+        name_entry_state = current_mGBA_state.get('name_entry_state')
+        if name_entry_state:
+            state['nameEntryState'] = name_entry_state
+            update_payload['nameEntryState'] = name_entry_state
+            log.info(f"📝 Name entry: cursor at '{name_entry_state.get('selected_char')}' (idx {name_entry_state.get('cursor_index')})")
+            
+            # Add formatted name entry context to LLM input
+            # Use row/col from state if available, otherwise calculate
+            row = name_entry_state.get('row', 1)
+            col = name_entry_state.get('col', 1)
+            selected_char = name_entry_state.get('selected_char', 'A')
+            cursor_idx = name_entry_state.get('cursor_index', 0)
+            
+            name_entry_context = (
+                f"🎮 NAME ENTRY KEYBOARD ACTIVE!\n"
+                f"══════════════════════════════════════\n"
+                f"📍 CURSOR POSITION: Row {row}, Col {col} → currently on '{selected_char}'\n"
+                f"\n"
+                f"⚠️ CRITICAL: If screen shows 'lower case' text, you're ALREADY in UPPERCASE!\n"
+                f"   That text is a BUTTON to switch - DON'T press SELECT!\n"
+                f"\n"
+                f"🎯 TYPE 'LASS' - cursor starts at 'A' (Row 1, Col 1):\n"
+                f"   1. D;R;R; then A → types 'L' (Row 2, Col 3)\n"
+                f"   2. U;L;L; then A → types 'A' (Row 1, Col 1)\n"
+                f"   3. D;D; then A → types 'S' (Row 3, Col 1)\n"
+                f"   4. A → types second 'S'\n"
+                f"   5. START to confirm\n"
+                f"\n"
+                f"⌨️ KEYBOARD LAYOUT:\n"
+                f"   Row 1: A B C D E F G H I\n"
+                f"   Row 2: J K L M N O P Q R\n"
+                f"   Row 3: S T U V W X Y Z _\n"
+                f"   Row 4: × ( ) : ; [ ] pk mn\n"
+                f"   Row 5: - ? ! ♂ ♀ / . , ED\n"
+                f"\n"
+                f"🕹️ CONTROLS: D/U/L/R=navigate | A=type char | START=confirm\n"
+            )
+            
+            llm_input_state["name_entry_context"] = name_entry_context
+            log.info(f"✅ Added name_entry_context: cursor at Row {row}, Col {col} = '{selected_char}'")
+        else:
+            # Debug: Log menu state to trace why name entry wasn't detected
+            menu_state = current_mGBA_state.get('menu_state', {})
+            if menu_state:
+                log.info(f"name_entry_state=None, menu_state: item_count={menu_state.get('menu_item_count')}, "
+                         f"cursor=({menu_state.get('cursor_x')},{menu_state.get('cursor_y')}), "
+                         f"selected={menu_state.get('selected_item')}")
+
+
         # Default: Analysis uses the clean snapshot unless combined
         ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
         UI_IMAGE_PATH = SCREENSHOT_PATH
@@ -2634,6 +2692,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         # Broadcast "ANALYZING..." status before starting vision+LLM processing
         state["processingStatus"] = "ANALYZING VISION..."
         await broadcast_func({"processingStatus": "ANALYZING VISION..."})
+
+        # LOG ALL KEY STATE FIELDS BEING SENT TO LLM (for debugging)
+        key_fields = [
+            f"map_name={llm_input_state.get('map_name', 'None')}",
+            f"position={llm_input_state.get('position', 'None')}",
+            f"dialog_text={llm_input_state.get('dialog_text', 'None')[:30] if llm_input_state.get('dialog_text') else 'None'}...",
+            f"in_battle={llm_input_state.get('battle_state', {}).get('in_battle', False)}",
+            f"name_entry_context={'YES' if llm_input_state.get('name_entry_context') else 'NO'}",
+            f"text_state.is_printing={llm_input_state.get('text_state', {}).get('is_printing', False)}",
+            f"menu_state.item_count={llm_input_state.get('menu_state', {}).get('menu_item_count', 0)}",
+        ]
+        log.info(f"📊 LLM INPUT STATE: {' | '.join(key_fields)}")
+
 
         action, game_analysis, summary_json, vision_analysis_for_ui = await call_llm_with_timeout(
             llm_input_state, 
