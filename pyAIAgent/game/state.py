@@ -385,47 +385,47 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         
         upper_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ×():;[]pkmn-?!♂♀/.,ED"
         
-        # FIXED: The game uses cursor_x and cursor_y directly for keyboard navigation
-        # cursor_x = column (0-indexed), cursor_y = row (0-indexed) 
-        # The 'selected' variable doesn't update during keyboard navigation
-        # Keyboard starts at screen row 3 (first letter row), so we need to offset
-        # Screen row 3 = keyboard row 0 (A-I)
-        # Screen row 5 = keyboard row 1 (J-R)
-        # And so on - there are gaps between rows on screen
+        # Debug logging for cursor position analysis
+        log.info(f"name_entry DEBUG: cursor_x={cursor_x}, cursor_y={cursor_y}, selected={selected}")
         
-        # Map screen cursor position to keyboard grid
-        # Screen Y positions for keyboard rows (observed from game):
-        # Row 0 (A-I): cursor_y = 3
-        # Row 1 (J-R): cursor_y = 5
-        # Row 2 (S-Z): cursor_y = 7
-        # Row 3 (symbols): cursor_y = 9
-        # Row 4 (more symbols): cursor_y = 11
-        # Row 5 (case toggle): cursor_y = 13
+        # Pokemon Red Name Entry Keyboard Analysis:
+        # The keyboard uses CC26 (wCurrentMenuItem) to track the selected character index directly!
+        # CC24/CC25 (cursor_y/cursor_x) are SCREEN tile positions for cursor drawing,
+        # but wCurrentMenuItem at CC26 contains the actual 0-indexed character selection.
+        #
+        # Grid layout: 9 columns x 5 rows
+        # Row 0: A B C D E F G H I (indices 0-8)
+        # Row 1: J K L M N O P Q R (indices 9-17)
+        # Row 2: S T U V W X Y Z _ (indices 18-26)
+        # Row 3: × ( ) : ; [ ] pk mn (indices 27-35)
+        # Row 4: - ? ! ♂ ♀ / . , ED (indices 36-44)
         
-        screen_y_to_keyboard_row = {
-            3: 0,   # A-I
-            5: 1,   # J-R  
-            7: 2,   # S-Z + space
-            9: 3,   # symbols row 1
-            11: 4,  # symbols row 2
-            13: 5,  # case toggle row
-        }
-        
-        # Screen X positions are 1-indexed (1 = first column)
-        # Convert to 0-indexed column
-        col = max(0, cursor_x - 1)
-        
-        # Get keyboard row from screen Y position
-        row = screen_y_to_keyboard_row.get(cursor_y, 0)
-        
-        # Calculate character index from row and column (9 chars per row)
-        char_index = row * 9 + col
-        selected_char = upper_chars[char_index] if char_index < len(upper_chars) else "?"
+        # Try using 'selected' (from CC26) first - this should be the actual keyboard index
+        if 0 <= selected < len(upper_chars):
+            char_index = selected
+            row = selected // 9
+            col = selected % 9
+            selected_char = upper_chars[char_index]
+            log.info(f"📝 Name entry KEYBOARD (CC26 method): cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={char_index})")
+        else:
+            # Fallback: Try deriving from screen cursor position if CC26 doesn't work
+            # Screen uses 2-tile spacing: cursor_x = 1 + col*2, cursor_y = 3 + row*2
+            # So: col = (cursor_x - 1) / 2, row = (cursor_y - 3) / 2
+            col = (cursor_x - 1) // 2 if cursor_x >= 1 else 0
+            row = (cursor_y - 3) // 2 if cursor_y >= 3 else 0
+            
+            # Clamp to valid ranges
+            row = max(0, min(row, 4))
+            col = max(0, min(col, 8))
+            
+            char_index = row * 9 + col
+            selected_char = upper_chars[char_index] if char_index < len(upper_chars) else "?"
+            log.info(f"📝 Name entry KEYBOARD (screen pos method): cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={char_index})")
         
         log.info(f"📝 Name entry KEYBOARD detected: cursor at '{selected_char}' (row={row+1}, col={col+1}, idx={char_index})")
         
         return {
-            "cursor_index": char_index,  # Fixed: was 'selected' which doesn't update during keyboard nav
+            "cursor_index": char_index,
             "cursor_x": cursor_x,
             "cursor_y": cursor_y,
             "grid_size": last_item + 1,

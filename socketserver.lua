@@ -30,7 +30,7 @@ local KEY_INDEX = { A=0, B=1, SELECT=2, START=3, RIGHT=4, LEFT=5, UP=6, DOWN=7, 
 local KEY_ALIAS = {
    U="UP", u="UP",  D="DOWN", d="DOWN",  L="LEFT", l="LEFT",
    R="RIGHT", r="RIGHT", LT="L", lt="L", RT="R", rt="R", -- Fixed LT/RT alias to L/R GBA buttons
-   S="START", s="SELECT",
+   S="START", T="SELECT", t="SELECT",
 }
 local KEY_MASK = {}
 for k,i in pairs(KEY_INDEX) do
