@@ -63,7 +63,7 @@
   padding-top: var(--space-sm); /* Space for content below label */
   /* Top margin for label visibility */
   margin-top: var(--space-sm);
-  margin-bottom: 16px; /* Bottom padding to lift content up */
+  margin-bottom: 0; /* Spacing comes from vision-section margin */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
@@ -245,6 +245,7 @@
 .analysis-panel__vision-section {
   flex-shrink: 0;
   margin-top: 0; /* Gap handled by margin-bottom of history/actions */
+  margin-bottom: 16px; /* Space between vision and LLM analysis sections */
   padding-top: 0;
   background: var(--bg-panel);
   z-index: 2;
