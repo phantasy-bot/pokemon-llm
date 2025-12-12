@@ -18,117 +18,11 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("memory_storage")
 
 
-@dataclass
-class Memory:
-    """Base memory structure"""
-    type: str
-    location: Optional[str]
-    description: str
-    coordinates: Optional[List[int]]
-    timestamp: str
-    importance: float = 1.0
-    context: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class SpatialMemory(Memory):
-    """Spatial memory for map connections and locations"""
-    destination: Optional[str] = None
-    landmark_type: Optional[str] = None  # e.g., "door", "stairs", "pokemon_center"
-    # Confidence scoring for memory reliability
-    confidence: float = 0.5  # 0.0-1.0 scale
-    verification_source: str = "unverified"  # "verified_transition", "vision", "llm_claim"
-    failed_attempts: int = 0  # Track failures per-memory
-    last_verified_at: Optional[str] = None  # Timestamp of last successful use
-
-
-@dataclass
-class GameplayMemory(Memory):
-    """Gameplay memory for battles, items, events"""
-    event_type: Optional[str] = None  # e.g., "battle", "item_found", "level_up"
-    outcome: Optional[str] = None
-    pokemon_involved: Optional[List[str]] = None
-
-
-@dataclass
-class QuestMemory(Memory):
-    """Quest memory for tracking active quests and quest items.
-    
-    When the agent receives a quest item like Oak's Parcel, this creates:
-    1. A QuestMemory to remember we have the item
-    2. An associated Goal to complete the quest
-    """
-    quest_id: str = ""  # Unique ID like "oaks_parcel_delivery"
-    quest_type: str = ""  # "delivery", "fetch", "defeat", "explore", "item_received"
-    target_npc: Optional[str] = None  # Who to deliver to or talk to
-    target_location: Optional[str] = None  # Where to go
-    item_involved: Optional[str] = None  # What item is involved
-    is_active: bool = True  # Is quest still pending
-    completed_at: Optional[str] = None  # When completed
-
-
-@dataclass
-class NarrativeMemory(Memory):
-    """Narrative memory for story events, dialogue, and player mistakes.
-    
-    Used for:
-    - Remembering rival name choices ("Named rival AB")
-    - Significant dialogue events ("Oak forgot grandson's name")
-    - Funny mistakes ("I walked into a wall for 5 minutes")
-    """
-    event_type: str = "general"  # narrative, dialogue, mistake, milestone
-    characters_involved: Optional[List[str]] = None
-    emotional_tone: str = "neutral"  # happy, frustrated, confused, proud
-
-
-@dataclass
-class StrategyMemory:
-    """
-    Memory for learned strategies - discovered through experience, not hard-coded.
-    Tracks situation → action → outcome patterns so agent can learn what works.
-    """
-    strategy_id: str  # Unique identifier
-    situation: str  # What situation triggered this (e.g., "lost, low HP, far from Pokemon Center")
-    action_taken: str  # What the agent did (e.g., "let Pokemon faint in wild battle")
-    outcome: str  # What happened (e.g., "respawned at Pokemon Center, full heal")
-    
-    # Learning metrics
-    times_used: int = 1  # How many times this strategy was used
-    times_successful: int = 1  # How many times it worked
-    effectiveness: float = 1.0  # success rate (0.0-1.0)
-    
-    # Context
-    discovered_at: str = ""  # Timestamp when first discovered
-    last_used_at: str = ""  # Timestamp of last use
-    tags: Optional[List[str]] = None  # e.g., ["healing", "navigation", "shortcut"]
-    notes: Optional[str] = None  # Additional context
-    
-    def update_effectiveness(self, success: bool):
-        """Update strategy effectiveness after use"""
-        self.times_used += 1
-        if success:
-            self.times_successful += 1
-        self.effectiveness = self.times_successful / self.times_used
-
-
-@dataclass
-class VisionClaim:
-    """
-    Track unverified claims from vision analysis that need verification.
-    These are things the vision model claims to see (doors, exits) that should
-    be verified against minimap data before being trusted.
-    """
-    claim_type: str  # "door", "exit", "npc", "item"
-    description: str
-    location: str
-    coordinates: Optional[List[int]]
-    direction: Optional[str]  # Direction from player (north, south, etc.)
-    timestamp: str
-    verified: bool = False
-    verification_result: Optional[bool] = None  # True=correct, False=wrong, None=unverified
-    confidence: float = 0.5  # How confident we are in this claim
-    context: Optional[Dict[str, Any]] = None
-
+from core.memory.models import (
+    Memory, SpatialMemory, GameplayMemory, QuestMemory, 
+    NarrativeMemory, StrategyMemory, VisionClaim
+)
+from core.memory.persistence import MemoryPersistence
 
 
 class MemoryManager:
@@ -136,6 +30,8 @@ class MemoryManager:
 
     def __init__(self, storage_path: str = "data/pokemon_memories.json", reset_on_start: bool = True):
         self.storage_path = storage_path
+        self.persistence = MemoryPersistence(storage_path)
+        
         self.memories = {
             "spatial": [],
             "gameplay": [],
@@ -1639,55 +1535,21 @@ class MemoryManager:
 
     def save_memories(self) -> None:
         """Save memories to persistent storage"""
-        self._save_memories()
+        self.persistence.save(self.memories)
 
     def _save_memories(self) -> None:
         """Internal method to save memories to file"""
-
-        try:
-            # Convert memories to dictionaries for JSON serialization
-            serializable_memories = {}
-            for memory_type, memory_list in self.memories.items():
-                serializable_memories[memory_type] = [
-                    asdict(memory) for memory in memory_list
-                ]
-
-            with open(self.storage_path, 'w', encoding='utf-8') as f:
-                json.dump(serializable_memories, f, indent=2, ensure_ascii=False)
-
-        except Exception as e:
-            import logging
-            logging.error(f"Error saving memories: {e}")
+        self.persistence.save(self.memories)
 
     def load_memories(self) -> None:
         """Load memories from persistent storage"""
-
-        if not os.path.exists(self.storage_path):
+        loaded = self.persistence.load()
+        if not loaded:
             return
 
-        try:
-            with open(self.storage_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-            # Convert dictionaries back to Memory objects
-            for memory_type, memory_list in data.items():
-                if memory_type not in self.memories:
-                    continue
-
-                self.memories[memory_type] = []
-                for memory_dict in memory_list:
-                    if memory_type == "spatial":
-                        memory = SpatialMemory(**memory_dict)
-                    elif memory_type == "gameplay":
-                        memory = GameplayMemory(**memory_dict)
-                    else:
-                        memory = Memory(**memory_dict)
-
-                    self.memories[memory_type].append(memory)
-
-        except Exception as e:
-            print(f"Error loading memories: {e}")
-            # Continue with empty memories if loading fails
+        for memory_type, memory_list in loaded.items():
+            if memory_type in self.memories:
+                self.memories[memory_type] = memory_list
 
     def get_memory_summary(self) -> str:
         """Get a summary of current memories"""
