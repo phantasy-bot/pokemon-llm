@@ -367,13 +367,14 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
             log.info(f"name_entry check (direct read): last_item={last_item}, cursor=({cursor_x},{cursor_y}), selected={selected}")
         
         # Name entry keyboard detection heuristics:
-        # When on keyboard, menu_item_count is typically 7-9 (representing visible rows)
+        # When on keyboard, menu_item_count is typically exactly 7 (representing keyboard rows)
         # On preset menu it's 4-5 (NAME header + options)
-        # We want to detect KEYBOARD specifically (7+ items)
-        is_keyboard_likely = 7 <= last_item <= 50
+        # CRITICAL: Must be exactly 7, otherwise we're on a regular menu/dialog
+        # Also check cursor is in valid keyboard range (1-17 for x, 3 for y initially)
+        is_keyboard_likely = last_item == 7 and 1 <= cursor_x <= 17 and cursor_y >= 3
         
         if not is_keyboard_likely:
-            log.info(f"name_entry: NOT detected (last_item={last_item} not in keyboard range 7-50)")
+            log.info(f"name_entry: NOT detected (last_item={last_item}, cursor=({cursor_x},{cursor_y}))")
             return None
         
         # Basic character mapping for the name entry grid (9 columns per row)
