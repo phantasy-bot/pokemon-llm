@@ -1450,26 +1450,45 @@ def llm_stream_action(state_data: dict, timeout: float = STREAM_TIMEOUT, benchma
             except json.JSONDecodeError:
                 continue  # Try next JSON block
 
-        # Fallback: last line matching ACTION_RE or COORD_RE
+        # Fallback: Find ACTION line or last line matching ACTION_RE
         if action is None:
             lines = [line.strip() for line in full_output.splitlines() if line.strip()]
             if lines:
-                last = lines[-1]
-                # plain "action" string - translate cardinal directions first
-                translated_last = translate_cardinal_to_buttons(last)
-                match = ACTION_RE.match(translated_last)
-                if match and not translated_last.startswith('{'):
-                    action = match.group().rstrip(';') + ';'  # Normalize to end with single semicolon
+                # First try to find explicit ACTION line (e.g., "8. **ACTION**: A;" or "**ACTION**: R;R;A;")
+                for line in lines:
+                    # Look for ACTION: pattern (with or without ** markdown)
+                    if 'ACTION' in line.upper() and ':' in line:
+                        # Extract content after the colon
+                        colon_idx = line.find(':')
+                        if colon_idx != -1:
+                            action_part = line[colon_idx + 1:].strip()
+                            # Translate and match
+                            translated = translate_cardinal_to_buttons(action_part)
+                            match = ACTION_RE.match(translated)
+                            if match:
+                                action = match.group().rstrip(';') + ';'
+                                log.info(f"✅ Found action in ACTION line: {action}")
+                                break
+                
+                # Fall back to last line if no ACTION line found
+                if action is None:
+                    last = lines[-1]
+                    translated_last = translate_cardinal_to_buttons(last)
+                    match = ACTION_RE.match(translated_last)
+                    if match and not translated_last.startswith('{'):
+                        action = match.group().rstrip(';') + ';'
 
                 # plain touch coords
-                elif COORD_RE.match(last):
-                    x, y = state_data["position"]
-                    coords = [int(i) for i in last.split(",")]
-                    action = touch_controls_path_find(
-                        state_data["map_id"],
-                        [x, y],
-                        coords
-                    )
+                if action is None:
+                    last = lines[-1]
+                    if COORD_RE.match(last):
+                        x, y = state_data["position"]
+                        coords = [int(i) for i in last.split(",")]
+                        action = touch_controls_path_find(
+                            state_data["map_id"],
+                            [x, y],
+                            coords
+                        )
 
     except Exception as e:
         log.error(f"Error during LLM interaction: {e}", exc_info=True)
@@ -2542,7 +2561,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
 
         # Update Name Entry State (when on character naming screen)
         name_entry_state = current_mGBA_state.get('name_entry_state')
-        if name_entry_state:
+        
+        # CRITICAL: Skip name entry if dialog text is present (menu state can persist from earlier)
+        dialog_text = text_state.get('text', '') if text_state else ''
+        has_dialog = bool(dialog_text and len(dialog_text.strip()) > 0)
+        
+        if name_entry_state and not has_dialog:
             state['nameEntryState'] = name_entry_state
             update_payload['nameEntryState'] = name_entry_state
             
