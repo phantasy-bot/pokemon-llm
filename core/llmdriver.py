@@ -3502,21 +3502,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             from services.twitch_chat_service import TWITCH_TEST_MODE
             
             if TWITCH_TEST_MODE:
-                # Test mode: Generate one random message every 2-5 seconds
+                # Test mode: Generate message immediately, then wait for TTS
                 import random
                 
-                # Random delay between messages (2-5 seconds)
-                await asyncio.sleep(random.uniform(2.0, 5.0))
-                
                 if chat_response_count >= max_chat_responses:
+                    await asyncio.sleep(1.0)
                     continue
                 
-                # Check time remaining
+                # Check time remaining - only need 1 second to start a response
                 remaining = wait_time - (time.time() - wait_start)
-                if remaining < 3:
+                if remaining < 1:
                     continue
                 
-                # Generate one random test message
+                # Generate one random test message FIRST (no pre-delay!)
                 test_msg = twitch_service.generate_single_test_message()
                 
                 if test_msg:
@@ -3526,6 +3524,7 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                     
                     if is_spam or random.random() < 0.25:  # 25% skip rate
                         log.info(f"⏭️ [TEST] Skipping spam from @{test_msg['display_name']}: {test_msg['message'][:40]}...")
+                        await asyncio.sleep(0.5)  # Brief pause before next message
                     else:
                         # Generate a witty mock response in Lass's personality
                         mock_responses = [
@@ -3568,6 +3567,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                             }
                         }
                         await broadcast_func(chat_response_payload)
+                        
+                        # Short delay before next potential message (1-3 seconds)
+                        await asyncio.sleep(random.uniform(1.0, 3.0))
                 
                 continue  # Continue the wait loop
             
