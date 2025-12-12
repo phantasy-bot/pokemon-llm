@@ -25,6 +25,7 @@ from pyAIAgent.navigation import touch_controls_path_find, find_path
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
 from pyAIAgent.game.keyboard_tracker import get_keyboard_tracker
+from pyAIAgent.game.name_planner import get_name_planner, RIVAL_NAME_SUGGESTIONS
 
 from core.prompts import build_system_prompt, get_summary_prompt, get_screen_specific_prompt, get_chat_response_prompt
 from pyAIAgent.game.hints import get_area_hint
@@ -2548,6 +2549,14 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             kb_tracker = get_keyboard_tracker()
             kb_tracker.activate()
             
+            # Get the name planner
+            name_planner = get_name_planner()
+            
+            # Detect what type of name we're entering
+            dialog_text = text_state.get('text', '') if text_state else ''
+            readable_text = vision_analysis.get('readable_text', '') if vision_analysis else ''
+            name_type = name_planner.detect_name_type(dialog_text, readable_text)
+            
             # Get tracked position (more reliable than memory reads)
             tracked_state = kb_tracker.get_state_dict()
             row = tracked_state.get('row', 1)
@@ -2558,41 +2567,120 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             # Also log memory-read position for comparison/debugging
             mem_char = name_entry_state.get('selected_char', '?')
             mem_idx = name_entry_state.get('cursor_index', -1)
-            log.info(f"📝 Name entry: TRACKED='{selected_char}' (Row {row}, Col {col}) | MEM='{mem_char}' (idx {mem_idx})")
+            log.info(f"📝 Name entry: TRACKED='{selected_char}' (Row {row}, Col {col}) | MEM='{mem_char}' (idx {mem_idx}) | TYPE={name_type}")
             
-            name_entry_context = (
-                f"🎮 NAME ENTRY KEYBOARD ACTIVE!\n"
-                f"══════════════════════════════════════\n"
-                f"📍 CURSOR POSITION: Row {row}, Col {col} → currently on '{selected_char}'\n"
-                f"   (Tracked from your previous actions)\n"
-                f"\n"
-                f"⚠️ CRITICAL: If screen shows 'lower case' text, you're ALREADY in UPPERCASE!\n"
-                f"   That text is a BUTTON to switch - DON'T press SELECT!\n"
-                f"\n"
-                f"🎯 TYPE 'LASS' - cursor starts at 'A' (Row 1, Col 1):\n"
-                f"   1. D;R;R; then A → types 'L' (Row 2, Col 3)\n"
-                f"   2. U;L;L; then A → types 'A' (Row 1, Col 1)\n"
-                f"   3. D;D; then A → types 'S' (Row 3, Col 1)\n"
-                f"   4. A → types second 'S'\n"
-                f"   5. START to confirm\n"
-                f"\n"
-                f"⌨️ KEYBOARD LAYOUT:\n"
-                f"   Row 1: A B C D E F G H I\n"
-                f"   Row 2: J K L M N O P Q R\n"
-                f"   Row 3: S T U V W X Y Z _\n"
-                f"   Row 4: × ( ) : ; [ ] pk mn\n"
-                f"   Row 5: - ? ! ♂ ♀ / . , ED\n"
-                f"\n"
-                f"🕹️ CONTROLS: D/U/L/R=navigate | A=type char | START=confirm\n"
-            )
+            # Build context based on name type
+            if name_type == "player":
+                # Always type "LASS" for player
+                target_name = "LASS"
+                if not name_planner.current_name:
+                    name_planner.start_typing(target_name)
+                
+                next_step = name_planner.get_current_step()
+                progress = name_planner.get_progress_string()
+                
+                if next_step:
+                    name_entry_context = (
+                        f"🎮 NAME ENTRY - PLAYER NAME: '{target_name}'\n"
+                        f"══════════════════════════════════════\n"
+                        f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
+                        f"📝 PROGRESS: {progress}\n"
+                        f"\n"
+                        f"🎯 NEXT: Type '{next_step['char']}'\n"
+                        f"   ▶️ USE THIS ACTION: {next_step['path']}\n"
+                        f"\n"
+                        f"⚠️ Just copy the action above exactly!\n"
+                        f"\n"
+                        f"⌨️ KEYBOARD: Row1=ABCDEFGHI | Row2=JKLMNOPQR | Row3=STUVWXYZ\n"
+                        f"🕹️ After typing all letters, press START to confirm\n"
+                    )
+                else:
+                    name_entry_context = (
+                        f"🎮 NAME ENTRY - DONE TYPING '{target_name}'!\n"
+                        f"══════════════════════════════════════\n"
+                        f"✅ All letters typed! Press START to confirm the name.\n"
+                        f"\n"
+                        f"▶️ ACTION: S;\n"
+                    )
+            
+            elif name_type == "rival":
+                # Let LLM choose rival name with cute/silly suggestions
+                suggestions = ", ".join(RIVAL_NAME_SUGGESTIONS[:6])
+                
+                if not name_planner.rival_name:
+                    # Need to pick a name first
+                    name_entry_context = (
+                        f"💕 TIME TO NAME YOUR RIVAL! 💕\n"
+                        f"══════════════════════════════════════\n"
+                        f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
+                        f"\n"
+                        f"🎀 Pick a silly/cute/playful name for him!\n"
+                        f"   Suggestions: {suggestions}\n"
+                        f"\n"
+                        f"⌨️ KEYBOARD LAYOUT:\n"
+                        f"   Row 1: A B C D E F G H I\n"
+                        f"   Row 2: J K L M N O P Q R\n"
+                        f"   Row 3: S T U V W X Y Z _\n"
+                        f"\n"
+                        f"🕹️ D/U/L/R=navigate | A=type char | START=confirm\n"
+                        f"\n"
+                        f"💡 First decide what name you want, then navigate to each letter!\n"
+                        f"   Example for 'MEANY': M is at Row2,Col4 → D;R;R;R;A;\n"
+                    )
+                else:
+                    # Continue typing the chosen rival name
+                    target_name = name_planner.rival_name
+                    if not name_planner.current_name or name_planner.current_name != target_name:
+                        name_planner.start_typing(target_name)
+                    
+                    next_step = name_planner.get_current_step()
+                    progress = name_planner.get_progress_string()
+                    
+                    if next_step:
+                        name_entry_context = (
+                            f"💕 RIVAL NAME: '{target_name}'\n"
+                            f"══════════════════════════════════════\n"
+                            f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
+                            f"📝 PROGRESS: {progress}\n"
+                            f"\n"
+                            f"🎯 NEXT: Type '{next_step['char']}'\n"
+                            f"   ▶️ USE THIS ACTION: {next_step['path']}\n"
+                            f"\n"
+                            f"⚠️ Just copy the action above exactly!\n"
+                        )
+                    else:
+                        name_entry_context = (
+                            f"💕 DONE TYPING RIVAL NAME '{target_name}'!\n"
+                            f"══════════════════════════════════════\n"
+                            f"✅ All letters typed! Press START to confirm.\n"
+                            f"\n"
+                            f"▶️ ACTION: S;\n"
+                        )
+            
+            else:
+                # Generic name entry (pokemon nickname - optional)
+                name_entry_context = (
+                    f"🎮 NAME ENTRY KEYBOARD\n"
+                    f"══════════════════════════════════════\n"
+                    f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
+                    f"\n"
+                    f"🐾 This is for a Pokemon nickname (optional!)\n"
+                    f"   If you don't want to nickname, just press START to skip.\n"
+                    f"\n"
+                    f"⌨️ KEYBOARD: Row1=ABCDEFGHI | Row2=JKLMNOPQR | Row3=STUVWXYZ\n"
+                    f"🕹️ D/U/L/R=navigate | A=type char | START=confirm/skip | B=cancel\n"
+                )
             
             llm_input_state["name_entry_context"] = name_entry_context
-            log.info(f"✅ Added name_entry_context: TRACKED cursor at Row {row}, Col {col} = '{selected_char}'")
+            log.info(f"✅ Added name_entry_context: type={name_type}, cursor at Row {row}, Col {col} = '{selected_char}'")
         else:
             # Deactivate keyboard tracker when not in name entry
             kb_tracker = get_keyboard_tracker()
             if kb_tracker.active:
                 kb_tracker.deactivate()
+                # Reset name planner for next name entry session
+                name_planner = get_name_planner()
+                name_planner.reset()
             
             # Debug: Log menu state to trace why name entry wasn't detected
             menu_state = current_mGBA_state.get('menu_state', {})
@@ -2783,6 +2871,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 kb_tracker = get_keyboard_tracker()
                 if kb_tracker.active:
                     kb_tracker.apply_action(action_to_send)
+                    
+                    # Advance name planner for each 'A' press (typing a character)
+                    name_planner = get_name_planner()
+                    a_presses = action_to_send.upper().count('A')
+                    for _ in range(a_presses):
+                        name_planner.advance()
                 
                 # Wait 4s AFTER sending action to let screen fully render before next screenshot
                 # This prevents cut-off/partial screenshots and ensures dialog text is captured

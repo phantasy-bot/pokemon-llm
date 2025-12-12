@@ -130,6 +130,115 @@ class KeyboardCursorTracker:
             "is_name_entry": True
         }
     
+    def find_char_position(self, char: str) -> tuple[int, int] | None:
+        """
+        Find the (row, col) position of a character on the keyboard.
+        
+        Args:
+            char: Single character to find (case insensitive)
+        
+        Returns:
+            (row, col) tuple or None if not found
+        """
+        char = char.upper()
+        if char == ' ' or char == '_':
+            return (2, 8)  # Space is at row 2, col 8
+        
+        for row_idx, row_str in enumerate(self.KEYBOARD_LAYOUT):
+            col_idx = row_str.find(char)
+            if col_idx != -1:
+                return (row_idx, col_idx)
+        
+        log.warning(f"🎹 KeyboardTracker: Character '{char}' not found on keyboard")
+        return None
+    
+    def get_path_to_char(self, target_char: str) -> str:
+        """
+        Calculate navigation moves from current position to target character.
+        
+        Args:
+            target_char: Character to navigate to
+        
+        Returns:
+            Action string like "D;R;R;A;" to move to target and press A
+        """
+        target_pos = self.find_char_position(target_char)
+        if target_pos is None:
+            log.warning(f"🎹 KeyboardTracker: Cannot find path to '{target_char}'")
+            return "A;"  # Just press A if character not found
+        
+        target_row, target_col = target_pos
+        current_row, current_col = self.row, self.col
+        
+        moves = []
+        
+        # Vertical movement first (D/U)
+        if target_row > current_row:
+            moves.extend(['D'] * (target_row - current_row))
+        elif target_row < current_row:
+            moves.extend(['U'] * (current_row - target_row))
+        
+        # Horizontal movement (L/R)
+        if target_col > current_col:
+            moves.extend(['R'] * (target_col - current_col))
+        elif target_col < current_col:
+            moves.extend(['L'] * (current_col - target_col))
+        
+        # Add A to select the character
+        if moves:
+            return ';'.join(moves) + ';A;'
+        else:
+            return 'A;'  # Already on target, just press A
+    
+    def get_typing_sequence(self, name: str) -> list[dict]:
+        """
+        Generate a list of actions to type a complete name.
+        
+        Each step includes the target character, path, and expected position.
+        
+        Args:
+            name: Name to type (e.g., "LASS")
+        
+        Returns:
+            List of dicts with 'char', 'path', 'from_pos', 'to_pos' for each letter
+        """
+        sequence = []
+        sim_row, sim_col = 0, 0  # Simulated position starting at 'A'
+        
+        for char in name.upper():
+            target_pos = self.find_char_position(char)
+            if target_pos is None:
+                log.warning(f"🎹 KeyboardTracker: Skipping unknown character '{char}'")
+                continue
+            
+            target_row, target_col = target_pos
+            moves = []
+            
+            # Calculate moves from simulated position
+            if target_row > sim_row:
+                moves.extend(['D'] * (target_row - sim_row))
+            elif target_row < sim_row:
+                moves.extend(['U'] * (sim_row - target_row))
+            
+            if target_col > sim_col:
+                moves.extend(['R'] * (target_col - sim_col))
+            elif target_col < sim_col:
+                moves.extend(['L'] * (sim_col - target_col))
+            
+            path = ';'.join(moves) + ';A;' if moves else 'A;'
+            
+            sequence.append({
+                'char': char,
+                'path': path,
+                'from_pos': (sim_row, sim_col),
+                'to_pos': target_pos
+            })
+            
+            # Update simulated position (cursor stays after pressing A)
+            sim_row, sim_col = target_row, target_col
+        
+        return sequence
+    
     def __repr__(self):
         return f"KeyboardCursorTracker(row={self.row}, col={self.col}, char='{self.get_char()}')"
 
