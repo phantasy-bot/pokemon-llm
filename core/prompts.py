@@ -479,9 +479,15 @@ If you tried to move but a MENU opened instead:
 
 Grid coords shift as you move; World coords are fixed. Use World for remembering exits.
 
-## MINIMAP
+## MINIMAP (AUTHORITATIVE - TRUST THIS!)
+⚠️ **THE MINIMAP IS THE GROUND TRUTH FOR NAVIGATION!** ⚠️
+- 'B' = BLOCKED tile. DO NOT attempt to walk here. Trust this 100%.
+- 'W' = WALKABLE tile. You CAN walk here safely.
+- 'O' = EXIT/DOOR tile. Walk INTO these for transitions (no A press needed).
+- 'P' = Player position (always at center).
 - Player 'P' always at center. Walk INTO 'O' tiles for doors/exits (no A needed).
 - Read `minimap_data` directly for blocked/walkable directions and exit locations.
+- **IF MINIMAP SAYS BLOCKED, IT IS BLOCKED.** Don't second-guess it with vision.
 - If direction shows ❌ BLOCKED, try L-shaped path around obstacles.
 - ⚠️ **TALL GRASS IS WALKABLE!** Early game, you MUST enter tall grass to trigger Professor Oak's rescue!
 - Dense green tiles north of Pallet Town = tall grass. Walk INTO it - don't avoid it!
