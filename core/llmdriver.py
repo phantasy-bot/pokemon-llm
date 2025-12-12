@@ -673,6 +673,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         except Exception as e:
             log.warning(f"Startup intro failed: {e}")
     
+    # Broadcast session start time - this is when cycles actually begin
+    # UI will use this to start the session timer and enable cycle tracking
+    session_start_ms = int(time.time() * 1000)
+    await broadcast_func({
+        "sessionStartTime": session_start_ms,
+        "cyclesEnabled": True  # UI can now start tracking cycles
+    })
+    log.info(f"📊 Session started at {session_start_ms}")
+    
     # Small delay to let mGBA fully settle
     await asyncio.sleep(1)
 

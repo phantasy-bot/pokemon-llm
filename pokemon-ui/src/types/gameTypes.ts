@@ -180,6 +180,8 @@ export interface PokemonGameState {
   currentCycleTime?: number; // Current cycle duration in seconds
   prevCycleTime?: number; // Previous cycle duration in seconds
   avgCycleTime?: number; // Average cycle time over last 20 cycles
+  sessionStartTime?: number; // Unix timestamp (ms) when session/cycles actually started
+  cyclesEnabled?: boolean; // True once intro is done and cycles can be tracked
   cycleMetrics?: {
     mGBA?: number; // mGBA game state request time in seconds
     vision?: number; // Vision analysis time in seconds

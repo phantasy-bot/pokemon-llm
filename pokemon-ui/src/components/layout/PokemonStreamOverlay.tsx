@@ -117,6 +117,41 @@ function AnimatedDots() {
   return <span style={{ display: 'inline-block', width: '1.5em', textAlign: 'left' }}>{dots}</span>;
 }
 
+// Session timer that shows total game time since session started (h:m:s format)
+function SessionTimer({ 
+  sessionStartTime 
+}: { 
+  sessionStartTime?: number;
+}) {
+  const [elapsed, setElapsed] = useState<string>('0h 0m 0s');
+
+  useEffect(() => {
+    if (!sessionStartTime) {
+      setElapsed('0h 0m 0s');
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diffMs = now - sessionStartTime;
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      setElapsed(`${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    // Initial update
+    updateTimer();
+    
+    // Tick every second
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [sessionStartTime]);
+
+  return <span className="session-timer">{elapsed}</span>;
+}
+
 // Live cycle timer component that ticks every 0.1 seconds
 function LiveCycleTimer({ 
   cycleNumber, 
@@ -511,13 +546,16 @@ export function PokemonStreamOverlay({
           <div className="status">
             <span>
               Game Status: {wsConnected ? gameState.gameStatus : (<>Connecting<AnimatedEllipsis interval={400} /></>)}
+              {wsConnected && gameState.sessionStartTime && (
+                <> | <SessionTimer sessionStartTime={gameState.sessionStartTime} /></>
+              )}
             </span>
             <span
               className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
             >
               • {wsConnected ? "Connected" : "Disconnected"}
             </span>
-            {wsConnected && (
+            {wsConnected && gameState.cyclesEnabled && (
               <span className="cycle-timing">
                 Cycle: <LiveCycleTimer 
                   cycleNumber={gameState.cycle} 
