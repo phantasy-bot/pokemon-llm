@@ -222,6 +222,107 @@ def update_processing_status(status: str):
             log.warning(f"Status callback error: {e}")
 
 
+
+async def run_chat_background_task(stop_event: asyncio.Event, tts_service, twitch_service, cycle_id: int):
+    """
+    Background task to generate and play chat responses while LLM is thinking.
+    Runs until stop_event is set.
+    """
+    from services.twitch_chat_service import TWITCH_TEST_MODE
+    
+    if not TWITCH_TEST_MODE or not tts_service:
+        return
+
+    log.info("🚀 Starting background chat response task")
+    
+    while not stop_event.is_set():
+        try:
+            # 1. Check if we need to queue more messages (keep buffer full)
+            # queue_status = tts_service.get_queue_status()
+            # if queue_status["pending"] < 3: ...
+            
+            # Generate a message if we don't have enough pending
+            # Note: queue_and_start_synthesis checks MAX_QUEUE_SIZE internally
+            
+            # Random chance to generate a new message (don't spam too fast)
+            if random.random() < 0.3:  # 30% chance per loop iteration
+                test_msg = twitch_service.generate_single_test_message()
+                if test_msg:
+                    username = test_msg['display_name']
+                    msg_text = test_msg['message']
+                    
+                    # Generate response
+                    from services.twitch_chat_service import CHAT_RESPONSE_PROMPT
+                    # We can't use the full LLM here as it would block/compete with main analysis
+                    # In test mode, we use the simple mock response generator
+                    # But wait, twitch_service.generate_single_test_message() doesn't generate a RESPONSE
+                    # We need to generate the LASS RESPONSE to the user message
+                    
+                    # For now, let's use a simple template response or a very fast local model call?
+                    # Actually, the previous implementation used the main LLM or a mock in test mode.
+                    # In test mode we can use a simple template to avoid LLM usage during main analysis.
+                    
+                    response_text = f"Oh {username}, {msg_text}? That's exciting! I'm doing my best here!"
+                    # Or better: use the mock list from before if available, or just simple logic
+                    
+                    # Simulating the mock response logic from the main loop:
+                    # "Lass responds: ..."
+                    # let's just use a placeholder for now, the main loop had:
+                    # mock_responses = ["Omg hi @{user}!", "That's so true @{user}!", ...]
+                    
+                    mock_responses = [
+                        "Omg hi @{user}! I'm so happy you're here with me!",
+                        "@{user} that is so funny! I literally can't even right now!",
+                        "Wait @{user}, really? I had no idea about that!",
+                        "Thanks for the tip @{user}! I'll try to remember that!",
+                        "@{user} you are always so supportive, thank you!",
+                        "I'm trying my best @{user}, this game is harder than it looks!",
+                        "Haha @{user} I saw that! wild!",
+                    ]
+                    response_text = random.choice(mock_responses).format(user=username)
+                    
+                    # Queue it!
+                    await tts_service.queue_and_start_synthesis(
+                        response_text, 
+                        priority=tts_service.PRIORITY_CHAT_RESPONSE,
+                        cycle_id=cycle_id
+                    )
+            
+            # 2. Check for ready audio to play
+            ready_request = tts_service.get_next_ready_audio()
+            if ready_request:
+                # Play it! This will block this task for the duration of playback
+                # which is exactly what we want (linear playback)
+                # But check stop_event periodically? No, play_ready_audio handles wait_for_playback
+                # which respects cancellation? Not explicitly, but we can check stop_event after.
+                
+                # Check stop event before starting playback
+                if stop_event.is_set():
+                    break
+                    
+                log.info(f"🎤 [BG] Playing chat response: {ready_request.text[:30]}...")
+                
+                # This blocks!
+                # We need to be able to interrupt this if stop_event is set.
+                # play_ready_audio calls wait_for_playback which has a loop.
+                # But we can't inject our stop_event into it easily without modifying it.
+                # However, tts_service.cancel_current() wraps clean termination.
+                
+                completed = await tts_service.play_ready_audio(ready_request, wait=True)
+                
+                if not completed:
+                    log.info("🎤 [BG] Playback interrupted or failed")
+            
+            # Brief sleep to yield to event loop and avoid busy loop
+            await asyncio.sleep(0.1)
+            
+        except Exception as e:
+            log.error(f"Error in background chat task: {e}")
+            await asyncio.sleep(1.0) # Sleep longer on error
+
+    log.info("🛑 Background chat response task stopped")
+
+
 def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
     """
     Pre-compute minimap analysis to reduce LLM hallucination.
@@ -1698,71 +1799,6 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.error(f"Error generating chat response: {e}")
             return ""
 
-    # Helper function for parallel chat processing during LLM wait
-    async def parallel_chat_processing(stop_event: asyncio.Event) -> int:
-        """
-        Process Twitch chat responses in parallel with the main LLM call.
-        This keeps the stream active during the 10-40s LLM thinking phase.
-        
-        Returns the number of chat responses generated.
-        """
-        responses_generated = 0
-        max_responses = 2  # Limit during parallel processing
-        
-        if not twitch_service.is_available or not chat_response_service.is_available:
-            return 0
-        
-        try:
-            while not stop_event.is_set() and responses_generated < max_responses:
-                # Check for pending mentions
-                pending = twitch_service.get_pending_mentions()
-                if not pending:
-                    # No messages - wait a bit before checking again
-                    await asyncio.sleep(2.0)
-                    continue
-                
-                # Process the oldest pending message
-                chat_msg = pending[0]
-                username = chat_msg.get("display_name", chat_msg.get("username", "viewer"))
-                message = chat_msg.get("message", "")
-                
-                if not message:
-                    twitch_service.mark_responded(chat_msg)
-                    continue
-                
-                log.info(f"💬 [PARALLEL] Responding to @{username}: {message[:50]}...")
-                
-                try:
-                    # Generate response using chat LLM (fast, not main LLM)
-                    response = await chat_response_service.generate_response(username, message)
-                    
-                    if response:
-                        # Send response to Twitch
-                        await twitch_service.send_response(response)
-                        log.info(f"💬 [PARALLEL] Sent: {response[:80]}...")
-                        
-                        # Play TTS for chat response if available
-                        if tts_service.is_available:
-                            await tts_service.synthesize(response)
-                        
-                        responses_generated += 1
-                    
-                    twitch_service.mark_responded(chat_msg)
-                    
-                except Exception as e:
-                    log.warning(f"Parallel chat response error: {e}")
-                    twitch_service.mark_responded(chat_msg)
-                
-                # Brief pause between responses
-                await asyncio.sleep(1.0)
-                
-        except asyncio.CancelledError:
-            log.info("🛑 Parallel chat processing cancelled (LLM complete)")
-        except Exception as e:
-            log.error(f"Error in parallel chat processing: {e}")
-        
-        return responses_generated
-
 
     # Position history for stuck detection
     position_history = []
@@ -2941,8 +2977,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         # PARALLEL CHAT + LLM PROCESSING
         # Run chat responses during LLM wait to keep stream active
         # ═══════════════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PARALLEL CHAT + LLM PROCESSING
+        # Run chat responses during LLM wait to keep stream active
+        # ═══════════════════════════════════════════════════════════════════════════
         chat_stop_event = asyncio.Event()
-        parallel_chat_task = asyncio.create_task(parallel_chat_processing(chat_stop_event))
+        parallel_chat_task = asyncio.create_task(
+            run_chat_background_task(
+                chat_stop_event, 
+                tts_service, 
+                twitch_service, 
+                cycle_count
+            )
+        )
         
         try:
             # Run the main LLM call
@@ -2954,13 +3001,17 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         finally:
             # Signal chat task to stop and cancel if still running
             chat_stop_event.set()
-            parallel_chat_task.cancel()
+            
+            # Cancel current chat TTS (so it doesn't talk over game commentary)
+            if tts_service and tts_service.is_available:
+                tts_service.cancel_pending_chat_responses()
+                
             try:
-                parallel_responses = await parallel_chat_task
-                if parallel_responses > 0:
-                    log.info(f"💬 Sent {parallel_responses} chat responses during LLM processing")
+                await parallel_chat_task
             except asyncio.CancelledError:
                 pass
+            except Exception as e:
+                log.error(f"Error awaiting parallel chat task: {e}")
 
         # Clear processing status after completion
         state["processingStatus"] = ""

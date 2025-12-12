@@ -22,14 +22,16 @@ log = logging.getLogger("comfyui_tts")
 
 @dataclass
 class TTSRequest:
-    """Represents a pending TTS request."""
+    """Represents a pending TTS request with async synthesis support."""
     text: str
     request_id: str
     priority: int  # Higher = more important (game commentary > chat response)
     created_at: float
+    cycle_id: int = 0  # Which game cycle this request came from
     audio_path: Optional[str] = None
     completed: bool = False
     error: Optional[str] = None
+    synthesis_task: Optional[asyncio.Task] = None  # Background synthesis task
 
 
 class ComfyUITTSService:
@@ -613,7 +615,8 @@ class ComfyUITTSService:
     async def queue_tts(
         self,
         text: str,
-        priority: int = None
+        priority: int = None,
+        cycle_id: int = 0
     ) -> TTSRequest:
         """
         Queue a TTS request.
@@ -621,6 +624,7 @@ class ComfyUITTSService:
         Args:
             text: Text to synthesize
             priority: Request priority (higher = more important)
+            cycle_id: The game cycle this request is from (for pruning)
         
         Returns:
             TTSRequest object for tracking
@@ -632,17 +636,189 @@ class ComfyUITTSService:
             text=text,
             request_id=str(uuid.uuid4())[:8],
             priority=priority,
-            created_at=time.time()
+            created_at=time.time(),
+            cycle_id=cycle_id
         )
         
         self._queue.append(request)
         # Sort by priority (highest first)
         self._queue.sort(key=lambda r: -r.priority)
         
-        log.info(f"🔊 Queued TTS (priority={priority}): {text[:50]}...")
+        log.info(f"🔊 Queued TTS (priority={priority}, cycle={cycle_id}): {text[:50]}...")
         
         return request
     
+    # Maximum queue size for chat responses (persists across cycles)
+    MAX_QUEUE_SIZE = 4
+    
+    async def queue_and_start_synthesis(
+        self,
+        text: str,
+        priority: int = None,
+        cycle_id: int = 0
+    ) -> Optional[TTSRequest]:
+        """
+        Queue a TTS request AND start background synthesis immediately.
+        Does not wait for synthesis to complete - returns immediately.
+        
+        Use get_next_ready_audio() to retrieve completed audio.
+        
+        Args:
+            text: Text to synthesize
+            priority: Request priority
+            cycle_id: The game cycle this request is from
+        
+        Returns:
+            TTSRequest with synthesis_task started, or None if queue full
+        """
+        # Prune old items first
+        self.prune_old_items(current_cycle=cycle_id)
+        
+        # Check queue size limit
+        pending = [r for r in self._queue if not r.completed]
+        if len(pending) >= self.MAX_QUEUE_SIZE:
+            log.info(f"⏳ TTS queue full ({len(pending)}/{self.MAX_QUEUE_SIZE}), skipping")
+            return None
+        
+        # Queue the request
+        request = await self.queue_tts(text, priority, cycle_id)
+        
+        # Start synthesis in background
+        async def _synthesize():
+            try:
+                audio_path = await self.synthesize_speech(request.text)
+                request.audio_path = audio_path
+                request.completed = True
+                log.info(f"✅ Background TTS ready: {request.request_id} -> {audio_path}")
+            except Exception as e:
+                request.error = str(e)
+                request.completed = True
+                log.error(f"❌ Background TTS failed: {request.request_id}: {e}")
+        
+        request.synthesis_task = asyncio.create_task(_synthesize())
+        log.info(f"🚀 Started background synthesis: {request.request_id}")
+        
+        return request
+    
+    def get_next_ready_audio(self) -> Optional[TTSRequest]:
+        """
+        Get the next completed TTS request that has audio ready.
+        Removes it from the queue.
+        
+        Returns:
+            TTSRequest with audio_path populated, or None if none ready
+        """
+        for i, request in enumerate(self._queue):
+            if request.completed and request.audio_path and not request.error:
+                self._queue.pop(i)
+                log.info(f"🎵 Returning ready audio: {request.request_id}")
+                return request
+        return None
+    
+    def prune_old_items(self, current_cycle: int) -> int:
+        """
+        Remove old TTS items from previous cycles (keep max 1 prev cycle).
+        Also enforces MAX_QUEUE_SIZE.
+        
+        Args:
+            current_cycle: The current game cycle number
+        
+        Returns:
+            Number of items pruned
+        """
+        original_count = len(self._queue)
+        
+        # Keep items from current cycle and previous cycle only
+        min_cycle = max(0, current_cycle - 1)
+        self._queue = [r for r in self._queue if r.cycle_id >= min_cycle]
+        
+        # Also enforce max size (keep newest)
+        if len(self._queue) > self.MAX_QUEUE_SIZE:
+            # Cancel synthesis tasks for items we're removing
+            for request in self._queue[self.MAX_QUEUE_SIZE:]:
+                if request.synthesis_task and not request.synthesis_task.done():
+                    request.synthesis_task.cancel()
+            self._queue = self._queue[:self.MAX_QUEUE_SIZE]
+        
+        pruned = original_count - len(self._queue)
+        if pruned > 0:
+            log.info(f"♻️ Pruned {pruned} old TTS items (keeping cycle >= {min_cycle})")
+        
+        return pruned
+    
+    def cancel_pending_chat_responses(self) -> int:
+        """
+        Cancel all pending chat response synthesis (for game commentary priority).
+        Keeps the queue but cancels in-progress synthesis tasks.
+        
+        Returns:
+            Number of tasks cancelled
+        """
+        cancelled = 0
+        for request in self._queue:
+            if request.priority < self.PRIORITY_COMMENTARY:  # Only chat responses
+                if request.synthesis_task and not request.synthesis_task.done():
+                    request.synthesis_task.cancel()
+                    cancelled += 1
+        
+        if cancelled > 0:
+            log.info(f"🔇 Cancelled {cancelled} pending chat TTS synthesis tasks")
+        
+        return cancelled
+    
+    def get_queue_status(self) -> dict:
+        """Get queue status for debugging."""
+        return {
+            "total": len(self._queue),
+            "pending": len([r for r in self._queue if not r.completed]),
+            "ready": len([r for r in self._queue if r.completed and r.audio_path]),
+            "errors": len([r for r in self._queue if r.error])
+        }
+    
+    async def play_ready_audio(self, request: TTSRequest, wait: bool = True) -> bool:
+        """
+        Play audio from a completed TTSRequest.
+        
+        Args:
+            request: TTSRequest with audio_path populated
+            wait: If True, wait for playback to complete
+        
+        Returns:
+            True if playback completed successfully
+        """
+        if not request or not request.audio_path:
+            log.warning("🔊 No audio path in request")
+            return False
+        
+        audio_path = request.audio_path
+        
+        # Apply speed/pitch processing
+        audio_path = self._process_audio_speed_pitch(audio_path)
+        
+        # Get duration for UI sync
+        duration_ms = self._get_audio_duration_ms(audio_path)
+        
+        # Notify UI that playback is about to start
+        if self.on_playback_start and duration_ms:
+            try:
+                log.info(f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms")
+                await self.on_playback_start(request.text, duration_ms)
+            except Exception as cb_err:
+                log.warning(f"🔊 on_playback_start callback error: {cb_err}")
+        
+        # Play the audio
+        if not self.play_audio_ephemeral(audio_path):
+            log.warning("🔊 play_audio_ephemeral returned False")
+            return False
+        
+        if wait:
+            completed = await self.wait_for_playback()
+            # Cleanup audio file after playback
+            self._cleanup_audio_file(audio_path)
+            return completed
+        
+        return True
+
     async def process_queue(self) -> Optional[TTSRequest]:
         """
         Process the next item in the TTS queue.
