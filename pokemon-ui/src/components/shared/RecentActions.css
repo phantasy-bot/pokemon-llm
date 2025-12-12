@@ -3,6 +3,7 @@
   position: relative;
   padding: var(--space-md);
   padding-top: var(--space-lg);
+  margin-top: var(--space-md); /* Gap above - between LLM analysis and this */
   margin-bottom: var(--space-xs); /* Reduced from var(--space-md) */
   
   /* TUI Box Style */

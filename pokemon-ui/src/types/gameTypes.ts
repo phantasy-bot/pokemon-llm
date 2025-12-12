@@ -197,6 +197,25 @@ export interface PokemonGameState {
     text_speed: number;
     text_flags: number;
   };
+  // Movement State (biking/surfing detection for avatar switching)
+  movementState?: {
+    bike_speed: number;
+    movement_status: number;
+    sprite_image_idx: number;
+    picture_id: number;
+    is_biking: boolean;
+    is_surfing: boolean;
+    movement_mode: "walking" | "biking" | "surfing";
+  };
+  // Name Entry State (when on character naming screen)
+  nameEntryState?: {
+    cursor_index: number;
+    cursor_x: number;
+    cursor_y: number;
+    grid_size: number;
+    selected_char: string;
+    is_name_entry: boolean;
+  } | null;
 
   // Display
   screenshotUrl?: string;

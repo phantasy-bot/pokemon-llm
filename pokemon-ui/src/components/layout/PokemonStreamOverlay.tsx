@@ -275,7 +275,16 @@ export function PokemonStreamOverlay({
       return "/lass/lass-menu.png";
     }
 
-    // 5. Default State (Overworld/Exploration) -> Animated
+    // 5. Movement States (Biking/Surfing) - from movement_state
+    const movementMode = gameState.movementState?.movement_mode;
+    if (movementMode === "biking") {
+      return "/lass/lass-biking.png";
+    }
+    if (movementMode === "surfing") {
+      return "/lass/lass-surfing.png";
+    }
+
+    // 6. Default State (Overworld/Exploration) -> Animated
     return `/lass/lass-walking-${walkingFrame}.png`;
   };
 

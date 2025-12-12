@@ -225,6 +225,29 @@ export function TypewriterHTML({
         }
         target.appendChild(cursorSpan);
     }
+
+    // CLEANUP: Hide empty elements that are formatting-only ahead of cursor
+    // This prevents colored backgrounds (e.g. badges) from appearing before text reaches them
+    if (!isComplete) {
+      const styledElements = temp.querySelectorAll('span, strong, em, b, i, div');
+      styledElements.forEach(el => {
+        // Skip if this element contains the cursor
+        if (el.querySelector('.typewriter-cursor') || el.classList.contains('typewriter-cursor')) {
+           return;
+        }
+
+        // If element has no text content (just formatting) and no other visible children
+        // We check textContent length
+        const text = el.textContent || '';
+        // If empty text and no other real elements (images etc ok to keep?)
+        // We assume we only want to hide text-styling containers
+        if (text.trim() === '') {
+           // Double check it doesn't have non-text formatting children that might matter?
+           // Actually, if it's empty text ahead of cursor, it shouldn't show.
+           (el as HTMLElement).style.display = 'none';
+        }
+      });
+    }
     
     return temp.innerHTML;
   }, [html, revealedChars, isComplete]);

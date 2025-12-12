@@ -59,16 +59,17 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: var(--space-sm); /* Reduced from var(--space-md) */
-  padding-top: var(--space-sm); /* Reduced from var(--space-md) */
+  padding: var(--space-xs); /* Reduced from var(--space-sm) */
+  padding-top: var(--space-xs); /* Reduced from var(--space-sm) */
   /* Add top margin to prevent label cutoff by parent overflow */
-  margin-top: var(--space-sm); /* Reduced from var(--space-md) */
-  margin-bottom: 8px; /* Reduced from 12px */
+  margin-top: var(--space-xs); /* Reduced from var(--space-sm) */
+  margin-bottom: 0px; /* Keep as is */
   
   /* TUI Box Style */
   border: 1px dotted var(--border-subtle);
   position: relative;
   min-height: 0;
+  max-height: 475px;
 }
 
 /* Inner scroll area for LLM analysis */
@@ -78,6 +79,7 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  padding: var(--space-sm); /* Add padding for content */
   
   /* Hide scrollbar for stream overlay presentation */
   scrollbar-width: none; /* Firefox */
@@ -207,7 +209,7 @@
 /* Recent Actions Section */
 .analysis-panel__actions-section {
   flex-shrink: 0;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg); /* Increased gap before LLM analysis */
   padding: var(--space-md);
   padding-top: var(--space-md);
   
