@@ -242,7 +242,7 @@ export function AnalysisPanel({
             </div>
 
             {/* Column 2: Content with Sheared Title */}
-            <div className="analysis-panel__vision-col-content">
+            <div className={`analysis-panel__vision-col-content ${processingStatus?.includes('VISION') ? 'analyzing' : ''}`}>
               <div className="analysis-panel__vision-title-internal">
                 VISION ANALYSIS
               </div>

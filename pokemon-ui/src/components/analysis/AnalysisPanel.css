@@ -336,6 +336,16 @@
   padding-top: var(--space-md); /* Space for title */
   /* Ensure height matches screenshot mostly */
   /* We allow it to expand but the content inside controls layout */
+  transition: border-color 0.3s ease;
+}
+
+/* Active state when vision is being analyzed */
+.analysis-panel__vision-col-content.analyzing {
+  border-color: var(--accent-primary-bright);
+}
+
+.analysis-panel__vision-col-content.analyzing .analysis-panel__vision-title-internal {
+  color: var(--accent-primary-bright);
 }
 
 /* Vision Grid Layout for compact view */
@@ -646,17 +656,15 @@
   text-align: center;
 }
 
-/* Processing indicator - shared styles */
+/* Processing indicator - shared styles (minimal, no bg/border) */
 .analysis-panel__processing-indicator,
 .analysis-panel__processing-bottom {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12), rgba(220, 38, 38, 0.04));
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  border-radius: 8px;
+  gap: 6px;
+  padding: 6px 0;
+  /* No background, border, or glow - just text and icon */
 }
 
 /* Processing indicator in centered empty state */
@@ -666,19 +674,15 @@
 
 /* Processing indicator at bottom of LLM analysis wrapper */
 .analysis-panel__processing-bottom {
-  /* Use flexbox positioning - part of the wrapper's flex column */
+  /* Flexbox positioning - part of the wrapper's flex column */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-top: var(--space-sm);
+  gap: 6px;
+  padding: 4px 0;
+  margin-top: var(--space-xs);
   margin-bottom: var(--space-xs);
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));
-  border: 1px solid rgba(220, 38, 38, 0.35);
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-  animation: status-glow 2s ease-in-out infinite;
+  /* No background, border, or glow */
   z-index: 10;
   flex-shrink: 0;
 }
@@ -706,6 +710,8 @@
 .spinning-pokeball {
   animation: pokeball-spin 1s linear infinite;
   flex-shrink: 0;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .analysis-panel__action-group {
