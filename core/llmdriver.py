@@ -2552,10 +2552,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             # Get the name planner
             name_planner = get_name_planner()
             
-            # Detect what type of name we're entering
+            # Detect what type of name we're entering (use dialog_text only - vision not yet available)
             dialog_text = text_state.get('text', '') if text_state else ''
-            readable_text = vision_analysis.get('readable_text', '') if vision_analysis else ''
-            name_type = name_planner.detect_name_type(dialog_text, readable_text)
+            name_type = name_planner.detect_name_type(dialog_text, '')
             
             # Get tracked position (more reliable than memory reads)
             tracked_state = kb_tracker.get_state_dict()
