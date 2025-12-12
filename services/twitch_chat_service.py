@@ -117,14 +117,22 @@ class TwitchChatService:
         # Validate configuration
         self._is_configured = bool(self.bot_username and self.oauth_token and self.channel)
         
-        if not self._is_configured:
+        # Test mode can work without real Twitch credentials
+        self._test_mode = TWITCH_TEST_MODE
+        
+        if self._test_mode:
+            log.info(f"🧪 Twitch TEST MODE enabled! Will generate {TWITCH_TEST_MESSAGES_PER_CYCLE} fake messages per cycle")
+        elif not self._is_configured:
             log.warning("Twitch chat not configured. Set TWITCH_BOT_USERNAME, TWITCH_OAUTH_TOKEN, and TWITCH_CHANNEL in .env")
         elif not TWITCHIO_AVAILABLE:
             log.warning("twitchio not available. Install with: pip install twitchio")
     
     @property
     def is_available(self) -> bool:
-        """Check if Twitch chat service is available and configured."""
+        """Check if Twitch chat service is available (real or test mode)."""
+        # Test mode is always available
+        if self._test_mode:
+            return True
         return TWITCHIO_AVAILABLE and self._is_configured
     
     async def start(self) -> bool:
