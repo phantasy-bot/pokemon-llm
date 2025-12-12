@@ -69,7 +69,7 @@
   border: 1px dotted var(--border-subtle);
   position: relative;
   min-height: 0;
-  max-height: 475px;
+  /* REMOVED: max-height: 475px - let it stretch to fill available space */
 }
 
 /* Inner scroll area for LLM analysis */
