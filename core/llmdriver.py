@@ -2203,15 +2203,15 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                         
                         chat_response_count += 1
                         
-                        # Actually send to TTS!
+                        # Actually send to TTS! (non-blocking - don't hold up game)
                         if tts_service.is_available:
                             try:
                                 await tts_service.synthesize_and_play(
                                     response_text,
                                     priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                                    wait=True
+                                    wait=False  # Don't block - let game proceed
                                 )
-                                log.info(f"✅ [TEST] TTS response complete")
+                                log.info(f"✅ [TEST] TTS response started (non-blocking)")
                             except Exception as tts_err:
                                 log.warning(f"🔊 [TEST] TTS error: {tts_err}")
                         
@@ -2291,12 +2291,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                     
                     chat_response_count += 1
                     
-                    # Queue TTS for the response (lower priority than game commentary)
+                    # Queue TTS for the response (non-blocking - don't hold up game)
                     if tts_service.is_available:
                         await tts_service.synthesize_and_play(
                             response_text,
                             priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                            wait=True
+                            wait=False  # Don't block - let game proceed
                         )
                     
                     # Send response to Twitch chat
