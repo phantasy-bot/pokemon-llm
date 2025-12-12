@@ -2951,12 +2951,89 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             else:
                 logging.error(f"Expected summary_json to be dict, but got {type(summary_json).__name__!r}")
 
-        # Add vision analysis to the update payload if available
         if vision_analysis_for_ui:
             update_payload["vision_analysis"] = vision_analysis_for_ui
 
         action_to_send = None
         log_action_text = "No action taken (LLM failed)."
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # EARLY LOG CREATION & BROADCAST (before action execution for sync)
+        # This ensures UI shows reasoning/action BEFORE mGBA executes it
+        # ═══════════════════════════════════════════════════════════════════════════
+        
+        # Calculate button counts EARLY (needed for action log)
+        buttons_in_action = 0
+        action_start = action_count
+        action_end = action_count
+        if action:
+            action_buttons = [c for c in action.replace(';', '').replace(' ', '') if c in 'UDLRABST']
+            buttons_in_action = len(action_buttons)
+            action_start = action_count + 1
+            action_end = action_count + buttons_in_action
+            log.info(f"📊 Calculated action counts: #{action_start}-#{action_end} ({buttons_in_action} buttons)")
+        
+        # Create log entries BEFORE action execution
+        log_entries = []
+        cycle_timestamp = int(time.time() * 1000)
+        
+        # Vision log
+        if vision_analysis_for_ui:
+            vision_log = {
+                "id": log_id_counter,
+                "text": vision_analysis_for_ui,
+                "is_vision": True,
+                "timestamp": cycle_timestamp,
+                "screenshot_base64": b64_ss
+            }
+            log_entries.append(vision_log)
+            if b64_ss:
+                state["latest_screenshot_base64"] = b64_ss
+        
+        # Response log (LLM reasoning)
+        if game_analysis and game_analysis.strip():
+            response_log = {"id": log_id_counter, "text": game_analysis.strip(), "is_response": True, "timestamp": cycle_timestamp}
+            log_entries.append(response_log)
+        
+        # Action log (intended action - shows BEFORE execution)
+        if action and vision_analysis_for_ui:
+            action_log = {
+                "id": log_id_counter,
+                "text": f"Action: {action}",
+                "is_action": True,
+                "action_start": action_start,
+                "action_end": action_end,
+                "button_count": buttons_in_action,
+                "timestamp": cycle_timestamp
+            }
+            log_entries.append(action_log)
+        
+        # BROADCAST LOGS IMMEDIATELY (before action execution)
+        if "log_history" not in state:
+            state["log_history"] = []
+        
+        for log_entry in log_entries:
+            state["log_history"].insert(0, log_entry)
+            if log_entry.get("is_vision"):
+                update_payload["vision_log"] = log_entry
+                log.info(f"🖼️ Broadcasting vision log: {log_entry.get('text', '')[:50]}...")
+            elif log_entry.get("is_response"):
+                update_payload["response_log"] = log_entry
+                log.info(f"💭 Broadcasting response log: {log_entry.get('text', '')[:50]}...")
+            elif log_entry.get("is_action"):
+                update_payload["log_entry"] = log_entry  # For action_payload compatibility
+                log.info(f"🎮 Broadcasting action log: {log_entry.get('text', '')[:50]}...")
+        
+        state["log_history"] = state["log_history"][:50]
+        
+        # BROADCAST NOW - before action execution
+        if update_payload:
+            await broadcast_func(update_payload)
+            log.info(f"📡 Broadcast complete: {list(update_payload.keys())}")
+        
+        # ═══════════════════════════════════════════════════════════════════════════
+        # ACTION EXECUTION (now happens AFTER UI is updated)
+        # ═══════════════════════════════════════════════════════════════════════════
 
         if action:
             action_to_send = action
@@ -3018,78 +3095,24 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             cycle_count -= 1
             log.info("Decremented cycle count to retry same cycle number on next attempt.")
 
-        # Count each individual button press, not just action groups
-        # 'action' is like "U;U;R;A;" - count the actual button presses
+        # Update action_count AFTER execution (the log already showed intended action)
         if action:
-            # Remove semicolons and whitespace, count remaining characters
-            action_buttons = [c for c in action.replace(';', '').replace(' ', '') if c in 'UDLRABST']
-            buttons_in_action = len(action_buttons)
-            action_start = action_count + 1
             action_count += buttons_in_action
-            action_end = action_count
-            log.info(f"📊 Actions #{action_start}-#{action_end} ({buttons_in_action} buttons)")
-        else:
-            # No action this cycle
-            action_start = action_count
-            action_end = action_count
-            buttons_in_action = 0
+            log.info(f"📊 Actions #{action_start}-#{action_end} ({buttons_in_action} buttons) - EXECUTED")
         
+        # Update action count in state
         if state.get('actions') != action_count:
-             state['actions'] = action_count
-             update_payload['actions'] = action_count
-
+         state['actions'] = action_count
+        
+        # Update other state fields
         if state.get('tokensUsed') != tokens_used_session:
             state['tokensUsed'] = tokens_used_session
-            update_payload['tokensUsed'] = tokens_used_session
 
         elapsed = datetime.datetime.now() - start_time
         elapsed_seconds = elapsed.total_seconds()
         game_status_str = f"{int(elapsed_seconds // 3600)}h {int((elapsed_seconds % 3600) // 60)}m {int(elapsed_seconds % 60)}s"
-        if state.get('gameStatus') != game_status_str:
-            state['gameStatus'] = game_status_str
-            update_payload['gameStatus'] = game_status_str
-
-        if state.get('modelName') != MODEL:
-            state['modelName'] = MODEL
-            update_payload['modelName'] = MODEL
-
-
-
-        # Create three separate log entries: VISION, RESPONSE, ACTION
-        log_entries = []
-
-        # Vision log entry - only create if we have actual vision analysis
-        cycle_timestamp = int((time.time() - 2) * 1000)  # Approximate when screenshot was taken
-        
-        if vision_analysis_for_ui:
-            vision_log = {
-                "id": log_id_counter,
-                "text": vision_analysis_for_ui,
-                "is_vision": True,
-                "timestamp": cycle_timestamp,
-                "screenshot_base64": b64_ss  # Explicitly attach the image used for this analysis
-            }
-            log_entries.append(vision_log)
-            log.info(f"📸 Vision log created: {len(vision_analysis_for_ui)} chars")
-            
-            # CRITICAL: Store latest screenshot in state for new WebSocket connections
-            # This allows reconnecting clients to display the most recent screenshot
-            if b64_ss:
-                state["latest_screenshot_base64"] = b64_ss
-
-
-
-        # Response log entry (LLM reasoning)
-        # CRITICAL: Only create response_log if vision_log was also created to prevent desync
-        analysis_text = game_analysis  # Use game_analysis from LLM response
-        log.info(f"🧠 LLM Analysis received: {analysis_text[:100] if analysis_text else 'None'}...")
-
-        if analysis_text and analysis_text.strip():
-            response_log = { "id": log_id_counter, "text": analysis_text.strip(), "is_response": True }
-            log_entries.append(response_log)
-            log.info(f"✅ Response log created and added to entries")
-        else:
-            log.warning(f"⚠️ No analysis_text to send to frontend.")
+        state['gameStatus'] = game_status_str
+        state['modelName'] = MODEL
 
         # Force memory recording for important location transitions
         # IMPORTANT: This runs ALWAYS, not just when analysis_text is empty
@@ -3283,63 +3306,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             except Exception as pe:
                 log.warning(f"Failed to log action to database: {pe}")
 
-        # Action log entry - include action range for UI display
-        # CRITICAL: Only create action_log if vision was successful to keep all logs in sync
-        if action and vision_analysis_for_ui:
-            action_log = { 
-                "id": log_id_counter, 
-                "text": log_action_text, 
-                "is_action": True,
-                "action_start": action_start,  # First action number in this group
-                "action_end": action_end,      # Last action number in this group
-                "button_count": buttons_in_action
-            }
-            log_entries.append(action_log)
-
-        # Add all log entries to update_payload with different keys to avoid overwriting
-        # Add all log entries to update_payload with different keys to avoid overwriting
-        # Also persist to state["log_history"] for new connections
-        if "log_history" not in state:
-            state["log_history"] = []
-
-        for i, log_entry in enumerate(log_entries):
-            # Add timestamp if missing
-            if "timestamp" not in log_entry:
-                log_entry["timestamp"] = int(time.time() * 1000)
-
-            # Add to persistent history (keep last 50)
-            state["log_history"].insert(0, log_entry)
-            
-            if log_entry.get("is_vision"):
-                update_payload["vision_log"] = log_entry
-                log.info(f"🖼️ Broadcasting vision log: {log_entry.get('text', '')[:50]}... with timestamp: {log_entry.get('timestamp')}")
-            elif log_entry.get("is_response"):
-                update_payload["response_log"] = log_entry
-                log.info(f"💭 Broadcasting response log: {log_entry.get('text', '')[:50]}...")
-            elif log_entry.get("is_action"):
-                action_payload["log_entry"] = log_entry
-                log.info(f"🎮 Broadcasting action log: {log_entry.get('text', '')[:50]}...")
-
-        # Trim history
-        state["log_history"] = state["log_history"][:50]
-        # Important: Add logs to update_payload so websocket_service sends them if needed? 
-        # Actually websocket_service sends full state on connect.
-        # But we might want to send 'logs' bulk update if we wanted to sync, but individual updates are fine.
-
-        log.info(f"Log Entry #{log_id_counter}: {log_action_text} (Analysis included in state log)")
-
-        # CRITICAL: Check for system failure before broadcasting
+        # CRITICAL: Check for system failure
         if update_payload and update_payload.get("system_halt"):
             log.critical("🛑 SYSTEM HALT DETECTED - Terminating agent operation immediately")
             break  # Exit the main loop immediately
-
-        if update_payload:
-            log.info(f"Broadcasting {len(update_payload)} state updates: {list(update_payload.keys())}")
-            try:
-                await broadcast_func(update_payload)
-                await broadcast_func(action_payload)
-            except Exception as e:
-                log.error(f"Error during WebSocket broadcast: {e}", exc_info=True)
 
 
         # Auto-save game state at end of each cycle
