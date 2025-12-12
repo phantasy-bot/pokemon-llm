@@ -632,6 +632,74 @@
   min-height: 200px;
 }
 
+/* Empty state - centered in LLM analysis when no content */
+.analysis-panel__empty-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Processing indicator - shared styles */
+.analysis-panel__processing-indicator,
+.analysis-panel__processing-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12), rgba(220, 38, 38, 0.04));
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 8px;
+}
+
+/* Processing indicator in centered empty state */
+.analysis-panel__processing-indicator {
+  margin-top: var(--space-md);
+}
+
+/* Processing indicator at bottom of scroll area */
+.analysis-panel__processing-bottom {
+  position: absolute;
+  bottom: var(--space-md);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+/* Processing text styling */
+.analysis-panel__processing-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-primary-bright);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Spinning Pokeball Animation */
+@keyframes pokeball-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning-pokeball {
+  animation: pokeball-spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
 .analysis-panel__action-group {
   display: flex;
   gap: 4px;

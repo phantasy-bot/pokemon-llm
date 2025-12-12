@@ -134,7 +134,7 @@
 .folder-sponsor {
   position: absolute;
   bottom: var(--space-md);
-  left: var(--space-md); /* Changed from right to left */
+  left: calc(var(--space-md) - 2px); /* Moved 2px left total */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -483,6 +483,36 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Spinning Pokeball Animation */
+@keyframes pokeball-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning-pokeball {
+  animation: pokeball-spin 1s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Processing Status Indicator */
+.processing-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.processing-status__text {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .pokemon-analysis-panel {

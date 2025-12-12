@@ -77,6 +77,14 @@ class ComfyUITTSService:
         self.timeout = timeout
         self.on_playback_start = on_playback_start
         
+        # Basic auth credentials (optional - for hosted ComfyUI instances)
+        self._auth_username = os.getenv("COMFYUI_USERNAME", "")
+        self._auth_password = os.getenv("COMFYUI_PASSWORD", "")
+        self._auth: Optional[httpx.BasicAuth] = None
+        if self._auth_username and self._auth_password:
+            self._auth = httpx.BasicAuth(self._auth_username, self._auth_password)
+            log.info(f"🔐 ComfyUI basic auth configured for user: {self._auth_username}")
+        
         # Audio post-processing settings (from env or args)
         self.audio_speed = audio_speed if audio_speed is not None else float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
         self.audio_pitch = audio_pitch if audio_pitch is not None else float(os.getenv("TTS_AUDIO_PITCH", "0"))  # In semitones
@@ -181,9 +189,9 @@ class ComfyUITTSService:
         return self._is_configured
     
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
+        """Get or create HTTP client with optional basic auth."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=self.timeout)
+            self._client = httpx.AsyncClient(timeout=self.timeout, auth=self._auth)
         return self._client
     
     def cancel_current(self):
@@ -196,7 +204,7 @@ class ComfyUITTSService:
         # Also cancel any pending ComfyUI workflow via /interrupt endpoint
         try:
             import httpx
-            with httpx.Client(timeout=2.0) as client:
+            with httpx.Client(timeout=2.0, auth=self._auth) as client:
                 response = client.post(f"{self.base_url}/interrupt")
                 if response.status_code == 200:
                     log.info("🔇 Cancelled pending ComfyUI TTS workflow")
@@ -204,6 +212,45 @@ class ComfyUITTSService:
                     log.debug(f"ComfyUI interrupt returned {response.status_code}")
         except Exception as e:
             log.debug(f"Could not interrupt ComfyUI workflow: {e}")
+    
+    def cancel_all_and_interrupt(self) -> int:
+        """
+        Cancel EVERYTHING - current playback, queue, and ComfyUI workflows.
+        Use this when new high-priority commentary arrives to ensure it plays immediately.
+        
+        Returns:
+            Number of queue items cleared
+        """
+        # 1. Stop any current playback immediately
+        self._cancelled = True
+        self.audio_player.stop_playback()
+        
+        # 2. Cancel all pending synthesis tasks
+        cancelled_tasks = 0
+        for request in self._queue:
+            if request.synthesis_task and not request.synthesis_task.done():
+                request.synthesis_task.cancel()
+                cancelled_tasks += 1
+        
+        # 3. Clear the entire queue
+        queue_count = len(self._queue)
+        self._queue.clear()
+        self._processing = False
+        
+        # 4. Interrupt any pending ComfyUI workflow
+        try:
+            import httpx
+            with httpx.Client(timeout=2.0, auth=self._auth) as client:
+                response = client.post(f"{self.base_url}/interrupt")
+                if response.status_code == 200:
+                    log.info("🔇 Interrupted pending ComfyUI TTS workflow")
+        except Exception as e:
+            log.debug(f"Could not interrupt ComfyUI workflow: {e}")
+        
+        if queue_count > 0 or cancelled_tasks > 0:
+            log.info(f"🧹 CANCEL ALL: cleared {queue_count} queue items, cancelled {cancelled_tasks} synthesis tasks")
+        
+        return queue_count
     
     def play_audio_ephemeral(self, audio_path: str) -> bool:
         """Play audio file ephemerally (no file retention)."""
@@ -872,6 +919,12 @@ class ComfyUITTSService:
         
         if priority is None:
             priority = self.PRIORITY_CHAT_RESPONSE
+        
+        # For high-priority commentary, cancel EVERYTHING first to ensure it plays immediately
+        if priority >= self.PRIORITY_COMMENTARY:
+            cleared = self.cancel_all_and_interrupt()
+            if cleared > 0:
+                log.info(f"🔊 Cleared {cleared} queue items for priority commentary")
         
         # Acquire lock to ensure TTS requests are serialized (no overlap)
         async with self._tts_lock:
