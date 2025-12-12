@@ -3498,179 +3498,166 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 await asyncio.sleep(min(remaining_wait, 2.0))
                 continue
             
-            # Get all messages since last commentary for batch processing
+            # Check if we're in test mode first (handles its own message generation)
+            from services.twitch_chat_service import TWITCH_TEST_MODE
+            
+            if TWITCH_TEST_MODE:
+                # Test mode: Generate one random message every 2-5 seconds
+                import random
+                
+                # Random delay between messages (2-5 seconds)
+                await asyncio.sleep(random.uniform(2.0, 5.0))
+                
+                if chat_response_count >= max_chat_responses:
+                    continue
+                
+                # Check time remaining
+                remaining = wait_time - (time.time() - wait_start)
+                if remaining < 3:
+                    continue
+                
+                # Generate one random test message
+                test_msg = twitch_service.generate_single_test_message()
+                
+                if test_msg:
+                    # Decide: spam = skip, else = respond
+                    is_spam = any(spam in test_msg["message"].lower() for spam in 
+                                 ["kekw", "lul", "kappa", "!gamble", "first", "asdf", "zzz", "spam"])
+                    
+                    if is_spam or random.random() < 0.25:  # 25% skip rate
+                        log.info(f"⏭️ [TEST] Skipping spam from @{test_msg['display_name']}: {test_msg['message'][:40]}...")
+                    else:
+                        # Generate a witty mock response in Lass's personality
+                        mock_responses = [
+                            f"Hehe, thanks for watching @{test_msg['display_name']}! You're making this adventure more fun!",
+                            f"Omg hi @{test_msg['display_name']}! I'm so happy you're here with me!",
+                            f"@{test_msg['display_name']} Aww you're so sweet! Let's catch 'em all together!",
+                            f"Thanks @{test_msg['display_name']}! I may get lost sometimes but at least we're lost together!",
+                            f"@{test_msg['display_name']} You're the Pikachu to my Ash! Well... once I actually GET a Pikachu...",
+                            f"Haha @{test_msg['display_name']}! True, but hey, every Pokemon master started somewhere!",
+                            f"Aww @{test_msg['display_name']} that's so nice! You're giving me all the encouragement I need!",
+                            f"@{test_msg['display_name']} Good question! I'm working on it, I promise! Maybe...",
+                        ]
+                        
+                        response_text = random.choice(mock_responses)
+                        log.info(f"💬 [TEST] @{test_msg['display_name']}: \"{test_msg['message']}\"")
+                        log.info(f"🎤 [TEST] Lass responds: {response_text}")
+                        
+                        chat_response_count += 1
+                        
+                        # Actually send to TTS!
+                        if tts_service.is_available:
+                            try:
+                                await tts_service.synthesize_and_play(
+                                    response_text,
+                                    priority=tts_service.PRIORITY_CHAT_RESPONSE,
+                                    wait=True
+                                )
+                                log.info(f"✅ [TEST] TTS response complete")
+                            except Exception as tts_err:
+                                log.warning(f"🔊 [TEST] TTS error: {tts_err}")
+                        
+                        # Broadcast to UI
+                        chat_response_payload = {
+                            "chat_response": {
+                                "username": test_msg['display_name'],
+                                "message": test_msg['message'],
+                                "response": response_text,
+                                "is_test": True,
+                                "timestamp": int(time.time() * 1000)
+                            }
+                        }
+                        await broadcast_func(chat_response_payload)
+                
+                continue  # Continue the wait loop
+            
+            # Real mode below - get actual messages
             messages_for_cycle = twitch_service.get_messages_for_cycle_or_test()
             
-            if messages_for_cycle:
-                # Check if we're in test mode (no chat response API needed)
-                from services.twitch_chat_service import TWITCH_TEST_MODE
-                
-                if TWITCH_TEST_MODE:
-                    # Test mode: Generate mock SKIP/RESPOND decisions without API
-                    import random
-                    
-                    respond_count = 0
-                    skip_count = 0
-                    
-                    for msg in messages_for_cycle:
-                        # Simple heuristic: skip spam-like messages, respond to rest
-                        is_spam = any(spam in msg["message"].lower() for spam in 
-                                     ["kekw", "lul", "kappa", "!gamble", "first", "asdf", "zzz"])
-                        
-                        if is_spam or random.random() < 0.3:  # 30% skip rate
-                            skip_count += 1
-                            log.info(f"⏭️ [TEST] Skipping message from @{msg['display_name']}: {msg['message'][:40]}...")
-                        else:
-                            respond_count += 1
-                            log.info(f"💬 [TEST] Would respond to @{msg['display_name']}: {msg['message'][:40]}...")
-                            chat_response_count += 1
-                            if chat_response_count >= max_chat_responses:
-                                break
-                    
-                    log.info(f"🧪 TEST MODE: {respond_count} RESPOND, {skip_count} SKIP from {len(messages_for_cycle)} messages")
-                    await asyncio.sleep(min(remaining_wait, 2.0))
-                    continue
-                
-                # Real mode: Use chat response service for decisions
-                if not chat_response_service.is_available:
-                    await asyncio.sleep(min(remaining_wait, 2.0))
-                    continue
-                    
-                # Decide SKIP/RESPOND for all messages at once
-                decisions = await chat_response_service.decide_skip_or_respond(messages_for_cycle)
-                
-                # Process RESPOND messages oldest first
-                for decided in decisions:
-                    if decided.decision == MessageDecision.SKIP:
-                        log.info(f"⏭️ Skipping message from @{decided.display_name}")
-                        # Mark as responded so we don't process again
-                        original_msg = next(
-                            (m["_original"] for m in messages_for_cycle 
-                             if m["timestamp"] == decided.timestamp), 
-                            None
-                        )
-                        if original_msg:
-                            twitch_service.mark_responded(original_msg)
-                        continue
-                        
-                        # Check if we should stop for new cycle
-                        if time.time() - wait_start >= wait_time:
-                            log.info("🔄 Cycle time up - interrupting chat responses")
-                            tts_service.cancel_current()  # Cancel any playing audio
-                            cycle_interrupted = True
-                            break
-                        
-                        # Generate and send response
-                        response_text = await chat_response_service.generate_response(
-                            decided.display_name,
-                            decided.message,
-                            is_past=False
-                        )
-                        
-                        if response_text:
-                            # Format response with @ mention if not already present
-                            if not response_text.startswith("@"):
-                                response_text = f"@{decided.display_name} {response_text}"
-                            
-                            # Mark original message as responded
-                            original_msg = next(
-                                (m["_original"] for m in messages_for_cycle 
-                                 if m["timestamp"] == decided.timestamp), 
-                                None
-                            )
-                            if original_msg:
-                                twitch_service.mark_responded(original_msg)
-                            
-                            chat_response_count += 1
-                            
-                            # Queue TTS for the response (lower priority than game commentary)
-                            if tts_service.is_available:
-                                await tts_service.synthesize_and_play(
-                                    response_text,
-                                    priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                                    wait=True
-                                )
-                            
-                            # Send response to Twitch chat
-                            await twitch_service.send_response(
-                                decided.display_name,
-                                response_text.replace(f"@{decided.display_name} ", "")
-                            )
-                            
-                            # Broadcast chat response to OBS widget
-                            chat_response_payload = {
-                                "chat_response": {
-                                    "username": decided.display_name,
-                                    "response": response_text,
-                                    "is_past_message": False,
-                                    "timestamp": int(time.time() * 1000)
-                                }
-                            }
-                            await broadcast_func(chat_response_payload)
-                            log.info(f"✅ Chat response sent: {response_text[:50]}...")
-                    
-                    # If we processed all messages, sleep briefly
-                    await asyncio.sleep(min(remaining_wait, 1.0))
-                else:
-                    await asyncio.sleep(min(remaining_wait, 2.0))
-            else:
-                # Fallback: use original simple mention-based processing
-                pending_mentions = twitch_service.get_pending_mentions()
-                
-                chat_msg = None
-                is_past_message = False
-                
-                if pending_mentions:
-                    chat_msg = pending_mentions[0]
-                    log.info(f"💬 Processing new Twitch mention from @{chat_msg.display_name}")
-                elif remaining_wait > 5.0:
-                    past_messages = twitch_service.get_past_messages(count=1)
-                    if past_messages:
-                        chat_msg = past_messages[0]
-                        is_past_message = True
-                
-                if chat_msg:
-                    try:
-                        response_text = await generate_chat_response(
-                            chat_msg.display_name,
-                            chat_msg.message,
-                            is_past=is_past_message
-                        )
-                        
-                        if response_text:
-                            if not response_text.startswith("@"):
-                                response_text = f"@{chat_msg.display_name} {response_text}"
-                            
-                            twitch_service.mark_responded(chat_msg)
-                            chat_response_count += 1
-                            
-                            if tts_service.is_available:
-                                await tts_service.synthesize_and_play(
-                                    response_text,
-                                    priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                                    wait=True
-                                )
-                            
-                            await twitch_service.send_response(
-                                chat_msg.display_name,
-                                response_text.replace(f"@{chat_msg.display_name} ", "")
-                            )
-                            
-                            chat_response_payload = {
-                                "chat_response": {
-                                    "username": chat_msg.display_name,
-                                    "response": response_text,
-                                    "is_past_message": is_past_message,
-                                    "timestamp": int(time.time() * 1000)
-                                }
-                            }
-                            await broadcast_func(chat_response_payload)
-                            log.info(f"✅ Chat response sent: {response_text[:50]}...")
-                            
-                    except Exception as e:
-                        log.error(f"Error processing chat message: {e}")
-                
+            if not messages_for_cycle:
                 await asyncio.sleep(min(remaining_wait, 2.0))
+                continue
+                
+            # Real mode: Use chat response service for decisions
+            if not chat_response_service.is_available:
+                await asyncio.sleep(min(remaining_wait, 2.0))
+                continue
+                
+            # Decide SKIP/RESPOND for all messages at once
+            decisions = await chat_response_service.decide_skip_or_respond(messages_for_cycle)
+            
+            # Process RESPOND messages oldest first
+            for decided in decisions:
+                if decided.decision == MessageDecision.SKIP:
+                    log.info(f"⏭️ Skipping message from @{decided.display_name}")
+                    # Mark as responded so we don't process again
+                    original_msg = next(
+                        (m["_original"] for m in messages_for_cycle 
+                         if m["timestamp"] == decided.timestamp), 
+                        None
+                    )
+                    if original_msg:
+                        twitch_service.mark_responded(original_msg)
+                    continue
+                    
+                # Check if we should stop for new cycle
+                if time.time() - wait_start >= wait_time:
+                    log.info("🔄 Cycle time up - interrupting chat responses")
+                    tts_service.cancel_current()  # Cancel any playing audio
+                    cycle_interrupted = True
+                    break
+                
+                # Generate and send response
+                response_text = await chat_response_service.generate_response(
+                    decided.display_name,
+                    decided.message,
+                    is_past=False
+                )
+                
+                if response_text:
+                    # Format response with @ mention if not already present
+                    if not response_text.startswith("@"):
+                        response_text = f"@{decided.display_name} {response_text}"
+                    
+                    # Mark original message as responded
+                    original_msg = next(
+                        (m["_original"] for m in messages_for_cycle 
+                         if m["timestamp"] == decided.timestamp), 
+                        None
+                    )
+                    if original_msg:
+                        twitch_service.mark_responded(original_msg)
+                    
+                    chat_response_count += 1
+                    
+                    # Queue TTS for the response (lower priority than game commentary)
+                    if tts_service.is_available:
+                        await tts_service.synthesize_and_play(
+                            response_text,
+                            priority=tts_service.PRIORITY_CHAT_RESPONSE,
+                            wait=True
+                        )
+                    
+                    # Send response to Twitch chat
+                    await twitch_service.send_response(
+                        decided.display_name,
+                        response_text.replace(f"@{decided.display_name} ", "")
+                    )
+                    
+                    # Broadcast chat response to OBS widget
+                    chat_response_payload = {
+                        "chat_response": {
+                            "username": decided.display_name,
+                            "response": response_text,
+                            "is_past_message": False,
+                            "timestamp": int(time.time() * 1000)
+                        }
+                    }
+                    await broadcast_func(chat_response_payload)
+                    log.info(f"✅ Chat response sent: {response_text[:50]}...")
+            
+            # If we processed all messages, sleep briefly
+            await asyncio.sleep(min(remaining_wait, 1.0))
 
 
 
