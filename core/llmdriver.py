@@ -644,6 +644,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # This gives mGBA time to fully load and sets the stream mood
     # ═══════════════════════════════════════════════════════════════════════════
     if tts_service and tts_service.is_available:
+        # Clear any orphaned TTS requests from previous session
+        tts_service.clear_queue()
+        
         try:
             # Determine intro message based on whether we're continuing or starting fresh
             if is_first_cycle_after_continue:
