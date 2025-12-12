@@ -222,6 +222,7 @@ export interface PokemonGameState {
   minimapSrc?: string;
   minimapVisible: boolean;
   debugMode?: boolean;
+  animateActions?: number; // Timestamp when action_execute received (triggers button animation)
   llmMetrics?: {
     p50LatencySec?: number;
     p95LatencySec?: number;

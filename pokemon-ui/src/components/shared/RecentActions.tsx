@@ -1,16 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { LogEntry } from "../../types/gameTypes";
 import "./RecentActions.css";
 
 interface RecentActionsProps {
   logs: LogEntry[];
   totalActions: number;
+  animateTrigger?: number; // Timestamp when to trigger button animations
 }
 
 const MAX_VISIBLE_KEYS = 5;
 const SCROLL_INTERVAL_MS = 500; // Match the flash animation delay
 
-export function RecentActions({ logs, totalActions }: RecentActionsProps) {
+export function RecentActions({ logs, totalActions, animateTrigger }: RecentActionsProps) {
+  // Track when to animate - only animate when animateTrigger changes
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const lastTriggerRef = useRef<number | undefined>(undefined);
+  
+  // Only trigger animation when animateTrigger changes (not on data arrival)
+  useEffect(() => {
+    if (animateTrigger && animateTrigger !== lastTriggerRef.current) {
+      lastTriggerRef.current = animateTrigger;
+      setShouldAnimate(true);
+      
+      // Reset animation flag after animation completes (about 3s for all buttons)
+      const timer = setTimeout(() => setShouldAnimate(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [animateTrigger]);
+  
   const actionEntries = logs.filter((log) => log.is_action).slice(0, 3);
 
   // We want the last 3 entries, but displayed chronological: oldest at left, newest at right
@@ -160,8 +177,8 @@ export function RecentActions({ logs, totalActions }: RecentActionsProps) {
                   {visibleKeys.map((k: string, idx: number) => (
                     <div 
                       key={`${scrollOffset}-${idx}`} 
-                      className={`recent-actions__square ${isLatest ? 'flash' : ''}`}
-                      style={isLatest ? { animationDelay: `${idx * 0.5}s` } : undefined}
+                      className={`recent-actions__square ${shouldAnimate && isLatest ? 'flash' : ''}`}
+                      style={shouldAnimate && isLatest ? { animationDelay: `${idx * 0.5}s` } : undefined}
                     >
                       {k}
                     </div>
