@@ -1360,19 +1360,20 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 progress = name_planner.get_progress_string()
                 
                 if next_step:
+                    # Calculate target position for context (1-indexed for display)
+                    target_row = next_step['to_pos'][0] + 1
+                    target_col = next_step['to_pos'][1] + 1
                     name_entry_context = (
-                        f"🎮 NAME ENTRY - PLAYER NAME: '{target_name}'\n"
+                        f"🎮 NAME ENTRY - TYPING '{target_name}'\n"
                         f"══════════════════════════════════════\n"
-                        f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
                         f"📝 PROGRESS: {progress}\n"
                         f"\n"
-                        f"🎯 NEXT: Type '{next_step['char']}'\n"
-                        f"   ▶️ USE THIS ACTION: {next_step['path']}\n"
+                        f"🎯 NEXT CHARACTER: '{next_step['char']}'\n"
+                        f"   ▶️ EXACT ACTION TO USE: {next_step['path']}\n"
                         f"\n"
-                        f"⚠️ Just copy the action above exactly!\n"
+                        f"⚠️ COPY THE ACTION ABOVE EXACTLY - DO NOT CALCULATE YOUR OWN PATH!\n"
                         f"\n"
-                        f"⌨️ KEYBOARD: Row1=ABCDEFGHI | Row2=JKLMNOPQR | Row3=STUVWXYZ\n"
-                        f"🕹️ After typing all letters, press START to confirm\n"
+                        f"📍 Current cursor on '{selected_char}' | Target '{next_step['char']}' is at Row{target_row},Col{target_col}\n"
                     )
                 else:
                     name_entry_context = (
@@ -1573,9 +1574,19 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         log_id_counter = state.get("log_id_counter", 0) + 1
         state["log_id_counter"] = log_id_counter
 
-        # Broadcast "ANALYZING..." status before starting vision+LLM processing
+        # Broadcast "ANALYZING..." status AND screenshot before starting vision+LLM processing
+        # This allows the UI to show the new screenshot with CRT animation during the vision phase
         state["processingStatus"] = "ANALYZING VISION..."
-        await broadcast_func({"processingStatus": "ANALYZING VISION..."})
+        await broadcast_func({
+            "processingStatus": "ANALYZING VISION...",
+            "vision_log": {
+                "id": log_id_counter,
+                "text": "Analyzing screenshot...",
+                "is_vision": True,
+                "timestamp": int(time.time() * 1000),
+                "screenshot_base64": b64_ss  # Send screenshot immediately so CRT animation plays now
+            }
+        })
 
         # LOG ALL KEY STATE FIELDS BEING SENT TO LLM (for debugging)
         key_fields = [
@@ -1829,10 +1840,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                     for _ in range(a_presses):
                         name_planner.advance()
                 
-                # Wait 4s AFTER sending action to let screen fully render before next screenshot
+                # Wait 6s AFTER sending action to let screen fully render before next screenshot
                 # This prevents cut-off/partial screenshots and ensures dialog text is captured
-                time.sleep(4)
-                log.info("Post-action delay complete, ready for next cycle screenshot.")
+                time.sleep(6)
+                log.info("Post-action delay complete (6s), ready for next cycle screenshot.")
                 
                 # Track for failure replay
                 last_action = action_to_send

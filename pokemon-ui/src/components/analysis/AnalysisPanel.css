@@ -72,6 +72,25 @@
   /* Flex fill remaining space */
 }
 
+/* Active state when LLM is thinking */
+.analysis-panel__llm-analysis-wrapper--active {
+  border-color: var(--accent-primary-bright);
+}
+
+.analysis-panel__llm-analysis-wrapper--active .analysis-panel__section-label {
+  color: var(--accent-primary-bright);
+}
+
+/* Content wrapper for fade effect */
+.analysis-panel__content-wrapper {
+  width: 100%;
+}
+
+/* Faded state when waiting for new analysis */
+.analysis-panel__content-wrapper--faded {
+  opacity: 0.4;
+}
+
 /* Inner scroll area for LLM analysis */
 .analysis-panel__llm-analysis-scroll {
   flex: 1;
@@ -336,7 +355,6 @@
   padding-top: var(--space-md); /* Space for title */
   /* Ensure height matches screenshot mostly */
   /* We allow it to expand but the content inside controls layout */
-  transition: border-color 0.3s ease;
 }
 
 /* Active state when vision is being analyzed */

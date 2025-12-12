@@ -166,7 +166,28 @@ export function AnalysisPanel({
     scrollToBottom();
   }, [latestEntry, scrollToBottom]);
 
-  // Note: Thinking animation moved to OBS widget (obs-widgets/status_widget.html)
+  // Determine which section should be active - MUTUALLY EXCLUSIVE
+  // Priority: Actions (animating) > Vision (analyzing) > LLM (thinking) > None
+  const isVisionActive = processingStatus?.toUpperCase().includes('VISION') ?? false;
+  const isLlmActive = processingStatus?.toUpperCase().includes('THINKING') ?? false;
+  
+  // Track action animation state locally for immediate response
+  const [isActionActive, setIsActionActive] = useState(false);
+  const lastAnimateTrigger = useRef<number | undefined>(undefined);
+  
+  useEffect(() => {
+    if (animateActions && animateActions !== lastAnimateTrigger.current) {
+      lastAnimateTrigger.current = animateActions;
+      setIsActionActive(true);
+      
+      // Action animation lasts about 3 seconds
+      const timer = setTimeout(() => setIsActionActive(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [animateActions]);
+  
+  // Only one section can be active at a time
+  const activeSection = isActionActive ? 'actions' : isVisionActive ? 'vision' : isLlmActive ? 'llm' : 'none';
 
   return (
     <div className="analysis-panel-container">
@@ -178,14 +199,16 @@ export function AnalysisPanel({
       <div className="analysis-panel">
         
         {/* 1. History / LLM Analysis Section (Flex Grow) */}
-        <div className="analysis-panel__llm-analysis-wrapper">
+        <div className={`analysis-panel__llm-analysis-wrapper ${activeSection === 'llm' ? 'analysis-panel__llm-analysis-wrapper--active' : ''}`}>
           <span className="analysis-panel__section-label">LLM ANALYSIS</span>
           
-          <div className="analysis-panel__llm-analysis-scroll" ref={scrollRef}>
+        <div className="analysis-panel__llm-analysis-scroll" ref={scrollRef}>
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
+                <div className={`analysis-panel__content-wrapper ${activeSection !== 'llm' && activeSection !== 'none' ? 'analysis-panel__content-wrapper--faded' : ''}`}>
+                  <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
+                </div>
               ) : (
                 /* No analysis yet - show centered processing status or waiting text */
                 <div className="analysis-panel__empty-centered">
@@ -212,7 +235,13 @@ export function AnalysisPanel({
         </div>
 
         {/* 2. Recent Actions Section (Inserted here) */}
-        <RecentActions logs={logs} totalActions={totalActions} animateTrigger={animateActions} />
+        <RecentActions 
+          logs={logs} 
+          totalActions={totalActions} 
+          animateTrigger={animateActions} 
+          isWaitingForAction={activeSection === 'none'}
+          isActive={activeSection === 'actions'}
+        />
 
         {/* 3. Latest Memory Section (Above Vision) */}
         <div className="analysis-panel__memory-section">
@@ -242,7 +271,7 @@ export function AnalysisPanel({
             </div>
 
             {/* Column 2: Content with Sheared Title */}
-            <div className={`analysis-panel__vision-col-content ${processingStatus?.includes('VISION') ? 'analyzing' : ''}`}>
+            <div className={`analysis-panel__vision-col-content ${activeSection === 'vision' ? 'analyzing' : ''}`}>
               <div className="analysis-panel__vision-title-internal">
                 VISION ANALYSIS
               </div>

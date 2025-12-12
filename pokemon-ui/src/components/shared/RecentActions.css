@@ -10,6 +10,16 @@
   border: 1px dotted var(--border-subtle);
 }
 
+/* Active state - when action is being executed */
+.recent-actions--active {
+  border-color: var(--accent-primary-bright);
+}
+
+.recent-actions--active .recent-actions__label,
+.recent-actions--active .recent-actions__label-right {
+  color: var(--accent-primary-bright);
+}
+
 .recent-actions__label {
   display: block;
   font-family: var(--font-mono);
@@ -48,7 +58,7 @@
 
 .recent-actions__list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 2fr; /* 33% / 66% - 2 column layout */
   gap: var(--space-md);
   width: 100%;
   padding-bottom: var(--space-sm);
@@ -68,9 +78,45 @@
   border-right: 1px solid rgba(208, 202, 200, 0.5);
 }
 
-/* Remove border from last item in each row */
-.recent-actions__item:nth-child(3n) {
+/* Previous column styling */
+.recent-actions__item--previous {
+  opacity: 0.7;
+}
+
+/* Current column styling - more prominent */
+.recent-actions__item--current {
   border-right: none;
+}
+
+/* Remove border from last item (current column) */
+.recent-actions__item:last-child {
+  border-right: none;
+}
+
+/* Empty item styling */
+.recent-actions__item--empty {
+  opacity: 0.4;
+}
+
+/* Waiting state - centered text with animated dots */
+.recent-actions__item--waiting {
+  justify-content: center;
+  padding: var(--space-sm) var(--space-md);
+  border-right: none;
+}
+
+.recent-actions__waiting-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.animated-dots {
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
 }
 
 .recent-actions__number {
@@ -142,3 +188,4 @@
   box-shadow: none;
   opacity: 0.6;
 }
+
