@@ -137,6 +137,20 @@ class ComfyUITTSService:
         if cleaned > 0:
             log.info(f"♻️ Cleaned up {cleaned} stale audio files from {self.output_dir}")
     
+    def clear_queue(self) -> int:
+        """
+        Clear all pending TTS requests from the queue.
+        Useful on startup to clear orphaned requests from previous sessions.
+        Returns the number of cleared items.
+        """
+        count = len(self._queue)
+        self._queue.clear()
+        self._processing = False
+        self._cancelled = False
+        if count > 0:
+            log.info(f"🧹 Cleared {count} orphaned TTS requests from queue")
+        return count
+    
     def _cleanup_audio_file(self, audio_path: str) -> None:
         """
         Remove an audio file after playback.
