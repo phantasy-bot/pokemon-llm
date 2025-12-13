@@ -120,8 +120,8 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
           style={{ 
             display: 'inline-block', 
             position: 'relative',
-            padding: '8px 7px 8px 9px', /* Shift right 1px */
-            background: '#1a1a1a', 
+            padding: '8px 7px 8px 9px',
+            background: '#000', /* Revert to plain black as requested */
             boxShadow: '8px 8px 0 rgba(0,0,0,0.2)',
             textDecoration: 'none'
           }}
@@ -147,7 +147,7 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
            <div className="badge" style={{ 
              position: 'absolute', 
              top: '2px', 
-             right: '4px', 
+             right: '3px', /* Shifted 1px right (was 4px) */
              zIndex: 30,
              fontSize: '9px',
              fontWeight: 'bold',
