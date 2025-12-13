@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { FolderContainer } from './FolderContainer'
 import { Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { PixelHome, PixelGamepad } from './icons/PixelIcons'
+import { PixelHome2, PixelHeart } from './icons/PixelIcons'
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: <PixelHome size={18} /> },
-  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelGamepad size={18} /> }, 
+  { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelHeart size={18} /> }, 
 ]
 
 // No changes needed, existing code is consistent.

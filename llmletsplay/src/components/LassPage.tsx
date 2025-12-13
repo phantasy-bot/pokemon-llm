@@ -8,23 +8,25 @@ import { Prompts } from './sections/Prompts'
 import { Persona } from './sections/Persona'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { 
-  PixelHome, 
-  PixelSmile, 
+  PixelHome2, 
+  PixelHeart, 
   PixelInfo, 
   PixelChip, 
-  PixelSitemap, 
-  PixelGamepad, 
-  PixelTerminal 
+  PixelHierarchy, 
+  PixelLoadingCircle, 
+  PixelTerminal,
+  PixelTV
 } from './icons/PixelIcons'
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: <PixelHome size={18} /> },
-  { id: 'lass', label: 'Lass', icon: <PixelSmile size={18} /> },
-  { id: 'about', label: 'About', icon: <PixelInfo size={18} /> },
-  { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} /> },
-  { id: 'memory', label: 'Memory Map', icon: <PixelSitemap size={18} /> },
-  { id: 'stream', label: 'Stream Cycle', icon: <PixelGamepad size={18} /> },
-  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} /> },
+  { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
+  { id: 'lass', label: 'Lass', icon: <PixelHeart size={18} /> },
+  { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
+  { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
+  { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
+  { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
+  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
+  { id: 'livestream', label: 'Livestream', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
 const sectionTitles: Record<string, string> = {

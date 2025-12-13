@@ -147,6 +147,12 @@ body {
   justify-content: center;
 }
 
+/* Sub-item nav items (indented under parent) */
+.nav-item--sub {
+  padding-left: 32px;
+  font-size: 14px;
+}
+
 /* SIDEBAR FOOTER with social links */
 .sidebar-footer {
   padding: var(--space-md);
@@ -202,15 +208,14 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: var(--bg-hover);
+  background: transparent;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .social-link:hover {
-  background: var(--accent-primary);
-  color: white;
+  color: var(--accent-primary);
 }
 
 .social-link svg {
@@ -709,7 +714,7 @@ li::marker {
 }
 
 /* ============================================
-   CRT STATIC EFFECT (Ported from VisionScreenshot.css)
+   CRT STATIC EFFECT (Optimized for memory)
    ============================================ */
 
 @keyframes static-fade-in {
@@ -722,32 +727,17 @@ li::marker {
   to { opacity: 0; }
 }
 
+/* Simplified keyframes for better performance */
 @keyframes static-scroll {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(-5%, -5%); }
-  20% { transform: translate(-10%, 5%); }
-  30% { transform: translate(5%, -10%); }
-  40% { transform: translate(-5%, 15%); }
-  50% { transform: translate(-10%, 5%); }
-  60% { transform: translate(15%, 0); }
-  70% { transform: translate(0, 10%); }
-  80% { transform: translate(-15%, 0); }
-  90% { transform: translate(10%, 5%); }
-  100% { transform: translate(5%, 0); }
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-5%, 5%); }
+  50% { transform: translate(5%, -5%); }
+  75% { transform: translate(-5%, -5%); }
 }
 
 @keyframes static-flicker {
-  0% { opacity: 0.5; }
-  10% { opacity: 0.7; }
-  20% { opacity: 0.4; }
-  30% { opacity: 0.8; }
-  40% { opacity: 0.5; }
-  50% { opacity: 0.6; }
-  60% { opacity: 0.4; }
-  70% { opacity: 0.7; }
-  80% { opacity: 0.5; }
-  90% { opacity: 0.8; }
-  100% { opacity: 0.6; }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.7; }
 }
 
 .crt-static-overlay {
@@ -756,12 +746,23 @@ li::marker {
   left: -50%;
   right: -50%;
   bottom: -50%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  /* Use a simpler noise pattern */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
   mix-blend-mode: overlay;
   opacity: 0.7;
-  animation: static-scroll 0.12s steps(8) infinite, static-flicker 0.2s linear infinite;
+  /* Animation paused by default - only runs when container has .crt-active class */
+  animation: static-scroll 0.2s steps(4) infinite, static-flicker 0.3s linear infinite;
+  animation-play-state: paused;
+  will-change: transform, opacity;
   pointer-events: none;
+  content-visibility: auto;
+}
+
+/* Active state for when CRT effect should animate */
+.crt-container:hover .crt-static-overlay,
+.crt-active .crt-static-overlay {
+  animation-play-state: running;
 }
 
 .crt-container {
@@ -786,3 +787,4 @@ li::marker {
   pointer-events: none;
   z-index: 20;
 }
+

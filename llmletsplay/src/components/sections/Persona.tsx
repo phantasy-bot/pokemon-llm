@@ -1,6 +1,20 @@
 
-import { PixelBrain, PixelEye, PixelSpeaker } from '../icons/PixelIcons'
+import { PixelBrain, PixelEye, PixelSpeaker, PixelGenderFemale } from '../icons/PixelIcons'
 
+// Kanto badge data for display
+const KANTO_BADGES = [
+  { id: 1, name: 'Boulder', leader: 'Brock' },
+  { id: 2, name: 'Cascade', leader: 'Misty' },
+  { id: 3, name: 'Thunder', leader: 'Lt. Surge' },
+  { id: 4, name: 'Rainbow', leader: 'Erika' },
+  { id: 5, name: 'Soul', leader: 'Koga' },
+  { id: 6, name: 'Marsh', leader: 'Sabrina' },
+  { id: 7, name: 'Volcano', leader: 'Blaine' },
+  { id: 8, name: 'Earth', leader: 'Giovanni' },
+]
+
+// Currently earned badges (empty for now - Lass hasn't earned any yet)
+const earnedBadges: number[] = []
 
 
 export function Persona() {
@@ -37,6 +51,12 @@ export function Persona() {
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NAME</div>
              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS</div>
              
+             <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>GENDER</div>
+             <div style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+               FEMALE
+               <PixelGenderFemale size={16} color="var(--accent-primary)" />
+             </div>
+             
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>GOAL</div>
              <div style={{ fontSize: '16px' }}>POKEMON MASTER</div>
              
@@ -69,22 +89,37 @@ export function Persona() {
               KANTO BADGES
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-               {/* 8 Empty Slots */}
-               {[1,2,3,4,5,6,7,8].map(i => (
-                 <div 
-                   key={i} 
-                   style={{ 
-                     width: '40px', 
-                     height: '40px', 
-                     borderRadius: '50%',
-                     border: '2px dashed rgba(0,0,0,0.1)',
-                     backgroundColor: 'rgba(0,0,0,0.03)',
-                     display: 'flex',
-                     alignItems: 'center',
-                     justifyContent: 'center'
-                   }} 
-                 />
-               ))}
+               {/* 8 Kanto Badges with images */}
+               {KANTO_BADGES.map(badge => {
+                 const isEarned = earnedBadges.includes(badge.id)
+                 return (
+                   <div 
+                     key={badge.id}
+                     title={`${badge.name} Badge - ${badge.leader}`}
+                     style={{ 
+                       width: '40px', 
+                       height: '40px', 
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       position: 'relative'
+                     }} 
+                   >
+                     <img 
+                       src={`/badges/${badge.id}.png`}
+                       alt={`${badge.name} Badge`}
+                       style={{
+                         width: '100%',
+                         height: '100%',
+                         objectFit: 'contain',
+                         imageRendering: 'pixelated',
+                         filter: isEarned ? 'none' : 'grayscale(100%) opacity(0.4)',
+                         transition: 'filter 0.3s ease'
+                       }}
+                     />
+                   </div>
+                 )
+               })}
             </div>
           </div>
         </div>
@@ -108,7 +143,7 @@ export function Persona() {
               <div style={{ color: 'var(--text-primary)' }}><PixelBrain size={40} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>AGENT BRAIN</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px' }}>GLM4.6</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>GLM4.6</div>
               </div>
             </div>
 
@@ -123,7 +158,7 @@ export function Persona() {
               <div style={{ color: 'var(--text-primary)' }}><PixelEye size={40} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VISION MODEL</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px' }}>GLM4.6V</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>GLM4.6V</div>
               </div>
             </div>
 
@@ -136,7 +171,7 @@ export function Persona() {
               <div style={{ color: 'var(--text-primary)' }}><PixelSpeaker size={40} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VOICE SYNTHESIS</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px' }}>CHATTERBOX</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>CHATTERBOX</div>
               </div>
             </div>
 
