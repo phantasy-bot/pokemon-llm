@@ -1,3 +1,5 @@
+import { PixelLightning, PixelHeart, PixelSettings, PixelStar, PixelEye, PixelTarget } from '../icons/PixelIcons'
+
 export function About() {
   return (
     <div className="section">
@@ -10,7 +12,8 @@ export function About() {
           </p>
           
           <div className="info-card">
-            <div className="info-card-header">
+            <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PixelLightning size={20} color="var(--accent-primary)" />
               <span className="badge">LIVE</span>
               <h4>The Harness</h4>
             </div>
@@ -28,18 +31,22 @@ export function About() {
         />
       </div>
 
-      <h3 className="section-title">How It Works</h3>
+      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <PixelSettings size={20} color="var(--accent-primary)" />
+        How It Works
+      </h3>
       
       <ol>
-        <li><span className="highlight">Screenshot</span> — Capture the current game frame</li>
-        <li><span className="highlight">Vision Analysis</span> — AI describes what it sees</li>
-        <li><span className="highlight">LLM Decision</span> — Model analyzes state and chooses action</li>
-        <li><span className="highlight">Button Press</span> — Send input to emulator</li>
-        <li><span className="highlight">Repeat</span> — Every 25-75 seconds</li>
+        <li><PixelEye size={14} style={{ marginRight: '6px' }} /><span className="highlight">Screenshot</span> — Capture the current game frame</li>
+        <li><PixelEye size={14} style={{ marginRight: '6px' }} /><span className="highlight">Vision Analysis</span> — AI describes what it sees</li>
+        <li><PixelStar size={14} style={{ marginRight: '6px' }} /><span className="highlight">LLM Decision</span> — Model analyzes state and chooses action</li>
+        <li><PixelTarget size={14} style={{ marginRight: '6px' }} /><span className="highlight">Button Press</span> — Send input to emulator</li>
+        <li><PixelLightning size={14} style={{ marginRight: '6px' }} /><span className="highlight">Repeat</span> — Every 25-75 seconds</li>
       </ol>
 
       <div className="info-card">
-        <div className="info-card-header">
+        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <PixelHeart size={20} color="var(--accent-primary)" />
           <h4>Meet Lass</h4>
         </div>
         <p>
@@ -49,7 +56,10 @@ export function About() {
         </p>
       </div>
 
-      <h3 className="section-title">Key Features</h3>
+      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <PixelStar size={20} color="var(--accent-primary)" />
+        Key Features
+      </h3>
       
       <table>
         <thead>
