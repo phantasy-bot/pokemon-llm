@@ -7,15 +7,24 @@ import { StreamCycle } from './sections/StreamCycle'
 import { Prompts } from './sections/Prompts'
 import { Persona } from './sections/Persona'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { 
+  PixelHome, 
+  PixelPerson, 
+  PixelInfo, 
+  PixelChip, 
+  PixelSitemap, 
+  PixelGamepad, 
+  PixelTerminal 
+} from './icons/PixelIcons'
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'persona', label: 'Persona', icon: '👤' },
-  { id: 'about', label: 'About', icon: '' },
-  { id: 'architecture', label: 'Architecture', icon: '' },
-  { id: 'memory', label: 'Memory Map', icon: '' },
-  { id: 'stream', label: 'Stream Cycle', icon: '' },
-  { id: 'prompts', label: 'LLM Prompts', icon: '' },
+  { id: 'home', label: 'Home', icon: <PixelHome size={18} /> },
+  { id: 'persona', label: 'Persona', icon: <PixelPerson size={18} /> },
+  { id: 'about', label: 'About', icon: <PixelInfo size={18} /> },
+  { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} /> },
+  { id: 'memory', label: 'Memory Map', icon: <PixelSitemap size={18} /> },
+  { id: 'stream', label: 'Stream Cycle', icon: <PixelGamepad size={18} /> },
+  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} /> },
 ]
 
 const sectionTitles: Record<string, string> = {

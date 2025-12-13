@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { FolderContainer } from './FolderContainer'
 import { Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { PixelHome, PixelGamepad } from './icons/PixelIcons'
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'lass', label: 'Lass Plays Pokemon', icon: '🎮' }, 
+  { id: 'home', label: 'Home', icon: <PixelHome size={18} /> },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelGamepad size={18} /> }, 
 ]
 
 export function LandingPage() {
