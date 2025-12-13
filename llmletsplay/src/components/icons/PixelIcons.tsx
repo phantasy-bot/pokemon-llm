@@ -124,8 +124,29 @@ export const PixelSitemap = ({ size = 24, color = 'currentColor', style }: IconP
     </svg>
 )
 
+
+export const PixelSmile = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <rect x="6" y="6" width="2" height="2" fill={color}/>
+    <rect x="16" y="6" width="2" height="2" fill={color}/>
+    <rect x="4" y="14" width="2" height="2" fill={color}/>
+    <rect x="18" y="14" width="2" height="2" fill={color}/>
+    <rect x="6" y="16" width="12" height="2" fill={color}/>
+    <path d="M2 4H4V20H2V4ZM20 4H22V20H20V4ZM4 2H20V4H4V2ZM4 20H20V22H4V20Z" fill={color} fillRule="evenodd" opacity="0.5"/>
+  </svg>
+)
+
+export const PixelTV = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M2 6H22V18H2V6ZM8 20V22H16V20H8ZM12 2L14 4H10L12 2Z" fill={color} />
+    <rect x="4" y="8" width="16" height="8" fill={color} fillOpacity="0.2"/>
+    <rect x="16" y="10" width="2" height="4" fill={color}/>
+  </svg>
+)
+
 export const PixelTerminal = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
     <path d="M2 4H22V20H2V4ZM4 6V18H20V6H4ZM6 8V10H8V12H10V14H8V16H6V8ZM12 14H16V16H12V14Z" fill={color} />
   </svg>
 )
+

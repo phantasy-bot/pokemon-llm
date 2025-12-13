@@ -159,6 +159,39 @@ body {
   justify-content: center;
 }
 
+
+.sidebar-nav li button,
+.sidebar-nav li a {
+  display: flex;
+  align-items: center; /* Fix vertical alignment */
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  gap: 10px; /* Ensure space between icon and text */
+}
+
+/* Ensure SVG icons inside are centered */
+.sidebar-nav li button svg,
+.sidebar-nav li a svg {
+  display: block; /* Remove baseline vertical-align issues */
+  flex-shrink: 0;
+}
+
+.sidebar-nav li button:hover,
+.sidebar-nav li a:hover,
+.sidebar-nav li.active button,
+.sidebar-nav li.active a {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
 .social-link {
   display: flex;
   align-items: center;

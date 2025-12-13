@@ -6,29 +6,29 @@ import { Memory } from './sections/Memory'
 import { StreamCycle } from './sections/StreamCycle'
 import { Prompts } from './sections/Prompts'
 import { Persona } from './sections/Persona'
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { 
   PixelHome, 
-  PixelPerson, 
+  PixelSmile, 
   PixelInfo, 
   PixelChip, 
   PixelSitemap, 
-  PixelGamepad, 
+  PixelTV, 
   PixelTerminal 
 } from './icons/PixelIcons'
 
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome size={18} /> },
-  { id: 'persona', label: 'Persona', icon: <PixelPerson size={18} /> },
+  { id: 'lass', label: 'Lass', icon: <PixelSmile size={18} /> },
   { id: 'about', label: 'About', icon: <PixelInfo size={18} /> },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} /> },
   { id: 'memory', label: 'Memory Map', icon: <PixelSitemap size={18} /> },
-  { id: 'stream', label: 'Stream Cycle', icon: <PixelGamepad size={18} /> },
+  { id: 'stream', label: 'Stream Cycle', icon: <PixelTV size={18} /> },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} /> },
 ]
 
 const sectionTitles: Record<string, string> = {
-  persona: 'Lass Persona',
+  lass: 'Lass',
   about: 'About the Harness',
   architecture: 'System Architecture',
   memory: 'Memory Map',
@@ -41,12 +41,14 @@ export function LassLayout() {
   const location = useLocation()
   
   // Extract active section from URL path (e.g. /lass/about -> about)
-  const currentPath = location.pathname.split('/').pop() || 'persona'
-  const activeSection = navItems.find(item => item.id === currentPath)?.id || 'persona'
-  const currentTitle = sectionTitles[activeSection] || 'Persona'
+  // If /lass or /lass/, segment[2] is undefined -> default to 'lass'
+  const pathSegment = location.pathname.split('/')[2]
+  const activeSection = navItems.find(item => item.id === pathSegment)?.id || (location.pathname.endsWith('/lass') || location.pathname.endsWith('/lass/') ? 'lass' : '')
+  const currentTitle = sectionTitles[activeSection] || 'Lass'
 
   const handleNavigate = (id: string) => {
     if (id === 'home') navigate('/')
+    else if (id === 'lass') navigate('/lass')
     else navigate(`/lass/${id}`)
   }
 
@@ -60,8 +62,7 @@ export function LassLayout() {
       <main className="main-wrapper" style={{ padding: '24px', paddingLeft: '0', paddingBottom: '0' }}>
         <FolderContainer title={currentTitle}>
           <Routes>
-            <Route index element={<Navigate to="persona" replace />} />
-            <Route path="persona" element={<Persona />} />
+            <Route index element={<Persona />} />
             <Route path="about" element={<About />} />
             <Route path="architecture" element={<Architecture />} />
             <Route path="memory" element={<Memory />} />
