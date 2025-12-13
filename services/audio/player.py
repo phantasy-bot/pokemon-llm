@@ -58,24 +58,20 @@ class AudioPlayer:
             self._cancelled = False
             
             # Start audio playback as subprocess
-            # Capture stderr to debug "silent" failures
+            # Note: Don't capture stderr on Windows as it can block
             self._audio_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE
+                stderr=subprocess.DEVNULL,  # CRITICAL: Don't capture stderr - causes blocking
+                creationflags=subprocess.CREATE_NO_WINDOW if system == "Windows" else 0
             )
             
-            # Check for immediate failure (within 0.1s)
-            try:
-                # brief wait to see if it crashes
-                stdout, stderr = self._audio_process.communicate(timeout=0.1)
-                # If we get here, it finished (crashed?)
-                if self._audio_process.returncode != 0:
-                    log.error(f"Audio player failed (code {self._audio_process.returncode}): {stderr.decode() if stderr else 'No stderr'}")
-                    return False
-            except subprocess.TimeoutExpired:
-                # Process is still running, which is good
-                pass
+            # Brief check for immediate crash
+            import time as time_mod
+            time_mod.sleep(0.1)
+            if self._audio_process.poll() is not None:
+                log.error(f"Audio player crashed immediately (code {self._audio_process.returncode})")
+                return False
             
             log.info(f"🔊 Playing audio: {os.path.basename(audio_path)}")
             return True
