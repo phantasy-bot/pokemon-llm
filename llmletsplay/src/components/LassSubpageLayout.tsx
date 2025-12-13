@@ -22,7 +22,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
       {/* Left column - main content */}
       <div style={{
         flex: 1,
-        paddingRight: '240px' // Leave space for right column
+        paddingRight: '264px' // Leave space for right column (220px + 24px + 20px gap)
       }}>
         {children}
       </div>
@@ -37,7 +37,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '8px 0',
+        padding: '0 32px 16px 16px', // Right padding pushes content away from edge
         zIndex: 50
       }}>
         {/* Character image at top - fills width */}
