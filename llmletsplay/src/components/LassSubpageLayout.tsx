@@ -37,7 +37,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '0 32px 16px 16px', // Right padding pushes content away from edge
+        padding: '0 16px 16px 16px', // Reduced right padding to 16px as requested
         zIndex: 50
       }}>
         {/* Character image at top - fills width */}
