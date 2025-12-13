@@ -60,13 +60,33 @@ class LLMController:
         self.response_count = 0
         self.tokens_used_session = 0
         self._status_callback = None
+        self._vision_callback = None
 
     def set_status_callback(self, callback):
         self._status_callback = callback
 
+    def set_vision_callback(self, callback):
+        """Set callback to be called when vision analysis completes.
+        
+        Callback signature: (vision_text: str, screenshot_b64: str, new_status: str) -> None
+        The new_status is bundled with vision_log for atomic UI update.
+        """
+        self._vision_callback = callback
+
     def update_processing_status(self, status: str):
         if self._status_callback:
             self._status_callback(status)
+
+    def broadcast_vision_result(self, vision_text: str, screenshot_b64: str = None, new_status: str = ""):
+        """Broadcast vision analysis result immediately when available.
+        
+        Args:
+            vision_text: The vision analysis text
+            screenshot_b64: Base64 encoded screenshot
+            new_status: New processing status to bundle with the broadcast (e.g., 'THINKING...')
+        """
+        if self._vision_callback:
+            self._vision_callback(vision_text, screenshot_b64, new_status)
 
     async def call_with_timeout(self, state_data: dict, 
                               llm_timeout: float = 30.0, 
@@ -189,7 +209,17 @@ class LLMController:
         if summary_text:
              self.chat_history.append({"role": "system", "content": f"PREVIOUS SESSION SUMMARY:\n{summary_text}"})
         
-        return json.dumps({"summary": summary_text}) if summary_text else None
+        # Parse summary_text as JSON and return the dict directly
+        # so primaryGoal, secondaryGoal, etc. are accessible
+        if summary_text:
+            try:
+                parsed = json.loads(summary_text)
+                log.info(f"📋 Parsed summary JSON with keys: {list(parsed.keys())}")
+                return parsed
+            except json.JSONDecodeError as e:
+                log.error(f"Failed to parse summary JSON: {e}")
+                return {"summary": summary_text}  # Fallback
+        return None
 
     def stream_action(self, state_data: dict, timeout: float, benchmark: Any, cycle_metrics: dict):
         """
@@ -229,7 +259,6 @@ class LLMController:
                 
                 cycle_metrics["vision"] = duration_ms
                 log.info(f"⏱️ Vision Analysis: {duration_ms/1000:.2f}s")
-                self.update_processing_status("THINKING...")
                 
                 if processed_vision_result:
                      log.info(f"✅ Vision Analysis Completed: {len(processed_vision_result)} chars")
@@ -240,6 +269,12 @@ class LLMController:
                 vision_analysis_for_ui = processed_vision_result
                 payload["vision_analysis"] = vision_analysis
                 payload["visual_context"] = processed_vision_result
+                
+                # Broadcast vision result immediately (before LLM processing)
+                # Bundle processingStatus: "THINKING..." with vision_log for atomic UI update
+                # This ensures the screenshot is revealed exactly when vision completes
+                screenshot_b64 = state_data.get("screenshot_base64")
+                self.broadcast_vision_result(vision_analysis_for_ui, screenshot_b64, "THINKING...")
                 
                 # Dynamic prompt updates from vision result
                 try:

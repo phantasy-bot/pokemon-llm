@@ -291,7 +291,7 @@ class ZAIMCPClient:
         
         # Try to acquire lock with timeout to prevent deadlock
         log.info("🔒 Acquiring MCP lock...")
-        lock_acquired = self._mcp_lock.acquire(timeout=30.0)  # 30s timeout for lock
+        lock_acquired = self._mcp_lock.acquire(timeout=10.0)  # 10s timeout for lock (reduced from 30s)
         if not lock_acquired:
             log.error("❌ Failed to acquire MCP lock within 30s timeout - Breaking STALE LOCK and restarting MCP")
             # Force break lock logic
@@ -337,7 +337,7 @@ class ZAIMCPClient:
             
             # Track overall time to prevent infinite blocking
             overall_start = time_module.time()
-            max_overall_time = 55.0  # Max time before releasing lock (under 60s llmdriver timeout)
+            max_overall_time = 20.0  # Max time before releasing lock (reduced from 55s for faster cycles)
             
             # Track if we've tried Flash fallback
             tried_flash = False

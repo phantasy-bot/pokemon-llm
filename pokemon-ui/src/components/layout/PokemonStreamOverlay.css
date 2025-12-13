@@ -611,6 +611,7 @@
   padding-left: 14px; /* Increased padding-x again */
   padding-right: 14px;
   padding-top: 14px; /* Increased from 10px */
+  padding-bottom: 10px; /* Added bottom padding for expanded content */
 }
 
 /* Empty spacer at bottom of left column */

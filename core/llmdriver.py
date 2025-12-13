@@ -34,7 +34,7 @@ from scripts.benchmark import Benchmark
 from core.client_setup import DEFAULT_MODE, ONE_IMAGE_PER_PROMPT, REASONING_ENABLED, USES_DEFAULT_TEMPERATURE, REASONING_EFFORT, IMAGE_DETAIL, USES_MAX_COMPLETION_TOKENS, MAX_TOKENS, TEMPERATURE, MINIMAP_ENABLED, MINIMAP_2D, SYSTEM_PROMPT_UNSUPPORTED
 # from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client # Removed, handled by VisionManager
 from core.vision_manager import VisionManager
-from core.memory.manager import MemoryManager
+from core.memory.manager import MemoryManager, MapVisitTracker
 from core.battle_strategy import read_battle_state, choose_battle_action, get_battle_context
 from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from trackers.exploration_tracker import ExplorationTracker
@@ -303,6 +303,11 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         log.info(f"🗺️ Exploration tracker: Loaded existing data ({len(exploration_tracker.maps)} maps)")
     else:
         log.info("🗺️ Exploration tracker: Fresh start")
+    
+    # Initialize map visit tracker for loop detection
+    map_visit_tracker = MapVisitTracker()
+    last_map_name = None  # Track previous map for transition detection
+    log.info("🗺️ Map visit tracker initialized (loop detection enabled)")
 
     # Initialize screenshot history tracker for ui_diff_check (keeps N through N-4)
     screenshot_history = ScreenshotHistoryTracker(snapshot_dir="snapshots", max_history=5)
@@ -348,6 +353,28 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     }
     controller = LLMController(client, vision_manager, memory_manager, llm_config)
     controller.set_status_callback(status_callback)
+    
+    # Vision result callback - broadcasts vision analysis immediately when complete
+    # Bundles processingStatus with vision_log for atomic UI update
+    def vision_callback(vision_text: str, screenshot_b64: str = None, new_status: str = ""):
+        log.info(f"📸 Broadcasting vision result immediately ({len(vision_text)} chars)")
+        log_id = state.get("log_id_counter", 0)
+        vision_log = {
+            "id": log_id,
+            "text": vision_text,
+            "is_vision": True,
+            "timestamp": int(time.time() * 1000),
+            "screenshot_base64": screenshot_b64
+        }
+        # Bundle vision_log and processingStatus in ONE broadcast for atomic UI update
+        # This ensures the screenshot is revealed exactly when vision analysis completes
+        broadcast_payload = {"vision_log": vision_log}
+        if new_status:
+            state["processingStatus"] = new_status
+            broadcast_payload["processingStatus"] = new_status
+        asyncio.run_coroutine_threadsafe(broadcast_func(broadcast_payload), loop)
+    
+    controller.set_vision_callback(vision_callback)
     log.info("🤖 LLM Controller initialized")
 
     # Initialize Twitch chat service (optional - gracefully disabled if not configured)
@@ -1016,6 +1043,33 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 llm_input_state["coordinate_history"] = coord_context
                 log.info(f"📍 Coord context: {len(coord_tracker.history)} positions tracked")
         
+        # ═══════════════════════════════════════════════════════════════════════════
+        # MAP OSCILLATION DETECTION - Prevent bouncing between same maps
+        # ═══════════════════════════════════════════════════════════════════════════
+        current_map_name = current_mGBA_state.get('map_name', '')
+        if current_map_name and current_map_name != last_map_name:
+            # Map changed! Record the transition
+            entry_pos = current_mGBA_state.get('position')
+            map_visit_tracker.record_map_entry(
+                map_name=current_map_name,
+                cycle=cycle_count,
+                position=tuple(entry_pos) if entry_pos else None,
+                from_map=last_map_name,
+                action=last_action
+            )
+            last_map_name = current_map_name
+        
+        # Check for oscillation patterns
+        oscillation = map_visit_tracker.detect_oscillation()
+        if oscillation:
+            llm_input_state["map_loop_warning"] = oscillation["warning"]
+            log.warning(f"🔄 {oscillation['warning']}")
+        
+        # Add map visit frequency context
+        visit_frequency = map_visit_tracker.get_visit_frequency_context()
+        if visit_frequency:
+            llm_input_state["map_visit_frequency"] = visit_frequency
+        
         # Add pre-computed minimap analysis to reduce LLM hallucination
         if minimap_2d:
             # Pass world position for coordinate conversion
@@ -1528,6 +1582,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
                 # Note: We send the CLEAN screenshot to the LLM's vision input here as valid base64
                 # But the MCP tool will use 'screenshot_path' (ANALYSIS_IMAGE_PATH)
                 llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_ss}", "detail": IMAGE_DETAIL}}
+                # CRITICAL: Also set top-level screenshot_base64 for vision callback to use
+                # This ensures the UI gets the screenshot when vision analysis completes
+                llm_input_state["screenshot_base64"] = b64_ss
             else:
                 llm_input_state["screenshot"] = None
             
@@ -1550,6 +1607,9 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             
             # But for UI, we want clean.
             b64_ss = encode_image_base64(UI_IMAGE_PATH)
+            
+            # Store raw base64 for UI screenshot display (used by vision callback)
+            llm_input_state["screenshot_base64"] = b64_ss
 
             if b64_llm:
                 llm_input_state["screenshot"] = {"image_url": {"url": f"data:image/png;base64,{b64_llm}", "detail": IMAGE_DETAIL}}

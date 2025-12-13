@@ -3,12 +3,14 @@ import "./VisionScreenshot.css";
 
 interface VisionScreenshotProps {
   base64Data?: string; // New prop for strict sync
+  isAnalyzing?: boolean; // Keep CRT effect active while analyzing
   compact?: boolean;
   className?: string;
 }
 
 export function VisionScreenshot({
   base64Data,
+  isAnalyzing = false,
   compact = false,
   className = "",
 }: VisionScreenshotProps) {
@@ -19,60 +21,72 @@ export function VisionScreenshot({
   const [staticPhase, setStaticPhase] = useState<'in' | 'full' | 'out'>('full'); // For fade animation
   const imageRef = useRef<HTMLImageElement>(null);
   const prevBase64Ref = useRef<string | undefined>(undefined);
+  const prevAnalyzingRef = useRef<boolean>(false); // Track previous isAnalyzing state
 
-  // Load screenshot when component mounts or dependencies change
+  // Handle isAnalyzing state transitions
+  useEffect(() => {
+    const wasAnalyzing = prevAnalyzingRef.current;
+    prevAnalyzingRef.current = isAnalyzing;
+    
+    if (isAnalyzing && !wasAnalyzing) {
+      // Started analyzing - show CRT static
+      setShowStatic(true);
+      setStaticPhase('full');
+    } else if (!isAnalyzing && wasAnalyzing) {
+      // Finished analyzing - fade out CRT static and reveal screenshot
+      setStaticPhase('out');
+      const timer = setTimeout(() => {
+        setShowStatic(false);
+      }, 300); // Quick fade out
+      return () => clearTimeout(timer);
+    }
+  }, [isAnalyzing]);
+
+  // Load screenshot when component mounts or base64Data changes
   useEffect(() => {
     // STRICT SYNC: Only use the base64 data provided in the log.
     // Do NOT fetch /latest.png as it may be from the next cycle (ahead of analysis).
     if (base64Data) {
-      // Check if this is a NEW screenshot (different from previous)
-      const isNewScreenshot = prevBase64Ref.current && prevBase64Ref.current !== base64Data;
+      // Always update the screenshot source when we have data
+      setScreenshotSrc(`data:image/png;base64,${base64Data}`);
+      setError(null);
+      setIsLoading(false);
       
-      if (isNewScreenshot) {
-        // Show CRT static effect with fade in/out phases
-        // Phase 1: Fade in static (200ms)
+      // Track for comparison
+      const isNewScreenshot = prevBase64Ref.current && prevBase64Ref.current !== base64Data;
+      prevBase64Ref.current = base64Data;
+      
+      // If NOT analyzing and got new screenshot, do a quick CRT transition
+      if (isNewScreenshot && !isAnalyzing) {
         setShowStatic(true);
         setStaticPhase('in');
         
         const fadeInTimer = setTimeout(() => {
           setStaticPhase('full');
-        }, 200);
+        }, 150);
         
-        // Phase 2: Hold static, then fade out and reveal new image (600ms)
-        const revealTimer = setTimeout(() => {
+        const fadeOutTimer = setTimeout(() => {
           setStaticPhase('out');
-          setScreenshotSrc(`data:image/png;base64,${base64Data}`);
-        }, 600);
+        }, 400);
         
-        // Phase 3: Remove static overlay (200ms after fade out starts)
         const cleanupTimer = setTimeout(() => {
           setShowStatic(false);
-          setError(null);
-          setIsLoading(false);
-        }, 800);
+        }, 600);
         
-        prevBase64Ref.current = base64Data;
         return () => {
           clearTimeout(fadeInTimer);
-          clearTimeout(revealTimer);
+          clearTimeout(fadeOutTimer);
           clearTimeout(cleanupTimer);
         };
-      } else {
-        // First load or same image - no effect needed
-        setScreenshotSrc(`data:image/png;base64,${base64Data}`);
-        setError(null);
-        setIsLoading(false);
-        prevBase64Ref.current = base64Data;
       }
     } else {
-      // If no base64 data is present, we should NOT show an outdated or future image.
-      // Show empty state or keep previous if desired, but for now we set empty to indicate "No Vision Data"
-      console.warn("VisionScreenshot: No base64Data provided. Skipping render to prevent desync.");
-      setScreenshotSrc(""); // Clear the source to show placeholder/loading
-      setIsLoading(false); // Not loading, but no data
-      setError("No screenshot data available"); // Indicate the reason
+      // If no base64 data is present, show placeholder
+      console.warn("VisionScreenshot: No base64Data provided. Showing placeholder.");
+      setScreenshotSrc("");
+      setIsLoading(false);
+      setError("No screenshot data available");
     }
-  }, [base64Data]);
+  }, [base64Data, isAnalyzing]);
 
   // NOTE: Screenshot now uses the timestamp from vision analysis
   // This ensures the displayed screenshot matches when the vision was analyzed
