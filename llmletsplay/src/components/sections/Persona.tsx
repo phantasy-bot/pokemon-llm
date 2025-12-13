@@ -1,6 +1,4 @@
 
-import React from 'react'
-
 export function Persona() {
   return (
     <div className="section clearfix">

@@ -4,7 +4,9 @@ import { About } from './sections/About'
 import { Architecture } from './sections/Architecture'
 import { Memory } from './sections/Memory'
 import { StreamCycle } from './sections/StreamCycle'
+import { Prompts } from './sections/Prompts'
 import { Persona } from './sections/Persona'
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 
 const navItems = [
   { id: 'home', label: 'Home', icon: '🏠' },

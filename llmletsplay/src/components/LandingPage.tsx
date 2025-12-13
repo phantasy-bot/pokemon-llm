@@ -1,3 +1,8 @@
+import { useState } from 'react'
+import { FolderContainer } from './FolderContainer'
+import { Link, useNavigate } from 'react-router-dom'
+import { Sidebar } from './Sidebar'
+
 const navItems = [
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'lass', label: 'Lass Plays Pokemon', icon: '🎮' }, 

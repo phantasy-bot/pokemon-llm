@@ -377,6 +377,24 @@ interface PokemonStreamOverlayProps {
   onTtsCommentaryComplete?: () => void;
 }
 
+import "../vision/VisionScreenshot.css"; // Import CRT styles
+
+// Sponsors Configuration
+const sponsors = [
+  { 
+    image: '/sponsors/mystery-gift.png', 
+    link: 'https://mysterygift.fun', 
+    alt: 'Mystery Gift',
+    text: 'mysterygift.fun'
+  },
+  { 
+    image: '/sponsors/phantasy.png', 
+    link: 'https://phantasy.bot', 
+    alt: 'Phantasy Bot',
+    text: 'phantasy.bot'
+  }
+];
+
 export function PokemonStreamOverlay({
   gameState,
   wsConnected,
@@ -388,6 +406,22 @@ export function PokemonStreamOverlay({
 }: PokemonStreamOverlayProps) {
   // Walking animation state
   const [walkingFrame, setWalkingFrame] = useState<1 | 2>(1);
+
+  // Sponsor Rotation State
+  const [sponsorIndex, setSponsorIndex] = useState(0);
+  const [isSponsorSwitching, setIsSponsorSwitching] = useState(false);
+
+  // Sponsor Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsSponsorSwitching(true);
+      setTimeout(() => {
+        setSponsorIndex((prev) => (prev + 1) % sponsors.length);
+        setTimeout(() => setIsSponsorSwitching(false), 200);
+      }, 200);
+    }, 45000); // 45 seconds to match main site
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -657,13 +691,24 @@ export function PokemonStreamOverlay({
 
             {/* Sponsor Section - Bottom Right */}
             <div className="folder-sponsor">
-              <img 
-                src="/sponsors/mystery-gift.png" 
-                alt="Mystery Gift Sponsor" 
-                className="folder-sponsor__image"
-              />
-              <a href="https://mysterygift.fun" target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
-                mysterygift.fun
+              <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                <img 
+                  src={sponsors[sponsorIndex].image} 
+                  alt={sponsors[sponsorIndex].alt} 
+                  className="folder-sponsor__image"
+                  style={{ width: '100%', height: '100%' }}
+                />
+                
+                {/* CRT Static Overlay */}
+                {isSponsorSwitching && (
+                   <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 60, borderRadius: '4px', overflow: 'hidden' }}>
+                     <div className="vision-screenshot__static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.6 }} />
+                   </div>
+                )}
+              </div>
+              
+              <a href={sponsors[sponsorIndex].link} target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
+                {sponsors[sponsorIndex].text}
               </a>
             </div>
           </div>
