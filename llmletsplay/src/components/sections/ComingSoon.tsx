@@ -2,20 +2,40 @@ import { LassSubpageLayout } from '../LassSubpageLayout'
 
 export function ComingSoon({ title }: { title: string }) {
   return (
-    <LassSubpageLayout characterImage="/lass/lass-coming-soon.png">
+    <LassSubpageLayout hideCharacter={true}>
       <div className="section" style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
-        minHeight: '50vh',
+        minHeight: '60vh',
         gap: '24px',
-        position: 'relative',
-        paddingTop: '40px'
+        position: 'static', 
+        paddingTop: '60px'
       }}>
+        {/* Character Image - Fixed to bottom center, aligned with title */}
+        <img 
+          src="/lass/lass-coming-soon.png" 
+          alt="Coming Soon" 
+          style={{
+            position: 'fixed',
+            bottom: '-20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            height: '80vh',
+            maxHeight: '700px', 
+            width: 'auto',
+            objectFit: 'contain',
+            imageRendering: 'pixelated',
+            zIndex: 5,
+            pointerEvents: 'none'
+          }}
+        />
+
         {/* Speech Bubble */}
         <div style={{
           position: 'relative',
+          zIndex: 10,
           padding: '24px 48px',
           background: 'var(--cream)',
           border: '2px solid var(--accent-primary)',
