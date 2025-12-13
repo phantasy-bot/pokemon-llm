@@ -26,3 +26,5 @@ web_ui/*.png
 
 
 tts_output/*.flac
+output_audio/
+
