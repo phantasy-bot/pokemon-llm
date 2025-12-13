@@ -330,7 +330,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # Uses run_coroutine_threadsafe because LLMController.stream_action runs in ThreadPoolExecutor
     def status_callback(status: str):
         state["processingStatus"] = status
-        asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
+        # Guard against "Event loop is closed" during shutdown
+        if loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
+            except RuntimeError:
+                pass  # Loop closed during call - ignore
     
     set_status_callback(status_callback)
     log.info("📢 Processing status callback initialized (thread-safe)")
@@ -373,7 +378,12 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         if new_status:
             state["processingStatus"] = new_status
             broadcast_payload["processingStatus"] = new_status
-        asyncio.run_coroutine_threadsafe(broadcast_func(broadcast_payload), loop)
+        # Guard against "Event loop is closed" during shutdown
+        if loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(broadcast_func(broadcast_payload), loop)
+            except RuntimeError:
+                pass  # Loop closed during call - ignore
     
     controller.set_vision_callback(vision_callback)
     log.info("🤖 LLM Controller initialized")
