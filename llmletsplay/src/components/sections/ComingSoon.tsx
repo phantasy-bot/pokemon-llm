@@ -22,46 +22,46 @@ export function ComingSoon({ title }: { title: string }) {
               {title} documentation is being prepared
             </p>
             
-            {/* Desktop Tail (Right-Down) */}
+            {/* Desktop Tail (Right-Down) - Triangular pointing Right */}
             <svg 
               className="coming-soon-tail-desktop"
               viewBox="0 0 50 35"
             >
-              <path 
-                d="M 5 0 Q 10 15, 25 25 Q 40 35, 50 35 Q 35 30, 30 20 Q 25 10, 15 0 Z"
+              <polygon 
+                points="0,0 50,0 48,33"
                 fill="var(--cream)"
                 stroke="var(--accent-primary)"
                 strokeWidth="2"
               />
-              <rect x="3" y="-2" width="15" height="6" fill="var(--cream)" />
+              <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
             </svg>
 
-            {/* Tablet Tail (Left-Pointing) - reused path but scaled in CSS */}
+            {/* Tablet Tail (Left-Pointing) - Triangular pointing Left */}
             <svg 
               className="coming-soon-tail-tablet"
               viewBox="0 0 50 35"
             >
-              <path 
-                d="M 5 0 Q 10 15, 25 25 Q 40 35, 50 35 Q 35 30, 30 20 Q 25 10, 15 0 Z"
+              <polygon 
+                points="0,0 50,0 2,33"
                 fill="var(--cream)"
                 stroke="var(--accent-primary)"
                 strokeWidth="2"
               />
-              <rect x="3" y="-2" width="15" height="6" fill="var(--cream)" />
+              <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
             </svg>
 
-            {/* Mobile Tail (Centered) - Symmetric beak */}
+            {/* Mobile Tail (Centered) - Triangular */}
             <svg 
               className="coming-soon-tail-mobile"
               viewBox="0 0 40 30"
             >
-              <path 
-                d="M 0 0 Q 10 10, 20 30 Q 30 10, 40 0 Z"
+              <polygon 
+                points="0,0 40,0 20,28"
                 fill="var(--cream)"
                 stroke="var(--accent-primary)"
                 strokeWidth="2"
               />
-               <rect x="0" y="-2" width="40" height="4" fill="var(--cream)" />
+              <rect x="0" y="-2" width="40" height="5" fill="var(--cream)" />
             </svg>
           </div>
         </div>

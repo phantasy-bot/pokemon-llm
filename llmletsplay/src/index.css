@@ -849,7 +849,9 @@ li::marker {
 }
 
 
-/* COMING SOON PAGE STYLES */
+/* COMING SOON PAGE STYLES - CONSOLIDATED (DEC 13) */
+
+/* Wrapper */
 .coming-soon-wrapper {
   position: relative;
   width: 100%;
@@ -857,35 +859,50 @@ li::marker {
   padding-top: 40px;
 }
 
-/* Character Styling */
-.coming-soon-character {
+/* Base Group Container - Desktop Default */
+.coming-soon-group {
   position: fixed;
   bottom: -20px;
-  right: 15%; /* Moved further left from edge */
-  height: 85vh;
+  right: 15%; /* Desktop Shift Right (15%) */
+  height: 85vh; 
   max-height: 850px;
-  width: auto;
-  object-fit: contain;
-  image-rendering: pixelated;
   z-index: 5;
   pointer-events: none;
-  transition: right 0.3s ease, height 0.3s ease; /* Smooth scaling */
+  overflow: visible;
+  transition: all 0.3s ease;
 }
 
-/* Bubble Styling */
+/* Character Image */
+.coming-soon-character {
+  height: 100%;
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+  position: relative; 
+}
+
+/* Bubble - Desktop Default (Top-Left of Group / Left of Char) */
 .coming-soon-bubble {
-  position: relative;
-  z-index: 100; /* Higher z-index to overlap right column if needed */
+  position: absolute;
+  /* Strong Vertical Anchor */
+  top: auto;
+  bottom: 85%; /* Lifts bubble high relative to character */
+  
+  /* Horizontal Anchor */
+  left: 0;
+  transform: translateX(-100%); /* Places strictly to left */
+  
+  z-index: 100;
+  width: max-content;
+  max-width: 450px; 
+  padding: 24px 48px;
+  margin-right: 40px; /* Space from character */
+  
+  /* Styling */
   background: var(--cream);
   border: 2px solid var(--accent-primary);
   border-radius: 12px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
-  padding: 24px 48px;
-  width: fit-content; /* Allow growth */
-  max-width: 600px; /* Increased max-width */
-  margin-top: calc(8vh - 8px); /* Lifted 8px */
-  margin-left: 5%; 
-  /* Allow breaking out of container if parent clips */
 }
 
 .coming-soon-title {
@@ -903,254 +920,147 @@ li::marker {
   margin: 0;
 }
 
-/* Tail Styling - Desktop (Points Right-Down) */
-.coming-soon-tail-desktop {
-  position: absolute;
-  bottom: -28px;
-  right: 40px;
-  width: 50px;
-  height: 35px;
-  display: block;
-}
+/* Tails Display */
+.coming-soon-tail-desktop { display: block; position: absolute; bottom: -28px; right: 40px; width: 50px; height: 35px; }
+.coming-soon-tail-tablet { display: none; }
+.coming-soon-tail-mobile { display: none; }
 
-.coming-soon-tail-mobile {
-  position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 30px;
-  display: none; /* Hidden on desktop */
-}
 
-/* Responsive: Large Desktop - Push character further right */
+/* RESPONSIVE BREAKPOINTS */
+
+/* 1. Large Screens */
 @media (min-width: 1600px) {
-  .coming-soon-character {
-    right: 12%; 
+  .coming-soon-group {
+    right: 15%;
   }
 }
 
-/* Responsive: Small Desktop/Laptop Scaling */
-@media (max-width: 1366px) and (min-width: 1025px) {
-  .coming-soon-character {
-    right: 5%;
-    height: 75vh;
-  }
-  .coming-soon-bubble {
-    margin-left: 2%;
-    max-width: 400px;
-    padding: 20px 32px;
-  }
-  .coming-soon-title {
-    font-size: 24px;
+/* 2. Small Desktop (1025px - 1366px) */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .coming-soon-group {
+    right: 5%; 
+    height: 75vh; 
   }
 }
 
-/* Responsive: Tablet (max-width: 1024px) */
-@media (max-width: 1024px) {
-  .coming-soon-character {
-    position: fixed;
+/* 3. Tablet (769px - 1024px) - FORCED COLLAPSED SIDEBAR + FLIPPED LAYOUT */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* --- Forced Sidebar Collapse --- */
+  .sidebar { width: 60px !important; }
+  .nav-item span:not(.nav-icon) { display: none !important; }
+  .sidebar-footer { display: none !important; }
+  .sidebar-toggle { display: none !important; } 
+  .sponsor-section { padding: 0 4px !important; }
+  .sponsor-section img { width: 40px !important; }
+  .sponsor-text { display: none !important; }
+  .nav-links { padding-top: 24px !important; }
+  .nav-item { padding: 8px !important; justify-content: center !important; }
+  
+  /* HIDE EXTERNAL LINK ICON CONTAINER */
+  .nav-item > div { display: none !important; }
+
+  /* --- Coming Soon Layout Flip --- */
+  .coming-soon-group {
     right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: -20px;
-    height: 60vh; /* Scaled down */
-  }
-
-  .coming-soon-bubble {
-    margin: 20px auto 0; /* Center horizontally */
-    width: 80%;
-    max-width: 500px;
-    text-align: center;
+    left: 20%; 
+    height: 70vh; /* Large size */
+    bottom: 0px; /* Force bottom */
   }
   
-  .coming-soon-tail-desktop {
-    display: none;
+  .coming-soon-character {
+    /* Anchored to group, so relative is fine, but lets ensure fit */
+    position: relative;
+    right: auto; left: auto; top: auto; bottom: auto;
   }
-  .coming-soon-tail-mobile {
-    display: block;
+  
+  .coming-soon-bubble {
+    /* Re-anchor for Tablet (Right of Character) */
+    bottom: auto; 
+    top: 0;
+    margin-top: -100px; /* Lift */
+    
+    left: 55%; /* Pull close to character (was 85%) */
+    right: auto;
+    
+    transform: none;
+    margin-right: 0;
+    margin-left: 0; 
+    
+    max-width: 350px; 
+  }
+  
+  /* Swap Tails */
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { 
+    display: block; 
+    position: absolute; 
+    bottom: -28px; 
+    left: 20px; 
+    width: 50px; 
+    height: 35px; 
+    /* No scaleX needed if SVG points left natively, but we can reuse if needed. 
+       Assuming SVG points left. If flipped in code, remove transform. */
+    /* transform: scaleX(-1); removed if SVG is correct */
   }
 }
 
-/* Responsive: Mobile (max-width: 768px) */
+/* 4. Mobile (<= 768px) */
 @media (max-width: 768px) {
   .coming-soon-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    padding-top: 20px;
+    height: auto;
+    display: block;
+  }
+  
+  /* Break Group */
+  .coming-soon-group {
+    position: static; 
+    height: auto;
+    width: 100%;
   }
 
+  /* Character Fixed Bottom */
   .coming-soon-character {
-    height: 55vh;
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 50vh;
+    width: auto;
     z-index: 5;
   }
-
+  
+  /* Bubble Fixed Top */
   .coming-soon-bubble {
-    margin: 0 auto;
-    width: 90%;
+    position: fixed; 
+    top: 180px; /* Low enough */
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    
+    /* Fit Fixes */
+    width: 90%; 
     max-width: none;
-    padding: 16px 20px;
-    margin-bottom: 20px; /* Space from character */
-  }
-
-  .coming-soon-title {
-    font-size: 20px !important;
-    letter-spacing: 1px;
-  }
-
-  .coming-soon-text {
-    font-size: 12px !important;
-  }
-}
-
-/* FINAL LAYOUT ADJUSTMENTS */
-
-/* Desktop: Move character closer to left (right: 20%) */
-@media (min-width: 1025px) {
-  .coming-soon-character {
-    right: 20% !important; 
+    height: auto;
+    padding: 20px 24px;
+    z-index: 10;
   }
   
-  /* Lift bubble higher (12px lift) */
-  .coming-soon-bubble {
-    margin-top: calc(8vh - 12px) !important;
-    width: max-content;
-    max-width: 650px;
-  }
+  .coming-soon-title { font-size: 20px !important; letter-spacing: 1px; }
+  .coming-soon-text { font-size: 14px !important; }
+
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { display: none; }
+  .coming-soon-tail-mobile { 
+    display: block; 
+    position: absolute;
+    bottom: -28px;
+    left: 45%; /* Shift beak 5% left */
+    transform: translateX(-50%);
+    width: 40px; height: 30px;
+  } 
 }
 
-/* Tablet/Mobile Responsive Fixes - Prevent Squishing */
-@media (max-width: 1024px) {
-  .coming-soon-bubble {
-    width: auto !important; /* Allow growing */
-    min-width: 320px;
-    max-width: 90% !important; /* Cap at 90% of screen */
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-  
-  .coming-soon-character {
-    /* Ensure character doesn't dominate if screen is short */
-    max-height: 60vh;
-  }
-}
-
-/* FINAL RESPONSIVE ADJUSTMENTS - LATEST */
-
-/* Folder Title: Fix height on responsive views */
-@media (max-width: 1024px) {
-  .folder-title {
-    top: 6px !important; /* Restore default or adjust lower for tablet/mobile */
-  }
-}
-
-/* Desktop: Lift Coming Soon bubble another 24px */
-@media (min-width: 1025px) {
-  .coming-soon-bubble {
-    margin-top: calc(8vh - 36px) !important; /* 12px + 24px = 36px lift total */
-  }
-}
-
-/* Tablet (Small/Large): Move character right */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .coming-soon-character {
-    left: auto !important;
-    right: 5% !important; /* Move to right side */
-    transform: none !important;
-  }
-  
-  /* Ensure bubble centers properly if character moves */
-  .coming-soon-bubble {
-    margin-left: auto !important;
-    margin-right: auto !important;
-    max-width: 550px !important;
-  }
-}
-
-/* Mobile: Adjust Coming Soon bubble */
-@media (max-width: 768px) {
-  .coming-soon-bubble {
-    margin-top: 60px !important; /* Lower by a lot */
-    width: 95% !important; /* Wider */
-    padding: 20px 24px !important;
-  }
-  
-  .coming-soon-title {
-    font-size: 24px !important; /* Larger text */
-  }
-  
-  .coming-soon-text {
-    font-size: 14px !important; /* Slightly larger text */
-  }
-}
-
-/* FINAL RESPONSIVE POLISH - DEC 13 */
-
-/* 1. Lift Coming Soon bubble on desktop by another 24px (60px total lift) */
-@media (min-width: 1025px) {
-  .coming-soon-bubble {
-    margin-top: calc(8vh - 60px) !important;
-  }
-}
-
-/* 2. Tablet: Smaller text, shift character more right */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .coming-soon-character {
-    right: -10% !important; /* Pushed significantly right */
-  }
-  .coming-soon-title {
-    font-size: 24px !important;
-  }
-  .coming-soon-text {
-    font-size: 14px !important;
-  }
-}
-
-/* 3. Mobile: Lower Coming Soon bubble a lot more */
-@media (max-width: 768px) {
-  .coming-soon-bubble {
-    margin-top: 85px !important;
-  }
-}
-
-/* 4. Homepage Folder Title Compatibility */
-/* The LassPage folder-title is perfect, but LandingPage might rely on default. 
-   If LandingPage uses .folder-title, this ensures it matches the lifted look on desktop. */
-.landing-page .folder-title {
-  top: -4px; /* Ensure consistency if scoped */
-}
-
-/* FINAL LAYOUT ADJUSTMENTS - ROUND 2 */
-
-/* Desktop: Lift bubble another 12px (72px total lift from valid base) */
-@media (min-width: 1025px) {
-  .coming-soon-bubble {
-    margin-top: calc(8vh - 72px) !important;
-  }
-}
-
-/* Small Desktop (1025px - 1366px): Push character further right */
-@media (min-width: 1025px) and (max-width: 1366px) {
-  .coming-soon-character {
-    right: 5% !important; /* Push character to right edge area */
-    left: auto !important;
-  }
-  
-  /* Ensure bubble follows if needed, or stays aligned left-ish */
-  .coming-soon-bubble {
-    margin-left: 2% !important;
-  }
-}
-
-/* Mobile: Lower bubble to 100px */
-@media (max-width: 768px) {
-  .coming-soon-bubble {
-    margin-top: 100px !important;
-  }
-}
-
-/* SIDEBAR TOGGLE HOVER EFFECT */
+/* Utility Overrides */
 .sidebar-toggle:hover {
   background: var(--text-primary) !important;
   border-color: var(--text-primary) !important;
@@ -1159,132 +1069,115 @@ li::marker {
   color: var(--bg-dark) !important;
 }
 
-/* COMING SOON REFACTOR - CONTAINER BASED */
-/* Base Group Container - Desktop Default */
-.coming-soon-group {
-  position: fixed;
-  bottom: -20px;
-  right: 20%; 
-  height: 85vh; 
-  max-height: 850px;
-  z-index: 5;
-  pointer-events: none;
-  overflow: visible;
-  transition: all 0.3s ease;
+/* Homepage Folder Title Match */
+.landing-page .folder-title {
+  top: -4px;
+}
+@media (max-width: 1024px) {
+  .folder-title, .landing-page .folder-title {
+    top: 6px !important;
+  }
 }
 
-.coming-soon-character {
-  height: 100%;
-  width: auto;
-  display: block;
-  image-rendering: pixelated;
-  position: relative; 
+/* FINAL CONSOLIDATED OVERRIDES (DEC 13 - ROUND 11) */
+
+/* 1. Desktop: Bubble closer to character using transform */
+@media (min-width: 1025px) {
+  .coming-soon-group {
+    right: 17% !important;
+    max-height: 750px !important;
+  }
+  
+  /* Move bubble closer to character by adjusting transform */
+  .coming-soon-bubble {
+    transform: translateX(-60%) !important; /* Move right (was -100%) */
+    max-width: clamp(300px, 30vw, 400px) !important; /* Responsive width */
+    margin-right: 0 !important;
+  }
 }
 
-/* Bubble - Anchored to Left of Character by default */
-.coming-soon-bubble {
-  position: absolute;
-  /* Desktop Default: strongly lifted */
-  top: auto; 
-  bottom: 85%; /* Anchor from bottom relative to character height */
-  left: 0;
-  transform: translateX(-100%); 
-  z-index: 100;
-  width: max-content;
-  max-width: 450px; 
-  padding: 24px 48px;
-  margin-right: 40px; 
-}
-
-/* Tails */
-.coming-soon-tail-desktop { display: block; }
-.coming-soon-tail-tablet { display: none; }
-.coming-soon-tail-mobile { display: none; }
-
-/* 2. Small Desktop (1025px - 1366px): Lift up and to right, make smaller */
+/* 1b. Small Desktop: Push character right to avoid sidebar */
 @media (min-width: 1025px) and (max-width: 1366px) {
   .coming-soon-group {
-    right: 5%; 
-    height: 75vh; 
+    right: 3% !important; /* Pushed more right (was 17%) */
   }
 }
 
-/* 3. Tablet (769px - 1024px): FLIP LAYOUT - Character Left (Shifted Right), Bubble Right */
+/* 2. Tablet: Narrower, medium text, lifted up */
 @media (min-width: 769px) and (max-width: 1024px) {
+  /* Force Sidebar */
+  .sidebar { width: 60px !important; }
+  .nav-item span:not(.nav-icon) { display: none !important; }
+  .nav-item > div { display: none !important; }
+  .sidebar-footer { display: none !important; }
+  .sidebar-toggle { display: none !important; }
+  .sponsor-section { padding: 0 4px !important; }
+  .sponsor-section img { width: 40px !important; }
+  .sponsor-text { display: none !important; }
+  .nav-links { padding-top: 24px !important; }
+  .nav-item { padding: 8px !important; justify-content: center !important; }
+
+  /* Group: Pushed LEFT */
   .coming-soon-group {
-    right: auto;
-    left: 25%; 
-    height: 60vh;
+    position: fixed !important;
+    left: 15% !important;
+    right: auto !important;
+    bottom: -20px !important;
+    height: 70vh !important;
   }
   
+  /* Character: Relative to group */
+  .coming-soon-character {
+    position: relative !important;
+    left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+    height: 100% !important;
+  }
+  
+  /* Bubble: Lifted UP more + Narrower + Medium Text */
   .coming-soon-bubble {
-    /* Anchoring relative to Group */
-    bottom: auto; /* Reset desktop bottom anchor */
-    top: 0;
-    
-    /* Pull closer to character (Cluster them) */
-    left: 55%; /* Drastic shift Left (was 85%) */
-    right: auto;
-    
-    transform: none;
-    margin-right: 0;
-    margin-left: 0; 
-    margin-top: -80px; 
-    max-width: 350px; 
+    position: absolute !important;
+    top: -25% !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    max-width: 300px !important;
+    width: max-content !important;
+    padding: 16px 24px !important;
   }
   
-  /* Swap Tails */
-  .coming-soon-tail-desktop { display: none; }
-  .coming-soon-tail-tablet { 
-    display: block; 
-    position: absolute;
-    bottom: -28px;
-    left: 20px; 
-    width: 50px;
-    height: 35px;
-    transform: scaleX(-1); 
-  }
+  /* Medium text on tablet (in between previous values) */
+  .coming-soon-title { font-size: 20px !important; letter-spacing: 1px !important; }
+  .coming-soon-text { font-size: 13px !important; }
+  
+  /* Tablet Tail */
+  .coming-soon-tail-desktop { display: none !important; }
+  .coming-soon-tail-tablet { display: block !important; }
 }
 
-/* 4. Mobile (<= 768px): Character Fixed Bottom, Bubble Fixed Top of Content */
+/* 3. Mobile: Smaller bubble width */
 @media (max-width: 768px) {
-  .coming-soon-wrapper {
-    height: auto;
-    display: block;
-  }
-  
-  .coming-soon-group {
-    position: static; 
-    height: auto;
-    width: 100%;
-  }
-
-  .coming-soon-character {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 55vh;
-    width: auto;
-    z-index: 5;
-  }
-  
   .coming-soon-bubble {
-    position: fixed; 
-    top: 150px; 
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
-    width: 85%; /* Reduced width (was 90%) */
-    max-width: none;
-    z-index: 10;
+    position: fixed !important;
+    top: 350px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 85% !important; /* Smaller (was 90%) */
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 20px 24px !important;
+    z-index: 10 !important;
   }
-
-  .coming-soon-tail-desktop { display: none; }
-  .coming-soon-tail-tablet { display: none; }
-  .coming-soon-tail-mobile { 
-    display: block; 
-    left: 45%; /* Shift beak 5% left */
-    transform: translateX(-50%);
-  } 
+  
+  .coming-soon-character {
+    height: 45vh !important;
+  }
+  
+  .coming-soon-title { font-size: 22px !important; }
+  .coming-soon-text { font-size: 14px !important; line-height: 1.5 !important; }
+  
+  .coming-soon-tail-mobile { display: block !important; }
 }
