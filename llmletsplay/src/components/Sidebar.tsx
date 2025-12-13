@@ -116,12 +116,12 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
           href={currentSponsor.link} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="crt-container" /* Apply CRT class to wrapper */
+          className="crt-container"
           style={{ 
             display: 'inline-block', 
             position: 'relative',
-            padding: '8px',
-            background: '#000',
+            padding: '8px 7px 8px 9px', /* Shift right 1px */
+            background: '#1a1a1a', 
             boxShadow: '8px 8px 0 rgba(0,0,0,0.2)',
             textDecoration: 'none'
           }}
@@ -138,9 +138,8 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
              }}
            />
            
-           {/* CRT Static Overlay - Covers entire container including padding */}
            {isSwitching && (
-             <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 20 }}>
+             <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 20, boxSizing: 'border-box' }}>
                <div className="crt-static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.5 }} />
              </div>
            )}
@@ -150,11 +149,11 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
              top: '2px', 
              right: '4px', 
              zIndex: 30,
-             fontSize: '9px', /* Slightly larger for readability? */
+             fontSize: '9px',
              fontWeight: 'bold',
              padding: '0',
              background: 'transparent', 
-             color: '#666', /* Dark gray text on black */
+             color: '#666',
              borderRadius: '0', 
              pointerEvents: 'none',
              textAlign: 'right',
@@ -167,13 +166,13 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
       
       <div className="sidebar-footer">
         <div className="social-links">
-          <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="social-link" title="X (Twitter)">
+          <a href="https://x.com/llmletsplay" target="_blank" rel="noopener noreferrer" className="social-link" title="X (Twitter)">
             <XIcon />
           </a>
-          <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" className="social-link" title="Twitch">
+          <a href="https://twitch.tv/llmletsplay" target="_blank" rel="noopener noreferrer" className="social-link" title="Twitch">
             <TwitchIcon />
           </a>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="social-link" title="GitHub">
+          <a href="https://github.com/area/pokemon-llm" target="_blank" rel="noopener noreferrer" className="social-link" title="GitHub">
             <GitHubIcon />
           </a>
         </div>
