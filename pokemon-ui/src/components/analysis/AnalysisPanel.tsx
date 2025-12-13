@@ -111,16 +111,15 @@ export function AnalysisPanel({
   const responseEntries = logs.filter((log) => log.is_response).slice(0, 1);
 
 
-  // Get the latest LLM response entry for main display - prioritize response over vision
+  // Get the latest LLM response entry for main display
+  // IMPORTANT: Only show response entries here - vision entries have their own dedicated section
+  // Falling back to vision would cause duplication during the THINKING phase
   const latestResponseEntry =
     responseEntries.length > 0 ? responseEntries[0] : null;
   const latestVisionEntry = visionEntries.length > 0 ? visionEntries[0] : null;
   
-  // Determine the entry to show
-  const rawLatestEntry =
-    latestResponseEntry ||
-    latestVisionEntry ||
-    (logs.length > 0 ? logs[0] : null);
+  // Only show LLM response entries in this section - no fallback to vision
+  const rawLatestEntry = latestResponseEntry;
 
   // Process the entry to hide COMMENTARY, SUMMARY, and MEMORY_WRITE sections
   // (COMMENTARY is shown in the character panel, SUMMARY/MEMORY_WRITE are redundant)  
@@ -206,7 +205,7 @@ export function AnalysisPanel({
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <div className={`analysis-panel__content-wrapper ${activeSection !== 'llm' && activeSection !== 'none' ? 'analysis-panel__content-wrapper--faded' : ''}`}>
+                <div className={`analysis-panel__content-wrapper ${activeSection !== 'llm' && activeSection !== 'actions' ? 'analysis-panel__content-wrapper--faded' : ''}`}>
                   <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
                 </div>
               ) : (
@@ -225,13 +224,11 @@ export function AnalysisPanel({
             </div>
           </div>
           
-          {/* Processing status at bottom when analysis is already shown */}
-          {latestEntry && processingStatus && (
-            <div className="analysis-panel__processing-bottom">
-              <SpinningPokeball />
-              <span className="analysis-panel__processing-text">{processingStatus}</span>
-            </div>
-          )}
+          {/* Processing status at bottom - always rendered with fixed height to prevent layout shift */}
+          <div className={`analysis-panel__processing-bottom ${latestEntry && processingStatus ? '' : 'analysis-panel__processing-bottom--hidden'}`}>
+            <SpinningPokeball />
+            <span className="analysis-panel__processing-text">{processingStatus || 'IDLE'}</span>
+          </div>
         </div>
 
         {/* 2. Recent Actions Section (Inserted here) */}
@@ -267,6 +264,7 @@ export function AnalysisPanel({
             <div className="analysis-panel__vision-col-screenshot">
               <VisionScreenshot 
                 base64Data={latestVisionEntry?.screenshot_base64}
+                isAnalyzing={isVisionActive}
               />
             </div>
 
@@ -277,11 +275,21 @@ export function AnalysisPanel({
               </div>
               
               {visionEntries.length > 0 ? (
-                visionEntries.map((entry) => (
-                  <div key={entry.id} className="analysis-panel__vision-entry">
-                    <LogEntryCard entry={entry} compact />
+                // Check if we're in the "analyzing" placeholder state (not real analysis yet)
+                visionEntries[0].text === "Analyzing screenshot..." ? (
+                  <div className="analysis-panel__vision-placeholder">
+                    <span className="analysis-panel__vision-placeholder-text">
+                      Analyzing screenshot<AnimatedDots />
+                    </span>
                   </div>
-                ))
+                ) : (
+                  // Real vision analysis data - render normally
+                  visionEntries.map((entry) => (
+                    <div key={entry.id} className="analysis-panel__vision-entry">
+                      <LogEntryCard entry={entry} compact />
+                    </div>
+                  ))
+                )
               ) : (
                 <div className="analysis-panel__vision-placeholder">
                   <span className="analysis-panel__vision-placeholder-text">

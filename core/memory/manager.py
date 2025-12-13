@@ -25,6 +25,185 @@ from core.memory.models import (
 from core.memory.persistence import MemoryPersistence
 
 
+class MapVisitTracker:
+    """
+    Tracks map visit patterns to detect oscillation loops.
+    
+    Helps the agent recognize patterns like:
+    - Leaving Player's House → Pallet Town → re-entering Player's House repeatedly
+    - Bouncing between two maps without making progress
+    """
+    
+    def __init__(self):
+        # Total visits per map (all time in session)
+        self.visit_counts: Dict[str, int] = {}
+        
+        # Recent map transitions: (map_name, cycle, action_before_entering)
+        self.recent_maps: List[tuple] = []
+        
+        # Remember what tiles lead where: "PALLET_TOWN:[5,7]" → "PLAYERS_HOUSE_1F"
+        self.transition_memory: Dict[str, str] = {}
+        
+        # Track consecutive oscillations between same maps
+        self.oscillation_streak: int = 0
+        self.last_oscillation_maps: set = set()
+    
+    def record_map_entry(self, map_name: str, cycle: int, position: tuple = None, 
+                          from_map: str = None, action: str = None) -> None:
+        """
+        Record entering a new map.
+        
+        Args:
+            map_name: Name of the map being entered
+            cycle: Current game cycle number
+            position: Entry position [x, y] 
+            from_map: Map we came from
+            action: Action taken before entering (for learning)
+        """
+        if not map_name:
+            return
+        
+        map_upper = map_name.upper()
+        
+        # Increment visit count
+        self.visit_counts[map_upper] = self.visit_counts.get(map_upper, 0) + 1
+        
+        # Record in recent history
+        self.recent_maps.append((map_upper, cycle, action))
+        self.recent_maps = self.recent_maps[-20:]  # Keep last 20 transitions
+        
+        # Remember what tile led here (for future warnings)
+        if from_map and position:
+            key = f"{from_map.upper()}:{list(position)}"
+            self.transition_memory[key] = map_upper
+            log.info(f"📍 Learned: {key} → {map_upper}")
+        
+        log.info(f"🗺️ Entered {map_upper} (visit #{self.visit_counts[map_upper]}) from {from_map or 'unknown'}")
+    
+    def detect_oscillation(self) -> Optional[Dict]:
+        """
+        Detect if we're bouncing between 2-3 maps repeatedly.
+        
+        Returns:
+            Dict with oscillation info and warning, or None if no oscillation detected
+        """
+        if len(self.recent_maps) < 6:
+            return None
+        
+        # Look at last 10 map transitions
+        recent = [m[0] for m in self.recent_maps[-10:]]
+        unique_maps = set(recent)
+        
+        # If we've only been in 2 maps for the last 10 transitions, we're oscillating
+        if len(unique_maps) <= 2:
+            maps_str = " ↔ ".join(sorted(unique_maps))
+            self.oscillation_streak += 1
+            self.last_oscillation_maps = unique_maps
+            
+            # Escalating warnings based on streak
+            if self.oscillation_streak >= 3:
+                severity = "🚨 CRITICAL"
+                action = "You MUST try a completely new direction or approach. Consider: going to unexplored areas, checking for other exits, or walking along walls to find openings."
+            elif self.oscillation_streak >= 2:
+                severity = "⚠️ WARNING"
+                action = "Break the pattern! Try a direction you haven't tried recently."
+            else:
+                severity = "📊 NOTICE"
+                action = "Consider varying your approach to avoid getting stuck."
+            
+            warning = f"{severity} MAP LOOP DETECTED: Oscillating between {maps_str} for {len(recent)} transitions. {action}"
+            
+            return {
+                "is_oscillating": True,
+                "maps": list(unique_maps),
+                "count": len(recent),
+                "streak": self.oscillation_streak,
+                "warning": warning
+            }
+        else:
+            # Not oscillating, reset streak
+            self.oscillation_streak = 0
+            self.last_oscillation_maps = set()
+        
+        return None
+    
+    def get_tile_destination(self, map_name: str, position: tuple) -> Optional[str]:
+        """
+        Check if stepping on this tile will take us somewhere we've been.
+        
+        Args:
+            map_name: Current map
+            position: Current or target position
+            
+        Returns:
+            Destination map name if known, None otherwise
+        """
+        if not map_name or not position:
+            return None
+        
+        key = f"{map_name.upper()}:{list(position)}"
+        return self.transition_memory.get(key)
+    
+    def get_visit_frequency_context(self, top_n: int = 5) -> str:
+        """
+        Generate map visit frequency info for LLM context.
+        Helps the agent understand which maps it's been to too often.
+        
+        Args:
+            top_n: Number of top visited maps to include
+            
+        Returns:
+            Formatted string for LLM prompt
+        """
+        if not self.visit_counts:
+            return ""
+        
+        # Sort by visit count (highest first)
+        sorted_maps = sorted(self.visit_counts.items(), key=lambda x: -x[1])[:top_n]
+        
+        # Only show if there are maps with multiple visits
+        high_visit_maps = [(m, c) for m, c in sorted_maps if c > 2]
+        if not high_visit_maps:
+            return ""
+        
+        lines = ["🗺️ MAP VISIT FREQUENCY (avoid over-visited maps):"]
+        for map_name, count in high_visit_maps:
+            if count >= 5:
+                lines.append(f"  ⛔ {map_name}: {count} visits - STRONGLY avoid re-entering")
+            elif count >= 3:
+                lines.append(f"  ⚠️ {map_name}: {count} visits - try to avoid")
+            else:
+                lines.append(f"  - {map_name}: {count} visits")
+        
+        return "\n".join(lines)
+    
+    def get_transition_warning(self, map_name: str, target_position: tuple) -> Optional[str]:
+        """
+        Check if moving to target position would return us to a recently visited map.
+        
+        Args:
+            map_name: Current map
+            target_position: Position we're about to move to
+            
+        Returns:
+            Warning string if this leads back somewhere, None otherwise
+        """
+        destination = self.get_tile_destination(map_name, target_position)
+        if not destination:
+            return None
+        
+        # Check if destination was in our recent oscillation
+        if destination in self.last_oscillation_maps:
+            return f"⚠️ STOP! Tile {list(target_position)} leads back to {destination}. You were just there! Choose a different direction."
+        
+        # Check if destination has high visit count
+        visits = self.visit_counts.get(destination, 0)
+        if visits >= 3:
+            return f"⚠️ Tile {list(target_position)} leads to {destination} which you've visited {visits} times. Consider exploring elsewhere first."
+        
+        return None
+
+
 class MemoryManager:
     """Comprehensive memory management system for Pokemon LLM agent"""
 

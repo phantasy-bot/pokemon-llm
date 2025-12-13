@@ -26,6 +26,8 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  aspect-ratio: 160 / 144; /* Game Boy screen ratio for consistent sizing */
+  min-height: 100px; /* Fallback minimum */
 }
 
 .vision-screenshot__image {
