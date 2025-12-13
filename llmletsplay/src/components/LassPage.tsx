@@ -13,7 +13,7 @@ import {
   PixelInfo, 
   PixelChip, 
   PixelSitemap, 
-  PixelTV, 
+  PixelGamepad, 
   PixelTerminal 
 } from './icons/PixelIcons'
 
@@ -23,7 +23,7 @@ const navItems = [
   { id: 'about', label: 'About', icon: <PixelInfo size={18} /> },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} /> },
   { id: 'memory', label: 'Memory Map', icon: <PixelSitemap size={18} /> },
-  { id: 'stream', label: 'Stream Cycle', icon: <PixelTV size={18} /> },
+  { id: 'stream', label: 'Stream Cycle', icon: <PixelGamepad size={18} /> },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} /> },
 ]
 

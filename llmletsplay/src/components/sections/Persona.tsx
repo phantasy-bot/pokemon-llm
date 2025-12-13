@@ -2,14 +2,17 @@
 import { PixelBrain, PixelEye, PixelSpeaker } from '../icons/PixelIcons'
 
 
+
 export function Persona() {
   return (
     <div className="section clearfix" style={{ 
       display: 'flex', 
       flexDirection: 'row', 
-      gap: '60px', /* Increased gap */
+      gap: '60px', 
       alignItems: 'stretch',
-      minHeight: '75vh', /* Force reasonable height */
+      flex: 1, /* Fill available space */
+      height: '100%', /* Ensure explicit height if flex fails in specific router context */
+      minHeight: 0, /* Allow flex shrinking if needed but we want growth */
       position: 'relative'
     }}>
       {/* Left Column: Info & Specs */}
@@ -18,7 +21,6 @@ export function Persona() {
         {/* Trainer Card */}
         <div className="info-card" style={{ marginBottom: '32px' }}>
           <div className="info-card-header" style={{ marginBottom: '24px' }}>
-            {/* Removed Text Badge */}
             <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TRAINER CARD</h4>
           </div>
           
@@ -29,7 +31,8 @@ export function Persona() {
             rowGap: '16px', 
             marginBottom: '32px',
             fontFamily: 'var(--font-mono)',
-            fontSize: '14px'
+            fontSize: '14px',
+            alignItems: 'center' /* Fix horizontal alignment */
           }}>
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NAME</div>
              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS</div>
@@ -50,7 +53,7 @@ export function Persona() {
             with chat and takes immense pride in her Pokemon.
           </p>
           
-          {/* Gym Badges Section */}
+          {/* Gym Badges Section - EMPTY */}
           <div style={{ 
             marginTop: 'auto', 
             paddingTop: '24px', 
@@ -66,17 +69,19 @@ export function Persona() {
               KANTO BADGES
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+               {/* 8 Empty Slots */}
                {[1,2,3,4,5,6,7,8].map(i => (
-                 <img 
+                 <div 
                    key={i} 
-                   src={`/badges/${i}.png`} 
-                   alt={`Badge ${i}`}
                    style={{ 
                      width: '40px', 
                      height: '40px', 
-                     imageRendering: 'pixelated',
-                     filter: 'drop-shadow(2px 2px 0 rgba(0,0,0,0.1))',
-                     opacity: 0.8 /* Slightly dimmed to show "potential" or full if she has them? Assuming full for persona page showoff */ 
+                     borderRadius: '50%',
+                     border: '2px dashed rgba(0,0,0,0.1)',
+                     backgroundColor: 'rgba(0,0,0,0.03)',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center'
                    }} 
                  />
                ))}
@@ -87,7 +92,6 @@ export function Persona() {
         {/* Technical Specs */}
         <div className="info-card" style={{ marginTop: 'auto' }}>
           <div className="info-card-header" style={{ marginBottom: '24px' }}>
-            {/* Removed Text Badge */}
             <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TECHNICAL SPECS</h4>
           </div>
 
@@ -146,11 +150,11 @@ export function Persona() {
         flex: '1', 
         display: 'flex', 
         justifyContent: 'center', 
-        alignItems: 'flex-end', /* Bottom aligned */
+        alignItems: 'flex-end', 
         position: 'relative',
         minWidth: '300px'
       }}>
-        {/* Absolute positioned image to ensure it hits bottom edge even if container is tall */}
+        {/* Absolute positioned image to ensure it hits bottom edge */}
         <div style={{
            position: 'absolute',
            bottom: 0,
@@ -168,14 +172,16 @@ export function Persona() {
             alt="Lass" 
             style={{
               width: '100%',
-              maxWidth: '600px', /* Larger */
+              maxWidth: '600px',
               height: 'auto',
-              maxHeight: '85vh',
+              maxHeight: '90vh', /* Taller max-height */
               objectFit: 'contain',
               imageRendering: 'pixelated',
               filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))',
-              transform: 'translateY(40px)', /* Push down to sit firmly on "floor" */
-              transformOrigin: 'bottom center'
+              transform: 'translateY(0)', /* No transform Y, sit exactly on bottom */
+              transformOrigin: 'bottom center',
+              /* Negative bottom margin if needed to overlap folder padding/border? */
+              marginBottom: '-2px' 
             }}
           />
         </div>

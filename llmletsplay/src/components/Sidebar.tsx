@@ -38,6 +38,7 @@ const ExternalLinkIcon = () => (
 
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { PixelTV } from './icons/PixelIcons'
 
 // ... existing imports
 
@@ -69,7 +70,9 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
 
   const currentSponsor = sponsors[sponsorIndex]
 
-  // Only show livestream link on non-homepage routes (specifically lass pages)
+  // Reading file first to locate "Livestream".
+// If I find it, I'll update the icon.
+// I will verify in next step. link on non-homepage routes (specifically lass pages)
   const showLivestream = location.pathname !== '/'
 
   return (
@@ -92,7 +95,7 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
             <span>{item.label}</span>
           </div>
         ))}
-        
+
         {showLivestream && (
           <a 
             href="https://twitch.tv/lassplayspokemon" 
@@ -101,8 +104,7 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
             className="nav-item"
             style={{ textDecoration: 'none' }} 
           >
-            {/* Invisible icon for alignment with other items */}
-            <span className="nav-icon" style={{ visibility: 'hidden' }}>📺</span>
+            <span className="nav-icon"><PixelTV size={18} /></span>
             <span>Livestream</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
               <ExternalLinkIcon />
