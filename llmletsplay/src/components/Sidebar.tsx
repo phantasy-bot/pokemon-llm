@@ -29,10 +29,52 @@ const GitHubIcon = () => (
   </svg>
 )
 
+const ExternalLinkIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+    <path d="M18.25 15.5a.75.75 0 00.75-.75V4.75a.75.75 0 00-.75-.75H8.25a.75.75 0 000 1.5h8.19l-7.22 7.22a.75.75 0 001.06 1.06l7.22-7.22v8.19a.75.75 0 00.75.75z" />
+    <path d="M10 5a.75.75 0 000 1.5H6.5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3.5a.75.75 0 00-1.5 0v3.5a.5.5 0 01-.5.5h-10a.5.5 0 01-.5-.5v-10a.5.5 0 01.5-.5H10z" />
+  </svg>
+)
+
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+
+// ... existing imports
+
 export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [sponsorIndex, setSponsorIndex] = useState(0)
+  const [isSwitching, setIsSwitching] = useState(false)
+
+  const sponsors = [
+    { image: '/sponsors/mystery-gift.png', link: 'https://mysterygift.fun', alt: 'Mystery Gift' },
+    { image: '/sponsors/phantasy.png', link: 'https://phantasy.bot', alt: 'Phantasy Bot' }
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsSwitching(true)
+      setTimeout(() => {
+        setSponsorIndex((prev) => (prev + 1) % sponsors.length)
+        setTimeout(() => setIsSwitching(false), 200)
+      }, 200)
+    }, 30000) // 30 seconds
+    return () => clearInterval(timer)
+  }, [])
+
+  const handleHeaderClick = () => {
+    navigate('/')
+  }
+
+  const currentSponsor = sponsors[sponsorIndex]
+
+  // Only show livestream link on non-homepage routes (specifically lass pages)
+  const showLivestream = location.pathname !== '/'
+
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
+      <div className="sidebar-header" onClick={handleHeaderClick} style={{ cursor: 'pointer' }}>
         <div className="brand-icon">
           <img src="/lass/lass-hello.png" alt="Lass" />
         </div>
@@ -50,7 +92,72 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
             <span>{item.label}</span>
           </div>
         ))}
+        
+        {showLivestream && (
+          <a 
+            href="https://twitch.tv/lassplayspokemon" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="nav-item"
+            style={{ textDecoration: 'none' }} 
+          >
+            {/* Invisible icon for alignment with other items */}
+            <span className="nav-icon" style={{ visibility: 'hidden' }}>📺</span>
+            <span>Livestream</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+              <ExternalLinkIcon />
+            </div>
+          </a>
+        )}
       </nav>
+      
+      <div className="sidebar-sponsor" style={{ padding: '0 16px', marginBottom: '24px', marginTop: 'auto', textAlign: 'center' }}>
+        <a 
+          href={currentSponsor.link} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            display: 'inline-block', 
+            position: 'relative',
+            boxShadow: '8px 8px 0 rgba(0,0,0,0.2)', /* Shadow on container to avoid overflow clipping */
+            background: '#000' /* Ensure dark background for image */
+          }}
+        >
+           <div className="crt-container" style={{ display: 'block' }}>
+             <img 
+               src={currentSponsor.image} 
+               alt={currentSponsor.alt} 
+               style={{ 
+                 width: '120px', 
+                 maxWidth: '100%', 
+                 height: 'auto', 
+                 borderRadius: '0', 
+                 display: 'block'
+               }}
+             />
+             {isSwitching && (
+               <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 10 }}>
+                 {/* Override mix-blend-mode to make sure it's visible on dark background */}
+                 <div className="crt-static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.5 }} />
+               </div>
+             )}
+           </div>
+           
+           <div className="badge" style={{ 
+             position: 'absolute', 
+             top: '0', 
+             right: '0', 
+             zIndex: 30,
+             fontSize: '8px',
+             padding: '2px 6px',
+             background: 'rgba(0, 0, 0, 0.4)', /* Matching shadow gray tone */
+             color: 'white',
+             borderRadius: '0 0 0 4px', /* Subtle shape */
+           }}>
+             SPONSOR
+           </div>
+        </a>
+      </div>
       
       <div className="sidebar-footer">
         <div className="social-links">
@@ -65,7 +172,7 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
           </a>
         </div>
         <div className="copyright">
-          © 2024 LLM Lets Play
+          © 2025 LLM Lets Play
         </div>
       </div>
     </aside>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=Inconsolata:wght@400;700&display=swap');
+@import './fonts.css';
 
 :root {
   /* Theme Colors - Matching pokemon-ui light theme */
@@ -9,7 +9,7 @@
   --text-primary: #2d2a26;  /* Dark text for light theme */
   --text-secondary: #5a5550;
   --text-muted: #8a8580;
-  --border-color: #c0bab8;
+  --border-color: #a0a09f; /* Darkened significantly from #c0bab8 */
   --border-subtle: #d0cac8;
   
   /* Pokemon Red accent - matching pokemon-ui */
@@ -19,9 +19,9 @@
   --cream: #f0eae8;
   
   /* Fonts */
-  --font-display: 'Press Start 2P', monospace;
-  --font-body: 'VT323', monospace;
-  --font-mono: 'Inconsolata', monospace;
+  --font-display: 'UltraHyper', sans-serif;
+  --font-body: 'Sometype Mono', monospace;
+  --font-mono: 'Sometype Mono', monospace;
   
   /* Spacing */
   --space-xs: 4px;
@@ -73,7 +73,7 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-dark);
-  border-right: 1px solid var(--border-color);
+  /* border-right: 1px solid var(--border-color); - REMOVED */
   flex-shrink: 0;
 }
 
@@ -82,7 +82,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: var(--space-lg);
-  border-bottom: 1px solid var(--border-color);
+  /* border-bottom: 1px solid var(--border-color); - REMOVED */
 }
 
 .brand-icon {
@@ -101,8 +101,8 @@ body {
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: 9px;
-  color: var(--accent-primary);
+  font-size: 16px; /* Increased from 9px */
+  color: var(--accent-primary-bright); /* Changed to bright primary */
   line-height: 1.4;
 }
 
@@ -117,8 +117,9 @@ body {
 }
 
 .nav-item {
-  font-family: var(--font-display);
-  font-size: 8px;
+  font-family: var(--font-mono); /* Changed to monospace */
+  font-weight: 700; /* Bold */
+  font-size: 12px; /* Increased legibility */
   padding: 12px 14px;
   border-radius: 6px;
   cursor: pointer;
@@ -146,7 +147,7 @@ body {
 /* SIDEBAR FOOTER with social links */
 .sidebar-footer {
   padding: var(--space-md);
-  border-top: 1px solid var(--border-color);
+  /* border-top: 1px solid var(--border-color); - REMOVED */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -198,6 +199,7 @@ body {
   flex-direction: column;
   padding: 14px;
   padding-left: 0;
+  padding-bottom: 0; /* Extend to bottom */
   overflow: hidden;
 }
 
@@ -211,11 +213,11 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--accent-primary-bright);
-  border: 1px solid var(--border-color);
+  /* border: 1px solid var(--border-color); - REMOVED */
   border-top-right-radius: 0;
   border-top-left-radius: 12px;
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 0; /* Align with bottom */
+  border-bottom-right-radius: 0; /* Align with bottom */
   overflow: hidden;
 }
 
@@ -227,7 +229,7 @@ body {
   width: calc(100% - 220px);
   text-align: center;
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 32px; /* Increased significantly */
   font-weight: 700;
   color: rgba(0, 0, 0, 0.85);
   z-index: 20;
@@ -349,14 +351,14 @@ h1, h2, h3, h4 {
   line-height: 1.5;
 }
 
-h1 { font-size: 14px; margin-bottom: var(--space-md); }
-h2 { font-size: 11px; margin-bottom: var(--space-sm); }
-h3 { font-size: 9px; margin-bottom: var(--space-sm); }
-h4 { font-size: 8px; }
+h1 { font-size: 32px; margin-bottom: var(--space-md); }
+h2 { font-size: 26px; margin-bottom: var(--space-sm); margin-top: 0; }
+h3 { font-size: 24px; margin-bottom: var(--space-sm); } /* Increased from 20px */
+h4 { font-size: 18px; } /* Increased from 16px */
 
 p, li, td, th {
   font-family: var(--font-body);
-  font-size: 18px;
+  font-size: 16px; /* Decreased from 18px */
   line-height: 1.5;
 }
 
@@ -401,7 +403,7 @@ a:hover {
   color: var(--accent-primary-bright);
   margin-bottom: var(--space-md);
   padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px dotted black; /* Dotted and black */
 }
 
 /* ============================================
@@ -421,14 +423,15 @@ table {
 th, td {
   padding: var(--space-sm) var(--space-md);
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px dotted black; /* Dotted and black */
 }
 
 th {
   background: var(--bg-hover);
   color: var(--accent-primary-bright);
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 16px;
+  border-bottom: 2px solid black; /* Keep header separate distinct or dotted? distinct suggests solid or double. User said "dividers". table header boundary is a divider. I'll stick to dotted or make header solid. User said "dividers need to be dotted". I'll make them all dotted. */
 }
 
 tr:hover {
@@ -484,9 +487,10 @@ tr:hover {
   display: inline-block;
   background: var(--accent-primary);
   color: white;
-  font-family: var(--font-display);
-  font-size: 7px;
-  padding: 3px 8px;
+  font-family: var(--font-mono); /* Changed to monospace */
+  font-weight: 700;
+  font-size: 10px; /* Increased from 7px */
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   margin-right: var(--space-xs);
 }
@@ -504,16 +508,37 @@ tr:hover {
 
 .lass-float-right {
   float: right;
-  margin-left: var(--space-lg);
+  margin-left: 40px;
   margin-bottom: var(--space-md);
-  width: 140px;
+  width: 220px; 
 }
 
 .lass-float-left {
   float: left;
   margin-right: var(--space-lg);
   margin-bottom: var(--space-md);
-  width: 140px;
+  width: 220px;
+}
+
+/* About Section Specific Layout */
+.about-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  margin-bottom: var(--space-lg);
+}
+
+.about-text-content {
+  flex: 1;
+}
+
+.lass-intro-image {
+  width: 165px; /* Requested size */
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--accent-primary);
+  flex-shrink: 0;
 }
 
 /* ============================================
@@ -582,34 +607,40 @@ li::marker {
 }
 
 /* Landing Page Buttons */
+/* Landing Page Buttons */
 .landing-button {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: var(--bg-card); /* Transparent/Dark depending on theme, expecting transparent here */
   background-color: var(--cream);
   border: 2px solid var(--border-color);
+  border-bottom-width: 6px; /* Enhanced 3D effect */
   border-radius: 12px;
   font-family: var(--font-display);
   font-size: 14px;
   color: var(--text-primary);
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy transition */
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 4px 0 rgba(0,0,0,0.1);
   text-transform: uppercase;
+  margin-bottom: 4px; /* Space for the 3D effect */
 }
 
 .landing-button:hover {
   transform: translateY(-2px);
+  border-bottom-width: 8px; /* Grow 3D effect on hover */
+  margin-bottom: 2px; /* Adjust margin to keep position stable */
   box-shadow: 0 6px 0 rgba(0,0,0,0.1);
   color: var(--accent-primary);
   border-color: var(--accent-primary);
 }
 
 .landing-button:active {
-  transform: translateY(2px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.1);
+  transform: translateY(4px); /* Push down */
+  border-bottom-width: 2px; /* Collapse 3D effect */
+  margin-bottom: 6px; /* Adjust margin */
+  box-shadow: none;
 }
 
 .landing-button.primary {
@@ -621,20 +652,101 @@ li::marker {
 .landing-button.primary:hover {
   background-color: var(--accent-primary-bright);
   color: white;
+  border-color: var(--accent-primary);
 }
 
 .landing-button.twitch {
   background-color: #9146FF;
   color: white;
-  border-color: #9146FF;
+  border-color: #772ce8; /* Darker purple for 3D border */
 }
 
 .landing-button.twitch:hover {
   background-color: #a970ff;
   color: white;
+  border-color: #9146FF;
 }
 
 /* Make sure text colors in landing buttons override default link colors */
 .landing-button, .landing-button:visited {
   text-decoration: none;
+}
+
+/* ============================================
+   CRT STATIC EFFECT (Ported from VisionScreenshot.css)
+   ============================================ */
+
+@keyframes static-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes static-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes static-scroll {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -5%); }
+  20% { transform: translate(-10%, 5%); }
+  30% { transform: translate(5%, -10%); }
+  40% { transform: translate(-5%, 15%); }
+  50% { transform: translate(-10%, 5%); }
+  60% { transform: translate(15%, 0); }
+  70% { transform: translate(0, 10%); }
+  80% { transform: translate(-15%, 0); }
+  90% { transform: translate(10%, 5%); }
+  100% { transform: translate(5%, 0); }
+}
+
+@keyframes static-flicker {
+  0% { opacity: 0.5; }
+  10% { opacity: 0.7; }
+  20% { opacity: 0.4; }
+  30% { opacity: 0.8; }
+  40% { opacity: 0.5; }
+  50% { opacity: 0.6; }
+  60% { opacity: 0.4; }
+  70% { opacity: 0.7; }
+  80% { opacity: 0.5; }
+  90% { opacity: 0.8; }
+  100% { opacity: 0.6; }
+}
+
+.crt-static-overlay {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  animation: static-scroll 0.12s steps(8) infinite, static-flicker 0.2s linear infinite;
+  pointer-events: none;
+}
+
+.crt-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 20;
 }

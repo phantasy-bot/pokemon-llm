@@ -1,12 +1,30 @@
 export function Memory() {
   return (
     <div className="section">
-      <h2 className="section-title">Pokemon Red Memory Map</h2>
-      
-      <p>
-        The agent reads game state directly from RAM addresses. Here's the complete 
-        documentation of all memory locations currently monitored:
-      </p>
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            The agent reads game state directly from RAM addresses. Here's the complete 
+            documentation of all memory locations currently monitored:
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header">
+              <span className="badge">RAM</span>
+              <h4>State Tracking</h4>
+            </div>
+            <p>
+              We read 40+ memory addresses every frame to track state perfectly without 
+              relying solely on vision.
+            </p>
+          </div>
+        </div>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
+      </div>
 
       <h3 className="section-title">Player State</h3>
       

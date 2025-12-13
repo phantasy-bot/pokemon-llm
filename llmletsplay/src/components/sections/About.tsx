@@ -1,30 +1,31 @@
 export function About() {
   return (
-    <div className="section clearfix">
-      <img 
-        src="/lass/lass-victory.png" 
-        alt="Lass celebrating" 
-        className="lass-image lass-float-right"
-      />
-      
-      <h2 className="section-title">Welcome, Trainer!</h2>
-      
-      <p>
-        <strong>LLM Lets Play</strong> is an experimental project that uses large language models 
-        to play Pokemon Red completely autonomously. No human input required — just 
-        pure AI decision-making, one button press at a time.
-      </p>
-
-      <div className="info-card">
-        <div className="info-card-header">
-          <span className="badge">LIVE</span>
-          <h4>The Harness</h4>
+    <div className="section">
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            <strong>LLM Lets Play</strong> is an experimental project that uses large language models 
+            to play Pokemon Red completely autonomously. No human input required — just 
+            pure AI decision-making, one button press at a time.
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header">
+              <span className="badge">LIVE</span>
+              <h4>The Harness</h4>
+            </div>
+            <p>
+              Our harness connects an LLM brain directly to the mGBA emulator via Lua scripting. 
+              The AI "sees" the game through screenshots, reads game state from RAM, and 
+              sends button presses back to play the game.
+            </p>
+          </div>
         </div>
-        <p>
-          Our harness connects an LLM brain directly to the mGBA emulator via Lua scripting. 
-          The AI "sees" the game through screenshots, reads game state from RAM, and 
-          sends button presses back to play the game.
-        </p>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
       </div>
 
       <h3 className="section-title">How It Works</h3>
