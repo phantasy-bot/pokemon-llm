@@ -1,4 +1,5 @@
 
+import { PixelBrain, PixelEye, PixelSpeaker } from '../icons/PixelIcons'
 
 export function Persona() {
   return (
@@ -6,12 +7,12 @@ export function Persona() {
       display: 'flex', 
       flexDirection: 'row', 
       gap: '40px', 
-      alignItems: 'flex-start',
+      alignItems: 'stretch', /* Force equal height columns */
       minHeight: '600px',
       position: 'relative'
     }}>
       {/* Left Column: Info & Specs */}
-      <div style={{ flex: '1', minWidth: '300px', zIndex: 2 }}>
+      <div style={{ flex: '1', minWidth: '300px', zIndex: 2, display: 'flex', flexDirection: 'column' }}>
         
         {/* Trainer Card */}
         <div className="info-card" style={{ marginBottom: '32px' }}>
@@ -50,7 +51,7 @@ export function Persona() {
         </div>
 
         {/* Technical Specs */}
-        <div className="info-card">
+        <div className="info-card" style={{ marginTop: 'auto' }}>
           <div className="info-card-header">
             <span className="badge" style={{ background: 'var(--tech-blue, #4a9eff)' }}>SYSTEM</span>
             <h4 style={{ fontSize: '24px' }}>TECHNICAL SPECS</h4>
@@ -66,7 +67,7 @@ export function Persona() {
               borderBottom: '1px solid rgba(0,0,0,0.05)',
               paddingBottom: '12px'
             }}>
-              <div style={{ fontSize: '24px' }}>🧠</div>
+              <div style={{ color: 'var(--text-primary)' }}><PixelBrain size={32} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '1px' }}>AGENT BRAIN</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px' }}>GLM4.6</div>
@@ -81,7 +82,7 @@ export function Persona() {
               borderBottom: '1px solid rgba(0,0,0,0.05)',
               paddingBottom: '12px'
             }}>
-              <div style={{ fontSize: '24px' }}>👁️</div>
+              <div style={{ color: 'var(--text-primary)' }}><PixelEye size={32} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '1px' }}>VISION MODEL</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px' }}>GLM4.6V</div>
@@ -94,7 +95,7 @@ export function Persona() {
               alignItems: 'center', 
               gap: '12px'
             }}>
-              <div style={{ fontSize: '24px' }}>🔊</div>
+              <div style={{ color: 'var(--text-primary)' }}><PixelSpeaker size={32} /></div>
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '1px' }}>VOICE SYNTHESIS</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px' }}>CHATTERBOX</div>
@@ -111,7 +112,7 @@ export function Persona() {
         flex: '1', 
         display: 'flex', 
         justifyContent: 'center', 
-        alignItems: 'flex-end',
+        alignItems: 'flex-end', /* Bottom align image */
         position: 'relative',
         minWidth: '300px'
       }}>
@@ -125,7 +126,7 @@ export function Persona() {
             objectFit: 'contain',
             imageRendering: 'pixelated',
             filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.25))',
-            transform: 'scale(1.1) translateY(20px)', /* Slight overlap/pop */
+            transform: 'scale(1.1) translateY(20px)', /* Pop effect */
             transformOrigin: 'bottom center'
           }}
         />
