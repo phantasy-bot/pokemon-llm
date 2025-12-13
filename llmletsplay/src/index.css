@@ -861,7 +861,7 @@ li::marker {
 .coming-soon-character {
   position: fixed;
   bottom: -20px;
-  right: 5%; /* Default: Far right for desktop */
+  right: 15%; /* Moved further left from edge */
   height: 85vh;
   max-height: 850px;
   width: auto;
@@ -869,20 +869,23 @@ li::marker {
   image-rendering: pixelated;
   z-index: 5;
   pointer-events: none;
+  transition: right 0.3s ease, height 0.3s ease; /* Smooth scaling */
 }
 
 /* Bubble Styling */
 .coming-soon-bubble {
   position: relative;
-  z-index: 10;
+  z-index: 100; /* Higher z-index to overlap right column if needed */
   background: var(--cream);
   border: 2px solid var(--accent-primary);
   border-radius: 12px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
   padding: 24px 48px;
-  max-width: 450px;
-  margin-top: 8vh;
-  margin-left: 5%; /* Align left-ish on desktop */
+  width: fit-content; /* Allow growth */
+  max-width: 600px; /* Increased max-width */
+  margin-top: calc(8vh - 8px); /* Lifted 8px */
+  margin-left: 5%; 
+  /* Allow breaking out of container if parent clips */
 }
 
 .coming-soon-title {
@@ -923,7 +926,23 @@ li::marker {
 /* Responsive: Large Desktop - Push character further right */
 @media (min-width: 1600px) {
   .coming-soon-character {
-    right: 2%; /* Even closer to edge on huge screens */
+    right: 12%; 
+  }
+}
+
+/* Responsive: Small Desktop/Laptop Scaling */
+@media (max-width: 1366px) and (min-width: 1025px) {
+  .coming-soon-character {
+    right: 5%;
+    height: 75vh;
+  }
+  .coming-soon-bubble {
+    margin-left: 2%;
+    max-width: 400px;
+    padding: 20px 32px;
+  }
+  .coming-soon-title {
+    font-size: 24px;
   }
 }
 
@@ -935,12 +954,13 @@ li::marker {
     left: 50%;
     transform: translateX(-50%);
     bottom: -20px;
-    height: 70vh;
+    height: 60vh; /* Scaled down */
   }
 
   .coming-soon-bubble {
-    margin: 40px auto 0; /* Center horizontally */
+    margin: 20px auto 0; /* Center horizontally */
     width: 80%;
+    max-width: 500px;
     text-align: center;
   }
   
@@ -962,7 +982,7 @@ li::marker {
   }
 
   .coming-soon-character {
-    height: 60vh;
+    height: 55vh;
     z-index: 5;
   }
 
@@ -981,5 +1001,86 @@ li::marker {
 
   .coming-soon-text {
     font-size: 12px !important;
+  }
+}
+
+/* FINAL LAYOUT ADJUSTMENTS */
+
+/* Desktop: Move character closer to left (right: 20%) */
+@media (min-width: 1025px) {
+  .coming-soon-character {
+    right: 20% !important; 
+  }
+  
+  /* Lift bubble higher (12px lift) */
+  .coming-soon-bubble {
+    margin-top: calc(8vh - 12px) !important;
+    width: max-content;
+    max-width: 650px;
+  }
+}
+
+/* Tablet/Mobile Responsive Fixes - Prevent Squishing */
+@media (max-width: 1024px) {
+  .coming-soon-bubble {
+    width: auto !important; /* Allow growing */
+    min-width: 320px;
+    max-width: 90% !important; /* Cap at 90% of screen */
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  .coming-soon-character {
+    /* Ensure character doesn't dominate if screen is short */
+    max-height: 60vh;
+  }
+}
+
+/* FINAL RESPONSIVE ADJUSTMENTS - LATEST */
+
+/* Folder Title: Fix height on responsive views */
+@media (max-width: 1024px) {
+  .folder-title {
+    top: 6px !important; /* Restore default or adjust lower for tablet/mobile */
+  }
+}
+
+/* Desktop: Lift Coming Soon bubble another 24px */
+@media (min-width: 1025px) {
+  .coming-soon-bubble {
+    margin-top: calc(8vh - 36px) !important; /* 12px + 24px = 36px lift total */
+  }
+}
+
+/* Tablet (Small/Large): Move character right */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .coming-soon-character {
+    left: auto !important;
+    right: 5% !important; /* Move to right side */
+    transform: none !important;
+  }
+  
+  /* Ensure bubble centers properly if character moves */
+  .coming-soon-bubble {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: 550px !important;
+  }
+}
+
+/* Mobile: Adjust Coming Soon bubble */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    margin-top: 60px !important; /* Lower by a lot */
+    width: 95% !important; /* Wider */
+    padding: 20px 24px !important;
+  }
+  
+  .coming-soon-title {
+    font-size: 24px !important; /* Larger text */
+  }
+  
+  .coming-soon-text {
+    font-size: 14px !important; /* Slightly larger text */
   }
 }
