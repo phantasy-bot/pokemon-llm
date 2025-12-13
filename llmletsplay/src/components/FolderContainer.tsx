@@ -1,5 +1,5 @@
 import type { ReactNode, CSSProperties } from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 
 interface FolderContainerProps {
@@ -21,6 +21,17 @@ interface FolderContainerProps {
 
 export function FolderContainer({ children, title, titleStyle, navItems, activeSection, onNavigate }: FolderContainerProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Close mobile menu if window is resized larger than mobile breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   return (
     <div className="folder-container">
@@ -137,6 +148,7 @@ export function FolderContainer({ children, title, titleStyle, navItems, activeS
                       alignItems: 'center',
                       gap: '12px',
                       padding: '16px',
+                      paddingLeft: item.isSubItem ? '32px' : '16px', // Applied logic here
                       textDecoration: 'none',
                       color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-mono)',
@@ -188,8 +200,15 @@ export function FolderContainer({ children, title, titleStyle, navItems, activeS
         </div>
       )}
       
-      {/* Content */}
-      <div className="folder-content">
+      {/* Main Content Area */}
+      <div className="folder-content" style={{
+        marginTop: '60px',
+        padding: '0px',
+        maxWidth: '100%',
+        minHeight: 'calc(100% - 60px)',
+        position: 'relative',
+        zIndex: 5
+      }}>
         {children}
       </div>
     </div>

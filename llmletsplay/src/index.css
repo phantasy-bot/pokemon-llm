@@ -1084,3 +1084,207 @@ li::marker {
     font-size: 14px !important; /* Slightly larger text */
   }
 }
+
+/* FINAL RESPONSIVE POLISH - DEC 13 */
+
+/* 1. Lift Coming Soon bubble on desktop by another 24px (60px total lift) */
+@media (min-width: 1025px) {
+  .coming-soon-bubble {
+    margin-top: calc(8vh - 60px) !important;
+  }
+}
+
+/* 2. Tablet: Smaller text, shift character more right */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .coming-soon-character {
+    right: -10% !important; /* Pushed significantly right */
+  }
+  .coming-soon-title {
+    font-size: 24px !important;
+  }
+  .coming-soon-text {
+    font-size: 14px !important;
+  }
+}
+
+/* 3. Mobile: Lower Coming Soon bubble a lot more */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    margin-top: 85px !important;
+  }
+}
+
+/* 4. Homepage Folder Title Compatibility */
+/* The LassPage folder-title is perfect, but LandingPage might rely on default. 
+   If LandingPage uses .folder-title, this ensures it matches the lifted look on desktop. */
+.landing-page .folder-title {
+  top: -4px; /* Ensure consistency if scoped */
+}
+
+/* FINAL LAYOUT ADJUSTMENTS - ROUND 2 */
+
+/* Desktop: Lift bubble another 12px (72px total lift from valid base) */
+@media (min-width: 1025px) {
+  .coming-soon-bubble {
+    margin-top: calc(8vh - 72px) !important;
+  }
+}
+
+/* Small Desktop (1025px - 1366px): Push character further right */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .coming-soon-character {
+    right: 5% !important; /* Push character to right edge area */
+    left: auto !important;
+  }
+  
+  /* Ensure bubble follows if needed, or stays aligned left-ish */
+  .coming-soon-bubble {
+    margin-left: 2% !important;
+  }
+}
+
+/* Mobile: Lower bubble to 100px */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    margin-top: 100px !important;
+  }
+}
+
+/* SIDEBAR TOGGLE HOVER EFFECT */
+.sidebar-toggle:hover {
+  background: var(--text-primary) !important;
+  border-color: var(--text-primary) !important;
+}
+.sidebar-toggle:hover svg {
+  color: var(--bg-dark) !important;
+}
+
+/* COMING SOON REFACTOR - CONTAINER BASED */
+/* Base Group Container - Desktop Default */
+.coming-soon-group {
+  position: fixed;
+  bottom: -20px;
+  right: 20%; 
+  height: 85vh; 
+  max-height: 850px;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+  transition: all 0.3s ease;
+}
+
+.coming-soon-character {
+  height: 100%;
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+  position: relative; 
+}
+
+/* Bubble - Anchored to Left of Character by default */
+.coming-soon-bubble {
+  position: absolute;
+  /* Desktop Default: strongly lifted */
+  top: auto; 
+  bottom: 85%; /* Anchor from bottom relative to character height */
+  left: 0;
+  transform: translateX(-100%); 
+  z-index: 100;
+  width: max-content;
+  max-width: 450px; 
+  padding: 24px 48px;
+  margin-right: 40px; 
+}
+
+/* Tails */
+.coming-soon-tail-desktop { display: block; }
+.coming-soon-tail-tablet { display: none; }
+.coming-soon-tail-mobile { display: none; }
+
+/* 2. Small Desktop (1025px - 1366px): Lift up and to right, make smaller */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .coming-soon-group {
+    right: 5%; 
+    height: 75vh; 
+  }
+}
+
+/* 3. Tablet (769px - 1024px): FLIP LAYOUT - Character Left (Shifted Right), Bubble Right */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .coming-soon-group {
+    right: auto;
+    left: 25%; 
+    height: 60vh;
+  }
+  
+  .coming-soon-bubble {
+    /* Anchoring relative to Group */
+    bottom: auto; /* Reset desktop bottom anchor */
+    top: 0;
+    
+    /* Pull closer to character (Cluster them) */
+    left: 55%; /* Drastic shift Left (was 85%) */
+    right: auto;
+    
+    transform: none;
+    margin-right: 0;
+    margin-left: 0; 
+    margin-top: -80px; 
+    max-width: 350px; 
+  }
+  
+  /* Swap Tails */
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { 
+    display: block; 
+    position: absolute;
+    bottom: -28px;
+    left: 20px; 
+    width: 50px;
+    height: 35px;
+    transform: scaleX(-1); 
+  }
+}
+
+/* 4. Mobile (<= 768px): Character Fixed Bottom, Bubble Fixed Top of Content */
+@media (max-width: 768px) {
+  .coming-soon-wrapper {
+    height: auto;
+    display: block;
+  }
+  
+  .coming-soon-group {
+    position: static; 
+    height: auto;
+    width: 100%;
+  }
+
+  .coming-soon-character {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 55vh;
+    width: auto;
+    z-index: 5;
+  }
+  
+  .coming-soon-bubble {
+    position: fixed; 
+    top: 150px; 
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    width: 85%; /* Reduced width (was 90%) */
+    max-width: none;
+    z-index: 10;
+  }
+
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { display: none; }
+  .coming-soon-tail-mobile { 
+    display: block; 
+    left: 45%; /* Shift beak 5% left */
+    transform: translateX(-50%);
+  } 
+}
