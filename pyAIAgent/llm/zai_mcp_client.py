@@ -70,8 +70,10 @@ class ZAIMCPClient:
             env['Z_AI_MODE'] = self.mode
 
             # Start MCP server using npx
+            # Windows requires .cmd extension for subprocess.Popen without shell=True
+            npx_cmd = 'npx.cmd' if os.name == 'nt' else 'npx'
             cmd = [
-                'npx', '-y', '@z_ai/mcp-server@latest'
+                npx_cmd, '-y', '@z_ai/mcp-server@latest'
             ]
 
             log.info("Starting Z.AI MCP vision server...")
@@ -84,6 +86,10 @@ class ZAIMCPClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
+            
+            # Start background reader thread
+            # Convert asyncio stream reader to thread-based queue for consistent handling
+            self._start_output_reader()
 
             # Give it a moment to start
             await asyncio.sleep(2)
@@ -112,9 +118,11 @@ class ZAIMCPClient:
             env['Z_AI_API_KEY'] = self.api_key
             env['Z_AI_MODE'] = self.mode
 
-            # Start MCP server using npx (version >=0.1.1 required for GLM-4.6V)
+            # Start MCP server using npx
+            # Windows requires .cmd extension or shell=True
+            npx_cmd = 'npx.cmd' if os.name == 'nt' else 'npx'
             cmd = [
-                'npx', '-y', '@z_ai/mcp-server@latest'
+                npx_cmd, '-y', '@z_ai/mcp-server@latest'
             ]
 
             log.info("Starting Z.AI MCP vision server...")
@@ -122,6 +130,7 @@ class ZAIMCPClient:
             log.info(f"Environment variables: Z_AI_API_KEY={'*' * len(self.api_key)}, Z_AI_MODE={self.mode}")
 
             # Start the subprocess
+            # Note: Use default buffering - our reader thread handles buffering manually
             self.mcp_process = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
@@ -130,6 +139,10 @@ class ZAIMCPClient:
                 env=env,
                 text=False  # Use bytes mode for proper MCP communication
             )
+
+            # Start background reader thread for Windows compatibility
+            log.info("Starting MCP output reader thread...")
+            self._start_output_reader()
 
             # Give it a moment to start
             time.sleep(3)  # Increased startup time
@@ -158,15 +171,17 @@ class ZAIMCPClient:
         if self.mcp_process:
             try:
                 # Drain any pending stdout to prevent buffer issues
-                import select
-                while True:
-                    ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
-                    if not ready:
-                        break
-                    data = self.mcp_process.stdout.read(1024)
-                    if not data:
-                        break
-                    log.debug(f"Drained {len(data)} bytes from stdout before restart")
+                # Drain the queue instead of direct stdout read
+                try:
+                    import queue
+                    while True:
+                        try:
+                            self._output_queue.get_nowait()
+                        except queue.Empty:
+                            break
+                    log.debug(f"Drained output queue before restart")
+                except Exception as e:
+                    log.debug(f"Error draining queue: {e}")
                 
                 self.mcp_process.terminate()
                 try:
@@ -214,20 +229,55 @@ class ZAIMCPClient:
         self._request_id_counter += 1
         return self._request_id_counter
 
+    def _start_output_reader(self):
+        """Start a thread to read stdout into a queue for non-blocking access"""
+        import queue
+        self._output_queue = queue.Queue()
+        self._reader_thread = threading.Thread(target=self._enqueue_output, 
+                                             args=(self.mcp_process.stdout, self._output_queue))
+        self._reader_thread.daemon = True
+        self._reader_thread.start()
+
+    def _enqueue_output(self, out, queue):
+        """Thread target to read lines from stdout and put them in queue.
+        Uses raw byte reading with manual line parsing for Windows compatibility."""
+        log.info("MCP output reader thread started")
+        buffer = b''
+        try:
+            while True:
+                # Read chunks of data (blocks until data available or EOF)
+                chunk = out.read(4096)
+                if not chunk:
+                    # EOF - process exited
+                    log.info("MCP output reader: EOF (process exited)")
+                    break
+                
+                buffer += chunk
+                
+                # Extract complete lines from buffer
+                while b'\n' in buffer:
+                    line, buffer = buffer.split(b'\n', 1)
+                    if line:  # Skip empty lines
+                        queue.put(line + b'\n')
+                        
+        except Exception as e:
+            log.error(f"Output reader thread CRASHED: {e}")
+        finally:
+            # Process any remaining data in buffer as final line
+            if buffer:
+                queue.put(buffer)
+            log.info("Output reader thread closed")
+            try:
+                out.close()
+            except: pass
+
     def _read_response_with_id_match(self, expected_id: int, timeout: float = 30.0) -> Optional[dict]:
         """
         Read responses from MCP server until we get one with the matching ID.
-        This drains any stale responses that may be buffered from previous cycles.
-        
-        Args:
-            expected_id: The request ID we're looking for
-            timeout: Maximum time to wait for matching response
-            
-        Returns:
-            The response dict if found, None if timeout or error
+        Uses Queue for Windows compatibility (select() doesn't work on pipes in Windows).
         """
-        import select
         import time as time_module
+        import queue
         
         start_time = time_module.time()
         stale_count = 0
@@ -240,21 +290,12 @@ class ZAIMCPClient:
                 log.error(f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses")
                 return None
             
-            # Wait for data with remaining timeout
-            if hasattr(select, 'select'):
-                ready, _, _ = select.select([self.mcp_process.stdout], [], [], min(remaining_timeout, 5.0))
-                if not ready:
-                    if remaining_timeout <= 5.0:
-                        log.error(f"Timeout waiting for response id={expected_id}")
-                        return None
-                    continue  # Try again with remaining timeout
-            
-            response_line = self.mcp_process.stdout.readline()
-            if not response_line:
-                log.error("No response from MCP server (empty readline)")
-                return None
-            
             try:
+                # Use queue.get with timeout instead of select
+                response_line = self._output_queue.get(timeout=remaining_timeout)
+                if not response_line:
+                    continue
+                    
                 response_data = json.loads(response_line.decode())
                 response_id = response_data.get('id')
                 
@@ -264,11 +305,17 @@ class ZAIMCPClient:
                     return response_data
                 else:
                     stale_count += 1
-                    log.warning(f"⏭️ Draining stale response id={response_id} (looking for id={expected_id}, drained {stale_count} so far)")
-                    # Continue loop to read next response
-                    
-            except json.JSONDecodeError as e:
-                log.error(f"Failed to parse MCP response: {e}")
+                    # Debug log only occasionally to avoid spam
+                    if stale_count % 10 == 0:
+                        log.debug(f"⏭️ Draining stale response id={response_id}")
+            
+            except queue.Empty:
+                log.error(f"Timeout waiting for response id={expected_id}")
+                return None
+            except json.JSONDecodeError:
+                continue
+            except Exception as e:
+                log.error(f"Error reading response: {e}")
                 return None
 
     def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
@@ -284,7 +331,8 @@ class ZAIMCPClient:
             Analysis result as string (blocks until success, or None if timeout exceeded)
         """
         import time as time_module
-        import select
+        import queue
+
         
         # CRITICAL: Cancel any pending request from previous call
         self._request_cancelled = True
@@ -316,22 +364,20 @@ class ZAIMCPClient:
             self._request_cancelled = False  # Reset for this request
             
             # Drain any stale responses before starting fresh
-            if self.mcp_process and self.mcp_process.stdout:
-                try:
-                    drained = 0
-                    while True:
-                        ready, _, _ = select.select([self.mcp_process.stdout], [], [], 0.1)
-                        if not ready:
-                            break
-                        data = self.mcp_process.stdout.readline()
-                        if not data:
-                            break
+            # Drain any stale responses from the queue before starting fresh
+            try:
+                drained = 0
+                while True:
+                    try:
+                        self._output_queue.get_nowait()
                         drained += 1
-                        log.debug(f"🗑️ Pre-drained stale response before new request")
-                    if drained > 0:
-                        log.info(f"🗑️ Drained {drained} stale responses before starting fresh")
-                except Exception as e:
-                    log.warning(f"Error draining stale responses: {e}")
+                    except queue.Empty:
+                        break
+                
+                if drained > 0:
+                    log.debug(f"🗑️ Pre-drained {drained} stale items from queue before new request")
+            except Exception as e:
+                log.warning(f"Error draining queue: {e}")
             
             log.info("🔍 Starting vision analysis (will retry forever until success)")
             
@@ -687,17 +733,12 @@ class ZAIMCPClient:
                 if self.mcp_process.poll() is not None:
                     log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
                 # Try to read stderr for any error messages (non-blocking)
-                try:
-                    import select
-                    import sys
-                    if sys.platform != 'win32' and self.mcp_process.stderr:
-                        ready, _, _ = select.select([self.mcp_process.stderr], [], [], 0.1)
-                        if ready:
-                            stderr_output = self.mcp_process.stderr.read(4096)
-                            if stderr_output:
-                                log.error(f"MCP stderr: {stderr_output.decode('utf-8', errors='replace')}")
-                except Exception as e:
-                    log.debug(f"Could not read stderr: {e}")
+                # Try to read stderr for any error messages (non-blocking)
+                # Note: On Windows we can't easily peek stderr without blocking or threads, 
+                # so we skip complex stderr reading here to avoid more WinError 10038 issues.
+                if self.mcp_process.stderr:
+                     # Just log that we failed
+                     pass
                 # Return None to trigger retry in analyze_image_sync
                 return None
                 

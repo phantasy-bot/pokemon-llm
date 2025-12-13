@@ -120,10 +120,11 @@ def translate_cardinal_to_buttons(action_str: str) -> str:
 
 
 if(IS_LOCAL):
-    # Reduced for faster cycles
-    STREAM_TIMEOUT = 30
+    # Reduced for faster cycles (increased for Windows stability)
+    STREAM_TIMEOUT = 120
 else:
-    STREAM_TIMEOUT = 30
+    # Increased for MCP vision on Windows which can be slower
+    STREAM_TIMEOUT = 120
 
 CLEANUP_WINDOW = 10 # Sometimes 4 is a good choice for local
 
