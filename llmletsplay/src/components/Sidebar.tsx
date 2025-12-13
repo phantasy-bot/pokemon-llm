@@ -59,7 +59,7 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
         setSponsorIndex((prev) => (prev + 1) % sponsors.length)
         setTimeout(() => setIsSwitching(false), 200)
       }, 200)
-    }, 30000) // 30 seconds
+    }, 45000) // 45 seconds
     return () => clearInterval(timer)
   }, [])
 
