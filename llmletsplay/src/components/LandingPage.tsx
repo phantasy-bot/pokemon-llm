@@ -9,6 +9,7 @@ const navItems = [
   { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelGamepad size={18} /> }, 
 ]
 
+// No changes needed, existing code is consistent.
 export function LandingPage() {
   const [copied, setCopied] = useState(false)
   const tokenAddress = "0x0000000000000000000000000000000000000000" // Placeholder
@@ -24,6 +25,7 @@ export function LandingPage() {
     if (id === 'home') navigate('/')
     if (id === 'lass') navigate('/lass')
   }
+// ...
 
   return (
     <div className="app-container">
