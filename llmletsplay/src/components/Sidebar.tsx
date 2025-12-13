@@ -116,43 +116,49 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
           href={currentSponsor.link} 
           target="_blank" 
           rel="noopener noreferrer"
+          className="crt-container" /* Apply CRT class to wrapper */
           style={{ 
             display: 'inline-block', 
             position: 'relative',
-            boxShadow: '8px 8px 0 rgba(0,0,0,0.2)', /* Shadow on container to avoid overflow clipping */
-            background: '#000' /* Ensure dark background for image */
+            padding: '8px',
+            background: '#000',
+            boxShadow: '8px 8px 0 rgba(0,0,0,0.2)',
+            textDecoration: 'none'
           }}
         >
-           <div className="crt-container" style={{ display: 'block' }}>
-             <img 
-               src={currentSponsor.image} 
-               alt={currentSponsor.alt} 
-               style={{ 
-                 width: '120px', 
-                 maxWidth: '100%', 
-                 height: 'auto', 
-                 borderRadius: '0', 
-                 display: 'block'
-               }}
-             />
-             {isSwitching && (
-               <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 10 }}>
-                 {/* Override mix-blend-mode to make sure it's visible on dark background */}
-                 <div className="crt-static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.5 }} />
-               </div>
-             )}
-           </div>
+           <img 
+             src={currentSponsor.image} 
+             alt={currentSponsor.alt} 
+             style={{ 
+               width: '110px',
+               maxWidth: '100%', 
+               height: 'auto', 
+               borderRadius: '0', 
+               display: 'block'
+             }}
+           />
+           
+           {/* CRT Static Overlay - Covers entire container including padding */}
+           {isSwitching && (
+             <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 20 }}>
+               <div className="crt-static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.5 }} />
+             </div>
+           )}
            
            <div className="badge" style={{ 
              position: 'absolute', 
-             top: '0', 
-             right: '0', 
+             top: '2px', 
+             right: '4px', 
              zIndex: 30,
-             fontSize: '8px',
-             padding: '2px 6px',
-             background: 'rgba(0, 0, 0, 0.4)', /* Matching shadow gray tone */
-             color: 'white',
-             borderRadius: '0 0 0 4px', /* Subtle shape */
+             fontSize: '9px', /* Slightly larger for readability? */
+             fontWeight: 'bold',
+             padding: '0',
+             background: 'transparent', 
+             color: '#666', /* Dark gray text on black */
+             borderRadius: '0', 
+             pointerEvents: 'none',
+             textAlign: 'right',
+             letterSpacing: '0.5px'
            }}>
              SPONSOR
            </div>

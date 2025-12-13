@@ -202,7 +202,7 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 
 **8. ACTION**: Your button presses
    - Navigate to correct menu option, then A to confirm
-   - Format: D;R;A; (down, right, confirm)
+   - Format: U;D;L;R;A;B; (nav keys, confirm, cancel)
 
 **9. REASONING**: WHY this action?
    - Type advantage? Highest damage? Need to heal?
@@ -372,9 +372,9 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
    - Walkable directions (✓): [list]  
    - Exit tiles: [list with World coords, e.g., World[5,5], World[13,5]]
 
-**8. ACTION**: Your move chain (2-5 moves)
+**8. ACTION**: Your move chain (1-5 moves)
    - Format: R;R;R;R; (use semicolons)
-   - Near exits: use only 2-3 moves to avoid overshooting!
+   - Near exits: use only 1-3 moves to avoid overshooting!
 
 **9. REASONING**: WHY this specific path?
    - Explain your pathfinding logic
@@ -401,7 +401,7 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 - **Ledges**: Can jump DOWN only. NEVER try to move UP ledges.
 - **Water**: IMPASSABLE without SURF.
 - **Exit tiles ('O')**: Walk INTO them to transition maps.
-- **Exit coords are APPROXIMATE** (±2 tiles) - use 2-3 moves near exits!
+- **Exit coords are APPROXIMATE** (±2 tiles) - use 1-3 moves near exits!
 
 ### L-SHAPED PATHFINDING (when blocked)
 - Blocked going NORTH? Go EAST/WEST first, then NORTH
@@ -454,7 +454,7 @@ def get_base_prompt() -> str:
 ## CONTROLS
 **MOVEMENT: U = Up/North | D = Down/South | L = Left/West | R = Right/East**
 **BUTTONS: A = confirm | B = cancel | S = START menu | T = SELECT**
-Chain with semicolons: U;U;R;A; (use 2-5 actions per turn, never single moves)
+Chain with semicolons: U;U;R;A; (use 1-5 actions per turn)
 
 ⚠️⚠️⚠️ **CRITICAL - DO NOT CONFUSE THESE:** ⚠️⚠️⚠️
 - **D = DOWN/SOUTH movement** (NOT S!)
@@ -604,7 +604,7 @@ Then output your action:
 
 ## EXIT PROTOCOL
 - Walk INTO 'O' tiles/red mats - don't press A!
-- Use 2-3 moves near exits to avoid overshooting
+- Use 1-3 moves near exits to avoid overshooting
 
 If memory_context appears, USE IT for navigation.
 """
