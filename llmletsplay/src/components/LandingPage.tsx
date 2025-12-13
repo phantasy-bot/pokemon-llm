@@ -1,11 +1,6 @@
-import { useState } from 'react'
-import { FolderContainer } from './FolderContainer'
-import { Link, useNavigate } from 'react-router-dom'
-import { Sidebar } from './Sidebar'
-
 const navItems = [
-  { id: 'lass', label: 'Lass Plays Pokemon', icon: '' }, 
-  // Future characters here
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: '🎮' }, 
 ]
 
 export function LandingPage() {
@@ -19,15 +14,16 @@ export function LandingPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleNavigate = () => {
-    navigate('/lass')
+  const handleNavigate = (id: string) => {
+    if (id === 'home') navigate('/')
+    if (id === 'lass') navigate('/lass')
   }
 
   return (
     <div className="app-container">
       <Sidebar
         navItems={navItems}
-        activeSection=""
+        activeSection="home"
         onNavigate={handleNavigate}
       />
       <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
