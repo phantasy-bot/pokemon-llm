@@ -3,7 +3,8 @@ echo Starting Pokemon LLM Agent + UI...
 
 :: Auto-install missing dependencies
 echo Installing/updating dependencies...
-pip install -q -r requirements.txt
+pip install --upgrade -r requirements.txt
+echo.
 
 :: Start the Python Agent in a new window
 start "Pokemon Agent" cmd /k "python run.py --auto"
