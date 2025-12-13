@@ -1,7 +1,7 @@
 interface NavItem {
   id: string
   label: string
-  icon: string
+  icon: React.ReactNode
 }
 
 interface SidebarProps {

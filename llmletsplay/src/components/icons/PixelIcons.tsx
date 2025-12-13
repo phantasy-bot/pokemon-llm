@@ -67,3 +67,65 @@ export const PixelSpeaker = ({ size = 24, color = 'currentColor', style }: IconP
     <rect x="14" y="16" width="2" height="2" fill={color}/>
   </svg>
 )
+
+export const PixelHome = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M10 20V14H14V20H19V12H22L12 3L2 12H5V20H10Z" fill={color} />
+  </svg>
+)
+
+export const PixelGamepad = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M2 12H4V10H6V8H18V10H20V12H22V16H20V18H18V20H6V18H4V16H2V12ZM6 14H8V16H6V14ZM16 14H18V16H16V14ZM8 12H10V14H8V12ZM14 12H16V14H14V12Z" fill={color} />
+  </svg>
+)
+
+export const PixelPerson = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M8 4H16V12H8V4ZM4 14H8V12H16V14H20V22H4V14Z" fill={color} />
+  </svg>
+)
+
+export const PixelInfo = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M10 4H14V8H10V4ZM10 10H14V20H10V10Z" fill={color} />
+  </svg>
+)
+
+export const PixelChip = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6Z" fill={color} fillRule="evenodd" />
+    <rect x="8" y="2" width="2" height="2" fill={color}/>
+    <rect x="14" y="2" width="2" height="2" fill={color}/>
+    <rect x="8" y="20" width="2" height="2" fill={color}/>
+    <rect x="14" y="20" width="2" height="2" fill={color}/>
+    <rect x="2" y="8" width="2" height="2" fill={color}/>
+    <rect x="2" y="14" width="2" height="2" fill={color}/>
+    <rect x="20" y="8" width="2" height="2" fill={color}/>
+    <rect x="20" y="14" width="2" height="2" fill={color}/>
+  </svg>
+)
+
+export const PixelBox = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+      <path d="M4 4H20V20H4V4ZM6 6V18H18V6H6Z" fill={color} fillRule="evenodd"/>
+      <rect x="8" y="8" width="8" height="8" fill={color}/>
+    </svg>
+)
+
+export const PixelSitemap = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+      <rect x="10" y="2" width="4" height="4" fill={color}/>
+      <rect x="4" y="10" width="4" height="4" fill={color}/>
+      <rect x="16" y="10" width="4" height="4" fill={color}/>
+      <path d="M11 6V8H13V6H11Z" fill={color}/>
+      <path d="M12 8V12H6V10" fill={color}/>
+      <path d="M12 8V12H18V10" fill={color}/>
+    </svg>
+)
+
+export const PixelTerminal = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M2 4H22V20H2V4ZM4 6V18H20V6H4ZM6 8V10H8V12H10V14H8V16H6V8ZM12 14H16V16H12V14Z" fill={color} />
+  </svg>
+)
