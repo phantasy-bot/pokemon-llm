@@ -33,7 +33,7 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   
-  --sidebar-width: 240px;
+  --sidebar-width: 280px;
 }
 
 * {
@@ -73,8 +73,13 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-dark);
-  /* border-right: 1px solid var(--border-color); - REMOVED */
   flex-shrink: 0;
+  position: relative;
+  transition: width 0.2s ease;
+}
+
+.sidebar--collapsed {
+  width: 80px;
 }
 
 .sidebar-header {
@@ -117,27 +122,26 @@ body {
 }
 
 .nav-item {
-  font-family: var(--font-mono); /* Changed to monospace */
-  font-weight: 700; /* Bold */
-  font-size: 16px; /* Increased from 14px */
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
   padding: 12px 14px;
-  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 12px;
+  background: none;
+  border: none;
 }
 
 .nav-item:hover {
-  background-color: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: var(--accent-primary);
-  color: white;
+  color: var(--accent-primary);
 }
 
 .nav-icon {
@@ -240,8 +244,16 @@ body {
   flex-direction: column;
   padding: 14px;
   padding-left: 0;
+  padding-right: 0; /* Extend to right edge */
   padding-bottom: 0; /* Extend to bottom */
   overflow: hidden;
+}
+
+/* Hide sponsor text on narrow viewports when sidebar becomes responsive */
+@media (max-width: 768px) {
+  .sponsor-text {
+    display: none !important;
+  }
 }
 
 /* ============================================
@@ -270,7 +282,7 @@ body {
   width: calc(100% - 220px);
   text-align: center;
   font-family: var(--font-display);
-  font-size: 32px; /* Increased significantly */
+  font-size: clamp(24px, 4vw, 48px); /* Responsive: min 24px, preferred 4vw, max 48px */
   font-weight: 700;
   color: rgba(0, 0, 0, 0.85);
   z-index: 20;
@@ -438,13 +450,51 @@ a:hover {
 
 .section {
   margin-bottom: var(--space-lg);
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .section-title {
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
   margin-bottom: var(--space-md);
   padding-bottom: var(--space-sm);
-  border-bottom: 2px dotted black; /* Dotted and black */
+  border-bottom: 2px dotted var(--border-color);
+  background: var(--cream);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Highlighted text in lists */
+.highlight {
+  background: var(--text-primary);
+  color: var(--cream);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+/* Lists inside sections */
+.section ol,
+.section ul {
+  background: var(--cream);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  padding-left: 40px;
+  margin: var(--space-md) 0;
+  border: 1px solid var(--border-color);
+}
+
+.section ol li,
+.section ul li {
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 /* ============================================
@@ -469,10 +519,11 @@ th, td {
 
 th {
   background: var(--bg-hover);
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
   font-family: var(--font-display);
   font-size: 16px;
-  border-bottom: 2px solid black; /* Keep header separate distinct or dotted? distinct suggests solid or double. User said "dividers". table header boundary is a divider. I'll stick to dotted or make header solid. User said "dividers need to be dotted". I'll make them all dotted. */
+  font-weight: bold;
+  border-bottom: 2px solid var(--border-color);
 }
 
 tr:hover {
@@ -496,7 +547,7 @@ tr:hover {
   align-items: center;
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -575,11 +626,12 @@ tr:hover {
 }
 
 .lass-intro-image {
-  width: 165px; /* Requested size */
+  width: 200px; /* Bigger size */
   height: auto;
   border-radius: var(--radius-md);
   border: 2px solid var(--accent-primary);
   flex-shrink: 0;
+  margin-right: -22px; /* Overflow to the right */
 }
 
 /* ============================================
@@ -613,37 +665,45 @@ li::marker {
    RESPONSIVE
    ============================================ */
 
-@media (max-width: 900px) {
+/* Hide sidebar on mobile, show hamburger menu */
+@media (max-width: 768px) {
   .sidebar {
-    width: 60px;
-  }
-  
-  .brand-name,
-  .nav-item span:not(.nav-icon),
-  .social-links,
-  .copyright {
     display: none;
   }
   
-  .nav-links {
-    padding: var(--space-sm);
-  }
-  
-  .nav-item {
-    justify-content: center;
-    padding: var(--space-sm);
+  .menu-toggle {
+    display: flex !important;
   }
   
   .folder-title {
-    font-size: 12px;
+    font-size: clamp(18px, 5vw, 32px) !important;
+    letter-spacing: 2px !important;
+    width: calc(100% - 180px);
   }
   
-  .lass-float-right,
-  .lass-float-left {
-    float: none;
-    margin: var(--space-md) auto;
-    display: block;
-    width: 100px;
+  .corner-container {
+    width: 180px;
+  }
+  
+  .folder-stats {
+    right: 8px;
+    gap: var(--space-md);
+  }
+  
+  .stat-label {
+    font-size: 8px;
+  }
+  
+  .stat-count {
+    font-size: 14px;
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .folder-title {
+    font-size: clamp(20px, 4vw, 40px) !important;
+    letter-spacing: 4px !important;
   }
 }
 
