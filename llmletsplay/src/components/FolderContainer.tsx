@@ -20,28 +20,23 @@ export function FolderContainer({ children, title }: FolderContainerProps) {
             fill="var(--bg-dark)" 
             stroke="none"
           />
-          {/* Border path - the curved line */}
+          {/* Border path - REMOVED GRAY BORDER */}
           <path 
             d="M0,0 c8,0 14,6 14,14 v18 c0,8 6,14 14,14 H210" 
             fill="none" 
-            stroke="var(--border-color)" 
-            strokeWidth="1"
+            stroke="none" 
+            strokeWidth="0"
             transform="translate(0, 0.5)"
           />
-          {/* Corner tip */}
+          {/* Corner tip - REMOVED GRAY BORDER */}
           <path 
             d="M210,46 Q220,46 220,48" 
             fill="none" 
-            stroke="var(--border-color)" 
-            strokeWidth="1"
+            stroke="none" 
+            strokeWidth="0"
             transform="translate(-0.5, 0)"
           />
         </svg>
-      </div>
-      
-      {/* Lass icon in the cutout space */}
-      <div className="folder-lass">
-        <img src="/lass/lass-default.png" alt="Lass" />
       </div>
       
       {/* Stats in the cutout area */}

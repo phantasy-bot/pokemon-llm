@@ -1,18 +1,30 @@
 export function Architecture() {
   return (
     <div className="section clearfix">
-      <img 
-        src="/lass/lass-glasses-thinking.png" 
-        alt="Lass thinking" 
-        className="lass-image lass-float-right"
-      />
-      
-      <h2 className="section-title">System Architecture</h2>
-      
-      <p>
-        The Pokemon LLM harness is a multi-layered system connecting a Game Boy 
-        emulator to modern AI models. Here's how the pieces fit together:
-      </p>
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            The Pokemon LLM harness is a multi-layered system connecting a Game Boy 
+            emulator to modern AI models. Here's how the pieces fit together:
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header">
+              <span className="badge">SYSTEM</span>
+              <h4>The Engine</h4>
+            </div>
+            <p>
+              React frontend, Python backend, mGBA emulator, and Lua bridge working in unison 
+              to enable autonomous gameplay.
+            </p>
+          </div>
+        </div>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
+      </div>
 
       <div className="diagram">
         <pre>{`

@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { FolderContainer } from './FolderContainer'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Sidebar } from './Sidebar'
+
+const navItems = [
+  { id: 'lass', label: 'Lass', icon: '' }, 
+  // Future characters here
+]
 
 export function LandingPage() {
   const [copied, setCopied] = useState(false)
   const tokenAddress = "0x0000000000000000000000000000000000000000" // Placeholder
+  const navigate = useNavigate()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(tokenAddress)
@@ -12,9 +19,18 @@ export function LandingPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleNavigate = () => {
+    navigate('/lass')
+  }
+
   return (
     <div className="app-container">
-      <main className="main-wrapper" style={{ paddingLeft: '14px' }}> {/* Add padding to match right side since no sidebar */}
+      <Sidebar
+        navItems={navItems}
+        activeSection=""
+        onNavigate={handleNavigate}
+      />
+      <main className="main-wrapper">
         <FolderContainer title="WELCOME TO LLM LETS PLAY">
           <div className="landing-content" style={{
             display: 'flex',
