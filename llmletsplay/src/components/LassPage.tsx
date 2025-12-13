@@ -1,10 +1,7 @@
 import { Sidebar } from './Sidebar'
 import { FolderContainer } from './FolderContainer'
 import { About } from './sections/About'
-import { Architecture } from './sections/Architecture'
-import { Memory } from './sections/Memory'
-import { StreamCycle } from './sections/StreamCycle'
-import { Prompts } from './sections/Prompts'
+import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { 
@@ -20,22 +17,22 @@ import {
 
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
-  { id: 'lass', label: 'Lass', icon: <PixelHeart size={18} /> },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelHeart size={18} />, hasDivider: true },
   { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
   { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
   { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
-  { id: 'livestream', label: 'Livestream', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
+  { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
 const sectionTitles: Record<string, string> = {
   lass: 'Lass',
-  about: 'About the Harness',
-  architecture: 'System Architecture',
-  memory: 'Memory Map',
+  about: 'About',
+  architecture: 'Architecture',
+  memory: 'Memory',
   stream: 'Stream Cycle',
-  prompts: 'LLM Prompts',
+  prompts: 'Prompts',
 }
 
 export function LassLayout() {
@@ -61,15 +58,21 @@ export function LassLayout() {
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
-      <main className="main-wrapper" style={{ padding: '24px', paddingLeft: '0', paddingBottom: '0' }}>
-        <FolderContainer title={currentTitle}>
+      <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
+        <FolderContainer 
+          title={currentTitle} 
+          titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}
+          navItems={navItems}
+          activeSection={activeSection}
+          onNavigate={handleNavigate}
+        >
           <Routes>
             <Route index element={<Persona />} />
             <Route path="about" element={<About />} />
-            <Route path="architecture" element={<Architecture />} />
-            <Route path="memory" element={<Memory />} />
-            <Route path="stream" element={<StreamCycle />} />
-            <Route path="prompts" element={<Prompts />} />
+            <Route path="architecture" element={<ComingSoon title="Architecture" />} />
+            <Route path="memory" element={<ComingSoon title="Memory Map" />} />
+            <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
+            <Route path="prompts" element={<ComingSoon title="LLM Prompts" />} />
           </Routes>
         </FolderContainer>
       </main>

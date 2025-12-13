@@ -60,35 +60,18 @@ export function Persona() {
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>GOAL</div>
              <div style={{ fontSize: '16px' }}>POKEMON MASTER</div>
              
-             <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>STYLE</div>
-             <div style={{ fontSize: '16px' }}>CUTE & STRONG</div>
-             
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NATURE</div>
              <div style={{ fontSize: '16px' }}>BUBBLY / ENERGETIC</div>
           </div>
 
-          <p style={{ lineHeight: '1.8', color: 'var(--text-primary)', fontSize: '15px', marginBottom: '24px' }}>
-            Lass is an autonomous AI agent running a custom LLM loop. She experiences the world 
-            frame-by-frame, managing her own memory, strategy, and team. She loves interacting 
-            with chat and takes immense pride in her Pokemon.
-          </p>
-          
-          {/* Gym Badges Section - EMPTY */}
+          {/* Gym Badges Section */}
           <div style={{ 
             marginTop: 'auto', 
             paddingTop: '24px', 
-            borderTop: '1px dashed rgba(0,0,0,0.1)' 
+            borderTop: '1px dashed rgba(0,0,0,0.1)',
+            width: '100%'
           }}>
-            <div style={{ 
-              fontSize: '11px', 
-              fontWeight: 'bold', 
-              color: 'var(--text-secondary)', 
-              letterSpacing: '2px', 
-              marginBottom: '16px' 
-            }}>
-              KANTO BADGES
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
                {/* 8 Kanto Badges with images */}
                {KANTO_BADGES.map(badge => {
                  const isEarned = earnedBadges.includes(badge.id)
@@ -189,34 +172,28 @@ export function Persona() {
         position: 'relative',
         minWidth: '300px'
       }}>
-        {/* Absolute positioned image to ensure it hits bottom edge */}
+        {/* Fixed positioned image to ensure it hits bottom of viewport */}
         <div style={{
-           position: 'absolute',
+           position: 'fixed',
            bottom: 0,
-           left: '50%',
-           transform: 'translateX(-50%)',
-           width: '100%',
+           right: '10%',
            display: 'flex',
            justifyContent: 'center',
            alignItems: 'flex-end',
-           height: '100%',
-           pointerEvents: 'none'
+           pointerEvents: 'none',
+           zIndex: 5
         }}>
            <img 
             src="/lass/lass-hello.png" 
             alt="Lass" 
             style={{
-              width: '100%',
-              maxWidth: '600px',
-              height: 'auto',
-              maxHeight: '90vh', /* Taller max-height */
+              height: '90vh',
+              maxHeight: '800px',
+              width: 'auto',
               objectFit: 'contain',
               imageRendering: 'pixelated',
               filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))',
-              transform: 'translateY(0)', /* No transform Y, sit exactly on bottom */
-              transformOrigin: 'bottom center',
-              /* Negative bottom margin if needed to overlap folder padding/border? */
-              marginBottom: '-2px' 
+              marginRight: '-30px'
             }}
           />
         </div>
