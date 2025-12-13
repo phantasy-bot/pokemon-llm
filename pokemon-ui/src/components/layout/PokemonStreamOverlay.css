@@ -34,6 +34,15 @@
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
   overflow: visible;
+  
+  /* Hide scrollbar for clean presentation */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome/Safari/Opera */
+.folder-container::-webkit-scrollbar {
+  display: none;
 }
 
 /* SVG Corner Container - masks the top-right corner */
@@ -123,11 +132,20 @@
   padding: var(--space-lg);
   padding-top: calc(var(--space-xl) + 10px); /* Reduced slightly for better alignment */
   gap: var(--space-md);
-  overflow: visible;
+  overflow: auto; /* Allow scrolling but hide scrollbar */
   background: transparent;
   border-radius: 10px;
   margin: var(--space-sm);
   margin-top: calc(var(--space-sm) + 36px); /* Clear the cutout area */
+  
+  /* Hide scrollbar for clean presentation */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome/Safari/Opera */
+.folder-content::-webkit-scrollbar {
+  display: none;
 }
 
 /* Sponsor Section - Fixed bottom-left corner (for flipped layout) */
@@ -519,6 +537,15 @@
   flex: 1;
   overflow-y: auto;
   padding: 0;
+  
+  /* Hide scrollbar for clean presentation */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Hide scrollbar for Chrome/Safari/Opera */
+.pokemon-analysis-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .pokemon-right-col {
