@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 
 const navItems = [
-  { id: 'lass', label: 'Lass', icon: '' }, 
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: '' }, 
   // Future characters here
 ]
 
@@ -30,57 +30,28 @@ export function LandingPage() {
         activeSection=""
         onNavigate={handleNavigate}
       />
-      <main className="main-wrapper">
+      <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
         <FolderContainer title="WELCOME TO LLM LETS PLAY">
           <div className="landing-content" style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
             height: '100%',
-            gap: '24px',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 10,
+            paddingTop: '40px'
           }}>
-            {/* Large Character Image */}
-            <div className="landing-hero" style={{
-              position: 'relative',
-              width: '280px',
-              height: '280px',
-              marginTop: '20px'
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '320px', // Larger bg circle
-                height: '320px',
-                background: 'var(--cream)',
-                borderRadius: '50%',
-                zIndex: 0
-              }} />
-              <img 
-                src="/lass/lass-hello.png" 
-                alt="Lass" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  imageRendering: 'pixelated',
-                  position: 'relative',
-                  zIndex: 1,
-                  filter: 'drop-shadow(0 4px 0 rgba(0,0,0,0.1))'
-                }}
-              />
-            </div>
-
+            
             {/* Tagline */}
             <h1 style={{ 
-              fontSize: '24px', 
+              fontSize: '32px', 
               color: 'var(--text-primary)',
-              maxWidth: '600px',
-              margin: '0',
-              textShadow: '2px 2px 0 var(--cream)'
+              maxWidth: '800px',
+              margin: '0 0 24px 0',
+              textShadow: '3px 3px 0 var(--cream)',
+              letterSpacing: '1px',
+              fontFamily: 'var(--font-display)'
             }}>
               AN AI AGENT PLAYING POKEMON ON TWITCH
             </h1>
@@ -91,13 +62,14 @@ export function LandingPage() {
               alignItems: 'center',
               gap: '12px',
               background: 'var(--cream)',
-              padding: '12px 20px',
-              borderRadius: '12px',
-              border: '2px solid var(--accent-primary)',
-              boxShadow: '4px 4px 0 rgba(0,0,0,0.1)',
+              padding: '12px 24px',
+              borderRadius: '16px',
+              border: '3px solid var(--accent-primary)',
+              boxShadow: '6px 6px 0 rgba(0,0,0,0.1)',
               maxWidth: '90%',
               flexWrap: 'wrap',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              marginBottom: '40px'
             }}>
               <span style={{
                 fontFamily: 'var(--font-mono)',
@@ -109,7 +81,7 @@ export function LandingPage() {
               </span>
               <span style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: '16px',
+                fontSize: '18px',
                 color: 'var(--text-primary)',
                 wordBreak: 'break-all'
               }}>
@@ -122,12 +94,13 @@ export function LandingPage() {
                   color: 'white',
                   border: 'none',
                   padding: '8px 16px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   fontFamily: 'var(--font-display)',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   transform: copied ? 'scale(0.95)' : 'scale(1)',
+                  boxShadow: '0 2px 0 rgba(0,0,0,0.2)'
                 }}
               >
                 {copied ? 'COPIED!' : 'COPY'}
@@ -138,10 +111,10 @@ export function LandingPage() {
             <div className="landing-links" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-              marginTop: '12px',
+              gap: '20px',
               width: '100%',
-              maxWidth: '500px'
+              maxWidth: '600px',
+              marginBottom: 'auto'
             }}>
               <Link to="/lass" className="landing-button primary">
                 READ DOCS
@@ -157,6 +130,29 @@ export function LandingPage() {
               </a>
             </div>
           </div>
+
+          {/* Large Fixed Character Image */}
+          <img 
+              src="/lass/lass-hello.png" 
+              alt="Lass" 
+              style={{
+                position: 'fixed',
+                bottom: '-20px',
+                left: '55%', /* Slightly off-center to balance sidebar? Or 50%? Sidebar is fixed left. App container usually has padding left. */
+                /* Assuming main-wrapper compensates. I'll use 50% of viewport relative to main-wrapper if possible? */
+                /* position: fixed is viewport relative. Sidebar is ~280px. */
+                /* I'll centering using `left: calc(50% + 140px)` where 140 is half sidebar width? Sidebar is 280px. */
+                /* Let's try `left: 50%` with transform. */
+                transform: 'translateX(-40%)', /* Nudge left slightly to not be blocked by sidebar visually? */
+                height: '65vh',
+                maxHeight: '600px',
+                objectFit: 'contain',
+                imageRendering: 'pixelated',
+                zIndex: 1,
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.15))'
+              }}
+            />
         </FolderContainer>
       </main>
     </div>
