@@ -1241,3 +1241,101 @@ li::marker {
     bottom: -24px !important; /* Lifted up from -28px */
   }
 }
+
+/* ============================================
+   HOLOGRAPHIC AFTERIMAGE EFFECT
+   Creates rainbow ghost trail behind character
+   ============================================ */
+
+/* Keyframe for cycling through holographic hue shifts */
+@keyframes holographic-shift {
+  0% { filter: hue-rotate(0deg) saturate(1.8) brightness(1.1); }
+  16% { filter: hue-rotate(60deg) saturate(2) brightness(1.2); }
+  33% { filter: hue-rotate(120deg) saturate(1.8) brightness(1.1); }
+  50% { filter: hue-rotate(180deg) saturate(2) brightness(1.15); }
+  66% { filter: hue-rotate(240deg) saturate(1.8) brightness(1.2); }
+  83% { filter: hue-rotate(300deg) saturate(2) brightness(1.1); }
+  100% { filter: hue-rotate(360deg) saturate(1.8) brightness(1.1); }
+}
+
+/* Subtle shimmer/pulse for the ghosts */
+@keyframes ghost-shimmer {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.5; }
+}
+
+/* Container that holds the character and ghost layers */
+.holographic-afterimage {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+  width: auto;
+}
+
+/* Shared styles for all ghost layers */
+.holographic-afterimage .ghost-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+/* Ghost 1 - Furthest back, most offset */
+.holographic-afterimage .ghost-1 {
+  transform: translateX(-12px);
+  opacity: 0.25;
+  animation: 
+    holographic-shift 3s ease-in-out infinite,
+    ghost-shimmer 2s ease-in-out infinite;
+  animation-delay: 0s, 0.3s;
+  z-index: 1;
+}
+
+/* Ghost 2 - Middle layer */
+.holographic-afterimage .ghost-2 {
+  transform: translateX(-8px);
+  opacity: 0.35;
+  animation: 
+    holographic-shift 3s ease-in-out infinite,
+    ghost-shimmer 2s ease-in-out infinite;
+  animation-delay: -0.5s, 0.6s;
+  z-index: 2;
+}
+
+/* Ghost 3 - Closest ghost */
+.holographic-afterimage .ghost-3 {
+  transform: translateX(-4px);
+  opacity: 0.45;
+  animation: 
+    holographic-shift 3s ease-in-out infinite,
+    ghost-shimmer 2s ease-in-out infinite;
+  animation-delay: -1s, 0.9s;
+  z-index: 3;
+}
+
+/* Main character - solid, no filter, on top */
+.holographic-afterimage .main-character {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Responsive adjustments for ghost offsets */
+@media (max-width: 1024px) {
+  .holographic-afterimage .ghost-1 { transform: translateX(-10px); }
+  .holographic-afterimage .ghost-2 { transform: translateX(-6px); }
+  .holographic-afterimage .ghost-3 { transform: translateX(-3px); }
+}
+
+@media (max-width: 768px) {
+  .holographic-afterimage .ghost-1 { transform: translateX(-8px); }
+  .holographic-afterimage .ghost-2 { transform: translateX(-5px); }
+  .holographic-afterimage .ghost-3 { transform: translateX(-2px); }
+}
