@@ -260,3 +260,174 @@ Add media queries to reduce offset on smaller screens:
 
 - [ComingSoon.tsx](../../src/components/sections/ComingSoon.tsx) - "Coming Soon" pages
 - [LandingPage.tsx](../../src/components/LandingPage.tsx) - Homepage hero character
+
+---
+
+## Trail Ghost Entrance Animation
+
+In addition to the stationary holographic ghosts, you can add an **entrance animation** where the character slides in from the left, leaving a trail of holographic ghosts that fade out after arrival.
+
+### How It Works
+
+1. **Character slides in** from off-screen left using `character-slide-in` animation
+2. **Trail ghosts** (8 total) appear along the path at different positions
+3. Trail ghosts **linger briefly** then **fade out slowly** (4 seconds total)
+4. **Stationary ghosts** fade in after entrance completes
+5. **Screen shake** effect plays when character arrives at final position
+
+### Adding Trail Ghosts
+
+Add 8 trail ghost images before the stationary ghosts:
+
+```tsx
+<div className="holographic-afterimage">
+  {/* Trail ghosts - appear during entrance, then fade */}
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-1"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-2"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-3"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-4"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-5"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-6"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-7"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="trail-ghost trail-8"
+    aria-hidden="true"
+  />
+
+  {/* Stationary ghosts - stay after entrance */}
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="ghost-layer ghost-1"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="ghost-layer ghost-2"
+    aria-hidden="true"
+  />
+  <img
+    src="/path/to/image.png"
+    alt=""
+    className="ghost-layer ghost-3"
+    aria-hidden="true"
+  />
+
+  {/* Main character */}
+  <img src="/path/to/image.png" alt="Character" className="main-character" />
+</div>
+```
+
+### Trail Animation Timing
+
+Each trail ghost has a unique keyframe animation:
+
+| Ghost   | Appears At | Position | Peak Opacity |
+| ------- | ---------- | -------- | ------------ |
+| trail-1 | 10%        | -85vw    | 0.65         |
+| trail-2 | 18%        | -70vw    | 0.60         |
+| trail-3 | 26%        | -55vw    | 0.55         |
+| trail-4 | 34%        | -40vw    | 0.50         |
+| trail-5 | 42%        | -28vw    | 0.45         |
+| trail-6 | 50%        | -18vw    | 0.40         |
+| trail-7 | 58%        | -10vw    | 0.35         |
+| trail-8 | 66%        | -5vw     | 0.30         |
+
+All trail ghosts fade to 0 opacity by 100% of the animation (4 seconds).
+
+### Screen Shake
+
+The character slides in and performs a subtle shake at landing (84%-100% of animation):
+
+```css
+84% {
+  transform: translateX(3px) rotate(0.5deg);
+}
+88% {
+  transform: translateX(-3px) rotate(-0.5deg);
+}
+92% {
+  transform: translateX(2px) rotate(0.3deg);
+}
+96% {
+  transform: translateX(-1px) rotate(-0.2deg);
+}
+100% {
+  transform: translateX(0) rotate(0deg);
+}
+```
+
+### Customizing Trail Duration
+
+Adjust the animation duration in the trail classes:
+
+```css
+/* Faster trail (2s) */
+.holographic-afterimage .trail-1 {
+  animation: trail-ghost-1 2s ease-out forwards, holographic-shift 1.5s
+      ease-in-out infinite;
+}
+
+/* Slower trail (6s) */
+.holographic-afterimage .trail-1 {
+  animation: trail-ghost-1 6s ease-out forwards, holographic-shift 1.5s
+      ease-in-out infinite;
+}
+```
+
+### Container Clipping
+
+To keep the trail effect within a container (not overlapping sidebars), add `clip-path`:
+
+```css
+.your-container {
+  clip-path: inset(0 0 0 0);
+  overflow: hidden;
+}
+```
+
+### Mobile Behavior
+
+On mobile (≤768px):
+
+- Trail ghosts are **hidden** for cleaner performance
+- Character uses a different entrance animation from bottom-left
+- Main character has higher z-index to ensure proper layering
