@@ -1,6 +1,6 @@
 import { LassSubpageLayout } from '../LassSubpageLayout'
 
-export function ComingSoon({ title }: { title: string }) {
+export function ComingSoon({ title: _title }: { title: string }) {
   return (
     <LassSubpageLayout hideCharacter={true}>
       <div className="coming-soon-wrapper">
@@ -19,7 +19,7 @@ export function ComingSoon({ title }: { title: string }) {
               COMING SOON
             </h2>
             <p className="coming-soon-text">
-              {title} documentation is being prepared
+              documentation is being prepared
             </p>
             
             {/* Desktop Tail (Right-Down) - Triangular pointing Right */}
