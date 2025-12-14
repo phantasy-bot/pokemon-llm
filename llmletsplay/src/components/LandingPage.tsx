@@ -31,12 +31,34 @@ export function LandingPage() {
             <div className="coming-soon-wrapper">
               {/* Group Container - Anchors Character and Bubble together */}
               <div className="coming-soon-group">
-                {/* Character Image - Using lass-glasses for homepage */}
-                <img 
-                  src="/lass/lass-glasses.png" 
-                  alt="Coming Soon" 
-                  className="coming-soon-character"
-                />
+                {/* Character Image with Holographic Afterimage - Using lass-glasses for homepage */}
+                <div className="holographic-afterimage">
+                  {/* Ghost layers - same image, offset + holographic effect */}
+                  <img 
+                    src="/lass/lass-glasses.png" 
+                    alt="" 
+                    className="ghost-layer ghost-1"
+                    aria-hidden="true"
+                  />
+                  <img 
+                    src="/lass/lass-glasses.png" 
+                    alt="" 
+                    className="ghost-layer ghost-2"
+                    aria-hidden="true"
+                  />
+                  <img 
+                    src="/lass/lass-glasses.png" 
+                    alt="" 
+                    className="ghost-layer ghost-3"
+                    aria-hidden="true"
+                  />
+                  {/* Main character - solid, on top */}
+                  <img 
+                    src="/lass/lass-glasses.png" 
+                    alt="Coming Soon" 
+                    className="main-character coming-soon-character"
+                  />
+                </div>
 
                 {/* Speech Bubble - Relative to Group */}
                 <div className="coming-soon-bubble">
