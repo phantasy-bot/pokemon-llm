@@ -94,7 +94,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
             fontSize: '10px',
             color: 'rgba(0,0,0,0.4)',
             textAlign: 'center',
-            marginTop: '4px'
+            marginTop: '6px'
           }}>
             agent framework
           </div>

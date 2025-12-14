@@ -1737,16 +1737,17 @@ li::marker {
     max-height: 550px !important;
   }
 
-  /* Push character image to the right on tablet */
+  /* Push character image to the right on tablet - increased to 150px */
   .coming-soon-group .holographic-afterimage {
-    transform: translateX(100px);
+    transform: translateX(150px);
   }
   
   /* Apply to ALL pages containing coming-soon-bubble */
   .coming-soon-bubble, .homepage .coming-soon-bubble {
-    /* Push bubble to the left logic */
-    margin-left: -320px !important; 
-    bottom: calc(85% + 100px) !important;
+    /* Push bubble to the left logic - adjusted to -280px */
+    margin-left: -280px !important; 
+    /* Moved down 50px (100px -> 50px) */
+    bottom: calc(85% + 50px) !important;
     max-width: 500px !important;
     width: max-content !important;
     white-space: nowrap !important;

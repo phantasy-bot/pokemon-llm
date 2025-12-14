@@ -320,7 +320,7 @@ export function Persona() {
             fontSize: '10px',
             color: 'rgba(0,0,0,0.4)',
             textAlign: 'center',
-            marginTop: '4px'
+            marginTop: '6px'
           }}>
             agent framework
           </div>
