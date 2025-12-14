@@ -1660,7 +1660,14 @@ li::marker {
     height: 30px;
   }
   
-  /* Page shake when character lands */
+  @media (max-width: 1024px) {
+  /* Add padding to stats cutout on tablet/mobile */
+  .folder-stats {
+    padding-right: 16px;
+  }
+}
+
+/* Page shake when character lands */
   .folder-container {
     animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
@@ -1699,9 +1706,9 @@ li::marker {
 /* Homepage tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
   .homepage .coming-soon-group {
-    left: calc(50% - 500px) !important;
+    left: 40px !important; /* Move group near left edge */
     right: auto !important;
-    transform: translateX(-50%) !important;
+    transform: none !important; /* Remove centering transform */
     height: 60vh !important;
     max-height: 550px !important;
   }

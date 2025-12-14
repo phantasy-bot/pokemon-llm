@@ -1,4 +1,5 @@
 import { LassSubpageLayout } from '../LassSubpageLayout'
+import { TypewriterText } from '../shared/TypewriterText'
 
 export function ComingSoon({ title: _title }: { title: string }) {
   return (
@@ -34,11 +35,19 @@ export function ComingSoon({ title: _title }: { title: string }) {
           {/* Speech Bubble - Relative to Group */}
           <div className="coming-soon-bubble">
             <h2 className="coming-soon-title">
-              COMING SOON
+              <TypewriterText 
+                text="COMING SOON" 
+                speed={50} 
+                startDelay={500}
+              />
             </h2>
-            <p className="coming-soon-text">
-              documentation is being prepared
-            </p>
+            <div className="coming-soon-text">
+              <TypewriterText 
+                text="documentation is being prepared" 
+                speed={30} 
+                startDelay={1500}
+              />
+            </div>
             
             {/* Desktop Tail (Right-Down) - Triangular pointing Right */}
             <svg 

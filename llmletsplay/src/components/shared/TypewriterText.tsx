@@ -56,7 +56,7 @@ export function TypewriterText({
         {text}
       </div>
       
-      {/* Absolute overlay with typed text */}
+      {/* Absolute overlay with typed text - uses opacity to keep alignment stable */}
       <div style={{ 
         position: 'absolute', 
         top: 0, 
@@ -64,7 +64,8 @@ export function TypewriterText({
         width: '100%', 
         height: '100%' 
       }}>
-        {displayedText}
+        <span>{text.slice(0, displayedText.length)}</span>
+        <span style={{ opacity: 0 }}>{text.slice(displayedText.length)}</span>
       </div>
     </div>
   )
