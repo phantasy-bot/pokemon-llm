@@ -4,9 +4,9 @@ import { About } from './sections/About'
 import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Icon } from '@iconify/react'
 import { 
   PixelHome2, 
-  PixelHeart, 
   PixelInfo, 
   PixelChip, 
   PixelHierarchy, 
@@ -17,7 +17,7 @@ import {
 
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
-  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelHeart size={18} />, hasDivider: true },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <Icon icon="streamline-pixel:photography-focus-flower" width={18} height={18} />, hasDivider: true },
   { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
   { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
