@@ -147,3 +147,7 @@ export const PixelCheck = ({ size = 24, color = 'currentColor', style }: IconPro
 export const PixelList = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <Icon icon="streamline-pixel:interface-essential-list-bullets" width={size} height={size} color={color} style={style} />
 )
+
+export const PixelCoin = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:business-money-coin-currency" width={size} height={size} color={color} style={style} />
+)
