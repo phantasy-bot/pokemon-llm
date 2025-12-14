@@ -2,7 +2,6 @@ import { Sidebar } from './Sidebar'
 import { FolderContainer } from './FolderContainer'
 import { About } from './sections/About'
 import { ComingSoon } from './sections/ComingSoon'
-import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Tokenomics } from './sections/Tokenomics'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
@@ -16,7 +15,7 @@ import {
   PixelTerminal,
   PixelTerminal,
   PixelTV,
-  PixelList
+  PixelCoin
 } from './icons/PixelIcons'
 
 const navItems = [
@@ -27,7 +26,7 @@ const navItems = [
   { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
   { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
-  { id: 'tokenomics', label: 'Tokenomics', icon: <PixelList size={18} />, isSubItem: true },
+  { id: 'tokenomics', label: 'Tokenomics', icon: <PixelCoin size={18} />, isSubItem: true },
   { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
