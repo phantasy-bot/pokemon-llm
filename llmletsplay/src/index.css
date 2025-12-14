@@ -1705,7 +1705,7 @@ li::marker {
 
   /* Sponsor link on mobile - large padding and forced to top */
   .persona-sponsor-link {
-    padding: 24px !important;
+    padding: 32px !important;
     order: -1;
   }
 }
@@ -1735,6 +1735,13 @@ li::marker {
     transform: none !important; /* Remove centering transform */
     height: 60vh !important;
     max-height: 550px !important;
+  }
+
+  /* Desktop generic adjustment for Coming Soon page */
+  @media (min-width: 1025px) {
+    .coming-soon-group {
+      left: 190px !important; /* Shift right by 150px (40 + 150) */
+    }
   }
 
   /* Push character image to the right on tablet - specific to Coming Soon page */
