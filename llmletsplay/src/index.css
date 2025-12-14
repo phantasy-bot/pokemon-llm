@@ -1712,7 +1712,7 @@ li::marker {
 
 /* Default sponsor link padding */
 .persona-sponsor-link {
-  padding: 8px;
+  padding: 32px !important;
 }
 
 @keyframes bubble-fade-in-homepage-desktop {
@@ -2000,7 +2000,7 @@ li::marker {
     width: 100%;
     max-width: none;
     padding: 0 16px; /* Add small padding so cards don't touch edge */
-    margin-top: 40px;
+    margin-top: 0;
   }
   
   /* Hide desktop cards, show mobile carousel */
