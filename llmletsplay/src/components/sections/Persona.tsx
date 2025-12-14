@@ -1,5 +1,6 @@
 
 import { PixelBrain, PixelEye, PixelSpeaker, PixelGenderFemale } from '../icons/PixelIcons'
+import { LassSubpageLayout } from '../LassSubpageLayout'
 
 // Kanto badge data for display
 const KANTO_BADGES = [
@@ -19,17 +20,8 @@ const earnedBadges: number[] = []
 
 export function Persona() {
   return (
-    <div className="section clearfix" style={{ 
-      display: 'flex', 
-      flexDirection: 'row', 
-      gap: '60px', 
-      alignItems: 'stretch',
-      flex: 1, /* Fill available space */
-      height: '100%', /* Ensure explicit height if flex fails in specific router context */
-      minHeight: 0, /* Allow flex shrinking if needed but we want growth */
-      position: 'relative'
-    }}>
-      {/* Left Column: Info & Specs */}
+    <LassSubpageLayout characterImage="/lass/lass-hello.png">
+      {/* Content area - styled as column */}
       <div style={{ flex: '1', minWidth: '340px', zIndex: 2, display: 'flex', flexDirection: 'column', paddingBottom: '40px' }}>
         
         {/* Trainer Card */}
@@ -49,7 +41,7 @@ export function Persona() {
             alignItems: 'center' /* Fix horizontal alignment */
           }}>
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NAME</div>
-             <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS</div>
+             <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS ✿</div>
              
              <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>GENDER</div>
              <div style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -108,7 +100,7 @@ export function Persona() {
         </div>
 
         {/* Technical Specs */}
-        <div className="info-card" style={{ marginTop: 'auto' }}>
+        <div className="info-card info-card--dotted" style={{ marginTop: 'auto' }}>
           <div className="info-card-header" style={{ marginBottom: '24px' }}>
             <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TECHNICAL SPECS</h4>
           </div>
@@ -157,62 +149,9 @@ export function Persona() {
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>CHATTERBOX</div>
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
-
-      {/* Right Column: Hero Image - Sticky/Fixed-ish behavior inside Flex */}
-      <div style={{ 
-        flex: '1', 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'flex-end', 
-        position: 'relative',
-        minWidth: '300px'
-      }}>
-        {/* Fixed positioned image to ensure it hits bottom of viewport */}
-        <div style={{
-           position: 'fixed',
-           bottom: 0,
-           right: '10%',
-           display: 'flex',
-           justifyContent: 'center',
-           alignItems: 'flex-end',
-           pointerEvents: 'none',
-           zIndex: 5
-        }}>
-           <img 
-            src="/lass/lass-hello.png" 
-            alt="Lass" 
-            style={{
-              height: '90vh',
-              maxHeight: '800px',
-              width: 'auto',
-              objectFit: 'contain',
-              imageRendering: 'pixelated',
-              filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.3))',
-              marginRight: '-30px'
-            }}
-          />
-        </div>
-        
-        {/* Decorative Element behind */}
-        <div style={{
-          position: 'absolute',
-          bottom: '50px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '90%',
-          height: '20px',
-          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%)',
-          zIndex: -1,
-          pointerEvents: 'none',
-          filter: 'blur(10px)'
-        }} />
-      </div>
-      
-    </div>
+    </LassSubpageLayout>
   )
 }

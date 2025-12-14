@@ -22,15 +22,32 @@ export function Sidebar({ navItems, activeSection, onNavigate }: SidebarProps) {
   const [sponsorIndex, setSponsorIndex] = useState(0)
   const [isSwitching, setIsSwitching] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Initialize from localStorage
+    // Initialize from localStorage, or default to collapsed on tablet
     const saved = localStorage.getItem('sidebar-collapsed')
-    return saved === 'true'
+    if (saved !== null) return saved === 'true'
+    // Default: collapsed on tablet, expanded on desktop
+    return window.matchMedia('(max-width: 1024px)').matches
   })
 
   // Persist collapsed state to localStorage
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(isCollapsed))
   }, [isCollapsed])
+
+  // Auto-collapse on tablet viewport (reactive to resize)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1024px)')
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Auto-collapse when entering tablet, but don't auto-expand when leaving
+      if (e.matches) {
+        setIsCollapsed(true)
+      }
+    }
+    
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   const sponsors = [
     { image: '/sponsors/mystery-gift.png', link: 'https://mysterygift.fun', alt: 'Mystery Gift' },
