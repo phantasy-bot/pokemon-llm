@@ -60,6 +60,7 @@ export function LassLayout() {
       />
       <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
         <FolderContainer 
+          key={location.pathname}
           title={currentTitle} 
           titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}
           navItems={navItems}

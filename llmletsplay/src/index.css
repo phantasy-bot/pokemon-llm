@@ -289,6 +289,9 @@ body {
   color: rgba(0, 0, 0, 0.85);
   z-index: 20;
   pointer-events: none;
+  /* Background to mask scrolling content */
+  background: var(--accent-primary-bright);
+  padding: 8px 0 24px 0; /* Extra bottom padding to cover scrolling content */
 }
 
 /* CORNER CUTOUT SVG */
@@ -371,13 +374,12 @@ body {
   object-position: top;
 }
 
-/* FOLDER CONTENT */
 .folder-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: calc(var(--space-xl) + 16px + 125px); /* Extra 125px spacing from title */
+  padding-top: calc(var(--space-xl) + 16px);
   gap: var(--space-md);
   background: transparent;  /* Transparent to blend with folder red */
   border-radius: 10px;
@@ -385,6 +387,8 @@ body {
   margin-top: calc(var(--space-sm) + 40px);
   overflow-y: auto;
   overflow-x: hidden;
+  z-index: 1; /* Below folder title (z-index: 20) to prevent scroll overlap */
+  position: relative; /* Create stacking context */
   
   /* Hide scrollbar for clean presentation */
   scrollbar-width: none; /* Firefox */
@@ -1652,7 +1656,7 @@ li::marker {
     height: 30px;
   }
   
-  /* Page shake when character lands - applies to all pages with character */
+  /* Page shake when character lands - key prop on FolderContainer restarts animation on route change */
   .folder-container {
     animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
