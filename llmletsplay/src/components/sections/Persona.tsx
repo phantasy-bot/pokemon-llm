@@ -62,7 +62,7 @@ export function Persona() {
   // Trainer Card Component
   const TrainerCard = () => (
     <div className="info-card">
-      <div className="info-card-header" style={{ marginBottom: '24px' }}>
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
         <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TRAINER CARD</h4>
       </div>
       
