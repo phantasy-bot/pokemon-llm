@@ -925,6 +925,10 @@ li::marker {
   border: 2px solid var(--accent-primary);
   border-radius: 12px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+  
+  /* Animation: appear after character lands (4s delay = 1s after 3s landing in 4s animation) */
+  opacity: 0;
+  animation: bubble-fade-in 0.5s ease-out 4s forwards;
 }
 
 .coming-soon-title {
@@ -1102,9 +1106,9 @@ li::marker {
     height: 85vh !important; /* Fixed height - no shrinking */
   }
   
-  /* Move bubble closer to character by adjusting transform */
+  /* Move bubble closer to character by adjusting transform - 25px closer to right */
   .coming-soon-bubble {
-    transform: translateX(-60%) !important;
+    transform: translateX(calc(-60% + 25px)) !important;
     max-width: clamp(350px, 40vw, 550px) !important;
     margin-right: 0 !important;
   }
@@ -1199,6 +1203,8 @@ li::marker {
     max-height: none !important;
     padding: 20px 24px !important;
     z-index: 10 !important;
+    /* Override desktop animation for mobile - no character animation so show sooner */
+    animation: bubble-fade-in-mobile-base 0.5s ease-out 1s forwards !important;
   }
   
   .coming-soon-character {
@@ -1275,18 +1281,19 @@ li::marker {
     transform: translateX(-100vw);
     opacity: 0;
   }
-  10% {
+  5% {
     opacity: 1;
   }
-  80% {
+  75% {
     transform: translateX(0);
     opacity: 1;
   }
-  /* Screen shake at landing */
-  84% { transform: translateX(3px) rotate(0.5deg); }
-  88% { transform: translateX(-3px) rotate(-0.5deg); }
-  92% { transform: translateX(2px) rotate(0.3deg); }
-  96% { transform: translateX(-1px) rotate(-0.2deg); }
+  /* Screen shake at landing - starts at 87.5% (3.5s of 4s animation = 1s after 2.5s slide) */
+  79% { transform: translateX(0); }
+  81% { transform: translateX(3px) rotate(0.5deg); }
+  85% { transform: translateX(-3px) rotate(-0.5deg); }
+  89% { transform: translateX(2px) rotate(0.3deg); }
+  93% { transform: translateX(-1px) rotate(-0.2deg); }
   100% {
     transform: translateX(0) rotate(0deg);
     opacity: 1;
@@ -1491,7 +1498,7 @@ li::marker {
   width: auto;
   display: block;
   image-rendering: pixelated;
-  animation: character-slide-in 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: character-slide-in 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* === RESPONSIVE ADJUSTMENTS === */
@@ -1514,9 +1521,10 @@ li::marker {
     z-index: 5 !important;
   }
   
-  /* Override character slide-in for mobile - comes from bottom-left */
+  /* Remove character slide-in animation on mobile - just show with afterimage */
   .holographic-afterimage .main-character {
-    animation: character-slide-in-mobile 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: none !important;
+    opacity: 1 !important;
     z-index: 100 !important; /* Ensure main character is on top on mobile */
   }
   
@@ -1543,6 +1551,184 @@ li::marker {
   100% {
     transform: translateX(0) translateY(0);
     opacity: 1;
+  }
+}
+
+/* Ensure main character stays centered on mobile after animation */
+@media (max-width: 768px) {
+  .holographic-afterimage .main-character {
+    /* Override any positioning offsets - ensure true center */
+    position: relative !important;
+    left: 0 !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* Bubble fade-in animation (appears after character lands) */
+@keyframes bubble-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-100%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%) translateY(0);
+  }
+}
+
+/* Mobile bubble fade-in animation with centering transform */
+@keyframes bubble-fade-in-mobile-base {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================
+   HOMEPAGE-SPECIFIC STYLES
+   Character centered with folder title on homepage
+   Bubble positioned directly above character with center beak
+   ============================================ */
+
+/* Desktop: Center character and bubble above it */
+@media (min-width: 769px) {
+  .homepage .coming-soon-group {
+    /* Center the group with title (150px left of page center to account for sidebar) */
+    right: auto !important;
+    left: calc(50% - 150px) !important;
+    transform: translateX(-50%) !important;
+    /* Make character smaller on homepage desktop */
+    height: 65vh !important;
+    max-height: 650px !important;
+  }
+  
+  .homepage .coming-soon-bubble {
+    /* Bubble directly above character, centered with 100px more gap */
+    position: absolute !important;
+    bottom: calc(90% + 100px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    text-align: center !important;
+    animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
+  }
+  
+  /* Show mobile tail (center beak) on homepage desktop, hide others */
+  .homepage .coming-soon-tail-desktop { display: none !important; }
+  .homepage .coming-soon-tail-tablet { display: none !important; }
+  .homepage .coming-soon-tail-mobile { 
+    display: block !important;
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px; 
+    height: 30px;
+  }
+}
+
+@keyframes bubble-fade-in-homepage-desktop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Homepage tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .homepage .coming-soon-group {
+    left: calc(50% - 150px) !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    height: 60vh !important;
+    max-height: 550px !important;
+  }
+  
+  .homepage .coming-soon-bubble {
+    bottom: calc(85% + 100px) !important;
+    max-width: 500px !important;
+    width: max-content !important;
+    white-space: nowrap !important;
+    animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
+  }
+  
+  .homepage .coming-soon-title {
+    white-space: nowrap !important;
+  }
+}
+
+/* Homepage mobile - ensure holographic wrapper AND main character are centered */
+@media (max-width: 768px) {
+  .homepage .coming-soon-group {
+    /* Reset to static so holographic handles positioning */
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .homepage .holographic-afterimage {
+    /* Override to ensure proper centering */
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    height: 48vh !important;
+    width: auto !important;
+    z-index: 5 !important;
+    /* Center the flex content */
+    display: flex !important;
+    justify-content: center !important;
+  }
+  
+  /* Ensure main character is centered within the holographic wrapper */
+  .homepage .holographic-afterimage .main-character {
+    position: relative !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+  
+  /* Center ghost layers relative to main character */
+  .homepage .holographic-afterimage .ghost-layer {
+    left: 0 !important;
+  }
+  
+  .homepage .coming-soon-bubble {
+    animation: bubble-fade-in-mobile 0.5s ease-out 1s forwards;
+  }
+}
+
+@keyframes bubble-fade-in-mobile {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================
+   COMING SOON PAGE ADJUSTMENTS
+   Bubble moved up 25px and left 50px on desktop
+   ============================================ */
+
+@media (min-width: 1025px) {
+  /* Coming soon pages only (not homepage) */
+  .main-wrapper:not(.homepage) .coming-soon-bubble {
+    /* Move up 25px and left 50px */
+    transform: translateX(calc(-60% - 50px)) translateY(-25px) !important;
   }
 }
 
