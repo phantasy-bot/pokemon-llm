@@ -114,6 +114,9 @@ export function Tokenomics() {
 
           {/* Mobile: Carousel View */}
           <div className="persona-cards-mobile">
+            <div className="persona-card-carousel">
+              {activeCardIndex === 0 ? <TokenomicsCard /> : <DisclaimerCard />}
+            </div>
           
           {/* Card Navigation Buttons - Fixed bottom left on mobile */}
           <div className="persona-card-nav">
