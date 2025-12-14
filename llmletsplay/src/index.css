@@ -1625,9 +1625,9 @@ li::marker {
 /* Desktop: Center character and bubble above it */
 @media (min-width: 769px) {
   .homepage .coming-soon-group {
-    /* Center the group with title (offset from center to account for sidebar) */
+    /* Center the group with -125px offset as requested */
     right: auto !important;
-    left: calc(50% + 70px) !important;
+    left: calc(50% - 125px) !important;
     transform: translateX(-50%) !important;
     /* Make character smaller on homepage desktop */
     height: 65vh !important;
@@ -1646,7 +1646,7 @@ li::marker {
     text-align: center !important;
     animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
   }
-  
+
   /* Show mobile tail (center beak) on homepage desktop, hide others */
   .homepage .coming-soon-tail-desktop { display: none !important; }
   .homepage .coming-soon-tail-tablet { display: none !important; }
@@ -1660,9 +1660,28 @@ li::marker {
     height: 30px;
   }
   
-  /* Page shake when character lands - key prop on FolderContainer restarts animation on route change */
+  /* Page shake when character lands */
   .folder-container {
     animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+/* Mobile Persona Styles */
+@media (max-width: 768px) {
+  .persona-layout {
+    flex-direction: column;
+    display: flex;
+    /* Break out of folder padding */
+    margin: 0 -24px;
+    width: calc(100% + 48px);
+  }
+  
+  .persona-cards-column {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    padding: 0 16px; /* Add small padding so cards don't touch edge */
+    margin-top: 40px;
   }
 }
 
@@ -1821,7 +1840,8 @@ li::marker {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 16px 32px 16px;
+  /* Increase left padding slightly to narrow content area from left */
+  padding: 0 16px 32px 24px;
   z-index: 50;
 }
 
@@ -1892,16 +1912,24 @@ li::marker {
 
 /* Mobile - Full carousel mode */
 @media (max-width: 768px) {
+  /* Remove folder content padding on mobile to allow full width without hacks */
+  .folder-content {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
   .persona-layout {
     flex-direction: column;
-    align-items: center;
+    display: flex;
+    margin: 0;
+    width: 100%;
   }
   
   .persona-cards-column {
     flex: none;
     width: 100%;
     max-width: none;
-    padding: 0;
+    padding: 0 16px; /* Add small padding so cards don't touch edge */
     margin-top: 40px;
   }
   
@@ -1932,6 +1960,7 @@ li::marker {
     left: 50%;
     height: 40vh;
     max-height: 350px;
+    pointer-events: none; /* Ensure it doesn't block clicks */
   }
   
   /* Card navigation - fixed bottom left with gap between buttons */
@@ -1939,8 +1968,8 @@ li::marker {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    z-index: 100;
-    background: rgba(0,0,0,0.5);
+    z-index: 9999; /* Max z-index to ensure clickability */
+    background: transparent; /* Removed background */
     border-radius: 8px;
     padding: 8px;
     display: flex;
@@ -1948,8 +1977,13 @@ li::marker {
   }
   
   .persona-card-nav-btn {
-    background: var(--cream);
-    padding: 12px 16px;
+    background: transparent; /* Removed background */
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: auto;
   }
   
