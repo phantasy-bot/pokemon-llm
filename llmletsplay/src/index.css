@@ -1151,17 +1151,7 @@ li::marker {
 
 /* 2. Tablet: Narrower, medium text, bubble down 25px */
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* Force Sidebar */
-  .sidebar { width: 60px !important; }
-  .nav-item span:not(.nav-icon) { display: none !important; }
-  .nav-item > div { display: none !important; }
-  .sidebar-footer { display: none !important; }
-  .sidebar-toggle { display: none !important; }
-  .sponsor-section { padding: 0 4px !important; }
-  .sponsor-section img { width: 40px !important; }
-  .sponsor-text { display: none !important; }
-  .nav-links { padding-top: 24px !important; }
-  .nav-item { padding: 8px !important; justify-content: center !important; }
+
 
   /* Group: Pushed LEFT */
   .coming-soon-group {
