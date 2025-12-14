@@ -303,20 +303,25 @@ export function Tokenomics() {
         </div>
       </div>
 
-       {/* Holographic Character - Positioned absolutely in the center of the right column space visually */}
-       <div className="persona-holographic">
-          <div className="holographic-wrapper" style={{ height: '100%', display: 'flex', alignItems: 'flex-end' }}>
-             {/* Character Image with Holographic Afterimage */}
-             <div className="holographic-afterimage">
-                {/* Fixed Character Image */}
-                <img src="/lass/lass-tokenomics.png" alt="Lass" className="main-character" />
-                
-                {/* Ghost copies for effect */}
-                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-1" aria-hidden="true" />
-                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-2" aria-hidden="true" />
-                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-3" aria-hidden="true" />
-             </div>
-          </div>
+       {/* MIDDLE COLUMN - Character with Holographic Effect (Fixed Bottom) */}
+       <div className="holographic-afterimage persona-holographic">
+        {/* Trail ghosts */}
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        
+        {/* Stationary ghosts */}
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        
+        {/* Main character */}
+        <img src="/lass/lass-tokenomics.png" alt="Lass" className="main-character" />
        </div>
 
     </div>
