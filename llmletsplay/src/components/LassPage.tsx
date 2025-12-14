@@ -13,7 +13,6 @@ import {
   PixelHierarchy, 
   PixelLoadingCircle, 
   PixelTerminal,
-  PixelTerminal,
   PixelTV,
   PixelCoin
 } from './icons/PixelIcons'
