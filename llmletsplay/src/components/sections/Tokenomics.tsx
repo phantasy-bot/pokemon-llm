@@ -71,19 +71,6 @@ export function Tokenomics() {
          <div style={{ fontSize: '16px' }}>FAIR LAUNCH (PUMP.FUN)</div>
       </div>
     
-      {/* Decorative dotted line at bottom similar to trainer card but without badges */}
-      <div style={{ 
-        marginTop: 'auto', 
-        paddingTop: '24px', 
-        borderTop: '1px dashed rgba(0,0,0,0.1)',
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center'
-      }}>
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', letterSpacing: '2px' }}>
-          OFFICIAL TICKER
-        </div>
-      </div>
     </div>
   )
 
@@ -98,7 +85,7 @@ export function Tokenomics() {
           fontFamily: 'var(--font-mono)',
           fontSize: '14px',
           lineHeight: '1.6',
-          color: 'var(--text-primary)',
+          color: 'rgba(255, 255, 255, 0.9)',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
