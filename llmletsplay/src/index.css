@@ -1079,31 +1079,42 @@ li::marker {
   }
 }
 
-/* FINAL CONSOLIDATED OVERRIDES (DEC 13 - ROUND 11) */
+/* FINAL CONSOLIDATED OVERRIDES (DEC 13 - ROUND 14) */
 
-/* 1. Desktop: Bubble closer to character using transform */
+/* 1. Desktop: Fixed height (no shrinking), moved right */
 @media (min-width: 1025px) {
   .coming-soon-group {
-    right: 17% !important;
+    right: 12% !important; /* Moved right 100px (~5%) (was 17%) */
     max-height: 750px !important;
+    height: 85vh !important; /* Fixed height - no shrinking */
   }
   
   /* Move bubble closer to character by adjusting transform */
   .coming-soon-bubble {
-    transform: translateX(-60%) !important; /* Move right (was -100%) */
-    max-width: clamp(300px, 30vw, 400px) !important; /* Responsive width */
+    transform: translateX(-60%) !important;
+    max-width: clamp(300px, 30vw, 400px) !important;
     margin-right: 0 !important;
   }
 }
 
-/* 1b. Small Desktop: Push character right to avoid sidebar */
+/* 1b. Small Desktop: Push LEFT more + bubble up more */
 @media (min-width: 1025px) and (max-width: 1366px) {
   .coming-soon-group {
-    right: 3% !important; /* Pushed more right (was 17%) */
+    right: 3% !important; /* Pushed left for small desktop */
+    height: 60vh !important;
   }
+  
+  /* Lift bubble up */
+  .coming-soon-bubble {
+    bottom: 95% !important;
+  }
+  
+  /* Smaller text on small desktop */
+  .coming-soon-title { font-size: 18px !important; letter-spacing: 1px !important; }
+  .coming-soon-text { font-size: 12px !important; }
 }
 
-/* 2. Tablet: Narrower, medium text, lifted up */
+/* 2. Tablet: Narrower, medium text, bubble down 25px */
 @media (min-width: 769px) and (max-width: 1024px) {
   /* Force Sidebar */
   .sidebar { width: 60px !important; }
@@ -1133,10 +1144,10 @@ li::marker {
     height: 100% !important;
   }
   
-  /* Bubble: Lifted UP more + Narrower + Medium Text */
+  /* Bubble: Pushed DOWN 25px (was -25%, now -20%) */
   .coming-soon-bubble {
     position: absolute !important;
-    top: -25% !important;
+    top: -20% !important; /* Down 25px (~5%) from -25% */
     bottom: auto !important;
     left: 50% !important;
     right: auto !important;
@@ -1147,7 +1158,7 @@ li::marker {
     padding: 16px 24px !important;
   }
   
-  /* Medium text on tablet (in between previous values) */
+  /* Medium text on tablet */
   .coming-soon-title { font-size: 20px !important; letter-spacing: 1px !important; }
   .coming-soon-text { font-size: 13px !important; }
   
@@ -1156,15 +1167,15 @@ li::marker {
   .coming-soon-tail-tablet { display: block !important; }
 }
 
-/* 3. Mobile: Smaller bubble width */
+/* 3. Mobile: Slightly bigger char, bubble up 25px */
 @media (max-width: 768px) {
   .coming-soon-bubble {
     position: fixed !important;
-    top: 350px !important;
+    top: 325px !important;
     bottom: auto !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
-    width: 85% !important; /* Smaller (was 90%) */
+    width: 85% !important;
     max-width: none !important;
     height: auto !important;
     max-height: none !important;
@@ -1173,11 +1184,32 @@ li::marker {
   }
   
   .coming-soon-character {
-    height: 45vh !important;
+    height: 48vh !important;
   }
   
   .coming-soon-title { font-size: 22px !important; }
   .coming-soon-text { font-size: 14px !important; line-height: 1.5 !important; }
   
   .coming-soon-tail-mobile { display: block !important; }
+}
+
+/* Mobile: Center bubble text */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    text-align: center !important;
+  }
+}
+
+/* Large Desktop (1367px - 1600px): Move right more */
+@media (min-width: 1367px) and (max-width: 1600px) {
+  .coming-soon-group {
+    right: 8% !important; /* More to right (vs 12% at normal desktop) */
+  }
+}
+
+/* Extra Large Desktop (1600px+): Even more right */
+@media (min-width: 1601px) {
+  .coming-soon-group {
+    right: 5% !important; /* Maximum right shift */
+  }
 }
