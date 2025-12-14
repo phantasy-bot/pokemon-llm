@@ -114,25 +114,24 @@ export function Tokenomics() {
 
           {/* Mobile: Carousel View */}
           <div className="persona-cards-mobile">
+          
+          {/* Card Navigation Buttons - Fixed bottom left on mobile */}
+          <div className="persona-card-nav">
             <button 
-              className="mobile-nav-btn prev"
               onClick={goToPrevCard}
+              className="persona-card-nav-btn"
               aria-label="Previous card"
             >
-              {'<'}
+              ◀
             </button>
-            
-            <div className="mobile-card-container">
-              {activeCardIndex === 0 ? <TokenomicsCard /> : <DisclaimerCard />}
-            </div>
-
             <button 
-              className="mobile-nav-btn next"
               onClick={goToNextCard}
+              className="persona-card-nav-btn"
               aria-label="Next card"
             >
-              {'>'}
+              ▶
             </button>
+          </div>
             
             {/* Pagination dots */}
             <div className="mobile-dots">
@@ -310,12 +309,12 @@ export function Tokenomics() {
              {/* Character Image with Holographic Afterimage */}
              <div className="holographic-afterimage">
                 {/* Fixed Character Image */}
-                <img src="/lass/lass-idle.gif" alt="Lass" className="main-character" />
+                <img src="/lass/lass-tokenomics.png" alt="Lass" className="main-character" />
                 
                 {/* Ghost copies for effect */}
-                <img src="/lass/lass-idle.gif" alt="" className="ghost-1" aria-hidden="true" />
-                <img src="/lass/lass-idle.gif" alt="" className="ghost-2" aria-hidden="true" />
-                <img src="/lass/lass-idle.gif" alt="" className="ghost-3" aria-hidden="true" />
+                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-1" aria-hidden="true" />
+                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-2" aria-hidden="true" />
+                <img src="/lass/lass-tokenomics.png" alt="" className="ghost-3" aria-hidden="true" />
              </div>
           </div>
        </div>
