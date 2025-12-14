@@ -317,11 +317,16 @@ body {
   position: absolute;
   top: 6px;
   right: 12px;
-  padding-right: 16px; /* Added global padding right */
   z-index: 20;
   display: flex;
   gap: var(--space-lg);
   align-items: center;
+}
+
+@media (min-width: 769px) {
+  .folder-stats {
+    padding-right: 16px; /* Only on Tablet/Desktop */
+  }
 }
 
 .stat-item {
@@ -1714,8 +1719,15 @@ li::marker {
     height: 60vh !important;
     max-height: 550px !important;
   }
+
+  /* Push character image to the right on tablet */
+  .coming-soon-group .holographic-afterimage {
+    transform: translateX(100px);
+  }
   
   .homepage .coming-soon-bubble {
+    /* Push bubble to the left logic */
+    margin-left: -80px !important; 
     bottom: calc(85% + 100px) !important;
     max-width: 500px !important;
     width: max-content !important;

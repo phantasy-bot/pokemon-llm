@@ -38,14 +38,14 @@ export function ComingSoon({ title: _title }: { title: string }) {
               <TypewriterText 
                 text="COMING SOON" 
                 speed={50} 
-                startDelay={500}
+                startDelay={4500}
               />
             </h2>
             <div className="coming-soon-text">
               <TypewriterText 
                 text="documentation is being prepared" 
                 speed={30} 
-                startDelay={1500}
+                startDelay={5500}
               />
             </div>
             
