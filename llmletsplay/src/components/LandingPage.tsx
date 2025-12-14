@@ -70,7 +70,7 @@ export function LandingPage() {
                     <TypewriterText 
                       text="Join me on my Pokémon journey ♡." 
                       speed={30} 
-                      startDelay={5500} // Start after title finishes
+                      startDelay={6700} // Start 1s after title finishes (Title: ~1.15s + 4.5s = 5.65s)
                     />
                   </div>
                   

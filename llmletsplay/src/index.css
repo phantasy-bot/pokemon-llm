@@ -317,6 +317,7 @@ body {
   position: absolute;
   top: 6px;
   right: 12px;
+  padding-right: 16px; /* Added global padding right */
   z-index: 20;
   display: flex;
   gap: var(--space-lg);
@@ -1705,7 +1706,8 @@ li::marker {
 
 /* Homepage tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
-  .homepage .coming-soon-group {
+  /* Apply to ALL pages containing coming-soon-group, not just homepage */
+  .coming-soon-group, .homepage .coming-soon-group {
     left: 40px !important; /* Move group near left edge */
     right: auto !important;
     transform: none !important; /* Remove centering transform */
