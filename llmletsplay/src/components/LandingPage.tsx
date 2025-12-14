@@ -33,25 +33,21 @@ export function LandingPage() {
               <div className="coming-soon-group">
                 {/* Character Image with Holographic Afterimage - Using lass-glasses for homepage */}
                 <div className="holographic-afterimage">
-                  {/* Ghost layers - same image, offset + holographic effect */}
-                  <img 
-                    src="/lass/lass-glasses.png" 
-                    alt="" 
-                    className="ghost-layer ghost-1"
-                    aria-hidden="true"
-                  />
-                  <img 
-                    src="/lass/lass-glasses.png" 
-                    alt="" 
-                    className="ghost-layer ghost-2"
-                    aria-hidden="true"
-                  />
-                  <img 
-                    src="/lass/lass-glasses.png" 
-                    alt="" 
-                    className="ghost-layer ghost-3"
-                    aria-hidden="true"
-                  />
+                  {/* Trail ghosts - appear along path during entrance, then fade */}
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+                  
+                  {/* Stationary ghosts - fade in after entrance, stay permanently */}
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+                  
                   {/* Main character - solid, on top */}
                   <img 
                     src="/lass/lass-glasses.png" 
