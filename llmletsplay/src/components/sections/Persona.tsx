@@ -302,7 +302,7 @@ export function Persona() {
           href="https://phantasy.bot" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="persona-sponsor"
+          className="persona-sponsor-link"
           style={{ textDecoration: 'none' }}
         >
           <img 
