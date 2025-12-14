@@ -1,0 +1,71 @@
+import { useState, useEffect, useRef } from 'react'
+
+interface TypewriterTextProps {
+  text: string
+  speed?: number
+  startDelay?: number
+  onComplete?: () => void
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function TypewriterText({ 
+  text, 
+  speed = 30, 
+  startDelay = 0,
+  onComplete,
+  className,
+  style
+}: TypewriterTextProps) {
+  const [displayedText, setDisplayedText] = useState('')
+  const [started, setStarted] = useState(false)
+  const indexRef = useRef(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    // Reset state when text input changes
+    setDisplayedText('')
+    setStarted(false)
+    indexRef.current = 0
+    if (timerRef.current) clearTimeout(timerRef.current)
+
+    const startTimeout = setTimeout(() => {
+      setStarted(true)
+      
+      timerRef.current = setInterval(() => {
+        if (indexRef.current < text.length) {
+          setDisplayedText((prev) => prev + text.charAt(indexRef.current))
+          indexRef.current++
+        } else {
+          if (timerRef.current) clearInterval(timerRef.current)
+          onComplete?.()
+        }
+      }, speed)
+    }, startDelay)
+
+    return () => {
+      clearTimeout(startTimeout)
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [text, speed, startDelay])
+
+  return (
+    <div className={className} style={{ position: 'relative', ...style }}>
+      {/* Invisible text to maintain layout size */}
+      <div style={{ opacity: 0, visibility: 'hidden' }} aria-hidden="true">
+        {text}
+      </div>
+      
+      {/* Absolute overlay with typed text */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        width: '100%', 
+        height: '100%' 
+      }}>
+        {displayedText}
+      </div>
+    </div>
+  )
+}

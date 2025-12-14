@@ -27,7 +27,7 @@ const navItems = [
 ]
 
 const sectionTitles: Record<string, string> = {
-  lass: 'Lass',
+  lass: 'Lass ✿',
   about: 'About',
   architecture: 'Architecture',
   memory: 'Memory',

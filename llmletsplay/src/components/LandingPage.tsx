@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar'
 import { LassSubpageLayout } from './LassSubpageLayout'
 import { PixelHome2 } from './icons/PixelIcons'
 import { Icon } from '@iconify/react'
+import { TypewriterText } from './shared/TypewriterText'
 
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
@@ -59,11 +60,19 @@ export function LandingPage() {
                 {/* Speech Bubble - Relative to Group */}
                 <div className="coming-soon-bubble">
                   <h2 className="coming-soon-title">
-                    Lass wants to meet you!
+                    <TypewriterText 
+                      text="Lass wants to meet you!" 
+                      speed={50} 
+                      startDelay={4500} // Start after bubble fades in (4s delay + 0.5s fade)
+                    />
                   </h2>
-                  <p className="coming-soon-text">
-                    Join me on my Pokémon journey ♡.
-                  </p>
+                  <div className="coming-soon-text">
+                    <TypewriterText 
+                      text="Join me on my Pokémon journey ♡." 
+                      speed={30} 
+                      startDelay={5500} // Start after title finishes
+                    />
+                  </div>
                   
                   {/* Desktop Tail */}
                   <svg className="coming-soon-tail-desktop" viewBox="0 0 50 35">

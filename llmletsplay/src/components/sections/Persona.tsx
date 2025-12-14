@@ -77,7 +77,7 @@ export function Persona() {
         alignItems: 'center'
       }}>
          <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NAME</div>
-         <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS ✿</div>
+         <div style={{ fontWeight: 'bold', fontSize: '16px' }}>LASS</div>
          
          <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>GENDER</div>
          <div style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -406,9 +406,9 @@ export function Persona() {
           {/* Divider */}
           <div style={{
             height: '0',
-            width: '100%',
+            width: '95%',
             borderTop: '2px dotted black',
-            margin: '4px 0'
+            margin: '4px auto'
           }} />
 
           {/* Action Buttons */}
