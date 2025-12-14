@@ -1725,7 +1725,8 @@ li::marker {
     transform: translateX(100px);
   }
   
-  .homepage .coming-soon-bubble {
+  /* Apply to ALL pages containing coming-soon-bubble */
+  .coming-soon-bubble, .homepage .coming-soon-bubble {
     /* Push bubble to the left logic */
     margin-left: -80px !important; 
     bottom: calc(85% + 100px) !important;
