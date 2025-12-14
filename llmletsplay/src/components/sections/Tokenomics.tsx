@@ -89,7 +89,7 @@ export function Tokenomics() {
 
   // Disclaimer Card Component
   const DisclaimerCard = () => (
-    <div className="info-card" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="info-card info-card--dotted" style={{ display: 'flex', flexDirection: 'column' }}>
        <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
         <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>DISCLAIMER</h4>
       </div>
@@ -273,16 +273,17 @@ export function Tokenomics() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              padding: '12px',
+              padding: '8px 12px',
               background: 'var(--cream)',
-              border: '2px solid var(--text-primary)',
-              borderRadius: '12px',
+              border: '2px solid var(--accent-primary)',
+              borderRadius: '10px',
               textDecoration: 'none',
               color: 'var(--text-primary)',
               fontWeight: 'bold',
               fontFamily: 'var(--font-display)',
               letterSpacing: '1px',
-              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
             }}
           >
             READ DOCS
@@ -298,16 +299,17 @@ export function Tokenomics() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              padding: '12px',
-              background: 'var(--accent-primary)',
-              border: '2px solid var(--text-primary)',
-              borderRadius: '12px',
+              padding: '8px 12px',
+              background: '#9146FF',
+              border: '2px solid #9146FF',
+              borderRadius: '10px',
               textDecoration: 'none',
               color: 'white',
               fontWeight: 'bold',
               fontFamily: 'var(--font-display)',
               letterSpacing: '1px',
-              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
             }}
           >
             WATCH STREAM

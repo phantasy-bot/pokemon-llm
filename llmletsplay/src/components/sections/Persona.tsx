@@ -144,7 +144,7 @@ export function Persona() {
   // Technical Specs Card Component
   const TechSpecsCard = () => (
     <div className="info-card info-card--dotted">
-      <div className="info-card-header" style={{ marginBottom: '24px' }}>
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
         <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SPECS</h4>
       </div>
 
