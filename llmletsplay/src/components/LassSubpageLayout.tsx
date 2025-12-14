@@ -1,9 +1,18 @@
+import { useState, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { PixelExternalLink } from './icons/PixelIcons'
 
 // Token address - same as landing page
 const TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+// Rate limit: max 5 clicks per second (200ms minimum between animations)
+const COPY_RATE_LIMIT_MS = 200
+
+interface FloatingText {
+  id: number
+  x: number
+}
 
 interface LassSubpageLayoutProps {
   children: ReactNode
@@ -12,6 +21,32 @@ interface LassSubpageLayoutProps {
 }
 
 export function LassSubpageLayout({ children, characterImage = '/lass/lass-default.png', hideCharacter = false }: LassSubpageLayoutProps) {
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const lastCopyTime = useRef(0)
+  const nextId = useRef(0)
+
+  const handleCopy = () => {
+    const now = Date.now()
+    if (now - lastCopyTime.current < COPY_RATE_LIMIT_MS) {
+      return // Rate limited
+    }
+    lastCopyTime.current = now
+
+    navigator.clipboard.writeText(TOKEN_ADDRESS)
+    
+    // Add a new floating text with random x offset
+    const newFloat: FloatingText = {
+      id: nextId.current++,
+      x: Math.random() * 40 - 20 // Random offset -20 to +20 px
+    }
+    setFloatingTexts(prev => [...prev, newFloat])
+    
+    // Remove this floating text after animation completes
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(f => f.id !== newFloat.id))
+    }, 1000)
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -62,11 +97,12 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
           flexDirection: 'column',
           gap: '10px',
           width: '100%',
-          marginTop: 'auto'
+          marginTop: 'auto',
+          overflow: 'visible'
         }}>
-          {/* CA Widget */}
+          {/* CA Widget with floating copied texts */}
           <div 
-            onClick={() => navigator.clipboard.writeText(TOKEN_ADDRESS)}
+            onClick={handleCopy}
             className="pushdown-button"
             style={{
               display: 'flex',
@@ -81,9 +117,30 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
               fontSize: '12px',
               letterSpacing: '1px',
               cursor: 'pointer',
-              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)'
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              position: 'relative',
+              overflow: 'visible'
             }}
           >
+            {/* Floating "copied" texts */}
+            {floatingTexts.map(ft => (
+              <span
+                key={ft.id}
+                style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  left: `calc(50% + ${ft.x}px)`,
+                  transform: 'translateX(-50%)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  color: 'var(--accent-primary)',
+                  pointerEvents: 'none',
+                  animation: 'floatUp 1s ease-out forwards'
+                }}
+              >
+                copied
+              </span>
+            ))}
             <span style={{
               fontFamily: 'var(--font-mono)',
               fontSize: '10px',

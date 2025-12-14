@@ -91,7 +91,8 @@ export function FolderContainer({ children, title, titleStyle, navItems, activeS
               border: 'none',
               cursor: 'pointer',
               padding: '4px',
-              marginLeft: '8px'
+              opacity: 0.5,
+              transition: 'opacity 0.2s ease'
             }}
             title="Menu"
           >
@@ -203,7 +204,7 @@ export function FolderContainer({ children, title, titleStyle, navItems, activeS
       {/* Main Content Area */}
       <div className="folder-content" style={{
         marginTop: '60px',
-        padding: '0px',
+        padding: '48px 0 0 48px',
         maxWidth: '100%',
         minHeight: 'calc(100% - 60px)',
         position: 'relative',

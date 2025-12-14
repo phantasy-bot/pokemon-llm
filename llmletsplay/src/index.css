@@ -536,10 +536,30 @@ tr:hover {
 
 .info-card {
   background: var(--cream);  /* Cream bg for visibility on red folder */
-  border: 1px solid var(--border-color);
+  border: 2px solid rgba(0, 0, 0, 0.8);  /* Darker, more black border */
   border-radius: var(--radius-md);
-  padding: var(--space-md);
+  padding: var(--space-lg);
   margin: var(--space-md) 0;
+}
+
+.info-card--dotted {
+  background: #1a1a1a;  /* Pure dark black bg */
+  border: 2px dashed white;  /* Changed to dashed */
+  color: white;
+}
+
+.info-card--dotted h4,
+.info-card--dotted .info-card-header {
+  color: white;
+}
+
+/* Technical specs icons and labels use accent color */
+.info-card--dotted svg {
+  color: var(--accent-primary-bright) !important;
+}
+
+.info-card--dotted div[style*="letterSpacing: '2px'"] {
+  color: var(--accent-primary-bright) !important;
 }
 
 .info-card-header {
@@ -907,7 +927,7 @@ li::marker {
 
 .coming-soon-title {
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: 26px;  /* Reduced from 32px */
   color: var(--text-primary);
   margin: 0 0 8px 0;
   letter-spacing: 2px;
@@ -928,10 +948,18 @@ li::marker {
 
 /* RESPONSIVE BREAKPOINTS */
 
-/* 1. Large Screens */
+/* 1. Large Screens (1600px+) */
 @media (min-width: 1600px) {
   .coming-soon-group {
     right: 15%;
+  }
+  
+  .coming-soon-bubble {
+    max-width: 600px !important;  /* Larger on big screens */
+  }
+  
+  .coming-soon-title {
+    font-size: 28px !important;  /* Slightly larger on big screens */
   }
 }
 
@@ -943,49 +971,35 @@ li::marker {
   }
 }
 
-/* 3. Tablet (769px - 1024px) - FORCED COLLAPSED SIDEBAR + FLIPPED LAYOUT */
+/* 3. Tablet (769px - 1024px) - COMING SOON LAYOUT ADJUSTMENTS */
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* --- Forced Sidebar Collapse --- */
-  .sidebar { width: 60px !important; }
-  .nav-item span:not(.nav-icon) { display: none !important; }
-  .sidebar-footer { display: none !important; }
-  .sidebar-toggle { display: none !important; } 
-  .sponsor-section { padding: 0 4px !important; }
-  .sponsor-section img { width: 40px !important; }
-  .sponsor-text { display: none !important; }
-  .nav-links { padding-top: 24px !important; }
-  .nav-item { padding: 8px !important; justify-content: center !important; }
+  /* Sidebar uses JS-based auto-collapse now (Sidebar.tsx handles this) */
   
-  /* HIDE EXTERNAL LINK ICON CONTAINER */
-  .nav-item > div { display: none !important; }
+  /* Hide toggle button on tablet (already collapsed) */
+  .sidebar-toggle { display: none !important; }
 
   /* --- Coming Soon Layout Flip --- */
   .coming-soon-group {
     right: auto;
     left: 20%; 
-    height: 70vh; /* Large size */
-    bottom: 0px; /* Force bottom */
+    height: 70vh;
+    bottom: 0px;
   }
   
   .coming-soon-character {
-    /* Anchored to group, so relative is fine, but lets ensure fit */
     position: relative;
     right: auto; left: auto; top: auto; bottom: auto;
   }
   
   .coming-soon-bubble {
-    /* Re-anchor for Tablet (Right of Character) */
     bottom: auto; 
     top: 0;
-    margin-top: -100px; /* Lift */
-    
-    left: 55%; /* Pull close to character (was 85%) */
+    margin-top: -100px;
+    left: 55%;
     right: auto;
-    
     transform: none;
     margin-right: 0;
     margin-left: 0; 
-    
     max-width: 350px; 
   }
   
@@ -998,9 +1012,6 @@ li::marker {
     left: 20px; 
     width: 50px; 
     height: 35px; 
-    /* No scaleX needed if SVG points left natively, but we can reuse if needed. 
-       Assuming SVG points left. If flipped in code, remove transform. */
-    /* transform: scaleX(-1); removed if SVG is correct */
   }
 }
 
@@ -1092,8 +1103,13 @@ li::marker {
   /* Move bubble closer to character by adjusting transform */
   .coming-soon-bubble {
     transform: translateX(-60%) !important;
-    max-width: clamp(300px, 30vw, 400px) !important;
+    max-width: clamp(350px, 40vw, 550px) !important;
     margin-right: 0 !important;
+  }
+  
+  /* Desktop title size */
+  .coming-soon-title {
+    font-size: 24px !important;
   }
 }
 
@@ -1211,5 +1227,17 @@ li::marker {
 @media (min-width: 1601px) {
   .coming-soon-group {
     right: 5% !important; /* Maximum right shift */
+  }
+}
+
+/* Menu toggle hover effect */
+.menu-toggle:hover {
+  opacity: 1 !important;
+}
+
+/* Mobile: Lift beak on all pages */
+@media (max-width: 768px) {
+  .coming-soon-tail-mobile {
+    bottom: -24px !important; /* Lifted up from -28px */
   }
 }
