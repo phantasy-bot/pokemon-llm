@@ -42,9 +42,9 @@
   padding: 40px 60px;
 }
 
-/* Page shake - synced to character landing at 75% of 4s = 3s */
+/* Page shake - synced to character landing at 75% of 6s = 4.5s */
 .page-shake-container {
-  animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: page-shake 6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* =============================================
@@ -54,7 +54,7 @@
 .stream-info {
   text-align: center;
   opacity: 0;
-  animation: fade-in-down 0.8s ease-out 4s forwards;
+  animation: fade-in-down 0.8s ease-out 6s forwards;
 }
 
 .stream-title {
@@ -98,7 +98,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   opacity: 0;
-  animation: fade-in 0.8s ease-out 4.5s forwards;
+  animation: fade-in 0.8s ease-out 6.5s forwards;
 }
 
 .branding-item {
@@ -210,43 +210,43 @@
   will-change: transform, opacity;
 }
 
-/* Each trail ghost has unique animation timing - 4s duration for slower fade */
+/* Each trail ghost has unique animation timing - 6s duration for slower, more visible animation */
 .holographic-afterimage .trail-1 {
-  animation: trail-ghost-1 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-1 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   z-index: 1;
 }
 .holographic-afterimage .trail-2 {
-  animation: trail-ghost-2 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-2 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.2s;
   z-index: 2;
 }
 .holographic-afterimage .trail-3 {
-  animation: trail-ghost-3 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-3 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.4s;
   z-index: 3;
 }
 .holographic-afterimage .trail-4 {
-  animation: trail-ghost-4 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-4 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.6s;
   z-index: 4;
 }
 .holographic-afterimage .trail-5 {
-  animation: trail-ghost-5 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-5 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.8s;
   z-index: 5;
 }
 .holographic-afterimage .trail-6 {
-  animation: trail-ghost-6 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-6 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1s;
   z-index: 6;
 }
 .holographic-afterimage .trail-7 {
-  animation: trail-ghost-7 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-7 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1.2s;
   z-index: 7;
 }
 .holographic-afterimage .trail-8 {
-  animation: trail-ghost-8 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-8 6s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1.4s;
   z-index: 8;
 }
@@ -307,7 +307,7 @@
   height: 100%;
   width: auto;
   display: block;
-  animation: character-slide-in 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: character-slide-in 6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* =============================================
@@ -383,61 +383,62 @@
   100% { transform: translate(0, 0); }
 }
 
-/* Trail ghosts - appear along path, then linger and fade out slowly */
+/* Trail ghosts - appear along path, linger longer, fade slowly */
+/* Spaced out more so all frames are visible */
 @keyframes trail-ghost-1 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  10% { transform: translateX(-85vw); opacity: 0.65; }
-  50% { transform: translateX(-85vw); opacity: 0.5; }
-  100% { transform: translateX(-85vw); opacity: 0; }
+  8% { transform: translateX(-80vw); opacity: 0.7; }
+  70% { transform: translateX(-80vw); opacity: 0.55; }
+  100% { transform: translateX(-80vw); opacity: 0.25; }
 }
 
 @keyframes trail-ghost-2 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  18% { transform: translateX(-70vw); opacity: 0.6; }
-  55% { transform: translateX(-70vw); opacity: 0.45; }
-  100% { transform: translateX(-70vw); opacity: 0; }
+  15% { transform: translateX(-65vw); opacity: 0.65; }
+  72% { transform: translateX(-65vw); opacity: 0.5; }
+  100% { transform: translateX(-65vw); opacity: 0.2; }
 }
 
 @keyframes trail-ghost-3 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  26% { transform: translateX(-55vw); opacity: 0.55; }
-  60% { transform: translateX(-55vw); opacity: 0.4; }
-  100% { transform: translateX(-55vw); opacity: 0; }
+  22% { transform: translateX(-50vw); opacity: 0.6; }
+  75% { transform: translateX(-50vw); opacity: 0.45; }
+  100% { transform: translateX(-50vw); opacity: 0.15; }
 }
 
 @keyframes trail-ghost-4 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  34% { transform: translateX(-40vw); opacity: 0.5; }
-  65% { transform: translateX(-40vw); opacity: 0.35; }
-  100% { transform: translateX(-40vw); opacity: 0; }
+  32% { transform: translateX(-38vw); opacity: 0.55; }
+  78% { transform: translateX(-38vw); opacity: 0.4; }
+  100% { transform: translateX(-38vw); opacity: 0.12; }
 }
 
 @keyframes trail-ghost-5 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  42% { transform: translateX(-28vw); opacity: 0.45; }
-  70% { transform: translateX(-28vw); opacity: 0.3; }
-  100% { transform: translateX(-28vw); opacity: 0; }
+  42% { transform: translateX(-26vw); opacity: 0.5; }
+  80% { transform: translateX(-26vw); opacity: 0.35; }
+  100% { transform: translateX(-26vw); opacity: 0.1; }
 }
 
 @keyframes trail-ghost-6 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  50% { transform: translateX(-18vw); opacity: 0.4; }
-  75% { transform: translateX(-18vw); opacity: 0.25; }
-  100% { transform: translateX(-18vw); opacity: 0; }
+  52% { transform: translateX(-16vw); opacity: 0.45; }
+  82% { transform: translateX(-16vw); opacity: 0.3; }
+  100% { transform: translateX(-16vw); opacity: 0.08; }
 }
 
 @keyframes trail-ghost-7 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  58% { transform: translateX(-10vw); opacity: 0.35; }
-  80% { transform: translateX(-10vw); opacity: 0.2; }
-  100% { transform: translateX(-10vw); opacity: 0; }
+  62% { transform: translateX(-8vw); opacity: 0.4; }
+  85% { transform: translateX(-8vw); opacity: 0.25; }
+  100% { transform: translateX(-8vw); opacity: 0.05; }
 }
 
 @keyframes trail-ghost-8 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  66% { transform: translateX(-5vw); opacity: 0.3; }
-  85% { transform: translateX(-5vw); opacity: 0.15; }
-  100% { transform: translateX(-5vw); opacity: 0; }
+  70% { transform: translateX(-3vw); opacity: 0.35; }
+  90% { transform: translateX(-3vw); opacity: 0.2; }
+  100% { transform: translateX(-3vw); opacity: 0; }
 }
 
 /* Stationary ghosts fade in after entrance completes */

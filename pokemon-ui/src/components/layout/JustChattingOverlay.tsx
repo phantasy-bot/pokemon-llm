@@ -1,13 +1,13 @@
 /**
  * JustChattingOverlay - OBS overlay for "Just Chatting" streams
  * 
- * Uses EXACT same animation structure as llmletsplay ComingSoon page
- * Only difference: trail ghosts use different frame images
- * - Trails 1-3: lass-0 (early in path)
- * - Trails 4-5: lass-1 (middle of path)
- * - Trails 6-8: lass-2 (near center)
- * - Main character: lass-2 (slides in and lands at center)
+ * Holographic animation with frame progression:
+ * - Trail ghosts 1-3: lass-0 (early in path)
+ * - Trail ghosts 4-5: lass-1 (middle of path)
+ * - Trail ghosts 6-8: lass-2 (near center)
+ * - Main character: swaps from lass-0 → lass-1 → lass-2 during animation
  */
+import { useState, useEffect } from 'react';
 import './JustChattingOverlay.css';
 
 // Character frames
@@ -15,8 +15,22 @@ const FRAME_0 = '/lass/lass-0.png';
 const FRAME_1 = '/lass/lass-1.png';
 const FRAME_2 = '/lass/lass-2.png';
 
-// Holographic character - exact same structure as ComingSoon.tsx
+// Holographic character with frame-swapping main character
 function HolographicCharacter() {
+  const [mainCharacterFrame, setMainCharacterFrame] = useState(FRAME_0);
+  
+  useEffect(() => {
+    // Main character starts as frame 0, then swaps during animation
+    // Animation is 6s total, so swap at 2s and 4s
+    const timer1 = setTimeout(() => setMainCharacterFrame(FRAME_1), 2000);
+    const timer2 = setTimeout(() => setMainCharacterFrame(FRAME_2), 4000);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+  
   return (
     <div className="holographic-afterimage">
       {/* Trail ghosts - appear along path during entrance, then fade */}
@@ -39,9 +53,9 @@ function HolographicCharacter() {
       <img src={FRAME_2} alt="" className="ghost-layer ghost-2" aria-hidden="true" />
       <img src={FRAME_2} alt="" className="ghost-layer ghost-3" aria-hidden="true" />
       
-      {/* Main character - solid, on top, slides in from left */}
+      {/* Main character - swaps frames during animation, slides in from left */}
       <img 
-        src={FRAME_2} 
+        src={mainCharacterFrame} 
         alt="Lass" 
         className="main-character"
       />
