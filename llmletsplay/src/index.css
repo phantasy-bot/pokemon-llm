@@ -1728,8 +1728,8 @@ li::marker {
 
 /* Homepage tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* Apply to ALL pages containing coming-soon-group, not just homepage */
-  .coming-soon-group, .homepage .coming-soon-group {
+  /* --- COMING SOON PAGE (Generic) --- */
+  .coming-soon-group {
     left: 40px !important; /* Move group near left edge */
     right: auto !important;
     transform: none !important; /* Remove centering transform */
@@ -1737,25 +1737,48 @@ li::marker {
     max-height: 550px !important;
   }
 
-  /* Push character image to the right on tablet - increased to 150px */
+  /* Push character image to the right on tablet - specific to Coming Soon page */
   .coming-soon-group .holographic-afterimage {
     transform: translateX(150px);
   }
   
-  /* Apply to ALL pages containing coming-soon-bubble */
-  .coming-soon-bubble, .homepage .coming-soon-bubble {
-    /* Push bubble to the left logic - adjusted to -280px */
+  /* Coming Soon Page Bubble */
+  .coming-soon-bubble {
+    /* Push bubble to the left logic */
     margin-left: -280px !important; 
     /* Moved down 75px (100px -> 25px) */
     bottom: calc(85% + 25px) !important;
+    top: auto !important;    /* Fix stretching */
+    height: auto !important; /* Fix stretching */
     max-width: 500px !important;
     width: max-content !important;
     white-space: nowrap !important;
     animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
   }
-  
+
+  /* --- HOMEPAGE RESTORATION (Overrides Generic) --- */
+  .homepage .coming-soon-group {
+    left: calc(50% - 125px) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Reset character shift on homepage */
+  .homepage .coming-soon-group .holographic-afterimage {
+    transform: none !important;
+  }
+
   .homepage .coming-soon-title {
     white-space: nowrap !important;
+  }
+
+  /* Homepage Bubble - Restore Centering */
+  .homepage .coming-soon-bubble {
+     margin-left: 0 !important;
+     bottom: calc(85% + 100px) !important;
+     left: 50% !important;
+     transform: translateX(-50%) !important;
+     top: auto !important;
+     height: auto !important;
   }
   
   /* Beak position on tablet - matches desktop */
