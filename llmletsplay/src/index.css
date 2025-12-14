@@ -377,7 +377,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
-  padding-top: calc(var(--space-xl) + 16px);
+  padding-top: calc(var(--space-xl) + 16px + 125px); /* Extra 125px spacing from title */
   gap: var(--space-md);
   background: transparent;  /* Transparent to blend with folder red */
   border-radius: 10px;
@@ -1275,38 +1275,54 @@ li::marker {
   50% { opacity: 0.5; }
 }
 
-/* Character slides in from left with landing shake */
+/* Character slides in from left with landing impact (scale + diagonal shake) */
 @keyframes character-slide-in {
   0% {
-    transform: translateX(-100vw);
+    transform: translateX(-100vw) scale(1);
     opacity: 0;
   }
   5% {
     opacity: 1;
   }
   75% {
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
     opacity: 1;
   }
-  /* Screen shake at landing - starts at 87.5% (3.5s of 4s animation = 1s after 2.5s slide) */
-  79% { transform: translateX(0); }
-  81% { transform: translateX(3px) rotate(0.5deg); }
-  85% { transform: translateX(-3px) rotate(-0.5deg); }
-  89% { transform: translateX(2px) rotate(0.3deg); }
-  93% { transform: translateX(-1px) rotate(-0.2deg); }
+  /* Impact: grow slightly */
+  78% {
+    transform: translateX(0) scale(1.08);
+  }
+  /* Diagonal shake while shrinking back */
+  81% { 
+    transform: translate(4px, -3px) scale(1.05) rotate(0.8deg); 
+  }
+  84% { 
+    transform: translate(-3px, 4px) scale(1.03) rotate(-0.6deg); 
+  }
+  87% { 
+    transform: translate(3px, 2px) scale(1.02) rotate(0.4deg); 
+  }
+  90% { 
+    transform: translate(-2px, -2px) scale(1.01) rotate(-0.3deg); 
+  }
+  93% { 
+    transform: translate(1px, 1px) scale(1) rotate(0.1deg); 
+  }
   100% {
-    transform: translateX(0) rotate(0deg);
+    transform: translate(0, 0) scale(1) rotate(0deg);
     opacity: 1;
   }
 }
 
-/* Soft screen shake for container when character lands */
-@keyframes container-shake {
-  0%, 80% { transform: translate(0, 0); }
-  84% { transform: translate(2px, 1px); }
-  88% { transform: translate(-2px, -1px); }
-  92% { transform: translate(1px, 0); }
-  96% { transform: translate(-1px, 0); }
+/* Page shake effect - triggered on folder container when character lands */
+@keyframes page-shake {
+  0%, 75% { transform: translate(0, 0); }
+  78% { transform: translate(0, 0); }
+  81% { transform: translate(3px, -2px); }
+  84% { transform: translate(-2px, 3px); }
+  87% { transform: translate(2px, 1px); }
+  90% { transform: translate(-1px, -1px); }
+  93% { transform: translate(1px, 0); }
   100% { transform: translate(0, 0); }
 }
 
@@ -1519,6 +1535,9 @@ li::marker {
     height: 48vh !important;
     width: auto !important;
     z-index: 5 !important;
+    /* Center the flex content */
+    display: flex !important;
+    justify-content: center !important;
   }
   
   /* Remove character slide-in animation on mobile - just show with afterimage */
@@ -1526,12 +1545,15 @@ li::marker {
     animation: none !important;
     opacity: 1 !important;
     z-index: 100 !important; /* Ensure main character is on top on mobile */
+    position: relative !important;
+    left: 0 !important;
+    transform: none !important;
   }
   
   /* Lower z-index for ghosts on mobile to ensure main character is on top */
-  .holographic-afterimage .ghost-1 { transform: translateX(-8px); z-index: 1 !important; }
-  .holographic-afterimage .ghost-2 { transform: translateX(-5px); z-index: 2 !important; }
-  .holographic-afterimage .ghost-3 { transform: translateX(-2px); z-index: 3 !important; }
+  .holographic-afterimage .ghost-1 { transform: translateX(-8px); z-index: 1 !important; left: 0 !important; }
+  .holographic-afterimage .ghost-2 { transform: translateX(-5px); z-index: 2 !important; left: 0 !important; }
+  .holographic-afterimage .ghost-3 { transform: translateX(-2px); z-index: 3 !important; left: 0 !important; }
   
   /* Hide trail ghosts on mobile for cleaner look */
   .holographic-afterimage .trail-ghost {
@@ -1597,9 +1619,9 @@ li::marker {
 /* Desktop: Center character and bubble above it */
 @media (min-width: 769px) {
   .homepage .coming-soon-group {
-    /* Center the group with title (150px left of page center to account for sidebar) */
+    /* Center the group with title (75px left of page center to account for sidebar) */
     right: auto !important;
-    left: calc(50% - 150px) !important;
+    left: calc(50% - 75px) !important;
     transform: translateX(-50%) !important;
     /* Make character smaller on homepage desktop */
     height: 65vh !important;
@@ -1623,11 +1645,16 @@ li::marker {
   .homepage .coming-soon-tail-mobile { 
     display: block !important;
     position: absolute;
-    bottom: -28px;
+    bottom: -24px;
     left: 50%;
     transform: translateX(-50%);
     width: 40px; 
     height: 30px;
+  }
+  
+  /* Page shake when character lands - applies to all pages with character */
+  .folder-container {
+    animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 }
 
@@ -1645,7 +1672,7 @@ li::marker {
 /* Homepage tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
   .homepage .coming-soon-group {
-    left: calc(50% - 150px) !important;
+    left: calc(50% - 75px) !important;
     right: auto !important;
     transform: translateX(-50%) !important;
     height: 60vh !important;
@@ -1662,6 +1689,11 @@ li::marker {
   
   .homepage .coming-soon-title {
     white-space: nowrap !important;
+  }
+  
+  /* Beak position on tablet - matches desktop */
+  .homepage .coming-soon-tail-mobile {
+    bottom: -24px !important;
   }
 }
 
