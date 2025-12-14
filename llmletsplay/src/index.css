@@ -1699,7 +1699,7 @@ li::marker {
 /* Homepage tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
   .homepage .coming-soon-group {
-    left: calc(50% - 75px) !important;
+    left: calc(50% - 500px) !important;
     right: auto !important;
     transform: translateX(-50%) !important;
     height: 60vh !important;

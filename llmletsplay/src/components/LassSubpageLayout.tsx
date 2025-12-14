@@ -64,18 +64,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
       </div>
       
       {/* Right column - sponsor, character and buttons (fixed width matching corner cutout) */}
-      <div style={{
-        position: 'fixed',
-        top: '60px',
-        right: 0,
-        width: '220px',
-        height: 'calc(100vh - 60px)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '0 16px 32px 16px',
-        zIndex: 50
-      }}>
+      <div className="persona-right-column">
         {/* Phantasy Agent Framework - links to phantasy.bot */}
         <a 
           href="https://phantasy.bot" 

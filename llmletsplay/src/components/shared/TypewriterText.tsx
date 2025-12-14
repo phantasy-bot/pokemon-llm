@@ -34,7 +34,7 @@ export function TypewriterText({
       
       timerRef.current = setInterval(() => {
         if (indexRef.current < text.length) {
-          setDisplayedText((prev) => prev + text.charAt(indexRef.current))
+          setDisplayedText(text.slice(0, indexRef.current + 1))
           indexRef.current++
         } else {
           if (timerRef.current) clearInterval(timerRef.current)
