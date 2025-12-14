@@ -272,6 +272,8 @@ body {
   border-bottom-left-radius: 0; /* Align with bottom */
   border-bottom-right-radius: 0; /* Align with bottom */
   overflow: hidden;
+  /* Clips holographic trail to stay within folder bounds */
+  clip-path: inset(0 0 0 0);
 }
 
 /* FOLDER TITLE in the red bar */
@@ -1267,7 +1269,7 @@ li::marker {
   50% { opacity: 0.5; }
 }
 
-/* Character slides in from left */
+/* Character slides in from left with landing shake */
 @keyframes character-slide-in {
   0% {
     transform: translateX(-100vw);
@@ -1276,58 +1278,85 @@ li::marker {
   10% {
     opacity: 1;
   }
-  100% {
+  80% {
     transform: translateX(0);
+    opacity: 1;
+  }
+  /* Screen shake at landing */
+  84% { transform: translateX(3px) rotate(0.5deg); }
+  88% { transform: translateX(-3px) rotate(-0.5deg); }
+  92% { transform: translateX(2px) rotate(0.3deg); }
+  96% { transform: translateX(-1px) rotate(-0.2deg); }
+  100% {
+    transform: translateX(0) rotate(0deg);
     opacity: 1;
   }
 }
 
-/* Trail ghosts - appear along path, then fade out */
+/* Soft screen shake for container when character lands */
+@keyframes container-shake {
+  0%, 80% { transform: translate(0, 0); }
+  84% { transform: translate(2px, 1px); }
+  88% { transform: translate(-2px, -1px); }
+  92% { transform: translate(1px, 0); }
+  96% { transform: translate(-1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Trail ghosts - appear along path, then linger and fade out slowly */
 @keyframes trail-ghost-1 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  15% { transform: translateX(-85vw); opacity: 0.6; }
+  10% { transform: translateX(-85vw); opacity: 0.65; }
+  50% { transform: translateX(-85vw); opacity: 0.5; }
   100% { transform: translateX(-85vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-2 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  25% { transform: translateX(-70vw); opacity: 0.55; }
+  18% { transform: translateX(-70vw); opacity: 0.6; }
+  55% { transform: translateX(-70vw); opacity: 0.45; }
   100% { transform: translateX(-70vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-3 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  35% { transform: translateX(-55vw); opacity: 0.5; }
+  26% { transform: translateX(-55vw); opacity: 0.55; }
+  60% { transform: translateX(-55vw); opacity: 0.4; }
   100% { transform: translateX(-55vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-4 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  45% { transform: translateX(-40vw); opacity: 0.45; }
+  34% { transform: translateX(-40vw); opacity: 0.5; }
+  65% { transform: translateX(-40vw); opacity: 0.35; }
   100% { transform: translateX(-40vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-5 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  55% { transform: translateX(-28vw); opacity: 0.4; }
+  42% { transform: translateX(-28vw); opacity: 0.45; }
+  70% { transform: translateX(-28vw); opacity: 0.3; }
   100% { transform: translateX(-28vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-6 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  65% { transform: translateX(-18vw); opacity: 0.35; }
+  50% { transform: translateX(-18vw); opacity: 0.4; }
+  75% { transform: translateX(-18vw); opacity: 0.25; }
   100% { transform: translateX(-18vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-7 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  75% { transform: translateX(-10vw); opacity: 0.3; }
+  58% { transform: translateX(-10vw); opacity: 0.35; }
+  80% { transform: translateX(-10vw); opacity: 0.2; }
   100% { transform: translateX(-10vw); opacity: 0; }
 }
 
 @keyframes trail-ghost-8 {
   0% { transform: translateX(-100vw); opacity: 0; }
-  85% { transform: translateX(-5vw); opacity: 0.25; }
+  66% { transform: translateX(-5vw); opacity: 0.3; }
+  85% { transform: translateX(-5vw); opacity: 0.15; }
   100% { transform: translateX(-5vw); opacity: 0; }
 }
 
@@ -1363,43 +1392,43 @@ li::marker {
   will-change: transform, opacity;
 }
 
-/* Each trail ghost has unique animation timing */
+/* Each trail ghost has unique animation timing - 4s duration for slower fade */
 .holographic-afterimage .trail-1 {
-  animation: trail-ghost-1 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-1 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   z-index: 1;
 }
 .holographic-afterimage .trail-2 {
-  animation: trail-ghost-2 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-2 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.2s;
   z-index: 2;
 }
 .holographic-afterimage .trail-3 {
-  animation: trail-ghost-3 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-3 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.4s;
   z-index: 3;
 }
 .holographic-afterimage .trail-4 {
-  animation: trail-ghost-4 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-4 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.6s;
   z-index: 4;
 }
 .holographic-afterimage .trail-5 {
-  animation: trail-ghost-5 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-5 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -0.8s;
   z-index: 5;
 }
 .holographic-afterimage .trail-6 {
-  animation: trail-ghost-6 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-6 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1s;
   z-index: 6;
 }
 .holographic-afterimage .trail-7 {
-  animation: trail-ghost-7 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-7 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1.2s;
   z-index: 7;
 }
 .holographic-afterimage .trail-8 {
-  animation: trail-ghost-8 2.5s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation: trail-ghost-8 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
   animation-delay: 0s, -1.4s;
   z-index: 8;
 }
@@ -1488,11 +1517,13 @@ li::marker {
   /* Override character slide-in for mobile - comes from bottom-left */
   .holographic-afterimage .main-character {
     animation: character-slide-in-mobile 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    z-index: 100 !important; /* Ensure main character is on top on mobile */
   }
   
-  .holographic-afterimage .ghost-1 { transform: translateX(-8px); }
-  .holographic-afterimage .ghost-2 { transform: translateX(-5px); }
-  .holographic-afterimage .ghost-3 { transform: translateX(-2px); }
+  /* Lower z-index for ghosts on mobile to ensure main character is on top */
+  .holographic-afterimage .ghost-1 { transform: translateX(-8px); z-index: 1 !important; }
+  .holographic-afterimage .ghost-2 { transform: translateX(-5px); z-index: 2 !important; }
+  .holographic-afterimage .ghost-3 { transform: translateX(-2px); z-index: 3 !important; }
   
   /* Hide trail ghosts on mobile for cleaner look */
   .holographic-afterimage .trail-ghost {
