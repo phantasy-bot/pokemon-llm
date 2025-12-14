@@ -72,7 +72,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '0 16px 16px 16px', // Reduced right padding to 16px as requested
+        padding: '0 16px 32px 16px', // Increased bottom padding for better spacing
         zIndex: 50
       }}>
         {/* Character image at top - fills width */}
