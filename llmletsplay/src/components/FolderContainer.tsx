@@ -69,13 +69,13 @@ export function FolderContainer({ children, title, titleStyle, navItems, activeS
       {/* Stats in the cutout area */}
       <div className="folder-stats">
         <div className="stat-item">
-          <span className="stat-count">001</span>
-          <span className="stat-label">Run</span>
+          <span className="stat-count">0.01</span>
+          <span className="stat-label">Version</span>
         </div>
         <div className="stats-separator" />
         <div className="stat-item">
-          <span className="stat-count">0.01</span>
-          <span className="stat-label">Version</span>
+          <span className="stat-count">001</span>
+          <span className="stat-label">Run</span>
         </div>
         
         {/* Mobile Menu Toggle - hidden on desktop */}
