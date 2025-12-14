@@ -1746,8 +1746,8 @@ li::marker {
   .coming-soon-bubble, .homepage .coming-soon-bubble {
     /* Push bubble to the left logic - adjusted to -280px */
     margin-left: -280px !important; 
-    /* Moved down 50px (100px -> 50px) */
-    bottom: calc(85% + 50px) !important;
+    /* Moved down 75px (100px -> 25px) */
+    bottom: calc(85% + 25px) !important;
     max-width: 500px !important;
     width: max-content !important;
     white-space: nowrap !important;
