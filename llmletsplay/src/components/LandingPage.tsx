@@ -2,11 +2,12 @@ import { useState, useRef } from 'react'
 import { FolderContainer } from './FolderContainer'
 import { Link, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { PixelHome2, PixelHeart, PixelExternalLink } from './icons/PixelIcons'
+import { PixelHome2, PixelExternalLink } from './icons/PixelIcons'
+import { Icon } from '@iconify/react'
 
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
-  { id: 'lass', label: 'Lass Plays Pokemon', icon: <PixelHeart size={18} /> }, 
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <Icon icon="streamline-pixel:photography-focus-flower" width={18} height={18} /> }, 
 ]
 
 // Token address - update this to your contract address
@@ -79,38 +80,61 @@ export function LandingPage() {
         onNavigate={handleNavigate}
       />
       <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
-        <FolderContainer title="LLM LET'S PLAY" titleStyle={{ fontSize: '64px', letterSpacing: '8px', marginTop: '-20px' }}>
-          <div className="landing-content" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            height: '100%',
-            textAlign: 'center',
-            position: 'relative',
-            zIndex: 10,
-            paddingTop: '40px'
-          }}>
-            {/* Content area - buttons moved to fixed corner */}
-          </div>
+        <FolderContainer title="LLM LET'S PLAY" titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}>
+          <div className="coming-soon-wrapper">
+            {/* Group Container - Anchors Character and Bubble together */}
+            <div className="coming-soon-group">
+              {/* Character Image */}
+              <img 
+                src="/lass/lass-glasses.png" 
+                alt="Coming Soon" 
+                className="coming-soon-character"
+              />
 
-          {/* Large Fixed Character Image - centered relative to title */}
-          <img 
-              src="/lass/lass-glasses.png" 
-              alt="Lass" 
-              style={{
-                position: 'fixed',
-                bottom: '-20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                height: '75vh',
-                maxHeight: '700px',
-                objectFit: 'contain',
-                imageRendering: 'pixelated',
-                zIndex: 1,
-                pointerEvents: 'none',
-                filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.15))'
-              }}
-            />
+              {/* Speech Bubble */}
+              <div className="coming-soon-bubble">
+                <h2 className="coming-soon-title">
+                  COMING SOON
+                </h2>
+                <p className="coming-soon-text">
+                  documentation is being prepared
+                </p>
+                
+                {/* Desktop Tail */}
+                <svg className="coming-soon-tail-desktop" viewBox="0 0 50 35">
+                  <polygon 
+                    points="0,0 50,0 48,33"
+                    fill="var(--cream)"
+                    stroke="var(--accent-primary)"
+                    strokeWidth="2"
+                  />
+                  <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
+                </svg>
+
+                {/* Tablet Tail */}
+                <svg className="coming-soon-tail-tablet" viewBox="0 0 50 35">
+                  <polygon 
+                    points="0,0 50,0 2,33"
+                    fill="var(--cream)"
+                    stroke="var(--accent-primary)"
+                    strokeWidth="2"
+                  />
+                  <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
+                </svg>
+
+                {/* Mobile Tail */}
+                <svg className="coming-soon-tail-mobile" viewBox="0 0 40 30">
+                  <polygon 
+                    points="0,0 40,0 20,28"
+                    fill="var(--cream)"
+                    stroke="var(--accent-primary)"
+                    strokeWidth="2"
+                  />
+                  <rect x="0" y="-2" width="40" height="5" fill="var(--cream)" />
+                </svg>
+              </div>
+            </div>
+          </div>
         </FolderContainer>
 
         {/* Fixed Bottom-Right Button Stack */}
