@@ -1,7 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import "./styles/base.css";
 import { PokemonStreamOverlay } from "./components/layout/PokemonStreamOverlay";
+import { JustChattingOverlay } from "./components/layout/JustChattingOverlay";
 import type { PokemonGameState, LogEntry, Pokemon } from "./types/gameTypes";
+
+// Simple hash-based routing
+function useHashRoute() {
+  const [route, setRoute] = useState(window.location.hash.slice(1) || 'game');
+  
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash.slice(1) || 'game');
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+  
+  return route;
+}
 
 const INITIAL_GAME_STATE: PokemonGameState = {
   badges: [],
@@ -35,6 +52,8 @@ interface TTSCommentary {
 }
 
 function App() {
+  const route = useHashRoute();
+  
   const [gameState, setGameState] =
     useState<PokemonGameState>(INITIAL_GAME_STATE);
   const [wsConnected, setWsConnected] = useState(false);
@@ -268,6 +287,16 @@ function App() {
 
 
 
+  // Route to Just Chatting overlay (manual or during intro)
+  // During intro phase (before cyclesEnabled), show Just Chatting overlay
+  // This gives a "just chatting" feel before the actual gameplay begins
+  const isInIntro = !gameState.cyclesEnabled && wsConnected;
+  
+  if (route === 'just-chatting' || isInIntro) {
+    return <JustChattingOverlay />;
+  }
+  
+  // Default: Game overlay (shown after intro completes)
   return (
     <PokemonStreamOverlay
       gameState={gameState}
