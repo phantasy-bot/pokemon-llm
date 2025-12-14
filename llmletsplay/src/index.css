@@ -1696,6 +1696,23 @@ li::marker {
     padding: 0 16px; /* Add small padding so cards don't touch edge */
     margin-top: 40px;
   }
+
+  /* Right column mobile adjustments */
+  .persona-right-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Sponsor link on mobile - large padding and forced to top */
+  .persona-sponsor-link {
+    padding: 24px !important;
+    order: -1;
+  }
+}
+
+/* Default sponsor link padding */
+.persona-sponsor-link {
+  padding: 8px;
 }
 
 @keyframes bubble-fade-in-homepage-desktop {
@@ -1728,7 +1745,7 @@ li::marker {
   /* Apply to ALL pages containing coming-soon-bubble */
   .coming-soon-bubble, .homepage .coming-soon-bubble {
     /* Push bubble to the left logic */
-    margin-left: -80px !important; 
+    margin-left: -320px !important; 
     bottom: calc(85% + 100px) !important;
     max-width: 500px !important;
     width: max-content !important;
