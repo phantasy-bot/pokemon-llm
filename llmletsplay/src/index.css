@@ -1005,8 +1005,8 @@ li::marker {
     bottom: auto; 
     top: 0;
     margin-top: -100px;
-    left: 55%;
-    right: auto;
+    left: auto;
+    right: 45%;
     transform: none;
     margin-right: 0;
     margin-left: 0; 
@@ -1019,9 +1019,11 @@ li::marker {
     display: block; 
     position: absolute; 
     bottom: -28px; 
-    left: 20px; 
+    right: 20px; /* Moved to right side */
+    left: auto;
     width: 50px; 
-    height: 35px; 
+    height: 35px;
+    transform: scaleX(-1); /* Flip horizontally */
   }
 }
 
@@ -1623,13 +1625,15 @@ li::marker {
 /* Desktop: Center character and bubble above it */
 @media (min-width: 769px) {
   .homepage .coming-soon-group {
-    /* Center the group with title (75px left of page center to account for sidebar) */
+    /* Center the group with title (offset from center to account for sidebar) */
     right: auto !important;
-    left: calc(50% - 75px) !important;
+    left: calc(50% + 70px) !important;
     transform: translateX(-50%) !important;
     /* Make character smaller on homepage desktop */
     height: 65vh !important;
     max-height: 650px !important;
+    /* Smooth transition for sidebar toggle */
+    transition: left 0.3s ease !important;
   }
   
   .homepage .coming-soon-bubble {
@@ -1763,8 +1767,207 @@ li::marker {
 @media (min-width: 1025px) {
   /* Coming soon pages only (not homepage) */
   .main-wrapper:not(.homepage) .coming-soon-bubble {
-    /* Move up 25px and left 50px */
-    transform: translateX(calc(-60% - 50px)) translateY(-25px) !important;
+    /* Move right 25px and up 25px */
+    transform: translateX(calc(-60% + 25px)) translateY(-25px) !important;
+  }
+  
+  /* Move character/bubble group 75px left to align with title */
+  .main-wrapper:not(.homepage) .coming-soon-group {
+    right: calc(220px + 75px) !important;
+  }
+}
+
+/* ============================================
+   PERSONA PAGE - 3-Column Layout with Mobile Carousel
+   ============================================ */
+
+/* Main layout container */
+.persona-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+/* Left column - Cards */
+.persona-cards-column {
+  flex: 0 0 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 48px;
+  z-index: 2;
+}
+
+/* Desktop: Show both cards stacked */
+.persona-cards-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Mobile: Card carousel hidden on desktop */
+.persona-cards-mobile {
+  display: none;
+}
+
+/* Right column - Sponsor + Buttons */
+.persona-right-column {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  width: 220px;
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px 32px 16px;
+  z-index: 50;
+}
+
+/* Sponsor image in right column */
+.persona-sponsor {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+/* Holographic character - centered accounting for sidebar */
+.persona-holographic {
+  position: fixed;
+  bottom: 0;
+  /* Account for sidebar (280px) - center in remaining space */
+  left: calc(50% + 70px);
+  transform: translateX(-50%);
+  height: 65vh;
+  max-height: 650px;
+  z-index: 1;
+  transition: left 0.3s ease;
+}
+
+/* Card navigation (mobile only) */
+.persona-card-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.persona-card-nav-btn {
+  background: var(--cream);
+  border: 2px solid var(--accent-primary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+  transition: transform 0.1s ease;
+}
+
+.persona-card-nav-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 rgba(0,0,0,0.1);
+}
+
+.persona-card-nav-dots {
+  display: none; /* Hidden - not needed */
+}
+
+.persona-card-nav-dots span.active {
+  color: var(--accent-primary);
+}
+
+/* Tablet - adjust character position */
+@media (max-width: 1024px) {
+  .persona-holographic {
+    left: calc(50% + 30px);
+  }
+  
+  .persona-cards-column {
+    flex: 0 0 380px;
+  }
+}
+
+/* Mobile - Full carousel mode */
+@media (max-width: 768px) {
+  .persona-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .persona-cards-column {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    margin-top: 40px;
+  }
+  
+  /* Hide desktop cards, show mobile carousel */
+  .persona-cards-desktop {
+    display: none;
+  }
+  
+  .persona-cards-mobile {
+    display: block;
+    width: 100%;
+  }
+  
+  .persona-card-carousel {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+  
+  .persona-card-carousel .info-card {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+  
+  .persona-holographic {
+    left: 50%;
+    height: 40vh;
+    max-height: 350px;
+  }
+  
+  /* Card navigation - fixed bottom left with gap between buttons */
+  .persona-card-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 100;
+    background: rgba(0,0,0,0.5);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .persona-card-nav-btn {
+    background: var(--cream);
+    padding: 12px 16px;
+    pointer-events: auto;
+  }
+  
+  /* Right column - visible on mobile, just buttons */
+  .persona-right-column {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    right: 0;
+    width: 200px;
+    height: auto;
+    padding: 16px;
+    z-index: 60;
+  }
+  
+  .persona-sponsor {
+    display: none; /* Hide sponsor on mobile */
   }
 }
 

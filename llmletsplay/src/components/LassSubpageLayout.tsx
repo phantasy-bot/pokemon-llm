@@ -63,7 +63,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
         {children}
       </div>
       
-      {/* Right column - character and buttons (fixed width matching corner cutout) */}
+      {/* Right column - sponsor, character and buttons (fixed width matching corner cutout) */}
       <div style={{
         position: 'fixed',
         top: '60px',
@@ -73,10 +73,44 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '0 16px 32px 16px', // Increased bottom padding for better spacing
+        padding: '0 16px 32px 16px',
         zIndex: 50
       }}>
-        {/* Character image at top - fills width */}
+        {/* Phantasy Agent Framework - links to phantasy.bot */}
+        <a 
+          href="https://phantasy.bot" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            width: '100%', 
+            padding: '8px', 
+            marginBottom: '16px',
+            textDecoration: 'none',
+            display: 'block'
+          }}
+        >
+          <img 
+            src="/sponsors/phantasy.png" 
+            alt="Phantasy" 
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              borderRadius: '8px'
+            }}
+          />
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'rgba(0,0,0,0.4)',
+            textAlign: 'center',
+            marginTop: '4px'
+          }}>
+            agent framework
+          </div>
+        </a>
+        
+        {/* Character image below sponsor - fills width */}
         {!hideCharacter && (
           <img 
             src={characterImage} 
@@ -84,7 +118,7 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
             style={{
               width: '100%',
               height: 'auto',
-              maxHeight: '45vh',
+              maxHeight: '35vh',
               objectFit: 'contain',
               imageRendering: 'pixelated',
               marginBottom: 'auto'

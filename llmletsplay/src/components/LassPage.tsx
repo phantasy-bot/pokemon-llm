@@ -69,7 +69,7 @@ export function LassLayout() {
         >
           <Routes>
             <Route index element={<Persona />} />
-            <Route path="about" element={<About />} />
+            <Route path="about" element={<ComingSoon title="About" />} />
             <Route path="architecture" element={<ComingSoon title="Architecture" />} />
             <Route path="memory" element={<ComingSoon title="Memory Map" />} />
             <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
