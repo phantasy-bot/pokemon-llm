@@ -577,6 +577,7 @@ tr:hover {
 .info-card-header {
   display: flex;
   align-items: center;
+  justify-content: center; /* Ensure titles are centered */
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
   color: var(--text-primary);
