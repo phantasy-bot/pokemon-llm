@@ -25,7 +25,7 @@ export function LandingPage() {
         activeSection="home"
         onNavigate={handleNavigate}
       />
-      <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
+      <main className="main-wrapper homepage" style={{ position: 'relative', overflow: 'hidden' }}>
         <FolderContainer title="LLM LET'S PLAY" titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}>
           <LassSubpageLayout hideCharacter={true}>
             <div className="coming-soon-wrapper">
