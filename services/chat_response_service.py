@@ -8,6 +8,7 @@ Includes SKIP/RESPOND decision making and Lass personality consistency.
 import asyncio
 import os
 import logging
+import time
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
@@ -392,9 +393,16 @@ def create_chat_response_service(is_production: bool = None) -> ChatResponseServ
         is_production: Force production mode. If None, auto-detect from environment.
     """
     if is_production is None:
-        # Auto-detect: production if ALKAHEST_API_KEY is set and FEATHERLESS is not
-        has_alkahest = bool(os.getenv("ALKAHEST_API_KEY"))
-        has_featherless = bool(os.getenv("FEATHERLESS_API_KEY"))
-        is_production = has_alkahest and not has_featherless
+        # Check explicit provider config first
+        provider = os.getenv("CHAT_LLM_PROVIDER", "").lower()
+        if provider == "alkahest":
+            is_production = True
+        elif provider == "featherless":
+            is_production = False
+        else:
+            # Auto-detect: production if ALKAHEST_API_KEY is set and FEATHERLESS is not
+            has_alkahest = bool(os.getenv("ALKAHEST_API_KEY"))
+            has_featherless = bool(os.getenv("FEATHERLESS_API_KEY"))
+            is_production = has_alkahest and not has_featherless
     
     return ChatResponseService(is_production=is_production)
