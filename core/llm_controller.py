@@ -463,8 +463,12 @@ class LLMController:
 
     def _call_zai_api(self, kwargs: dict, cycle_metrics: dict) -> str:
         """Handle ZAI specific API call (manual HTTP to support thinking param)."""
-        # ... Reimplementation of ZAI logic ...
-        # For brevity, implementing a simplified version that matches llmdriver logic
+        import os
+        
+        # Check if thinking mode is enabled via env var (default: enabled)
+        thinking_enabled = os.getenv("ZAI_THINKING_MODE", "enabled").lower()
+        use_thinking = thinking_enabled in ("enabled", "true", "1", "yes")
+        
         # Construct ZAI kwargs
         zai_kwargs = {
             "model": kwargs.get("model"),
@@ -472,7 +476,6 @@ class LLMController:
             "stream": False,
             "max_tokens": kwargs.get("max_tokens"),
             "temperature": kwargs.get("temperature"),
-            "thinking": {"type": "enabled"}
         }
         
         # Convert to text-only messages
@@ -494,6 +497,11 @@ class LLMController:
             "max_tokens": zai_kwargs.get("max_tokens"),
             "temperature": zai_kwargs.get("temperature")
         }
+        
+        # Add thinking param if enabled
+        if use_thinking:
+            api_data["thinking"] = {"type": "enabled"}
+            log.info("🧠 ZAI thinking mode enabled")
         
         headers = {
             "Authorization": f"Bearer {self.client.api_key}",
