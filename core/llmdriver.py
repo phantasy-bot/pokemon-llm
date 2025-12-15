@@ -40,6 +40,7 @@ from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from trackers.exploration_tracker import ExplorationTracker
 from services.twitch_chat_service import TwitchChatService, create_twitch_service
 from services.pumpfun_chat_service import PumpFunChatService, create_pumpfun_service
+from services.solana_token_service import get_token_service, SolanaTokenService
 from services.comfyui_tts_service import ComfyUITTSService, create_tts_service
 from services.chat_response_service import ChatResponseService, create_chat_response_service, MessageDecision
 from trackers.history_tracker import ScreenshotHistoryTracker
@@ -2601,6 +2602,31 @@ Your intro message:"""
             if pumpfun_service and pumpfun_service.is_available:
                 pumpfun_msgs = pumpfun_service.get_messages_for_cycle_or_test()
                 messages_for_cycle.extend(pumpfun_msgs)
+            
+            # ═══════════════════════════════════════════════════════════════════
+            # WHALE DETECTION - Query token balances for pump.fun users
+            # ═══════════════════════════════════════════════════════════════════
+            # Uses multi-provider RPC fallback with caching to minimize API calls
+            token_service = get_token_service()
+            if token_service.is_available:
+                # Get unique pump.fun wallet addresses that need whale check
+                pumpfun_wallets = [
+                    msg.get('user_address') for msg in messages_for_cycle
+                    if msg.get('source') == 'pumpfun' 
+                    and msg.get('user_address')
+                    and not msg.get('is_test', False)  # Skip test messages
+                ]
+                
+                if pumpfun_wallets:
+                    # Batch check whale status (uses cache, very efficient)
+                    whale_status = await token_service.check_whale_status_batch(pumpfun_wallets)
+                    
+                    # Update messages with whale status
+                    for msg in messages_for_cycle:
+                        if msg.get('source') == 'pumpfun':
+                            wallet = msg.get('user_address')
+                            if wallet and wallet in whale_status:
+                                msg['is_whale'] = whale_status[wallet]
             
             # ═══════════════════════════════════════════════════════════════════
             # PRIORITY SORTING - Higher priority messages get responded to first
