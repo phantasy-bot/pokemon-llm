@@ -6,6 +6,7 @@ __pycache__
 *.ss1
 *.sav
 *.log
+logs/
 ui.log
 snapshots/
 
