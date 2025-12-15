@@ -269,6 +269,11 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
                     log.info(f"Auto-loading save state (type: {save_type})...")
                     send_command(sock, "LOADSTATE 1")
             
+            # Pause game immediately after connecting - will be unpaused when game screen starts
+            # This allows us to pre-load first cycle analysis during the intro countdown
+            send_command(sock, "PAUSE")
+            log.info("⏸️ Game paused for intro sequence")
+            
             return proc, sock # Success
         except ConnectionRefusedError:
             log.warning(f"Connection to mGBA refused (attempt {attempt+1}/{retries}). Is mGBA running and script loaded?")
