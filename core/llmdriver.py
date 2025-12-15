@@ -897,17 +897,10 @@ Your intro message:"""
     
     # --- TRANSITION TO GAME ---
     # 1. Clear intro text and show first cycle analysis instead
-    # 2. Unpause the game
-    # 3. Start the session
+    # 2. Continue game (no restart needed - game was running with audio during intro)
+    # 3. Start the session with preloaded first cycle analysis
     
-    log.info("🎮 Transitioning to game - restarting mGBA with audio enabled...")
-    
-    # Restart mGBA without mute flag - this gives us fresh audio from save state
-    # restart_mgba() kills the muted mGBA and starts a new one with sound
-    if restart_mgba():
-        log.info("🔊 Game restarted with audio ENABLED - Lass is playing!")
-    else:
-        log.error("❌ Failed to restart mGBA with audio - continuing with muted instance")
+    log.info("🎮 Transitioning to game screen - first cycle analysis ready!")
     
     # Broadcast session start with first cycle analysis (clearing intro text)
     session_start_ms = int(time.time() * 1000)
