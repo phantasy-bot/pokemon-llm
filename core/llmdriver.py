@@ -39,6 +39,7 @@ from core.battle_strategy import read_battle_state, choose_battle_action, get_ba
 from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from trackers.exploration_tracker import ExplorationTracker
 from services.twitch_chat_service import TwitchChatService, create_twitch_service
+from services.pumpfun_chat_service import PumpFunChatService, create_pumpfun_service
 from services.comfyui_tts_service import ComfyUITTSService, create_tts_service
 from services.chat_response_service import ChatResponseService, create_chat_response_service, MessageDecision
 from trackers.history_tracker import ScreenshotHistoryTracker
@@ -387,6 +388,17 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             log.warning(f"Failed to start Twitch chat service: {e}")
     else:
         log.info("📺 Twitch chat service not configured (set TWITCH_* env vars to enable)")
+
+    # Initialize Pump.fun chat service (optional - for crypto livestream integration)
+    pumpfun_service = create_pumpfun_service()
+    if pumpfun_service.is_available:
+        try:
+            await pumpfun_service.start()
+            log.info("💎 Pump.fun chat service started")
+        except Exception as e:
+            log.warning(f"Failed to start Pump.fun chat service: {e}")
+    else:
+        log.info("💎 Pump.fun chat not configured (set PUMPFUN_TOKEN_ADDRESS to enable)")
 
     # Initialize ComfyUI TTS service (optional - gracefully disabled if not configured)
     # Create callback to notify UI when TTS starts playing (for synchronized typewriter)
@@ -1905,7 +1917,8 @@ Your intro message:"""
                 chat_stop_event, 
                 tts_service, 
                 twitch_service, 
-                cycle_count
+                cycle_count,
+                pumpfun_service  # Also pass pump.fun service for crypto chat
             )
         )
         
@@ -2454,13 +2467,15 @@ Your intro message:"""
         prev_cycle_time_s = true_cycle_duration_s
         
         # ═══════════════════════════════════════════════════════════════════════════
-        # TWITCH CHAT RESPONSE PROCESSING (during wait period)
+        # CHAT RESPONSE PROCESSING (Twitch + Pump.fun during wait period)
         # ═══════════════════════════════════════════════════════════════════════════
         # Mark the current time as when game commentary was sent
-        if twitch_service.is_available:
+        if twitch_service and twitch_service.is_available:
             twitch_service.mark_commentary_timestamp()
+        if pumpfun_service and pumpfun_service.is_available:
+            pumpfun_service.mark_commentary_timestamp()
         
-        # Process Twitch chat during wait period
+        # Process chat messages during wait period
         wait_start = time.time()
         chat_response_count = 0
         max_chat_responses = 3  # Limit responses per cycle to avoid overwhelming
@@ -2573,8 +2588,21 @@ Your intro message:"""
                 
                 continue  # Continue the wait loop
             
-            # Real mode below - get actual messages
-            messages_for_cycle = twitch_service.get_messages_for_cycle_or_test()
+            # Real mode below - get actual messages from ALL configured sources
+            messages_for_cycle = []
+            
+            # Get Twitch messages
+            if twitch_service and twitch_service.is_available:
+                twitch_msgs = twitch_service.get_messages_for_cycle_or_test()
+                messages_for_cycle.extend(twitch_msgs)
+            
+            # Get Pump.fun messages
+            if pumpfun_service and pumpfun_service.is_available:
+                pumpfun_msgs = pumpfun_service.get_messages_for_cycle_or_test()
+                messages_for_cycle.extend(pumpfun_msgs)
+            
+            # Sort all messages by timestamp (oldest first)
+            messages_for_cycle.sort(key=lambda m: m.get('timestamp', 0))
             
             if not messages_for_cycle:
                 await asyncio.sleep(min(remaining_wait, 2.0))
