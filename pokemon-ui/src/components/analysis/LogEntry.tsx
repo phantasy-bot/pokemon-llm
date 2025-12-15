@@ -6,12 +6,15 @@ import { TypewriterReveal } from "../shared/TypewriterText";
 import "./LogEntry.css";
 // Import Pokemon Data
 import { POKEMON_TYPE_MAP, TYPE_COLORS } from "../../data/pokemonData";
+import { useEffect, useRef } from "react";
 
 interface LogEntryProps {
   entry: LogEntry;
   isNew?: boolean;
   compact?: boolean;
   onScroll?: () => void;
+  onTypewriterStart?: () => void;
+  onTypewriterComplete?: () => void;
 }
 
 function extractLogType(
@@ -62,11 +65,24 @@ export function LogEntryCard({
   entry,
   isNew,
   compact = false,
+  onTypewriterStart,
+  onTypewriterComplete,
 }: LogEntryProps) {
   const logType = extractLogType(entry);
   const icon = getLogTypeIcon(logType);
   const label = getLogTypeLabel(logType);
   const text = entry.text || entry.message || "";
+  
+  // Track if we've called onTypewriterStart for this entry
+  const hasStartedRef = useRef(false);
+  
+  // Call onTypewriterStart when isNew becomes true for response entries
+  useEffect(() => {
+    if (isNew && logType === "response" && !hasStartedRef.current) {
+      hasStartedRef.current = true;
+      onTypewriterStart?.();
+    }
+  }, [isNew, logType, onTypewriterStart]);
 
   // For compact mode, show minimal info BUT still render markdown for vision
   if (compact) {
@@ -169,6 +185,7 @@ export function LogEntryCard({
                   html={formatLogText(text)}
                   speed={5}
                   className="formatted-log-content"
+                  onComplete={onTypewriterComplete}
                 />
               ) : (
                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>
