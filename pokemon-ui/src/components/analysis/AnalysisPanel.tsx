@@ -174,10 +174,16 @@ export function AnalysisPanel({
   const [isActionActive, setIsActionActive] = useState(false);
   const lastAnimateTrigger = useRef<number | undefined>(undefined);
   
+  // Track if typewriter animation is currently running
+  // Text should only be dark/visible during typewriter, faded otherwise
+  const [isTypewriting, setIsTypewriting] = useState(false);
+  
   useEffect(() => {
     if (animateActions && animateActions !== lastAnimateTrigger.current) {
       lastAnimateTrigger.current = animateActions;
       setIsActionActive(true);
+      // Actions starting also means typewriter is done - fade the text
+      setIsTypewriting(false);
       
       // Action animation lasts about 3 seconds
       const timer = setTimeout(() => setIsActionActive(false), 3000);
@@ -205,8 +211,15 @@ export function AnalysisPanel({
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <div className={`analysis-panel__content-wrapper ${activeSection !== 'llm' && activeSection !== 'actions' ? 'analysis-panel__content-wrapper--faded' : ''}`}>
-                  <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
+                <div className={`analysis-panel__content-wrapper ${!isTypewriting ? 'analysis-panel__content-wrapper--faded' : ''}`}>
+                  <LogEntryCard 
+                    key={latestEntry.id} 
+                    entry={latestEntry} 
+                    isNew 
+                    onScroll={scrollToBottom} 
+                    onTypewriterStart={() => setIsTypewriting(true)}
+                    onTypewriterComplete={() => setIsTypewriting(false)}
+                  />
                 </div>
               ) : (
                 /* No analysis yet - show centered processing status or waiting text */
