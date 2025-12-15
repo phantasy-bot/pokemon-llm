@@ -3,18 +3,17 @@
  * 
  * Features:
  * - Black background with white flower pattern
- * - 5-minute countdown timer (configurable via VITE_STARTING_COUNTDOWN_MS)
+ * - Countdown timer (duration from backend via countdownSeconds prop)
  * - Holographic color transition when complete
  * - Preloads TTS during countdown
  */
 import { useState, useEffect, useCallback } from 'react';
 import './StreamStartingScreen.css';
 
-// Get countdown duration from env, default to 5 minutes
-const COUNTDOWN_MS = parseInt(import.meta.env.VITE_STARTING_COUNTDOWN_MS || '300000', 10);
-
 interface StreamStartingScreenProps {
   onComplete: () => void;
+  // Countdown duration in seconds (from backend)
+  countdownSeconds?: number;
   // Optional: skip countdown if backend signals early
   forceStart?: boolean;
 }
@@ -57,16 +56,25 @@ function FlowerBackground() {
   return <div className="starting-flower-background">{rows}</div>;
 }
 
-export function StreamStartingScreen({ onComplete, forceStart = false }: StreamStartingScreenProps) {
-  const [timeRemaining, setTimeRemaining] = useState(COUNTDOWN_MS);
+export function StreamStartingScreen({ onComplete, countdownSeconds = 300, forceStart = false }: StreamStartingScreenProps) {
+  // Convert seconds to milliseconds for internal timer
+  const countdownMs = countdownSeconds * 1000;
+  const [timeRemaining, setTimeRemaining] = useState(countdownMs);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // Update timer if countdownSeconds prop changes
+  useEffect(() => {
+    if (!isTransitioning) {
+      setTimeRemaining(countdownSeconds * 1000);
+    }
+  }, [countdownSeconds, isTransitioning]);
   
   // Countdown timer
   useEffect(() => {
     if (isTransitioning) return;
     
     const startTime = Date.now();
-    const endTime = startTime + COUNTDOWN_MS;
+    const endTime = startTime + countdownMs;
     
     const interval = setInterval(() => {
       const remaining = endTime - Date.now();
@@ -79,7 +87,7 @@ export function StreamStartingScreen({ onComplete, forceStart = false }: StreamS
     }, 100);
     
     return () => clearInterval(interval);
-  }, [isTransitioning]);
+  }, [isTransitioning, countdownMs]);
   
   // Handle force start from backend
   useEffect(() => {

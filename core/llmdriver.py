@@ -668,18 +668,80 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # ═══════════════════════════════════════════════════════════════════════════
     # STARTUP COUNTDOWN & INTRO CYCLE
     # Wait for countdown duration (synced with frontend Starting Screen)
-    # Preload TTS during countdown, then play intro after countdown ends
+    # Generate dynamic intro via LLM, preload TTS, play after chatbox appears
     # ═══════════════════════════════════════════════════════════════════════════
     
     # Import countdown duration from config
     import config as cfg
     countdown_seconds = cfg.STREAM_COUNTDOWN_SECONDS
     
-    # Determine intro message based on whether we're continuing or starting fresh
+    # Get memory context for dynamic intro generation
+    memory_context = ""
     if is_first_cycle_after_continue:
-        intro_text = "Hey everyone! Lass is back! Had some connection issues but I'm ready to continue my Pokemon adventure!"
-    else:
-        intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
+        # Get previous session context from memory manager
+        try:
+            # Get recent narrative memories for context
+            recent_memories = memory_manager.get_context_for_llm("")
+            if recent_memories:
+                memory_context = recent_memories[:500]  # Limit for prompt size
+        except Exception as e:
+            log.warning(f"Failed to get memory context for intro: {e}")
+    
+    # Generate dynamic intro text via LLM
+    intro_text = ""
+    try:
+        if is_first_cycle_after_continue:
+            intro_prompt = f"""You are Lass, a young Pokemon trainer streaming your Pokemon Red adventure.
+Generate a SHORT (1-2 sentences) stream intro message for returning after connection issues.
+
+Context from your last session:
+{memory_context if memory_context else "You were playing Pokemon Red."}
+
+Rules:
+- Be energetic and excited to continue
+- Reference something specific from memory if possible (location, goal, recent event)
+- Keep it under 30 words
+- Use casual streaming language like "Hey chat!", "We're back!", etc.
+- NO hashtags, NO emotes, NO special formatting
+
+Example: "Hey everyone! Lass is back! Sorry about that, let's see if we can finally make it through Viridian Forest this time!"
+
+Your intro message:"""
+        else:
+            intro_prompt = """You are Lass, a young Pokemon trainer starting your Pokemon Red stream.
+Generate a SHORT (1-2 sentences) stream intro message for starting a new adventure.
+
+Rules:
+- Be energetic and excited to start
+- Keep it under 30 words  
+- Use casual streaming language like "Hey chat!", "Let's go!", etc.
+- NO hashtags, NO emotes, NO special formatting
+
+Example: "Hey chat! It's Lass! Welcome to my Pokemon journey! Let's catch 'em all and become the very best!"
+
+Your intro message:"""
+        
+        log.info("🎬 Generating dynamic intro text via LLM...")
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": intro_prompt}],
+            max_tokens=100,
+            temperature=0.9
+        )
+        if response.choices and response.choices[0].message.content:
+            intro_text = response.choices[0].message.content.strip()
+            # Clean up any quotes
+            intro_text = intro_text.strip('"\'')
+            log.info(f"✅ Generated intro: {intro_text}")
+    except Exception as e:
+        log.warning(f"Failed to generate dynamic intro: {e}")
+    
+    # Fallback if LLM generation failed
+    if not intro_text:
+        if is_first_cycle_after_continue:
+            intro_text = "Hey everyone! Lass is back! Had some connection issues but I'm ready to continue my Pokemon adventure!"
+        else:
+            intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
     
     # Preload TTS audio during countdown (synthesize but don't play yet)
     preloaded_audio_path = None
@@ -698,8 +760,8 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         except Exception as e:
             log.warning(f"⚠️ TTS preload failed, will synthesize on-demand: {e}")
     
-    # Broadcast that we're in the 'starting' phase
-    # Frontend will show Starting Screen with countdown timer
+    # Broadcast that we're in the 'starting' phase with countdown duration
+    # Frontend will use countdownSeconds to set its timer
     await broadcast_func({
         "introPhase": "starting",
         "countdownSeconds": countdown_seconds,
@@ -724,14 +786,24 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     await asyncio.sleep(3)
     
     # Transition to Just Chatting phase
+    # Character slides in over 6s, chatbox appears at 4.8s
     log.info("🎥 Entering Just Chatting phase...")
     await broadcast_func({
         "introPhase": "just-chatting",
-        "processingStatus": "STARTING STREAM...",
+        "processingStatus": "STARTING STREAM..."
+    })
+    
+    # Wait for character animation and chatbox to appear (5s)
+    # Chatbox appears at 4.8s, typewriter starts at 5s
+    log.info("⏳ Waiting for character entrance animation...")
+    await asyncio.sleep(5)
+    
+    # Now broadcast the intro text for the chatbox typewriter
+    await broadcast_func({
         "response_log": {"id": 0, "text": intro_text, "is_response": True, "timestamp": int(time.time() * 1000)}
     })
     
-    # Play the preloaded intro TTS
+    # Play the preloaded intro TTS - synced with typewriter starting
     if tts_service and tts_service.is_available:
         try:
             if preloaded_audio_path:
