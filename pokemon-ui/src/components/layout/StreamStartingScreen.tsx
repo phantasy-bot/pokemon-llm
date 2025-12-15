@@ -7,7 +7,7 @@
  * - Holographic color transition when complete
  * - Preloads TTS during countdown
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './StreamStartingScreen.css';
 
 interface StreamStartingScreenProps {
@@ -61,23 +61,35 @@ export function StreamStartingScreen({ onComplete, countdownSeconds = 300, force
   const countdownMs = countdownSeconds * 1000;
   const [timeRemaining, setTimeRemaining] = useState(countdownMs);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  // Track if we've received the actual countdown from backend
+  const [hasReceivedCountdown, setHasReceivedCountdown] = useState(false);
+  // Use ref to track the actual end time (doesn't change when effect re-runs)
+  const endTimeRef = useRef<number | null>(null);
   
-  // Update timer if countdownSeconds prop changes
+  // When countdownSeconds changes from default, start the timer
   useEffect(() => {
-    if (!isTransitioning) {
+    if (countdownSeconds !== 300 && !hasReceivedCountdown) {
+      // We received a non-default countdown from backend
+      setHasReceivedCountdown(true);
       setTimeRemaining(countdownSeconds * 1000);
+      endTimeRef.current = Date.now() + countdownSeconds * 1000;
     }
-  }, [countdownSeconds, isTransitioning]);
+  }, [countdownSeconds, hasReceivedCountdown]);
   
-  // Countdown timer
+  // Countdown timer - only runs after we've received countdown from backend
   useEffect(() => {
     if (isTransitioning) return;
+    if (!hasReceivedCountdown) return; // Don't start until backend sends countdown
     
-    const startTime = Date.now();
-    const endTime = startTime + countdownMs;
+    // Set end time if not already set
+    if (endTimeRef.current === null) {
+      endTimeRef.current = Date.now() + countdownMs;
+    }
     
     const interval = setInterval(() => {
-      const remaining = endTime - Date.now();
+      if (endTimeRef.current === null) return;
+      
+      const remaining = endTimeRef.current - Date.now();
       setTimeRemaining(remaining);
       
       if (remaining <= 0) {
@@ -87,7 +99,7 @@ export function StreamStartingScreen({ onComplete, countdownSeconds = 300, force
     }, 100);
     
     return () => clearInterval(interval);
-  }, [isTransitioning, countdownMs]);
+  }, [isTransitioning, hasReceivedCountdown, countdownMs]);
   
   // Handle force start from backend
   useEffect(() => {
