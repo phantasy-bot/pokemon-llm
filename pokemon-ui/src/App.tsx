@@ -187,6 +187,13 @@ function App() {
         return newState;
       });
     }
+    
+    // Handle introPhase signals from backend
+    // Backend controls phase transitions: starting → transitioning → just-chatting → game
+    if (data.introPhase && ['starting', 'transitioning', 'just-chatting', 'game'].includes(data.introPhase)) {
+      setIntroPhase(data.introPhase as 'starting' | 'just-chatting' | 'game');
+      console.log(`Intro phase changed to: ${data.introPhase}`);
+    }
 
     // Handle full state history (initial load or reconnect)
     if (data.log_history && Array.isArray(data.log_history)) {
