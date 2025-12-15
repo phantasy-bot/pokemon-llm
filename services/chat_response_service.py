@@ -8,6 +8,7 @@ Includes SKIP/RESPOND decision making and Lass personality consistency.
 import asyncio
 import os
 import logging
+import re
 import time
 from enum import Enum
 from typing import List, Optional, Dict, Any
@@ -77,6 +78,17 @@ class ChatResponseService:
     def is_available(self) -> bool:
         """Check if service is configured."""
         return self._is_configured
+    
+    @staticmethod
+    def _strip_thinking_tags(text: str) -> str:
+        """Remove <think>...</think> blocks from LLM response."""
+        if not text:
+            return text
+        # Remove <think>...</think> including content (multiline)
+        cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+        # Also handle unclosed tags (just in case)
+        cleaned = re.sub(r'<think>.*$', '', cleaned, flags=re.DOTALL)
+        return cleaned.strip()
     
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client."""
@@ -364,7 +376,12 @@ Respond with ONLY your response text, nothing else."""
             duration = time.time() - start_time
             
             if response.choices and response.choices[0].message.content:
-                result = response.choices[0].message.content.strip()
+                raw_result = response.choices[0].message.content.strip()
+                # Strip <think>...</think> blocks that reasoning models may include
+                result = self._strip_thinking_tags(raw_result)
+                if not result:
+                    log.warning(f"Response was only thinking content, skipping")
+                    return ""
                 self._response_count += 1
                 log.info(f"✅ Generated response #{self._response_count} in {duration:.2f}s: {result[:50]}...")
                 return result
