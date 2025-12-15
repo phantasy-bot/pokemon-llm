@@ -70,26 +70,27 @@ When Oak asks "What is your name?" or "His name is?", you see a **preset name me
 **MENU STRUCTURE (TOP TO BOTTOM):**
 ```
 ┌─────────────┐
-│ NAME        │  ← NOT SELECTABLE (just a header/title)
+│ NAME        │  ← HEADER (NOT OPTION)
 ├─────────────┤
-│ ►NEW NAME   │  ← Cursor starts HERE (leads to keyboard)
-│  RED        │  ← Preset option
-│  ASH        │  ← Preset option  
-│  JACK       │  ← Preset option (or BLUE/GARY for rival)
+│ ►NEW NAME   │  ← **CURSOR STARTS HERE** (Row 1)
+│  RED        │  ← Row 2
+│  ASH        │  ← Row 3
+│  JACK       │  ← Row 4
 └─────────────┘
 ```
 
-**CRITICAL**: "NAME" at the top is NOT a selectable option! It's just the title!
-- Cursor starts at "NEW NAME" (first actual option)
-- D = move down to next preset
-- U = move up
-- A = confirm selection
+**CRITICAL**: "NAME" at the top is NOT a selectable option! It's just the header!
+- **YOUR CURSOR IS ALREADY ON "NEW NAME"**
+- To type "LASS": Just press **A** immediately to enter the keyboard!
+- Do NOT press Down unless you want a preset name!
 
 **To type custom name "LASS":**
-1. Cursor is already on "NEW NAME" → press A to enter keyboard
-2. This opens the character keyboard (Stage 2)
+1. **Cursor IS ALREADY on "NEW NAME"**
+2. **JUST PRESS A** to start typing!
+3. This opens the character keyboard (Stage 2)
 
-**To use a preset:** Just press D to scroll down, then A to select.
+**To use a preset:**
+- Press D to scroll down, then A to select.
 
 ---
 

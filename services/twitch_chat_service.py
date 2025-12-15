@@ -19,19 +19,25 @@ from services.chat_types import ChatMessage
 log = logging.getLogger("twitch_chat")
 
 # Configuration Constants
-TWITCH_TEST_MODE = os.getenv("TWITCH_TEST_MODE", "false").lower() == "true"
-TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("TWITCH_TEST_MESSAGES_PER_CYCLE", "3"))
+TWITCH_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
+TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("CHAT_TEST_MESSAGES_PER_CYCLE", "3"))
 
 # Test Data
 TEST_USERNAMES = [
     "Red", "Blue", "Misty", "Brock", "Ash", "Gary", "Oak", 
-    "TeamRocket", "PikachuFan", "Slowpoke", "EeveeLover"
+    "TeamRocket", "PikachuFan", "Slowpoke", "EeveeLover",
+    "GymLeaderMisty", "EliteFourLorelei", "PokemonMaster99",
+    "BugCatcherJoey", "YoungsterBen", "LassSally", "HikerBob"
 ]
 
 TEST_MESSAGES = [
     "Use Thunderbolt!", "Switch to Charizard", "Check the map", 
     "Go back to the Center", "Save the game!", "What level is Pidgey?",
-    "Catch it!", "Run away!", "Use an item", "Check stats"
+    "Catch it!", "Run away!", "Use an item", "Check stats",
+    "Don't release it!", "My Rattata is top percentage!", "I like shorts!",
+    "Where is the S.S. Anne?", "Have you beaten Misty yet?",
+    "Is that a shiny?", "Use a Potion!", "Help I'm lost",
+    "Can you name the next one Bob?", "gg wp", "LUL", "PogChamp"
 ]
 
 # Check if twitchio is available
