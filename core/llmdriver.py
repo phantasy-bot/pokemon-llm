@@ -770,10 +770,78 @@ Your intro message:"""
         except Exception as e:
             log.warning(f"⚠️ TTS preload failed, will synthesize on-demand: {e}")
     
-    # Wait for remaining countdown duration (frontend is also waiting with same timer)
-    # TTS preload already took some time, so calculate remaining time
-    # Use min 0 to handle case where preload took longer than countdown
-    elapsed_for_preload = 15  # Approximate seconds for TTS preload
+    # --- PRE-LOAD FIRST CYCLE DURING COUNTDOWN ---
+    # While the intro TTS and countdown are happening, we run the first cycle analysis
+    # so it's ready to display immediately when we transition to the game screen
+    log.info("🎮 Pre-loading first cycle analysis during countdown...")
+    first_cycle_vision = None
+    first_cycle_analysis = None
+    first_cycle_tts_path = None
+    
+    try:
+        # Take screenshot of paused game (mGBA is paused but still provides screenshots)
+        await asyncio.sleep(0.5)  # Let mGBA settle
+        loop = asyncio.get_event_loop()
+        current_socket = sock_ref["socket"]
+        
+        try:
+            first_cycle_state = await asyncio.wait_for(
+                loop.run_in_executor(None, prep_llm_locked, current_socket),
+                timeout=20
+            )
+        except asyncio.TimeoutError:
+            log.warning("⚠️ First cycle prep_llm timed out - will run on game start")
+            first_cycle_state = None
+        
+        if first_cycle_state:
+            log.info("📸 Got first cycle screenshot from paused game")
+            
+            # Broadcast that we're analyzing vision (even though we're in intro)
+            await broadcast_func({"processingStatus": "ANALYZING VISION..."})
+            
+            # Run vision analysis on the paused screenshot
+            try:
+                first_cycle_vision = await run_vision_analysis_async(
+                    vision_client,
+                    SAVED_SCREENSHOT_PATH,
+                    first_cycle_state
+                )
+                if first_cycle_vision:
+                    log.info(f"👁️ First cycle vision ready: {first_cycle_vision[:100]}...")
+            except Exception as ve:
+                log.warning(f"⚠️ First cycle vision failed: {ve}")
+            
+            # Run LLM analysis for first cycle
+            if first_cycle_vision:
+                await broadcast_func({"processingStatus": "THINKING..."})
+                try:
+                    # Build a simple context for first cycle
+                    first_cycle_analysis = await run_llm_analysis_async(
+                        client, MODEL, first_cycle_state, first_cycle_vision,
+                        memory_manager, exploration_tracker, goal_tracker, [], ""
+                    )
+                    if first_cycle_analysis:
+                        log.info(f"🧠 First cycle LLM ready: {first_cycle_analysis.get('commentary', '')[:80]}...")
+                        
+                        # Preload first cycle TTS
+                        if tts_service and tts_service.is_available:
+                            commentary = first_cycle_analysis.get("commentary", "")
+                            if commentary:
+                                try:
+                                    first_cycle_tts_path = await tts_service.synthesize_only(commentary)
+                                    log.info(f"🔊 First cycle TTS preloaded")
+                                except Exception as te:
+                                    log.warning(f"First cycle TTS preload failed: {te}")
+                except Exception as le:
+                    log.warning(f"⚠️ First cycle LLM failed: {le}")
+            
+            await broadcast_func({"processingStatus": ""})
+    except Exception as e:
+        log.warning(f"⚠️ First cycle preload failed: {e}")
+        await broadcast_func({"processingStatus": ""})
+    
+    # Wait for remaining countdown duration (TTS preload + analysis took time)
+    elapsed_for_preload = 20  # Approximate seconds for TTS + first cycle preload
     remaining_countdown = max(0, countdown_seconds - elapsed_for_preload)
     
     if remaining_countdown > 0:
@@ -801,23 +869,20 @@ Your intro message:"""
     })
     
     # Wait for character animation and chatbox to appear (5s)
-    # Chatbox appears at 4.8s, typewriter starts at 5s
     log.info("⏳ Waiting for character entrance animation...")
     await asyncio.sleep(5)
     
-    # Now broadcast the intro text for the chatbox typewriter
+    # Broadcast intro text for chatbox typewriter (just-chatting phase)
     await broadcast_func({
         "response_log": {"id": 0, "text": intro_text, "is_response": True, "timestamp": int(time.time() * 1000)}
     })
     
-    # Play the preloaded intro TTS - synced with typewriter starting
+    # Play the preloaded intro TTS
     if tts_service and tts_service.is_available:
         try:
             if preloaded_audio_path:
-                # Play preloaded audio directly
                 await tts_service.play_preloaded(preloaded_audio_path, intro_text)
             else:
-                # Fallback: synthesize and play on-demand
                 await tts_service.synthesize_and_play(
                     intro_text,
                     priority=tts_service.PRIORITY_COMMENTARY,
@@ -830,15 +895,60 @@ Your intro message:"""
     # Clear processing status
     await broadcast_func({"processingStatus": ""})
     
-    # Broadcast session start time - this is when cycles actually begin
-    # UI will use this to start the session timer and enable cycle tracking
+    # --- TRANSITION TO GAME ---
+    # 1. Clear intro text and show first cycle analysis instead
+    # 2. Unpause the game
+    # 3. Start the session
+    
+    log.info("🎮 Transitioning to game - unpausing and showing first cycle...")
+    
+    # UNPAUSE the game!
+    try:
+        send_command(sock_ref["socket"], "UNPAUSE")
+        log.info("▶️ Game UNPAUSED - Lass is playing!")
+    except Exception as ue:
+        log.error(f"Failed to unpause game: {ue}")
+    
+    # Broadcast session start with first cycle analysis (clearing intro text)
     session_start_ms = int(time.time() * 1000)
-    await broadcast_func({
+    game_transition_payload = {
         "introPhase": "game",
         "sessionStartTime": session_start_ms,
-        "cyclesEnabled": True  # UI can now start tracking cycles
-    })
+        "cyclesEnabled": True
+    }
+    
+    # If we have first cycle analysis, send it to replace intro text
+    if first_cycle_analysis:
+        commentary = first_cycle_analysis.get("commentary", "")
+        if commentary:
+            # This will replace the intro text in the UI
+            game_transition_payload["response_log"] = {
+                "id": 1, 
+                "text": commentary, 
+                "is_response": True, 
+                "timestamp": session_start_ms
+            }
+        
+        # Also update vision analysis if available
+        if first_cycle_vision:
+            game_transition_payload["vision_analysis"] = first_cycle_vision
+        
+        # Update LLM analysis
+        llm_text = first_cycle_analysis.get("reasoning", "") or first_cycle_analysis.get("thoughts", "")
+        if llm_text:
+            game_transition_payload["llm_analysis"] = llm_text
+    
+    await broadcast_func(game_transition_payload)
     log.info(f"📊 Session started at {session_start_ms}")
+    
+    # Play first cycle TTS if available
+    if first_cycle_tts_path and tts_service and tts_service.is_available:
+        try:
+            first_commentary = first_cycle_analysis.get("commentary", "") if first_cycle_analysis else ""
+            await tts_service.play_preloaded(first_cycle_tts_path, first_commentary)
+            log.info("✅ First cycle TTS played")
+        except Exception as e:
+            log.warning(f"First cycle TTS playback failed: {e}")
     
     # Small delay to let frontend complete wipe transition
     await asyncio.sleep(2)

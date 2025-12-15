@@ -303,6 +303,22 @@ local function parse(line, sock, sockId)
         return
    end
 
+   -- PAUSE command: Pause emulation (game freezes, Lua still runs)
+   if line_upper == "PAUSE" then
+        console:log("[DEBUG] parse: PAUSE command received.")
+        emu:pause()
+        sock:send("OK PAUSED\n")
+        return
+   end
+
+   -- UNPAUSE command: Resume emulation
+   if line_upper == "UNPAUSE" then
+        console:log("[DEBUG] parse: UNPAUSE command received.")
+        emu:unpause()
+        sock:send("OK UNPAUSED\n")
+        return
+   end
+
    if line:find(";") then
       console:log("[DEBUG] parse: Detected queue syntax ';'.")
       local toks = {}
