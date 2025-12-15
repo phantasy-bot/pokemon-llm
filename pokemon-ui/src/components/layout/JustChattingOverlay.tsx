@@ -5,9 +5,8 @@
  * - Trail ghosts 1-3: lass-0 (early in path)
  * - Trail ghosts 4-5: lass-1 (middle of path)
  * - Trail ghosts 6-8: lass-2 (near center)
- * - Main character: swaps from lass-0 → lass-1 → lass-2 during animation
+ * - Main character: Slides in but stays invisible, then reveals at the end
  */
-import { useState, useEffect } from 'react';
 import './JustChattingOverlay.css';
 
 // Character frames
@@ -15,26 +14,13 @@ const FRAME_0 = '/lass/lass-0.png';
 const FRAME_1 = '/lass/lass-1.png';
 const FRAME_2 = '/lass/lass-2.png';
 
-// Holographic character with frame-swapping main character
+// Holographic character component
+// Main character slides in (driving the animation) but stays invisible
+// It reveals only at the end with a separate animation
 function HolographicCharacter() {
-  const [mainCharacterFrame, setMainCharacterFrame] = useState(FRAME_0);
-  
-  useEffect(() => {
-    // Main character starts as frame 0, then swaps during animation
-    // Animation is 6s total, so swap at 2s and 4s
-    const timer1 = setTimeout(() => setMainCharacterFrame(FRAME_1), 2000);
-    const timer2 = setTimeout(() => setMainCharacterFrame(FRAME_2), 4000);
-    
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, []);
-  
   return (
     <div className="holographic-afterimage">
-      {/* Trail ghosts - appear along path during entrance, then fade */}
-      {/* Trails 1-3 use FRAME 0 */}
+      {/* Trail ghosts - Trails 1-3 use FRAME 0 */}
       <img src={FRAME_0} alt="" className="trail-ghost trail-1" aria-hidden="true" />
       <img src={FRAME_0} alt="" className="trail-ghost trail-2" aria-hidden="true" />
       <img src={FRAME_0} alt="" className="trail-ghost trail-3" aria-hidden="true" />
@@ -48,14 +34,14 @@ function HolographicCharacter() {
       <img src={FRAME_2} alt="" className="trail-ghost trail-7" aria-hidden="true" />
       <img src={FRAME_2} alt="" className="trail-ghost trail-8" aria-hidden="true" />
       
-      {/* Stationary ghosts - fade in after entrance, stay permanently */}
+      {/* Stationary ghosts */}
       <img src={FRAME_2} alt="" className="ghost-layer ghost-1" aria-hidden="true" />
       <img src={FRAME_2} alt="" className="ghost-layer ghost-2" aria-hidden="true" />
       <img src={FRAME_2} alt="" className="ghost-layer ghost-3" aria-hidden="true" />
       
-      {/* Main character - swaps frames during animation, slides in from left */}
+      {/* Main character - slides in (invisible) then reveals at end */}
       <img 
-        src={mainCharacterFrame} 
+        src={FRAME_2} 
         alt="Lass" 
         className="main-character"
       />
@@ -93,7 +79,6 @@ function FlowerBackground() {
   return <div className="flower-background">{rows}</div>;
 }
 
-// Stream info
 function StreamInfo() {
   return (
     <div className="stream-info">
@@ -105,7 +90,6 @@ function StreamInfo() {
   );
 }
 
-// Branding
 function BrandingSection() {
   return (
     <div className="branding-section">
