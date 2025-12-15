@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import "./styles/base.css";
 import { PokemonStreamOverlay } from "./components/layout/PokemonStreamOverlay";
 import { JustChattingOverlay } from "./components/layout/JustChattingOverlay";
+import { StreamStartingScreen } from "./components/layout/StreamStartingScreen";
 import type { PokemonGameState, LogEntry, Pokemon } from "./types/gameTypes";
 
 // Simple hash-based routing
@@ -61,6 +62,10 @@ function App() {
   const [memoryWrite, setMemoryWrite] = useState<string | null>(null);
   const [ttsCommentary, setTtsCommentary] = useState<TTSCommentary | null>(null);
   const [, setWs] = useState<WebSocket | null>(null);
+  
+  // Intro phase state machine: 'starting' | 'just-chatting' | 'game'
+  // Controls the multi-stage stream intro flow
+  const [introPhase, setIntroPhase] = useState<'starting' | 'just-chatting' | 'game'>('starting');
   
   // Track if we have established an initial connection to detect reconnections
   const initialConnectionMade = useRef(false);
@@ -285,29 +290,63 @@ function App() {
     }
   };
 
+  // Handle countdown complete from Starting Screen
+  const handleStartingComplete = () => {
+    setIntroPhase('just-chatting');
+  };
 
+  // Handle Just Chatting intro complete (backend signals cyclesEnabled)
+  // When cyclesEnabled becomes true, transition to game
+  useEffect(() => {
+    if (gameState.cyclesEnabled && introPhase === 'just-chatting') {
+      setIntroPhase('game');
+    }
+  }, [gameState.cyclesEnabled, introPhase]);
 
-  // Route to Just Chatting overlay (manual or during intro)
-  // During intro phase (before cyclesEnabled), show Just Chatting overlay
-  // This gives a "just chatting" feel before the actual gameplay begins
-  const isInIntro = !gameState.cyclesEnabled && wsConnected;
-  
-  if (route === 'just-chatting' || isInIntro) {
+  // Manual route overrides for testing
+  if (route === 'starting') {
+    return <StreamStartingScreen onComplete={handleStartingComplete} />;
+  }
+  if (route === 'just-chatting') {
     return <JustChattingOverlay />;
   }
-  
-  // Default: Game overlay (shown after intro completes)
-  return (
-    <PokemonStreamOverlay
-      gameState={gameState}
-      wsConnected={wsConnected}
-      logs={logs}
-      memoryWrite={memoryWrite}
-      onMemoryWriteClear={() => setMemoryWrite(null)}
-      ttsCommentary={ttsCommentary}
-      onTtsCommentaryComplete={() => setTtsCommentary(null)}
-    />
-  );
+  if (route === 'game') {
+    return (
+      <PokemonStreamOverlay
+        gameState={gameState}
+        wsConnected={wsConnected}
+        logs={logs}
+        memoryWrite={memoryWrite}
+        onMemoryWriteClear={() => setMemoryWrite(null)}
+        ttsCommentary={ttsCommentary}
+        onTtsCommentaryComplete={() => setTtsCommentary(null)}
+      />
+    );
+  }
+
+  // Phase-based rendering for intro flow
+  switch (introPhase) {
+    case 'starting':
+      return <StreamStartingScreen onComplete={handleStartingComplete} />;
+    
+    case 'just-chatting':
+      return <JustChattingOverlay />;
+    
+    case 'game':
+    default:
+      return (
+        <PokemonStreamOverlay
+          gameState={gameState}
+          wsConnected={wsConnected}
+          logs={logs}
+          memoryWrite={memoryWrite}
+          onMemoryWriteClear={() => setMemoryWrite(null)}
+          ttsCommentary={ttsCommentary}
+          onTtsCommentaryComplete={() => setTtsCommentary(null)}
+        />
+      );
+  }
 }
 
 export default App;
+
