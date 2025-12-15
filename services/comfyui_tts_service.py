@@ -988,6 +988,84 @@ class ComfyUITTSService:
                 log.error(f"🔊 TTS ERROR after {total_time:.2f}s: {e}")
                 return False
     
+    async def synthesize_only(self, text: str) -> Optional[str]:
+        """
+        Synthesize TTS audio without playing it.
+        Used for preloading audio during countdown.
+        
+        Args:
+            text: Text to synthesize
+        
+        Returns:
+            Path to generated audio file, or None if failed.
+        """
+        if not self.is_available:
+            log.warning("TTS service not available for preload")
+            return None
+        
+        log.info(f"🔊 TTS PRELOAD: synthesizing (no playback): {text[:50]}...")
+        
+        try:
+            audio_path = await self.synthesize_speech(text)
+            if audio_path:
+                log.info(f"🔊 TTS PRELOAD complete: {audio_path}")
+            return audio_path
+        except Exception as e:
+            log.error(f"🔊 TTS PRELOAD failed: {e}")
+            return None
+    
+    async def play_preloaded(self, audio_path: str, text: str, wait: bool = True) -> bool:
+        """
+        Play a preloaded audio file with UI callbacks.
+        
+        Args:
+            audio_path: Path to the preloaded audio file
+            text: Original text for callbacks
+            wait: If True, wait for playback to complete
+        
+        Returns:
+            True if playback completed successfully
+        """
+        if not audio_path or not os.path.exists(audio_path):
+            log.warning(f"🔊 Preloaded audio not found: {audio_path}")
+            return False
+        
+        total_start = time.time()
+        
+        # Apply speed/pitch processing
+        audio_path = self._process_audio_speed_pitch(audio_path)
+        
+        # Get duration for UI sync
+        duration_ms = self._get_audio_duration_ms(audio_path)
+        
+        # Notify UI that playback is about to start
+        if self.on_playback_start and duration_ms:
+            try:
+                log.info(f"🔊 Calling on_playback_start: text={text[:30]}..., duration={duration_ms}ms")
+                await self.on_playback_start(text, duration_ms)
+            except Exception as cb_err:
+                log.warning(f"🔊 on_playback_start callback error: {cb_err}")
+        
+        # Play the audio
+        log.info(f"🔊 Playing preloaded audio: {os.path.basename(audio_path)}")
+        if not self.play_audio_ephemeral(audio_path):
+            log.warning("🔊 play_audio_ephemeral returned False")
+            return False
+        
+        if wait:
+            playback_start = time.time()
+            completed = await self.wait_for_playback()
+            playback_time = time.time() - playback_start
+            total_time = time.time() - total_start
+            
+            # Cleanup audio file after playback
+            self._cleanup_audio_file(audio_path)
+            
+            log.info(f"🔊 TTS PRELOADED PLAY COMPLETE: playback={playback_time:.2f}s, total={total_time:.2f}s")
+            return completed
+        
+        return True
+    
     async def close(self):
         """Close the HTTP client."""
         if self._client:

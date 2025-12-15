@@ -666,54 +666,103 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
             return False
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # STARTUP INTRO CYCLE
-    # Play an intro/reconnection message before the first real game cycle
-    # This gives mGBA time to fully load and sets the stream mood
+    # STARTUP COUNTDOWN & INTRO CYCLE
+    # Wait for countdown duration (synced with frontend Starting Screen)
+    # Preload TTS during countdown, then play intro after countdown ends
     # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Import countdown duration from config
+    import config as cfg
+    countdown_seconds = cfg.STREAM_COUNTDOWN_SECONDS
+    
+    # Determine intro message based on whether we're continuing or starting fresh
+    if is_first_cycle_after_continue:
+        intro_text = "Hey everyone! Lass is back! Had some connection issues but I'm ready to continue my Pokemon adventure!"
+    else:
+        intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
+    
+    # Preload TTS audio during countdown (synthesize but don't play yet)
+    preloaded_audio_path = None
     if tts_service and tts_service.is_available:
         # Clear any orphaned TTS requests from previous session
         tts_service.clear_queue()
         
+        log.info(f"🎬 Preloading intro TTS during countdown...")
         try:
-            # Determine intro message based on whether we're continuing or starting fresh
-            if is_first_cycle_after_continue:
-                intro_text = "Hey everyone! Lass is back! Had some connection issues but I'm ready to continue my Pokemon adventure!"
+            # Synthesize but don't play - returns the audio file path
+            preloaded_audio_path = await tts_service.synthesize_only(intro_text)
+            if preloaded_audio_path:
+                log.info(f"✅ Intro TTS preloaded: {preloaded_audio_path}")
             else:
-                intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
-            
-            log.info(f"🎬 Playing startup intro: {intro_text[:50]}...")
-            
-            # Broadcast a status update so UI shows something
-            await broadcast_func({
-                "processingStatus": "STARTING STREAM...",
-                "response_log": {"id": 0, "text": intro_text, "is_response": True, "timestamp": int(time.time() * 1000)}
-            })
-            
-            # Play the intro TTS and wait for it to complete
-            await tts_service.synthesize_and_play(
-                intro_text,
-                priority=tts_service.PRIORITY_COMMENTARY,
-                wait=True
-            )
-            log.info("✅ Startup intro complete, beginning first cycle")
-            
-            # Clear processing status
-            await broadcast_func({"processingStatus": ""})
-            
+                log.warning("⚠️ TTS preload returned None, will synthesize on-demand")
         except Exception as e:
-            log.warning(f"Startup intro failed: {e}")
+            log.warning(f"⚠️ TTS preload failed, will synthesize on-demand: {e}")
+    
+    # Broadcast that we're in the 'starting' phase
+    # Frontend will show Starting Screen with countdown timer
+    await broadcast_func({
+        "introPhase": "starting",
+        "countdownSeconds": countdown_seconds,
+        "processingStatus": ""
+    })
+    log.info(f"⏱️ Stream countdown started: {countdown_seconds}s")
+    
+    # Wait for countdown duration (frontend is also waiting with same timer)
+    # Log progress every 30 seconds
+    for elapsed in range(0, countdown_seconds, 30):
+        remaining = countdown_seconds - elapsed
+        log.info(f"⏱️ Countdown: {remaining}s remaining...")
+        await asyncio.sleep(min(30, remaining))
+    
+    # Countdown complete! Trigger color transition
+    log.info("🎨 Countdown complete! Starting color transition...")
+    await broadcast_func({
+        "introPhase": "transitioning"
+    })
+    
+    # Wait for color transition animation (~3 seconds on frontend)
+    await asyncio.sleep(3)
+    
+    # Transition to Just Chatting phase
+    log.info("🎥 Entering Just Chatting phase...")
+    await broadcast_func({
+        "introPhase": "just-chatting",
+        "processingStatus": "STARTING STREAM...",
+        "response_log": {"id": 0, "text": intro_text, "is_response": True, "timestamp": int(time.time() * 1000)}
+    })
+    
+    # Play the preloaded intro TTS
+    if tts_service and tts_service.is_available:
+        try:
+            if preloaded_audio_path:
+                # Play preloaded audio directly
+                await tts_service.play_preloaded(preloaded_audio_path, intro_text)
+            else:
+                # Fallback: synthesize and play on-demand
+                await tts_service.synthesize_and_play(
+                    intro_text,
+                    priority=tts_service.PRIORITY_COMMENTARY,
+                    wait=True
+                )
+            log.info("✅ Intro TTS complete")
+        except Exception as e:
+            log.warning(f"Intro TTS playback failed: {e}")
+    
+    # Clear processing status
+    await broadcast_func({"processingStatus": ""})
     
     # Broadcast session start time - this is when cycles actually begin
     # UI will use this to start the session timer and enable cycle tracking
     session_start_ms = int(time.time() * 1000)
     await broadcast_func({
+        "introPhase": "game",
         "sessionStartTime": session_start_ms,
         "cyclesEnabled": True  # UI can now start tracking cycles
     })
     log.info(f"📊 Session started at {session_start_ms}")
     
-    # Small delay to let mGBA fully settle
-    await asyncio.sleep(1)
+    # Small delay to let frontend complete wipe transition
+    await asyncio.sleep(2)
 
     while action_count < max_loops:
         loop_start_time = time.time()
