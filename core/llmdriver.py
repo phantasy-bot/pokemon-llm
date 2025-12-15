@@ -2465,6 +2465,16 @@ Your intro message:"""
         cycle_metrics["cycle"] = true_cycle_duration_s * 1000  # Store TRUE cycle time
         
         log.info(f"⏱️ Total Cycle Time: {true_cycle_duration_s:.2f}s")
+        
+        # Detailed timing breakdown
+        mgba_s = cycle_metrics.get("mGBA", 0) / 1000
+        vision_s = cycle_metrics.get("vision", 0) / 1000
+        llm_s = cycle_metrics.get("llm", 0) / 1000
+        diff_s = cycle_metrics.get("diff", 0) / 1000
+        tts_s = cycle_metrics.get("tts", 0) / 1000 if "tts" in cycle_metrics else 0
+        action_s = cycle_metrics.get("action", 0) / 1000 if "action" in cycle_metrics else 0
+        log.info(f"⏱️ Breakdown: mGBA={mgba_s:.1f}s | Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s")
+        
         log.info(f"Cycle {current_cycle} took {elapsed_loop_time:.2f}s. Waiting {wait_time:.2f}s...")
         
         # ═══════════════════════════════════════════════════════════════════
