@@ -17,11 +17,10 @@ async def run_chat_background_task(
     Runs until stop_event is set.
     Supports both Twitch and Pump.fun chat sources.
     """
-    from services.twitch_chat_service import TWITCH_TEST_MODE
-    from services.pumpfun_chat_service import PUMPFUN_TEST_MODE
+    from services.twitch_chat_service import CHAT_TEST_MODE
     
-    # Check if any test mode is enabled
-    test_mode_enabled = TWITCH_TEST_MODE or PUMPFUN_TEST_MODE
+    # Check if test mode is enabled
+    test_mode_enabled = CHAT_TEST_MODE
     
     if not test_mode_enabled or not tts_service:
         return
@@ -57,14 +56,14 @@ async def run_chat_background_task(
                 # Randomly pick source if both are available
                 use_pumpfun = (
                     pumpfun_service and 
-                    PUMPFUN_TEST_MODE and 
-                    (not TWITCH_TEST_MODE or random.random() < 0.5)
+                    CHAT_TEST_MODE and 
+                    random.random() < 0.5  # 50/50 split between platforms
                 )
                 
                 if use_pumpfun and pumpfun_service:
                     test_msg = pumpfun_service.generate_single_test_message()
                     mock_responses = pumpfun_mock_responses
-                elif twitch_service and TWITCH_TEST_MODE:
+                elif twitch_service and CHAT_TEST_MODE:
                     test_msg = twitch_service.generate_single_test_message()
                     mock_responses = twitch_mock_responses
                 else:
