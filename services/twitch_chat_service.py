@@ -2,7 +2,7 @@
 """
 Twitch Chat Service for Pokemon LLM Agent.
 Connects to Twitch IRC chat via twitchio library to read and respond to viewer messages.
-Includes test mode for generating fake messages when TWITCH_TEST_MODE=true.
+Includes test mode for generating fake messages when CHAT_TEST_MODE=true.
 """
 
 import asyncio
@@ -19,8 +19,9 @@ from services.chat_types import ChatMessage
 log = logging.getLogger("twitch_chat")
 
 # Configuration Constants
-TWITCH_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
-TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("CHAT_TEST_MESSAGES_PER_CYCLE", "3"))
+CHAT_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
+CHAT_TEST_MESSAGES_PER_CYCLE = int(os.getenv("CHAT_TEST_MESSAGES_PER_CYCLE", "3"))
+CHAT_TEST_LLM = os.getenv("CHAT_TEST_LLM", "false").lower() == "true"
 
 # Test Data
 TEST_USERNAMES = [
@@ -96,10 +97,11 @@ class TwitchChatService:
         self._is_configured = bool(self.bot_username and self.oauth_token and self.channel)
         
         # Test mode can work without real Twitch credentials
-        self._test_mode = TWITCH_TEST_MODE
+        self._test_mode = CHAT_TEST_MODE
+        self._test_message_count = 0
         
         if self._test_mode:
-            log.info(f"🧪 Twitch TEST MODE enabled! Will generate {TWITCH_TEST_MESSAGES_PER_CYCLE} fake messages per cycle")
+            log.info(f"🧪 Twitch TEST MODE enabled! Will generate {CHAT_TEST_MESSAGES_PER_CYCLE} fake messages per cycle")
         elif not self._is_configured:
             log.warning("Twitch chat not configured. Set TWITCH_BOT_USERNAME, TWITCH_OAUTH_TOKEN, and TWITCH_CHANNEL in .env")
         elif not TWITCHIO_AVAILABLE:
@@ -284,7 +286,7 @@ class TwitchChatService:
             List of message dicts compatible with chat_response_service.
         """
         if count is None:
-            count = TWITCH_TEST_MESSAGES_PER_CYCLE
+            count = CHAT_TEST_MESSAGES_PER_CYCLE
         
         test_messages = []
         base_time = time.time()
@@ -307,7 +309,7 @@ class TwitchChatService:
                 "is_test": True
             })
         
-        log.info(f"🧪 Generated {count} test messages for TWITCH_TEST_MODE")
+        log.info(f"🧪 Generated {count} test messages for CHAT_TEST_MODE")
         return test_messages
     
     def generate_single_test_message(self) -> dict:
@@ -331,12 +333,12 @@ class TwitchChatService:
     
     def get_messages_for_cycle_or_test(self) -> List[dict]:
         """
-        Get messages for the current cycle, using test messages if TWITCH_TEST_MODE is enabled.
+        Get messages for the current cycle, using test messages if CHAT_TEST_MODE is enabled.
         
         Returns:
             List of message dicts (real or test) for processing.
         """
-        if TWITCH_TEST_MODE:
+        if CHAT_TEST_MODE:
             return self.generate_test_messages()
         else:
             return self.get_messages_for_cycle()
