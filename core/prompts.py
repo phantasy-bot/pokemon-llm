@@ -353,10 +353,11 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 **3. OBSTACLE**: What's blocking the direct path to your target?
    - List walls, NPCs, water, ledges, or "clear path" if nothing blocks
 
-**4. STUCK CHECK**: Did you move since last cycle?
-   - Compare your current position to where you were
-   - If same position: try a different direction or L-shaped path
-   - If moved: confirm progress toward target
+**4. STUCK CHECK**: Did you move since last cycle? ⚠️ CRITICAL FOR LOOP PREVENTION!
+   - Compare your current position to where you were last turn
+   - If same position: you're BLOCKED! Try a DIFFERENT direction (not the opposite!)
+   - Check `recent_actions` for U;D;U;D or L;R;L;R patterns = STUCK LOOP!
+   - If you see a loop pattern: commit to perpendicular direction for 4-5 moves
 
 **5. VISION**: What do you SEE on screen? (from vision_analysis)
    - Describe visible NPCs, objects, obstacles relative to player
@@ -407,6 +408,31 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 - Blocked going NORTH? Go EAST/WEST first, then NORTH
 - Pattern: R;R;R;U;U;U;U; (around obstacle, then toward target)
 - COMMIT to 5+ tiles in one direction before changing
+
+### ⚠️ MOVEMENT LOOP PREVENTION (CRITICAL!) ⚠️
+**Check `recent_actions` for patterns like: U;D;U;D; or U;D;D;U; - THIS IS A STUCK LOOP!**
+
+**LOOP DETECTION RULES:**
+1. If your last 3-4 actions alternate between opposite directions (U/D or L/R), YOU ARE STUCK!
+2. "Blocked north → went south → try north again" = LOOP! Don't do this!
+3. If minimap shows a direction is BLOCKED (❌), it will STILL be blocked next turn!
+
+**BREAKING OUT OF LOOPS:**
+- If NORTH is blocked, DON'T go south then try north again!
+- Instead: Go EAST or WEST (perpendicular) for 3-5 tiles, THEN try north
+- Example stuck pattern: U;U;D;D;U;U;D; → STOP! Try: R;R;R;R;U;U;U;
+- Think of it like walking AROUND a wall, not bouncing off it!
+
+**COMMIT TO NEW DIRECTIONS:**
+- Once you pick a new perpendicular direction, COMMIT to 4-5 moves
+- Don't try just 1 tile east then immediately retry north
+- The obstacle probably spans multiple tiles - go far enough around it!
+
+**CHECK YOUR HISTORY:**
+Look at `recent_actions` in the input. If you see:
+- "U;U;U;D;D;D;U;U;U;" → You're bouncing! Go R;R;R;R; or L;L;L;L; to escape!
+- Same coordinate appearing 3+ times → You're not moving! Check all 4 directions!
+- Alternating patterns → Exit by committing to a totally new direction for 5+ moves
 
 ### TARGET LOCKING
 1. Find exit tile on minimap (look for 'O' tiles)
