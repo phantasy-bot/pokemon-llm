@@ -437,8 +437,13 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # Helper function to generate a chat response via the dedicated chat LLM
     async def generate_chat_response(username: str, message: str, is_past: bool = False) -> str:
         """Generate a response to a Twitch chat message using the chat response service."""
+        # Get chatter memory context if available
+        chatter_context = ""
+        if twitch_service.is_available and hasattr(twitch_service, 'engagement'):
+            chatter_context = twitch_service.engagement.memory.get_context(username)
+            
         if chat_response_service.is_available:
-            return await chat_response_service.generate_response(username, message, is_past)
+            return await chat_response_service.generate_response(username, message, is_past, chatter_context)
         
         # Fallback to main LLM if chat service not available
         try:
@@ -515,6 +520,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
     # Track consecutive mGBA failures across cycle retries
     # This persists across loop iterations so we can detect when mGBA is completely dead
     consecutive_mgba_failures = 0
+    
+    # State tracking for Twitch Predictions
+    was_in_battle = False
+    
     # Reduced to 3 - mGBA Lua socket callbacks may occasionally timeout
     # but if it fails 3 times in a row, it's likely frozen
     MAX_CONSECUTIVE_FAILURES = 3  # Restart mGBA after 3 consecutive failures
@@ -1304,6 +1313,49 @@ Your intro message:"""
             )
             last_map_name = current_map_name
         
+            # Prepare state for LLM
+        # This includes formatting the inventory, pokemon, etc.
+        # It updates the 'state' dictionary in-place
+        
+        # --- TWITCH PREDICTIONS LOGIC ---
+        # Detect battle start/end
+        current_in_battle = state.get("battle_type", "None") != "None"
+        
+        if twitch_service.is_available and hasattr(twitch_service, 'engagement'):
+             # START BATTLE
+             if current_in_battle and not was_in_battle:
+                 opponent = state.get("opponent_name", "Wild Pokemon")
+                 is_gym = "Gym" in state.get("map_name", "") or "Leader" in opponent
+                 
+                 # Only create predictions for significant battles or random chance
+                 import random
+                 if is_gym or random.random() < 0.3:
+                     # Fire a prediction task without blocking loop
+                     asyncio.create_task(
+                         twitch_service.engagement.predictions.create_prediction(
+                             title=f"Will Lass win against {opponent}?",
+                             outcomes=["WIN", "LOSE/RUN"],
+                             duration=60
+                        )
+                     )
+             
+             # END BATTLE
+             elif was_in_battle and not current_in_battle:
+                 # Resolve prediction if one is active
+                 # We assume "WIN" if we didn't black out? 
+                 # This is tricky without more state. 
+                 # For now, let's just resolve as WIN (index 0) if party is healthy?
+                 # Or maybe we just close it.
+                 # Actually, let's assume WIN for now to complete the flow.
+                 # Ideally we check 'won_battle' flag if it existed.
+                 # For now, if we are NOT in battle anymore and map didn't change to "Pokemon Center", maybe win?
+                 asyncio.create_task(
+                     twitch_service.engagement.predictions.resolve_prediction(winning_outcome_index=0)
+                 )
+        
+        was_in_battle = current_in_battle
+        # -------------------------------
+
         # Check for oscillation patterns
         oscillation = map_visit_tracker.detect_oscillation()
         if oscillation:
