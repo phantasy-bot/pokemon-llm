@@ -350,7 +350,7 @@ Example styles:
 - "@viewer123 Oh I missed that! Haha yes exactly!"
 - "@coolpoke Sorry I was focused on the game - but totally agree!"
 
-Respond with ONLY your response text, nothing else."""
+IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reasoning, or explanation. Just the response."""
         else:
             prompt = f"""{self._get_lass_personality_prompt()}
 
@@ -362,7 +362,7 @@ Respond as Lass in 1-2 SHORT sentences. Be friendly, funny, and genuine!
 Keep your response under 100 characters (for TTS).
 Don't mention buttons or controls.
 
-Respond with ONLY your response text, nothing else."""
+IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reasoning, or explanation. Just the response."""
 
         try:
             start_time = time.time()
