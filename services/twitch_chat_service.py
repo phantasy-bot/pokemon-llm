@@ -18,6 +18,14 @@ from services.chat_types import ChatMessage
 
 log = logging.getLogger("twitch_chat")
 
+# Check if twitchio is available
+try:
+    from twitchio.ext import commands
+    TWITCHIO_AVAILABLE = True
+except ImportError:
+    TWITCHIO_AVAILABLE = False
+    log.warning("twitchio not installed. Twitch chat integration disabled. Install with: pip install twitchio")
+
 class TwitchChatService:
     """
     Manages Twitch chat connection for the Pokemon LLM agent.
