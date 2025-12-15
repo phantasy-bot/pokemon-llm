@@ -437,6 +437,7 @@
   padding-top: var(--space-md);
   background: var(--bg-panel);
   overflow: visible;
+  position: relative; /* Required for character-container__right absolute positioning */
 }
 
 .status {
@@ -572,7 +573,8 @@
 }
 
 /* Character Container - 2 column layout (60%) */
-.character-container {
+/* Scoped to .pokemon-stream-overlay to prevent conflicts with other overlays */
+.pokemon-stream-overlay .character-container {
   flex: 1; /* Take remaining 60% */
   display: flex;
   flex-direction: row;
@@ -582,7 +584,7 @@
 }
 
 /* Left column - Commentary (wider) */
-.character-container__left {
+.pokemon-stream-overlay .character-container__left {
   flex: 3; /* 60% of container */
   display: flex;
   flex-direction: column;
@@ -591,7 +593,7 @@
 }
 
 /* Commentary text box in left column */
-.character-container__commentary {
+.pokemon-stream-overlay .character-container__commentary {
   /* Fluid height: starts at ~4 rows (140px) and grows up to double (280px) */
   min-height: 140px;
   max-height: 280px;
@@ -605,7 +607,7 @@
   overflow: visible;
 }
 
-.character-container__commentary-label {
+.pokemon-stream-overlay .character-container__commentary-label {
   display: block;
   font-family: var(--font-mono);
   font-size: 12px; /* Increased from 10px */
@@ -628,7 +630,7 @@
   text-transform: uppercase;
 }
 
-.character-container__commentary-text {
+.pokemon-stream-overlay .character-container__commentary-text {
   font-family: var(--font-mono);
   font-size: 18px; /* Increased from 16px */
   line-height: 1.6;
@@ -642,23 +644,24 @@
 }
 
 /* Empty spacer at bottom of left column */
-.character-container__spacer {
+.pokemon-stream-overlay .character-container__spacer {
   flex: 1; /* Smaller than commentary */
 }
 
-/* Right column - Character image - positioned fixed to bottom of page */
-.character-container__right {
-  position: fixed;
+/* Right column - Character image - positioned inside left column folder */
+/* Changed from position:fixed to position in flow so it stays in folder container */
+.pokemon-stream-overlay .character-container__right {
+  position: absolute;
   bottom: 0;
-  left: 40px; /* Moved closer to center (was 80px) */
+  left: 0;
   width: auto;
   height: auto;
-  z-index: 100; /* High z-index to be above everything */
+  z-index: 100; /* High z-index to be above other content */
   pointer-events: none; /* Allow clicks to pass through */
 }
 
 /* Lass character image - massive and anchored to bottom edge */
-.lass-character {
+.pokemon-stream-overlay .lass-character {
   width: auto;
   height: 50vh; /* Reduced from 55vh */
   max-width: none;
