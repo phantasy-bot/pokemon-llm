@@ -719,3 +719,26 @@
   51%, 100% { opacity: 0; }
 }
 
+/* =============================================
+   Wipe Transition (Just Chatting → Game)
+   ============================================= */
+
+.just-chatting-overlay.wipe-out {
+  animation: wipe-slide-out 1.2s ease-in-out forwards;
+}
+
+/* Wipe slides everything to the left */
+@keyframes wipe-slide-out {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(-100vw);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100vw);
+    opacity: 0;
+  }
+}
