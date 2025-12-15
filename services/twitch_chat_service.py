@@ -18,6 +18,22 @@ from services.chat_types import ChatMessage
 
 log = logging.getLogger("twitch_chat")
 
+# Configuration Constants
+TWITCH_TEST_MODE = os.getenv("TWITCH_TEST_MODE", "false").lower() == "true"
+TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("TWITCH_TEST_MESSAGES_PER_CYCLE", "3"))
+
+# Test Data
+TEST_USERNAMES = [
+    "Red", "Blue", "Misty", "Brock", "Ash", "Gary", "Oak", 
+    "TeamRocket", "PikachuFan", "Slowpoke", "EeveeLover"
+]
+
+TEST_MESSAGES = [
+    "Use Thunderbolt!", "Switch to Charizard", "Check the map", 
+    "Go back to the Center", "Save the game!", "What level is Pidgey?",
+    "Catch it!", "Run away!", "Use an item", "Check stats"
+]
+
 # Check if twitchio is available
 try:
     from twitchio.ext import commands
