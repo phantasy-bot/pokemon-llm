@@ -67,6 +67,9 @@ function App() {
   // Controls the multi-stage stream intro flow
   const [introPhase, setIntroPhase] = useState<'starting' | 'just-chatting' | 'game'>('starting');
   
+  // Countdown duration from backend (in seconds)
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(300);
+  
   // Track if we have established an initial connection to detect reconnections
   const initialConnectionMade = useRef(false);
 
@@ -193,6 +196,12 @@ function App() {
     if (data.introPhase && ['starting', 'transitioning', 'just-chatting', 'game'].includes(data.introPhase)) {
       setIntroPhase(data.introPhase as 'starting' | 'just-chatting' | 'game');
       console.log(`Intro phase changed to: ${data.introPhase}`);
+      
+      // Update countdown duration if provided (sent with 'starting' phase)
+      if (data.countdownSeconds && typeof data.countdownSeconds === 'number') {
+        setCountdownSeconds(data.countdownSeconds);
+        console.log(`Countdown set to: ${data.countdownSeconds}s`);
+      }
     }
 
     // Handle full state history (initial load or reconnect)
@@ -312,7 +321,7 @@ function App() {
 
   // Explicit test routes for debugging (use #force-starting, #force-just-chatting, #force-game)
   if (route === 'force-starting') {
-    return <StreamStartingScreen onComplete={handleStartingComplete} />;
+    return <StreamStartingScreen onComplete={handleStartingComplete} countdownSeconds={countdownSeconds} />;
   }
   if (route === 'force-just-chatting') {
     return <JustChattingOverlay />;
@@ -334,7 +343,7 @@ function App() {
   // Phase-based rendering for intro flow
   switch (introPhase) {
     case 'starting':
-      return <StreamStartingScreen onComplete={handleStartingComplete} />;
+      return <StreamStartingScreen onComplete={handleStartingComplete} countdownSeconds={countdownSeconds} />;
     
     case 'just-chatting':
       return <JustChattingOverlay />;
