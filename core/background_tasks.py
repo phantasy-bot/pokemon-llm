@@ -10,14 +10,16 @@ async def run_chat_background_task(
     tts_service: Any, 
     twitch_service: Any, 
     cycle_id: int,
-    pumpfun_service: Any = None
+    pumpfun_service: Any = None,
+    chat_response_service: Any = None
 ):
     """
     Background task to generate and play chat responses while LLM is thinking.
     Runs until stop_event is set.
     Supports both Twitch and Pump.fun chat sources.
+    Uses Featherless LLM when CHAT_TEST_LLM=true, otherwise mock responses.
     """
-    from services.twitch_chat_service import CHAT_TEST_MODE
+    from services.twitch_chat_service import CHAT_TEST_MODE, CHAT_TEST_LLM
     
     # Check if test mode is enabled
     test_mode_enabled = CHAT_TEST_MODE
@@ -25,7 +27,11 @@ async def run_chat_background_task(
     if not test_mode_enabled or not tts_service:
         return
 
-    log.info("🚀 Starting background chat response task")
+    use_llm = CHAT_TEST_LLM and chat_response_service and chat_response_service.is_available
+    if use_llm:
+        log.info("🚀 Starting background chat response task (Featherless LLM enabled)")
+    else:
+        log.info("🚀 Starting background chat response task (Mock responses)")
     
     # Mock responses for Twitch (Pokemon themed) - includes "on Twitch" tag
     twitch_mock_responses = [
@@ -63,15 +69,37 @@ async def run_chat_background_task(
                 if use_pumpfun and pumpfun_service:
                     test_msg = pumpfun_service.generate_single_test_message()
                     mock_responses = pumpfun_mock_responses
+                    platform_tag = "on pump"
                 elif twitch_service and CHAT_TEST_MODE:
                     test_msg = twitch_service.generate_single_test_message()
                     mock_responses = twitch_mock_responses
+                    platform_tag = "on Twitch"
                 else:
                     test_msg = None
                     
                 if test_msg:
                     username = test_msg['display_name']
-                    response_text = random.choice(mock_responses).format(user=username)
+                    message = test_msg.get('message', '')
+                    
+                    # Use Featherless LLM if enabled, otherwise mock
+                    if use_llm:
+                        try:
+                            response_text = await chat_response_service.generate_response(
+                                username, message, is_past=False
+                            )
+                            if response_text:
+                                # Add platform tag if not already present
+                                if platform_tag not in response_text:
+                                    response_text = response_text.replace(f"@{username}", f"@{username} {platform_tag}")
+                                log.info(f"⚡ [BG+LLM] Generated response for @{username}: {response_text[:50]}...")
+                            else:
+                                # Fallback to mock if LLM returns empty
+                                response_text = random.choice(mock_responses).format(user=username)
+                        except Exception as e:
+                            log.warning(f"[BG] LLM error, falling back to mock: {e}")
+                            response_text = random.choice(mock_responses).format(user=username)
+                    else:
+                        response_text = random.choice(mock_responses).format(user=username)
                     
                     # Queue it!
                     await tts_service.queue_and_start_synthesis(

@@ -1972,7 +1972,8 @@ Your intro message:"""
                 tts_service, 
                 twitch_service, 
                 cycle_count,
-                pumpfun_service  # Also pass pump.fun service for crypto chat
+                pumpfun_service,  # Pump.fun service for crypto chat
+                chat_response_service  # For Featherless LLM responses
             )
         )
         
@@ -2546,9 +2547,9 @@ Your intro message:"""
                 continue
             
             # Check if we're in test mode first (handles its own message generation)
-            from services.twitch_chat_service import TWITCH_TEST_MODE, TWITCH_TEST_LLM
+            from services.twitch_chat_service import CHAT_TEST_MODE, CHAT_TEST_LLM
             
-            if TWITCH_TEST_MODE:
+            if CHAT_TEST_MODE:
                 # Test mode: Generate message immediately, then wait for TTS
                 import random
                 
@@ -2562,7 +2563,15 @@ Your intro message:"""
                     continue
                 
                 # Generate one random test message FIRST (no pre-delay!)
-                test_msg = twitch_service.generate_single_test_message()
+                # Randomly choose between Twitch and Pump.fun format for test messages
+                if random.random() < 0.5:
+                    test_msg = twitch_service.generate_single_test_message()
+                else:
+                    # Use Pump.fun test message if available, otherwise fallback to Twitch
+                    if pumpfun_service:
+                        test_msg = pumpfun_service.generate_single_test_message()
+                    else:
+                        test_msg = twitch_service.generate_single_test_message()
                 
                 if test_msg:
                     # Decide: spam = skip, else = respond
@@ -2573,9 +2582,9 @@ Your intro message:"""
                         log.info(f"⏭️ [TEST] Skipping spam from @{test_msg['display_name']}: {test_msg['message'][:40]}...")
                         await asyncio.sleep(0.5)  # Brief pause before next message
                     else:
-                        # Generate response - use LLM if TWITCH_TEST_LLM=true, otherwise mock
+                        # Generate response - use LLM if CHAT_TEST_LLM=true, otherwise mock
                         llm_start = time.time()
-                        if TWITCH_TEST_LLM and chat_response_service.is_available:
+                        if CHAT_TEST_LLM and chat_response_service.is_available:
                             # Use actual LLM (Featherless) for realistic latency testing
                             try:
                                 response_text = await chat_response_service.generate_response(
