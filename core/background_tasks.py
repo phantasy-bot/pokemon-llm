@@ -28,15 +28,15 @@ async def run_chat_background_task(
 
     log.info("🚀 Starting background chat response task")
     
-    # Mock responses for Twitch (Pokemon themed) - includes "on twitch" tag
+    # Mock responses for Twitch (Pokemon themed) - includes "on Twitch" tag
     twitch_mock_responses = [
-        "Omg hi @{user} on twitch! I'm so happy you're here with me!",
-        "@{user} on twitch that is so funny! I literally can't even right now!",
-        "Wait @{user} on twitch, really? I had no idea about that!",
-        "Thanks for the tip @{user} on twitch! I'll try to remember that!",
-        "@{user} on twitch you are always so supportive, thank you!",
-        "I'm trying my best @{user} on twitch, this game is harder than it looks!",
-        "Haha @{user} on twitch I saw that! wild!",
+        "Omg hi @{user} on Twitch! I'm so happy you're here with me!",
+        "@{user} on Twitch that is so funny! I literally can't even right now!",
+        "Wait @{user} on Twitch, really? I had no idea about that!",
+        "Thanks for the tip @{user} on Twitch! I'll try to remember that!",
+        "@{user} on Twitch you are always so supportive, thank you!",
+        "I'm trying my best @{user} on Twitch, this game is harder than it looks!",
+        "Haha @{user} on Twitch I saw that! wild!",
     ]
     
     # Mock responses for Pump.fun (crypto themed) - includes "on pump" tag
