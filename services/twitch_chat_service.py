@@ -58,6 +58,10 @@ class TwitchChatService:
         self.channel = channel or os.getenv("TWITCH_CHANNEL", "")
         self.on_mention_callback = on_mention_callback
         
+        # Bot instance (init first so engagement service can reference it)
+        self._bot: Optional['TwitchBot'] = None
+        self._running = False
+
         # Message storage
         self._message_queue: deque[ChatMessage] = deque(maxlen=100)  # Last 100 messages
         self._pending_mentions: List[ChatMessage] = []
@@ -65,10 +69,6 @@ class TwitchChatService:
 
         # Engagement Service
         self.engagement = TwitchEngagementService(self)
-        
-        # Bot instance
-        self._bot: Optional['TwitchBot'] = None
-        self._running = False
         
         # Validate configuration
         self._is_configured = bool(self.bot_username and self.oauth_token and self.channel)
