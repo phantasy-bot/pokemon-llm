@@ -5,21 +5,25 @@ This document describes the high-level architecture of the Pokemon LLM agent.
 ## System Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              Pokemon LLM Agent                                │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐  │
-│  │   mGBA      │────▶│  Lua Script │────▶│  Python     │────▶│  React UI │  │
-│  │  Emulator   │◀────│  (Socket)   │◀────│  Agent      │◀────│  (WS)     │  │
-│  └─────────────┘     └─────────────┘     └─────────────┘     └───────────┘  │
-│        │                    │                   │                   │        │
-│        ▼                    ▼                   ▼                   ▼        │
-│   ROM Execution        RAM Reading         LLM Analysis        Visualization │
-│   Button Input         Screenshots         Memory Store        Game Feed     │
-│                        Minimap Gen         TTS Audio           Analysis Log  │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                 Pokemon LLM Agent                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐    │
+│  │   Twitch    │◀──▶│  Chat Svc   │────▶│             │────▶│  React UI   │    │
+│  └─────────────┘     └─────────────┘     │             │     └─────────────┘    │
+│  ┌─────────────┐     ┌─────────────┐     │             │            ▲           │
+│  │  Pump.fun   │◀──▶│ PumpFun Svc │────▶│   Python    │            │           │
+│  └─────────────┘     └─────────────┘     │    Agent    │            │           │
+│  ┌─────────────┐     ┌─────────────┐     │             │            │           │
+│  │   Solana    │◀───│ Solana Svc  │────▶│             │            │           │
+│  └─────────────┘     └─────────────┘     └─────────────┘            │           │
+│                                                 │                   │           │
+│  ┌─────────────┐     ┌─────────────┐            ▼                   │           │
+│  │   mGBA      │◀──▶│  Lua Script │◀───────────────────────────────┘           │
+│  └─────────────┘     └─────────────┘                                            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
@@ -80,16 +84,20 @@ Component Re-render
 
 ### Python Backend
 
-| Module                            | Responsibility                         |
-| --------------------------------- | -------------------------------------- |
-| `run.py`                          | Main entry point, async orchestration  |
-| `core/llmdriver.py`               | LLM interaction loop, action execution |
-| `core/prompts.py`                 | System prompts, 12-section format      |
-| `core/battle_strategy.py`         | Battle decision logic                  |
-| `pyAIAgent/game/state.py`         | RAM reading, game state parsing        |
-| `trackers/memory_storage.py`      | Persistent memory, quest tracking      |
-| `services/comfyui_tts_service.py` | Text-to-speech generation              |
-| `services/websocket_service.py`   | Real-time UI updates                   |
+| Module                                  | Responsibility                         |
+| --------------------------------------- | -------------------------------------- |
+| `run.py`                                | Main entry point, async orchestration  |
+| `core/llmdriver.py`                     | LLM interaction loop, action execution |
+| `core/prompts.py`                       | System prompts, 12-section format      |
+| `core/battle_strategy.py`               | Battle decision logic                  |
+| `pyAIAgent/game/state.py`               | RAM reading, game state parsing        |
+| `trackers/memory_storage.py`            | Persistent memory, quest tracking      |
+| `services/comfyui_tts_service.py`       | Text-to-speech generation              |
+| `services/websocket_service.py`         | Real-time UI updates                   |
+| `services/twitch_chat_service.py`       | Twitch chat connection & commands      |
+| `services/twitch_engagement_service.py` | Memory, Predictions, Polls             |
+| `services/pumpfun_chat_service.py`      | Pump.fun token chat integration        |
+| `services/solana_token_service.py`      | Solana RPC calls (whale detection)     |
 
 ### React Frontend
 

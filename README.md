@@ -1,15 +1,38 @@
-# pokemon-llm
+# Pokemon LLM Agent (feat. Lass)
 
-- Currently only supports Gen1 but Gen2 & Gen3 support are planned
-- Requires mGBA with scripting autolaunch, [dev builds support this.](https://mgba.io/downloads.html#development-downloads)
+An autonomous AI agent playing Pokemon on Twitch. Powered by advanced LLMs (OpenAI, Gemini, Claude, etc.) with computer vision and memory.
 
-## Web UI
+## Features
 
-![webui](images/ui.png)
+- **Autonomous Gameplay**: Plays Red/Blue/FireRed/LeafGreen using visual and textual analysis.
+- **Narrative Persona**: "Lass", a bubbly streamer personality who chats with viewers.
+- **Interactive Stream**:
+  - **Twitch Integration**: Responds to chat, remembers users, runs predictions.
+  - **Pump.fun Integration**: Tracks token holders and whales in chat.
+  - **Dynamic Overlay**: React UI with real-time stats, vision debug, and TTS commentary.
 
-> Open web_ui/index.html in your browser. Use streaming software like OBS to add mGBA game feed.
+## Documentation
 
-## DUMP MAP IMAGE
+- **[Setup Guide](docs/setup_guide.md)**: Installation, API keys, and configuration.
+- **[Architecture](docs/ARCHITECTURE.md)**: System design and data flow.
+- **[Stream Cycle](docs/STREAM_CYCLE.md)**: How the agent thinks and acts.
+
+## Quick Start
+
+See [Setup Guide](docs/setup_guide.md) for full instructions.
+
+```bash
+# 1. Configure env
+cp .env.example .env
+
+# 2. Run UI
+cd llmletsplay && npm run dev
+
+# 3. Run Agent
+python run.py --auto
+```
+
+## Tools
 
 python -m tools.map_dumper red.gb 56 -o mart.png -d --start 7,7 --end 0,2
 
@@ -57,74 +80,9 @@ Great! You selected: OPENAI
 
 ## Configuration
 
-Copy `.env.example` to `.env` and configure your settings:
+Please refer to the **[Setup Guide](docs/setup_guide.md)** for detailed configuration of:
 
-```bash
-cp .env.example .env
-# Edit .env with your API keys and ROM path
-```
-
-### ROM Configuration
-
-Place your Pokemon ROM files in the `roms/` folder and configure them via environment variable:
-
-```bash
-# Set your ROM file (default: firered.gba, looks in roms/firered.gba)
-POKEMON_ROM=firered.gba
-
-# For ROMs in subdirectories or absolute paths:
-POKEMON_ROM=subfolder/myrom.gba
-POKEMON_ROM=/path/to/roms/firered.gba
-```
-
-**Directory Structure:**
-```
-pokemon-llm/
-├── roms/
-│   ├── firered.gba
-│   ├── leafgreen.gba
-│   ├── red.gbc
-│   └── blue.gbc
-├── .env
-└── run.py
-```
-
-**Supported ROMs:**
-- Pokemon FireRed (`.gba`) - Recommended
-- Pokemon LeafGreen (`.gba`)
-- Pokemon Red/Blue/Yellow (`.gbc`) - Gen 1 only
-- Pokemon Gold/Silver/Crystal (`.gbc`) - Gen 2 only
-
-**Current Support:**
-- Gen 1: Fully supported
-- Gen 2: Planned support
-- Gen 3: FireRed/LeafGreen support in development
-
-### Z.AI (GLM) Provider with MCP Vision Server
-
-The Z.AI provider supports enhanced vision capabilities through the Model Context Protocol (MCP) vision server:
-
-**Features:**
-- Vision understanding through dedicated MCP server
-- Automatic fallback to direct API if MCP unavailable
-- Support for GLM-4V and other vision models
-
-**Setup:**
-1. Get your Z.AI API key from [z.ai](https://z.ai)
-2. Set environment variables:
-   ```bash
-   ZAI_API_KEY=your_zai_api_key_here
-   ZAI_MODEL=glm-4v
-   ZAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
-   ```
-3. Optional: Install Node.js for MCP vision server support
-4. Run with: `python run.py --mode ZAI`
-
-**Usage:**
-- Images are automatically processed through the MCP vision server
-- The server provides enhanced image analysis capabilities
-- Falls back to base64 encoding if MCP server unavailable
-
-> Configure mGBA not to use GB Player features.
-
-![Alt1](images/no_gbp.png)
+- LLM Providers (OpenAI, Gemini, Z.AI, etc.)
+- Twitch Chat & Interactive Features
+- Pump.fun & Solana Integration
+- Text-to-Speech (ComfyUI)

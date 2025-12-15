@@ -160,6 +160,31 @@ interface PokemonCardProps {
 - `N` = NPC location
 - `O` = Exit/Opening
 
+### SessionHeader (Timers)
+
+**Purpose**: Displays stream uptime and current cycle timing.
+
+**File**: `src/components/layout/PokemonStreamOverlay.tsx` (Internal components: `SessionTimer`, `LiveCycleTimer`)
+
+**Features**:
+
+- **Session Timer**: Counts up from `sessionStartTime`.
+- **Cycle Timer**: Progress bar and counter for current AI decision cycle.
+
+### CharacterAvatar
+
+**Purpose**: Displays dynamic Lass avatar based on game state.
+
+**File**: `src/components/character/CharacterAvatar.tsx`
+
+**States**:
+
+- `exploring` (Default)
+- `battle` (During fights)
+- `menu` (When menu open)
+- `gym` (Gym battles)
+- `victory` (Win state)
+
 ## CSS Variables
 
 All components use CSS custom properties from the root theme:

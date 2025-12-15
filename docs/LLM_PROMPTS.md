@@ -21,6 +21,22 @@ All screen types use a standardized 12-section format for consistent output:
 | 11  | COMMENTARY            | Stream personality  | 1-2 sentences for TTS                          |
 | 12  | MEMORY_WRITE          | Events to save      | Story events, choices                          |
 
+## Chat Response Prompt (Personality)
+
+Separate from the main game analysis, the `ChatResponseService` uses a specialized prompt for Twitch interaction:
+
+**Inputs:**
+
+- User message
+- Game context (Location, Status, Team)
+- **Chatter Context**: (New) Relationship tier ("VIP", "Regular"), previous interactions, sentiment.
+
+**Goal:**
+
+- Respond as "Lass" (Bubbly, Pokemon-obsessed streamer).
+- Short (<100 chars) for TTS.
+- Reference context to make the user feel remembered.
+
 ## Screen-Specific Prompts
 
 ### OVERWORLD_PROMPT
