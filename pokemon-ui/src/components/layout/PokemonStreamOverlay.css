@@ -648,12 +648,12 @@
   flex: 1; /* Smaller than commentary */
 }
 
-/* Right column - Character image - positioned inside left column folder */
-/* Changed from position:fixed to position in flow so it stays in folder container */
+/* Right column - Character image - fixed to bottom of viewport */
+/* Position fixed anchors to viewport, left position places in left column area */
 .pokemon-stream-overlay .character-container__right {
-  position: absolute;
+  position: fixed;
   bottom: 0;
-  left: 0;
+  left: 40px;
   width: auto;
   height: auto;
   z-index: 100; /* High z-index to be above other content */
