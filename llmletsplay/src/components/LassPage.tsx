@@ -4,6 +4,7 @@ import { About } from './sections/About'
 import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Tokenomics } from './sections/Tokenomics'
+import { Battle } from './sections/Battle'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { 
@@ -20,6 +21,7 @@ import {
 const navItems = [
   { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
   { id: 'lass', label: 'Lass Plays Pokemon', icon: <Icon icon="streamline-pixel:photography-focus-flower" width={18} height={18} />, hasDivider: true },
+  { id: 'battle', label: 'Battle Mode', icon: <Icon icon="streamline-pixel:lightning-bolt-pixel" width={18} height={18} />, isSubItem: true },
   { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
   { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
@@ -31,10 +33,10 @@ const navItems = [
 
 const sectionTitles: Record<string, string> = {
   lass: 'Lass ✿',
+  battle: 'Battle!',
   about: 'About',
   architecture: 'Architecture',
   memory: 'Memory',
-  stream: 'Stream Cycle',
   stream: 'Stream Cycle',
   prompts: 'Prompts',
   tokenomics: 'Tokenomics',
@@ -74,6 +76,7 @@ export function LassLayout() {
         >
           <Routes>
             <Route index element={<Persona />} />
+            <Route path="battle" element={<Battle />} />
             <Route path="about" element={<ComingSoon title="About" />} />
             <Route path="architecture" element={<ComingSoon title="Architecture" />} />
             <Route path="memory" element={<ComingSoon title="Memory Map" />} />
