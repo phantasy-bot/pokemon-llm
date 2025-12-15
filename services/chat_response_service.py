@@ -225,6 +225,7 @@ OUTPUT FORMAT (one per line, just the number and decision):
 Only output the decisions, no explanations."""
 
         try:
+            start_time = time.time()
             client = self._get_client()
             response = client.chat.completions.create(
                 model=self.model,
@@ -232,6 +233,8 @@ Only output the decisions, no explanations."""
                 max_tokens=100,
                 temperature=0.7
             )
+            duration = time.time() - start_time
+            log.info(f"⚡ Decision LLM request took {duration:.2f}s")
             
             result_text = response.choices[0].message.content.strip() if response.choices else ""
             
@@ -349,6 +352,7 @@ Don't mention buttons or controls.
 Respond with ONLY your response text, nothing else."""
 
         try:
+            start_time = time.time()
             client = self._get_client()
             response = client.chat.completions.create(
                 model=self.model,
@@ -356,11 +360,12 @@ Respond with ONLY your response text, nothing else."""
                 max_tokens=80,
                 temperature=0.9
             )
+            duration = time.time() - start_time
             
             if response.choices and response.choices[0].message.content:
                 result = response.choices[0].message.content.strip()
                 self._response_count += 1
-                log.info(f"✅ Generated response #{self._response_count}: {result[:50]}...")
+                log.info(f"✅ Generated response #{self._response_count} in {duration:.2f}s: {result[:50]}...")
                 return result
             return ""
             

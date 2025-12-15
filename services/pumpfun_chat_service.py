@@ -33,7 +33,8 @@ PUMPFUN_WS_URL = "wss://livechat.pump.fun/socket.io/?EIO=4&transport=websocket"
 PUMPFUN_ORIGIN = "https://pump.fun"
 
 # Test mode configuration
-PUMPFUN_TEST_MODE = os.getenv("PUMPFUN_TEST_MODE", "false").lower() == "true"
+# Test mode configuration
+PUMPFUN_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
 
 # Test mode usernames and message templates
 TEST_USERNAMES = [
@@ -54,7 +55,11 @@ TEST_MESSAGES = [
     "finally something different", "pokemon ai is the future", "GG",
     # Crypto slang
     "WAGMI", "NGMI if you sell", "jeets out", "paper hands crying rn",
-    "whales loading up", "bonding curve looking good", "bullish af"
+    "whales loading up", "bonding curve looking good", "bullish af",
+    # More variety
+    "dev is based", "voice chat when?", "chart looks healthy", "dip bought",
+    "don't fade this", "early entry", "checking solscan", "volume picking up",
+    "send it higher", "waiting for raydium", "LFG guys", "hold the line"
 ]
 
 
