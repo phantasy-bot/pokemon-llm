@@ -303,14 +303,14 @@ function App() {
     }
   }, [gameState.cyclesEnabled, introPhase]);
 
-  // Manual route overrides for testing
-  if (route === 'starting') {
+  // Explicit test routes for debugging (use #force-starting, #force-just-chatting, #force-game)
+  if (route === 'force-starting') {
     return <StreamStartingScreen onComplete={handleStartingComplete} />;
   }
-  if (route === 'just-chatting') {
+  if (route === 'force-just-chatting') {
     return <JustChattingOverlay />;
   }
-  if (route === 'game') {
+  if (route === 'force-game') {
     return (
       <PokemonStreamOverlay
         gameState={gameState}
