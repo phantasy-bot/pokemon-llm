@@ -372,9 +372,10 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=N
     tasks_to_await = []
 
     try:
-        # Start mGBA muted in auto mode - audio will interfere with intro TTS
-        # llmdriver will restart mGBA unmuted when transitioning to game
-        proc, sock = start_mgba_with_scripting(muted=True)
+        # Start mGBA with audio enabled (not muted)
+        # Game audio will play during intro - this is acceptable
+        # First cycle analysis is preloaded during countdown
+        proc, sock = start_mgba_with_scripting(muted=False)
 
         if auto:
             log.info("Auto mode enabled. Starting WebSocket server and LLM driver.")
