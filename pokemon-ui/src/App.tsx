@@ -70,6 +70,9 @@ function App() {
   // Countdown duration from backend (in seconds)
   const [countdownSeconds, setCountdownSeconds] = useState<number>(300);
   
+  // Dynamic intro text from backend (for Just Chatting phase chatbox)
+  const [introText, setIntroText] = useState<string>('');
+  
   // Track if we have established an initial connection to detect reconnections
   const initialConnectionMade = useRef(false);
 
@@ -202,6 +205,12 @@ function App() {
         setCountdownSeconds(data.countdownSeconds);
         console.log(`Countdown set to: ${data.countdownSeconds}s`);
       }
+      
+      // Capture intro text for Just Chatting phase chatbox
+      if (data.introText && typeof data.introText === 'string') {
+        setIntroText(data.introText);
+        console.log(`Intro text received: ${data.introText}`);
+      }
     }
 
     // Handle full state history (initial load or reconnect)
@@ -324,7 +333,7 @@ function App() {
     return <StreamStartingScreen onComplete={handleStartingComplete} countdownSeconds={countdownSeconds} />;
   }
   if (route === 'force-just-chatting') {
-    return <JustChattingOverlay />;
+    return <JustChattingOverlay introText={introText} />;
   }
   if (route === 'force-game') {
     return (
@@ -346,7 +355,7 @@ function App() {
       return <StreamStartingScreen onComplete={handleStartingComplete} countdownSeconds={countdownSeconds} />;
     
     case 'just-chatting':
-      return <JustChattingOverlay />;
+      return <JustChattingOverlay introText={introText} />;
     
     case 'game':
     default:
