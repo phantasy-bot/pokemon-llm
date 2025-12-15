@@ -13,67 +13,10 @@ import random
 from dataclasses import dataclass, field
 from typing import List, Optional, Callable
 from collections import deque
+from services.twitch_engagement_service import TwitchEngagementService
+from services.chat_types import ChatMessage
 
 log = logging.getLogger("twitch_chat")
-
-# Test mode configuration
-TWITCH_TEST_MODE = os.getenv("TWITCH_TEST_MODE", "false").lower() == "true"
-TWITCH_TEST_LLM = os.getenv("TWITCH_TEST_LLM", "false").lower() == "true"  # Use LLM for test responses
-TWITCH_TEST_MESSAGES_PER_CYCLE = int(os.getenv("TWITCH_TEST_MESSAGES_PER_CYCLE", "10"))
-
-# Check if twitchio is available
-try:
-    from twitchio.ext import commands
-    TWITCHIO_AVAILABLE = True
-except ImportError:
-    TWITCHIO_AVAILABLE = False
-    log.warning("twitchio not installed. Twitch chat integration disabled. Install with: pip install twitchio")
-
-# Test mode usernames and message templates
-TEST_USERNAMES = [
-    "PokeFan2024", "ShinyHunter99", "GaryWasHere", "AshKetchumFan", "MistyMain",
-    "BrockFan", "TeamRocketBlasting", "PikachuLover", "MewtwoStan", "GottaCatchEmAll",
-    "PokemonMaster123", "ViridianCity420", "PalletTownBoy", "EliteFourDan", "GymLeaderSara",
-    "RandomViewer42", "TwitchChatter", "PokeNerd", "RetroGamer85", "GenOneForever"
-]
-
-TEST_MESSAGES = [
-    # Questions about game
-    "where are you going?", "what pokemon do you have?", "are you lost lol",
-    "have you beaten brock yet?", "when are you catching pikachu?",
-    "what's your team?", "how many badges?", "is this your first playthrough?",
-    # Greetings
-    "hey lass!", "hi!", "just got here what's happening", "love the stream!",
-    "first time watching!", "let's gooo", "pog", "HYPE", "hello chat!",
-    # Playful roasts
-    "you've been stuck here for 10 minutes lmao", "just go left omg",
-    "bruh moment", "lass please", "skill issue tbh", "have you tried pressing A?",
-    "my grandma could beat this game faster", "literally walking in circles",
-    # Pokemon references
-    "catch that rattata!", "WILD ENCOUNTER POG", "that pikachu is built different",
-    "this is like my childhood", "gen 1 best gen", "squirtle gang",
-    "charmander would never", "bulbasaur supremacy",
-    # Spam/memes (for SKIP testing)
-    "KEKW KEKW KEKW", "!gamble all", "LUL LUL LUL", "Kappa Kappa Kappa",
-    "asdfghjkl", "zzzzzzzzz", "first", "sub to my channel",
-    # Genuine engagement
-    "you got this!", "let's catch 'em all!", "I believe in you lass!",
-    "@Lass you're doing great!", "keep going!", "almost there!",
-]
-
-
-@dataclass
-class ChatMessage:
-    """Represents a chat message from Twitch."""
-    username: str
-    display_name: str
-    message: str
-    timestamp: float
-    is_mention: bool = False
-    responded: bool = False
-    is_test: bool = False  # Flag for test messages
-    is_subscriber: bool = False  # Twitch subscriber status for priority
-
 
 class TwitchChatService:
     """
@@ -111,6 +54,9 @@ class TwitchChatService:
         self._message_queue: deque[ChatMessage] = deque(maxlen=100)  # Last 100 messages
         self._pending_mentions: List[ChatMessage] = []
         self._last_commentary_timestamp: float = 0
+
+        # Engagement Service
+        self.engagement = TwitchEngagementService(self)
         
         # Bot instance
         self._bot: Optional['TwitchBot'] = None
@@ -160,6 +106,10 @@ class TwitchChatService:
             
             # Start bot in background task
             asyncio.create_task(self._run_bot())
+            
+            # Update engagement service with bot reference
+            self.engagement.set_bot(self._bot)
+            
             self._running = True
             log.info(f"Twitch chat service started for channel: {self.channel}")
             return True
@@ -189,6 +139,9 @@ class TwitchChatService:
     def add_message(self, msg: ChatMessage):
         """Add a message to the queue (called by the bot)."""
         self._message_queue.append(msg)
+        
+        # Update Engagement Memory
+        self.engagement.on_message(msg)
         
         # Check if it's a mention of the bot
         if self._is_mention(msg.message):

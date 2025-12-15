@@ -13,25 +13,9 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
 from openai import OpenAI
+from services.chat_types import MessageDecision, DecidedMessage
 
 log = logging.getLogger("chat_response")
-
-
-class MessageDecision(Enum):
-    """Decision for how to handle a chat message."""
-    SKIP = "skip"
-    RESPOND = "respond"
-
-
-@dataclass
-class DecidedMessage:
-    """A chat message with a SKIP/RESPOND decision."""
-    username: str
-    display_name: str
-    message: str
-    timestamp: float
-    decision: MessageDecision
-    reason: Optional[str] = None
 
 
 class ChatResponseService:
@@ -316,7 +300,8 @@ Only output the decisions, no explanations."""
         self,
         username: str,
         message: str,
-        is_past: bool = False
+        is_past: bool = False,
+        chatter_context: str = ""
     ) -> str:
         """
         Generate a response to a single chat message.
@@ -325,6 +310,7 @@ Only output the decisions, no explanations."""
             username: Display name of the user
             message: The chat message
             is_past: If True, respond in past tense (catching up)
+            chatter_context: Context about the user (e.g. "VIP viewer", "Sentiment: positive")
         
         Returns:
             Response text or empty string on failure
@@ -332,12 +318,14 @@ Only output the decisions, no explanations."""
         if not self.is_available:
             return ""
         
+        chatter_info = f"\nUser Context: {chatter_context}" if chatter_context else ""
+        
         if is_past:
             prompt = f"""{self._get_lass_personality_prompt()}
 
 You noticed a chat message from earlier that you didn't get to respond to:
 
-@{username}: "{message}"
+@{username}: "{message}"{chatter_info}
 
 Respond in PAST TENSE as if you're catching up on chat. Start with "@{username}".
 Keep your response under 100 characters.
@@ -352,7 +340,7 @@ Respond with ONLY your response text, nothing else."""
 
 A viewer just sent this message:
 
-@{username}: "{message}"
+@{username}: "{message}"{chatter_info}
 
 Respond as Lass in 1-2 SHORT sentences. Be friendly, funny, and genuine!
 Keep your response under 100 characters (for TTS).
