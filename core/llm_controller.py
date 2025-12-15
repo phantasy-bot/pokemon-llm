@@ -332,6 +332,8 @@ class LLMController:
              log.info("ZAI_DIRECT mode: Image will be embedded directly in API call (combined vision+text)")
              # Update status to show we're doing combined analysis
              self.update_processing_status("ANALYZING (COMBINED)...")
+             # Set placeholder vision analysis so action logging works in llmdriver
+             vision_analysis_for_ui = "[Combined vision+text analysis - image embedded in LLM call]"
 
         # Build Message
         image_parts = []
@@ -402,12 +404,24 @@ class LLMController:
                      response = self.client.chat.completions.create(**kwargs)
                      cycle_metrics["llm"] = (time.time() - t_start) * 1000
                      full_output = response.choices[0].message.content
+            
+            elif self.config["mode"] == "ZAI_DIRECT":
+                # ZAI_DIRECT: Use non-streaming for more reliable multimodal responses
+                log.info("Using ZAI_DIRECT mode (non-streaming with embedded images).")
+                kwargs["stream"] = False
+                t_start = time.time()
+                response = self.client.chat.completions.create(**kwargs)
+                cycle_metrics["llm"] = (time.time() - t_start) * 1000
+                full_output = response.choices[0].message.content
+                log.info(f"⏱️ ZAI_DIRECT LLM: {cycle_metrics['llm']/1000:.2f}s")
                      
             else:
                 log.info("Using standard model (streaming).")
                 kwargs["stream"] = True
+                t_start = time.time()
                 response = self.client.chat.completions.create(**kwargs)
                 full_output = self._handle_streaming(response, timeout)
+                cycle_metrics["llm"] = (time.time() - t_start) * 1000
 
         except Exception as e:
             log.error(f"LLM Interaction failed: {e}", exc_info=True)
