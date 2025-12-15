@@ -36,6 +36,9 @@ except ImportError:
 # Configuration from environment
 PUMPFUN_TOKEN_ADDRESS = os.getenv("PUMPFUN_TOKEN_ADDRESS", "")
 WHALE_THRESHOLD = int(os.getenv("PUMPFUN_WHALE_THRESHOLD", "100000"))
+# Cache TTL in seconds - longer = fewer API calls but slower to detect balance changes
+# Default 15 min (900s) is good for streams since users stick around
+WHALE_CACHE_TTL = int(os.getenv("WHALE_CACHE_TTL", "900"))
 
 # RPC Provider configurations (order = priority)
 RPC_PROVIDERS = [
@@ -135,12 +138,13 @@ class SolanaTokenService:
         self,
         token_mint: str = None,
         whale_threshold: int = None,
-        cache_ttl: int = 300,  # 5 minutes
+        cache_ttl: int = None,  # Default from env: WHALE_CACHE_TTL (15 min)
         cache_size: int = 1000
     ):
         self.token_mint = token_mint or PUMPFUN_TOKEN_ADDRESS
         self.whale_threshold = whale_threshold or WHALE_THRESHOLD
-        self.cache = LRUCache(max_size=cache_size, ttl_seconds=cache_ttl)
+        actual_ttl = cache_ttl if cache_ttl is not None else WHALE_CACHE_TTL
+        self.cache = LRUCache(max_size=cache_size, ttl_seconds=actual_ttl)
         
         # Initialize providers
         self.providers: list[ProviderStatus] = []
