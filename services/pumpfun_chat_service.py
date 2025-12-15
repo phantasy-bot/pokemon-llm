@@ -34,7 +34,7 @@ PUMPFUN_ORIGIN = "https://pump.fun"
 
 # Test mode configuration
 # Test mode configuration
-PUMPFUN_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
+CHAT_TEST_MODE = os.getenv("CHAT_TEST_MODE", "false").lower() == "true"
 
 # Test mode usernames and message templates
 TEST_USERNAMES = [
@@ -129,7 +129,7 @@ class PumpFunChatService:
         self._receive_task: Optional[asyncio.Task] = None
         
         # Test mode
-        self._test_mode = PUMPFUN_TEST_MODE
+        self._test_mode = CHAT_TEST_MODE
         
         # Validate configuration
         self._is_configured = bool(self.token_address)
@@ -501,7 +501,7 @@ class PumpFunChatService:
     
     def get_messages_for_cycle_or_test(self) -> List[dict]:
         """Get messages for the current cycle, using test messages if enabled."""
-        if PUMPFUN_TEST_MODE:
+        if CHAT_TEST_MODE:
             return self.generate_test_messages()
         else:
             return self.get_messages_for_cycle()
