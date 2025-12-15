@@ -81,9 +81,18 @@ def parse_mode_arg(modes, default_mode=DEFAULT_MODE):
     mode = args.mode
 
     if not mode:
-        print(f"\nNo LLM mode specified via command line.")
-        print(f"Using default mode: {default_mode}")
-        mode = default_mode
+        # Check environment variable before falling back to default
+        env_mode = os.getenv("MODE")
+        if env_mode and env_mode in modes:
+            print(f"\nNo LLM mode specified via command line.")
+            print(f"Using MODE from .env: {env_mode}")
+            mode = env_mode
+        else:
+            if env_mode:
+                print(f"\nWarning: MODE='{env_mode}' in .env is not valid. Valid modes: {modes}")
+            print(f"No LLM mode specified via command line or .env.")
+            print(f"Using default mode: {default_mode}")
+            mode = default_mode
     else:
         print(f"LLM mode specified via command line: {mode}")
 
