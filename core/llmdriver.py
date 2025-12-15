@@ -2237,7 +2237,8 @@ Your intro message:"""
                     )
                     if new_links:
                          log.info(f"🔗 TRANSITION RECORDED: {last_map} -> {current_map} (O-tile: {was_on_o_tile})")
-                         update_payload["memory_write"] = {"text": f"Mapped connection: {last_map} -> {current_map}"}
+                         transition_memory_payload = {"memory_write": {"text": f"Mapped connection: {last_map} -> {current_map}"}}
+                         await broadcast_func(transition_memory_payload)
                          
                          # Reset failed attempts and boost confidence since this exit WORKED
                          memory_manager.reset_failed_attempts(
@@ -2291,10 +2292,9 @@ Your intro message:"""
                             if goal_id:
                                 log.info(f"🎯 CREATED QUEST GOAL: {memory.description}")
                                 log.info(f"   Quest ID: {memory.quest_id} | Goal ID: {goal_id}")
-                                # Broadcast quest detection to UI
-                                update_payload["memory_write"] = {
-                                    "text": f"🎯 NEW QUEST: {memory.description}"
-                                }
+                                # Broadcast quest detection to UI immediately
+                                quest_memory_payload = {"memory_write": {"text": f"🎯 NEW QUEST: {memory.description}"}}
+                                await broadcast_func(quest_memory_payload)
 
             # Verify pending vision claims against minimap data
             minimap_2d = current_mGBA_state.get('minimap_2d', '')
@@ -2320,14 +2320,17 @@ Your intro message:"""
             latest_memory = memory_manager.get_latest_memory()
             if latest_memory:
                 # Add memory directly to update_payload for frontend compatibility
-                update_payload["memory_write"] = {"text": latest_memory.description}
-                log.info(f"Broadcasting latest memory: {latest_memory.description[:100]}...")
+                memory_write_payload = {"memory_write": {"text": latest_memory.description}}
+                log.info(f"📝 Broadcasting memory_write to UI: {latest_memory.description[:100]}...")
+                
+                # BROADCAST IMMEDIATELY - the main update_payload was already broadcast earlier
+                # We need a separate broadcast here for memory_write to reach the UI
+                await broadcast_func(memory_write_payload)
 
                 # Also add to memory_updates array for potential future use
                 if "memory_updates" not in update_payload:
                     update_payload["memory_updates"] = []
-                memory_payload = {"memory_write": {"text": latest_memory.description}}
-                update_payload["memory_updates"].append(memory_payload)
+                update_payload["memory_updates"].append(memory_write_payload)
 
         except Exception as e:
             log.error(f"Error extracting memories: {e}", exc_info=True)
