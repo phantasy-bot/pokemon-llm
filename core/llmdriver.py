@@ -2602,8 +2602,31 @@ Your intro message:"""
                 pumpfun_msgs = pumpfun_service.get_messages_for_cycle_or_test()
                 messages_for_cycle.extend(pumpfun_msgs)
             
-            # Sort all messages by timestamp (oldest first)
-            messages_for_cycle.sort(key=lambda m: m.get('timestamp', 0))
+            # ═══════════════════════════════════════════════════════════════════
+            # PRIORITY SORTING - Higher priority messages get responded to first
+            # ═══════════════════════════════════════════════════════════════════
+            # Priority hierarchy (highest first):
+            # 1. 👑 Pump.fun WHALE holders (100k+ tokens) - Priority 4
+            # 2. 💎 Twitch subscribers                    - Priority 3
+            # 3. 🪙 Regular pump.fun chatters             - Priority 2  
+            # 4. 👤 Regular Twitch chatters               - Priority 1
+            
+            def get_priority(msg: dict) -> int:
+                source = msg.get('source', 'twitch')
+                is_whale = msg.get('is_whale', False)
+                is_subscriber = msg.get('is_subscriber', False)
+                
+                if source == 'pumpfun' and is_whale:
+                    return 4  # Whale - highest priority
+                elif source == 'twitch' and is_subscriber:
+                    return 3  # Twitch subscriber
+                elif source == 'pumpfun':
+                    return 2  # Regular pump.fun chatter
+                else:
+                    return 1  # Regular Twitch chatter
+            
+            # Sort by priority (descending), then by timestamp (ascending/oldest first)
+            messages_for_cycle.sort(key=lambda m: (-get_priority(m), m.get('timestamp', 0)))
             
             if not messages_for_cycle:
                 await asyncio.sleep(min(remaining_wait, 2.0))

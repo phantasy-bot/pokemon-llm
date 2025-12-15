@@ -72,6 +72,7 @@ class ChatMessage:
     is_mention: bool = False
     responded: bool = False
     is_test: bool = False  # Flag for test messages
+    is_subscriber: bool = False  # Twitch subscriber status for priority
 
 
 class TwitchChatService:
@@ -282,6 +283,8 @@ class TwitchChatService:
                 "display_name": msg.display_name,
                 "message": msg.message,
                 "timestamp": msg.timestamp,
+                "is_subscriber": msg.is_subscriber,  # For priority
+                "source": "twitch",  # Identify source platform
                 "_original": msg  # Keep reference for marking responded
             }
             for msg in messages
@@ -307,12 +310,16 @@ class TwitchChatService:
             username = random.choice(TEST_USERNAMES)
             message = random.choice(TEST_MESSAGES)
             timestamp = base_time - (count - i) * 0.5  # Stagger timestamps
+            # Randomly make some test users "subscribers" (30% chance)
+            is_sub = random.random() < 0.3
             
             test_messages.append({
                 "username": username.lower(),
                 "display_name": username,
                 "message": message,
                 "timestamp": timestamp,
+                "is_subscriber": is_sub,
+                "source": "twitch",
                 "_original": None,  # No original for test messages
                 "is_test": True
             })
@@ -416,12 +423,20 @@ if TWITCHIO_AVAILABLE:
             if message.echo:
                 return
             
+            # Check if user is a subscriber (has subscriber badge)
+            is_sub = False
+            if message.author and hasattr(message.author, 'badges'):
+                badges = message.author.badges or {}
+                # Check for subscriber or founder (founder = first subscriber) badges
+                is_sub = 'subscriber' in badges or 'founder' in badges or 'vip' in badges
+            
             # Create ChatMessage object
             chat_msg = ChatMessage(
                 username=message.author.name if message.author else "unknown",
                 display_name=message.author.display_name if message.author else "Unknown",
                 message=message.content,
-                timestamp=time.time()
+                timestamp=time.time(),
+                is_subscriber=is_sub
             )
             
             # Add to service queue
