@@ -325,6 +325,13 @@ class LLMController:
              # ZAI mode but no vision client
              log.warning("ZAI mode detected but no vision available")
              payload["vision_analysis"] = "[Vision client not initialized]"
+        
+        elif self.config["mode"] == "ZAI_DIRECT":
+             # ZAI_DIRECT mode: Images are embedded directly in API call
+             # No separate vision analysis needed - the model handles both vision and analysis
+             log.info("ZAI_DIRECT mode: Image will be embedded directly in API call (combined vision+text)")
+             # Update status to show we're doing combined analysis
+             self.update_processing_status("ANALYZING (COMBINED)...")
 
         # Build Message
         image_parts = []
