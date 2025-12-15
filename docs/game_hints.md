@@ -12,9 +12,12 @@ This document provides sequential navigation hints for the AI agent to complete 
 
 ## 📍 PALLET TOWN & ROUTE 1
 
-### Player's House (Bedroom)
+### Player's House (Bedroom) - PLAYERS_HOUSE_2F
 
-- The exit stairs are in the **top-right corner** of the room. Stand on the mat to descend.
+- **STAIRCASE LOCATION**: The exit stairs are at coordinates **(7,1)** in the **TOP-RIGHT (NORTHEAST) corner** of the room.
+- **COMMON MISTAKE**: The **WEST/SOUTHWEST edge** of the room is the player's **BED**, NOT an exit. Do NOT try to find a door or stairs there.
+- **To exit**: Walk to the TOP-RIGHT corner toward (7,1). The staircase leads down to PLAYERS_HOUSE_1F.
+- The room is small - the exit is the ONLY tile transition in the top-right.
 
 ### Pallet Town (Initial)
 

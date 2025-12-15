@@ -82,8 +82,8 @@ def get_area_hint(gamestate: dict) -> str:
     # default fallback
     matching_section_key = None
     
-    # 1. PALLET TOWN & ROUTE 1
-    if "PALLET" in map_name or "REDS_HOUSE" in map_name or "OAKS_LAB" in map_name:
+    # 1. PALLET TOWN & ROUTE 1 (including Player's House)
+    if "PALLET" in map_name or "REDS_HOUSE" in map_name or "OAKS_LAB" in map_name or "PLAYERS_HOUSE" in map_name:
         # Check if we have Pokedex
         if has_item("POKEDEX"):
             # If we have Pokedex, we are done with initial quest, likely heading to Viridian or Route 1
