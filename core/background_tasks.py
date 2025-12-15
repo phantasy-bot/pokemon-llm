@@ -28,26 +28,26 @@ async def run_chat_background_task(
 
     log.info("🚀 Starting background chat response task")
     
-    # Mock responses for Twitch (Pokemon themed)
+    # Mock responses for Twitch (Pokemon themed) - includes "on twitch" tag
     twitch_mock_responses = [
-        "Omg hi @{user}! I'm so happy you're here with me!",
-        "@{user} that is so funny! I literally can't even right now!",
-        "Wait @{user}, really? I had no idea about that!",
-        "Thanks for the tip @{user}! I'll try to remember that!",
-        "@{user} you are always so supportive, thank you!",
-        "I'm trying my best @{user}, this game is harder than it looks!",
-        "Haha @{user} I saw that! wild!",
+        "Omg hi @{user} on twitch! I'm so happy you're here with me!",
+        "@{user} on twitch that is so funny! I literally can't even right now!",
+        "Wait @{user} on twitch, really? I had no idea about that!",
+        "Thanks for the tip @{user} on twitch! I'll try to remember that!",
+        "@{user} on twitch you are always so supportive, thank you!",
+        "I'm trying my best @{user} on twitch, this game is harder than it looks!",
+        "Haha @{user} on twitch I saw that! wild!",
     ]
     
-    # Mock responses for Pump.fun (crypto themed)
+    # Mock responses for Pump.fun (crypto themed) - includes "on pump" tag
     pumpfun_mock_responses = [
-        "@{user} LFG! Diamond hands all the way! 💎🙌",
-        "Haha @{user} we're all gonna make it! WAGMI! 🚀",
-        "@{user} thanks for watching! This is so much fun!",
-        "Omg @{user} you're right, to the moon! 🌙",
-        "@{user} appreciate the hype! Let's gooo!",
-        "Thanks @{user}! We're building something special here!",
-        "@{user} love the energy in chat tonight!",
+        "@{user} on pump LFG! Diamond hands all the way! 💎🙌",
+        "Haha @{user} on pump we're all gonna make it! WAGMI! 🚀",
+        "@{user} on pump thanks for watching! This is so much fun!",
+        "Omg @{user} on pump you're right, to the moon! 🌙",
+        "@{user} on pump appreciate the hype! Let's gooo!",
+        "Thanks @{user} on pump! We're building something special here!",
+        "@{user} on pump love the energy in chat tonight!",
     ]
     
     while not stop_event.is_set():
