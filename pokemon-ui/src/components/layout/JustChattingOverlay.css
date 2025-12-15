@@ -16,7 +16,7 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
+  /* Removed overflow:hidden to allow ghost trails to animate from off-screen */
   background: linear-gradient(
     180deg,
     #ff6b6b 0%,
@@ -30,7 +30,7 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  overflow: hidden;
+  overflow: hidden; /* Clip flowers but not character ghosts */
 }
 
 .content-layer {
@@ -137,6 +137,7 @@
   z-index: 15;
   height: 75vh;
   max-height: 800px;
+  overflow: visible; /* Ensure ghost trails animating from off-screen are visible */
 }
 
 /* =============================================
@@ -300,6 +301,8 @@
 }
 
 /* === MAIN CHARACTER === */
+/* Main character slides in WITH the ghost trails but stays INVISIBLE */
+/* It only becomes visible at the end (at 75% mark when landing) */
 
 .holographic-afterimage .main-character {
   position: relative;
@@ -307,7 +310,41 @@
   height: 100%;
   width: auto;
   display: block;
-  animation: character-slide-in 6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  /* Slides in from left like original, but stays invisible until end */
+  animation: character-slide-in-hidden 6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Character slides in but stays invisible until 75%, then reveals with impact */
+@keyframes character-slide-in-hidden {
+  0% {
+    transform: translateX(-100vw) scale(1);
+    opacity: 0;
+  }
+  /* Stay invisible during the slide */
+  74% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+  /* Now reveal! */
+  75% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  /* Impact: grow slightly */
+  78% {
+    transform: translateX(0) scale(1.08);
+    opacity: 1;
+  }
+  /* Diagonal shake while shrinking back */
+  81% { transform: translate(4px, -3px) scale(1.05) rotate(0.8deg); opacity: 1; }
+  84% { transform: translate(-3px, 4px) scale(1.03) rotate(-0.6deg); opacity: 1; }
+  87% { transform: translate(3px, 2px) scale(1.02) rotate(0.4deg); opacity: 1; }
+  90% { transform: translate(-2px, -2px) scale(1.01) rotate(-0.3deg); opacity: 1; }
+  93% { transform: translate(1px, 1px) scale(1) rotate(0.1deg); opacity: 1; }
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
 }
 
 /* =============================================
