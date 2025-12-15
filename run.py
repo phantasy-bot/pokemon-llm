@@ -184,7 +184,14 @@ state = {
     "avgCycleTime": 0,  # Average cycle time over last 20 cycles
 }
 
-def start_mgba_with_scripting(rom_path=None, port=config.PORT):
+def start_mgba_with_scripting(rom_path=None, port=config.PORT, muted=False):
+    """Start mGBA with Lua scripting enabled.
+    
+    Args:
+        rom_path: Path to ROM file
+        port: Socket port for mGBA communication
+        muted: If True, start mGBA with audio muted (-C mute=1)
+    """
     rom_path = rom_path or os.path.join(os.path.dirname(__file__), get_rom_path())
     if not os.path.exists(rom_path):
         log.error(f"ROM file not found: {rom_path}")
@@ -217,7 +224,13 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
         except Exception as e:
             log.warning(f"Could not clean snapshots dir: {e}")
 
-    cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT, rom_path]
+    # Build mGBA command - add mute flag if requested
+    cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT]
+    if muted:
+        cmd.extend(['-C', 'mute=1'])
+        log.info("🔇 Starting mGBA with audio MUTED for intro")
+    cmd.append(rom_path)
+    
     log.info(f"Starting mGBA: {' '.join(cmd)}")
     try:
         # Redirect stdout to DEVNULL, capture stderr
@@ -268,11 +281,6 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
                 if save_type:
                     log.info(f"Auto-loading save state (type: {save_type})...")
                     send_command(sock, "LOADSTATE 1")
-            
-            # Pause game immediately after connecting - will be unpaused when game screen starts
-            # This allows us to pre-load first cycle analysis during the intro countdown
-            send_command(sock, "PAUSE")
-            log.info("⏸️ Game paused for intro sequence")
             
             return proc, sock # Success
         except ConnectionRefusedError:
@@ -364,8 +372,9 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=N
     tasks_to_await = []
 
     try:
-        # config.LOAD_SAVESTATE global will be used by start_mgba_with_scripting
-        proc, sock = start_mgba_with_scripting()
+        # Start mGBA muted in auto mode - audio will interfere with intro TTS
+        # llmdriver will restart mGBA unmuted when transitioning to game
+        proc, sock = start_mgba_with_scripting(muted=True)
 
         if auto:
             log.info("Auto mode enabled. Starting WebSocket server and LLM driver.")

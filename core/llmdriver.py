@@ -900,14 +900,14 @@ Your intro message:"""
     # 2. Unpause the game
     # 3. Start the session
     
-    log.info("🎮 Transitioning to game - unpausing and showing first cycle...")
+    log.info("🎮 Transitioning to game - restarting mGBA with audio enabled...")
     
-    # UNPAUSE the game!
-    try:
-        send_command(sock_ref["socket"], "UNPAUSE")
-        log.info("▶️ Game UNPAUSED - Lass is playing!")
-    except Exception as ue:
-        log.error(f"Failed to unpause game: {ue}")
+    # Restart mGBA without mute flag - this gives us fresh audio from save state
+    # restart_mgba() kills the muted mGBA and starts a new one with sound
+    if restart_mgba():
+        log.info("🔊 Game restarted with audio ENABLED - Lass is playing!")
+    else:
+        log.error("❌ Failed to restart mGBA with audio - continuing with muted instance")
     
     # Broadcast session start with first cycle analysis (clearing intro text)
     session_start_ms = int(time.time() * 1000)
