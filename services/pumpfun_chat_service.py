@@ -102,6 +102,7 @@ class PumpFunChatService:
             message_history_limit: Maximum messages to store in memory
         """
         self.token_address = token_address or os.getenv("PUMPFUN_TOKEN_ADDRESS", "")
+        self.cookie = os.getenv("PUMPFUN_COOKIE", "")
         self.username = username
         self.on_message_callback = on_message_callback
         self.message_history_limit = message_history_limit
@@ -194,6 +195,11 @@ class PumpFunChatService:
             "Origin": PUMPFUN_ORIGIN,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
+        
+        if self.cookie:
+            headers["Cookie"] = self.cookie
+        else:
+            log.warning("⚠️ No PUMPFUN_COOKIE provided. Sending messages will likely fail.")
         
         log.info(f"Connecting to pump.fun chat: {self.token_address}")
         
