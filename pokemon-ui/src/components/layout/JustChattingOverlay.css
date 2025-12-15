@@ -126,7 +126,8 @@
    Character Container
    ============================================= */
 
-.character-container {
+/* Scoped to .just-chatting-overlay to prevent conflicts with other overlays */
+.just-chatting-overlay .character-container {
   position: fixed;
   bottom: 0;
   left: 50%;
