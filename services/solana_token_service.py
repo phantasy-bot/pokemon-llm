@@ -85,6 +85,7 @@ class ProviderStatus:
     error_count: int = 0
     last_request_time: float = 0
     requests_this_minute: int = 0
+    disabled_until: float = 0  # Timestamp when provider can be used again
 
 
 class LRUCache:
@@ -139,16 +140,21 @@ class SolanaTokenService:
         token_mint: str = None,
         whale_threshold: int = None,
         cache_ttl: int = None,  # Default from env: WHALE_CACHE_TTL (15 min)
-        cache_size: int = 1000
+        cache_size: int = 1000,
+        cooldown_seconds: int = 3600  # 1 hour cooldown for failed providers
     ):
         self.token_mint = token_mint or PUMPFUN_TOKEN_ADDRESS
         self.whale_threshold = whale_threshold or WHALE_THRESHOLD
         actual_ttl = cache_ttl if cache_ttl is not None else WHALE_CACHE_TTL
         self.cache = LRUCache(max_size=cache_size, ttl_seconds=actual_ttl)
+        self.cooldown_seconds = cooldown_seconds
         
         # Initialize providers
         self.providers: list[ProviderStatus] = []
         self._init_providers()
+        
+        # Sticky provider tracking
+        self._current_provider_index = 0
         
         # HTTP client
         self._client: Optional[httpx.AsyncClient] = None
@@ -229,11 +235,37 @@ class SolanaTokenService:
         
         self.stats["cache_misses"] += 1
         
-        # Try each provider in order
-        for provider in self.providers:
-            if not provider.is_available:
-                continue
+        # Try to find a working provider
+        attempts = 0
+        max_attempts = len(self.providers) * 2  # Safety limit
+        
+        while attempts < max_attempts:
+            attempts += 1
             
+            # Get current provider
+            provider = self.providers[self._current_provider_index]
+            
+            # Check if disabled
+            if provider.disabled_until > time.time():
+                # Move to next connection
+                self._rotate_provider()
+                
+                # If we've circled back to a still-disabled provider, check if we should reset
+                # Only check reset on full cycles to avoid spamming
+                if attempts >= len(self.providers):
+                    # Check if ALL providers are disabled
+                    all_disabled = all(p.disabled_until > time.time() for p in self.providers)
+                    if all_disabled:
+                        # If all are disabled, perhaps one is close to expiry? 
+                        # Or just fail?
+                        # User requirement: "repeat until we get to free provider or reset after the day"
+                        # For now, if all are disabled, we fail this request but don't force reset unless manually intervened
+                        # OR: we could force reset the oldest disabled one if we are desperate?
+                        # Let's just log and fail for now to respect the cooldown.
+                        log.warning("All RPC providers are currently on cooldown.")
+                        break
+                continue
+                
             try:
                 balance = await self._query_balance(provider, wallet_address)
                 
@@ -241,27 +273,34 @@ class SolanaTokenService:
                 self.cache.set(cache_key, balance)
                 self.stats["api_calls"] += 1
                 
-                # Reset error count on success
-                provider.error_count = 0
+                # Success! Keep using this provider.
+                # Clear any error tracking if it had any transient ones (though we disable on first error now)
+                provider.error_count = 0 
                 
                 return balance
                 
             except Exception as e:
-                provider.error_count += 1
-                provider.last_error = str(e)
                 self.stats["api_errors"] += 1
                 log.warning(f"RPC error from {provider.name}: {e}")
                 
-                # Disable provider after 3 consecutive errors
-                if provider.error_count >= 3:
-                    provider.is_available = False
-                    log.error(f"❌ Disabled RPC provider {provider.name} after 3 errors")
+                # Mark as disabled
+                provider.disabled_until = time.time() + self.cooldown_seconds
+                provider.last_error = str(e)
+                provider.error_count += 1
                 
+                log.warning(f"❌ Disabled RPC provider {provider.name} for {self.cooldown_seconds}s. Switching...")
+                
+                # Rotate to next
+                self._rotate_provider()
                 continue
         
-        # All providers failed
-        log.error("All Solana RPC providers failed!")
+        # All providers failed or are disabled
+        log.error("All Solana RPC providers failed or are unavailable!")
         return 0
+
+    def _rotate_provider(self):
+        """Move to the next provider in the list."""
+        self._current_provider_index = (self._current_provider_index + 1) % len(self.providers)
     
     async def _query_balance(self, provider: ProviderStatus, wallet_address: str) -> int:
         """Query token balance from a specific provider."""
@@ -367,9 +406,10 @@ class SolanaTokenService:
     def reset_providers(self):
         """Reset all disabled providers to available state."""
         for provider in self.providers:
-            provider.is_available = True
+            provider.disabled_until = 0
             provider.error_count = 0
             provider.last_error = None
+        self._current_provider_index = 0
         log.info("Reset all RPC providers to available state")
     
     def get_stats(self) -> dict:
