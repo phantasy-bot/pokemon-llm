@@ -425,6 +425,8 @@ class PumpFunChatService:
                 "display_name": msg.username,
                 "message": msg.message,
                 "timestamp": self._parse_timestamp(msg.timestamp),
+                "user_address": msg.user_address,  # Solana wallet for whale detection
+                "is_whale": False,  # TODO: Query token balance to determine whale status
                 "_original": msg,
                 "source": "pumpfun"
             }
@@ -449,12 +451,16 @@ class PumpFunChatService:
             username = random.choice(TEST_USERNAMES)
             message = random.choice(TEST_MESSAGES)
             timestamp = base_time - (count - i) * 0.5
+            # Randomly make some test users "whales" (20% chance)
+            is_whale = random.random() < 0.2
             
             test_messages.append({
                 "username": username,
                 "display_name": username,
                 "message": message,
                 "timestamp": timestamp,
+                "user_address": f"fake_wallet_{username}",  # Fake address for testing
+                "is_whale": is_whale,
                 "_original": None,
                 "is_test": True,
                 "source": "pumpfun"
@@ -467,12 +473,16 @@ class PumpFunChatService:
         """Generate a single random test message."""
         username = random.choice(TEST_USERNAMES)
         message = random.choice(TEST_MESSAGES)
+        # Randomly make some test users "whales" (20% chance)
+        is_whale = random.random() < 0.2
         
         return {
             "username": username,
             "display_name": username,
             "message": message,
             "timestamp": time.time(),
+            "user_address": f"fake_wallet_{username}",
+            "is_whale": is_whale,
             "_original": None,
             "is_test": True,
             "source": "pumpfun"
