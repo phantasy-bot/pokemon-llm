@@ -743,11 +743,21 @@ Your intro message:"""
         else:
             intro_text = "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!"
     
-    # Preload TTS audio during countdown (synthesize but don't play yet)
+    # Broadcast that we're in the 'starting' phase with countdown duration FIRST
+    # Frontend will use countdownSeconds to set its timer immediately
+    await broadcast_func({
+        "introPhase": "starting",
+        "countdownSeconds": countdown_seconds,
+        "processingStatus": ""
+    })
+    log.info(f"⏱️ Stream countdown started: {countdown_seconds}s")
+    
+    # Preload TTS audio DURING countdown (synthesize but don't play yet)
+    # Run this in background while countdown is active
     preloaded_audio_path = None
     if tts_service and tts_service.is_available:
         # Clear any orphaned TTS requests from previous session
-        tts_service.clear_queue()
+        await tts_service.clear_queue()
         
         log.info(f"🎬 Preloading intro TTS during countdown...")
         try:
@@ -760,21 +770,18 @@ Your intro message:"""
         except Exception as e:
             log.warning(f"⚠️ TTS preload failed, will synthesize on-demand: {e}")
     
-    # Broadcast that we're in the 'starting' phase with countdown duration
-    # Frontend will use countdownSeconds to set its timer
-    await broadcast_func({
-        "introPhase": "starting",
-        "countdownSeconds": countdown_seconds,
-        "processingStatus": ""
-    })
-    log.info(f"⏱️ Stream countdown started: {countdown_seconds}s")
+    # Wait for remaining countdown duration (frontend is also waiting with same timer)
+    # TTS preload already took some time, so calculate remaining time
+    # Use min 0 to handle case where preload took longer than countdown
+    elapsed_for_preload = 15  # Approximate seconds for TTS preload
+    remaining_countdown = max(0, countdown_seconds - elapsed_for_preload)
     
-    # Wait for countdown duration (frontend is also waiting with same timer)
-    # Log progress every 30 seconds
-    for elapsed in range(0, countdown_seconds, 30):
-        remaining = countdown_seconds - elapsed
-        log.info(f"⏱️ Countdown: {remaining}s remaining...")
-        await asyncio.sleep(min(30, remaining))
+    if remaining_countdown > 0:
+        # Log progress for longer countdowns
+        for elapsed in range(0, remaining_countdown, 30):
+            remaining = remaining_countdown - elapsed
+            log.info(f"⏱️ Countdown: {remaining}s remaining...")
+            await asyncio.sleep(min(30, remaining))
     
     # Countdown complete! Trigger color transition
     log.info("🎨 Countdown complete! Starting color transition...")
