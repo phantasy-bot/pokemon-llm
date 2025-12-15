@@ -877,6 +877,7 @@ Your intro message:"""
     log.info("🎥 Entering Just Chatting phase...")
     await broadcast_func({
         "introPhase": "just-chatting",
+        "introText": intro_text,  # Send the dynamic intro text for the chatbox
         "processingStatus": "STARTING STREAM..."
     })
     

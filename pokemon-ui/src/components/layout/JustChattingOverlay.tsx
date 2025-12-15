@@ -14,7 +14,7 @@ const FRAME_0 = "/lass/lass-0.png";
 const FRAME_1 = "/lass/lass-1.png";
 const FRAME_2 = "/lass/lass-2.png";
 
-// Intro messages (matching what the backend sends)
+// Intro messages (fallbacks if backend doesn't send dynamic text)
 const INTRO_MESSAGES = {
   new: "Hey chat! It's Lass! Welcome to my Pokemon Red stream! Let's catch some Pokemon and become the very best!",
   continue:
@@ -65,13 +65,16 @@ function TypewriterText({
   );
 }
 
-// Pokemon-Red style chatbox
-function IntroChatbox() {
+// Pokemon-Red style chatbox - now accepts dynamic text
+function IntroChatbox({ introText }: { introText: string }) {
+  // Use dynamic text or fallback to default
+  const displayText = introText || INTRO_MESSAGES.new;
+  
   return (
     <div className="intro-chatbox">
       <div className="chatbox-inner">
         <TypewriterText
-          text={INTRO_MESSAGES.new}
+          text={displayText}
           speed={35}
           startDelay={5000} // Start after character lands
         />
@@ -231,7 +234,11 @@ function BrandingSection() {
   );
 }
 
-export function JustChattingOverlay() {
+interface JustChattingOverlayProps {
+  introText?: string;
+}
+
+export function JustChattingOverlay({ introText = '' }: JustChattingOverlayProps) {
   return (
     <div className="just-chatting-overlay">
       {/* Background layer - not affected by page shake */}
@@ -252,8 +259,8 @@ export function JustChattingOverlay() {
           <HolographicCharacter />
         </div>
 
-        {/* Pokemon-Red style chatbox */}
-        <IntroChatbox />
+        {/* Pokemon-Red style chatbox - uses dynamic intro text */}
+        <IntroChatbox introText={introText} />
       </div>
     </div>
   );
