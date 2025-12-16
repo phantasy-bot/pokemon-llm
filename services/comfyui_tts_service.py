@@ -34,6 +34,7 @@ class TTSRequest:
     completed: bool = False
     error: Optional[str] = None
     synthesis_task: Optional[asyncio.Task] = None  # Background synthesis task
+    metadata: Optional[Dict[str, Any]] = None  # Extra context (e.g. reply_to info)
 
 
 class ComfyUITTSService:
@@ -55,7 +56,7 @@ class ComfyUITTSService:
         workflow_path: str = None,
         output_dir: str = None,
         timeout: float = 10.0,  # Reduced from 60s for faster fallback
-        on_playback_start: callable = None,
+        on_playback_start: callable = None,  # (text, duration, metadata) -> Awaitable
         audio_speed: float = None,
         audio_pitch: float = None
     ):
@@ -464,7 +465,8 @@ class ComfyUITTSService:
         self,
         text: str,
         priority: int = None,
-        cycle_id: int = 0
+        cycle_id: int = 0,
+        metadata: Dict[str, Any] = None
     ) -> TTSRequest:
         """
         Queue a TTS request.
@@ -473,9 +475,7 @@ class ComfyUITTSService:
             text: Text to synthesize
             priority: Request priority (higher = more important)
             cycle_id: The game cycle this request is from (for pruning)
-        
-        Returns:
-            TTSRequest object for tracking
+            metadata: Optional context data (e.g. reply info)
         """
         if priority is None:
             priority = self.PRIORITY_CHAT_RESPONSE
@@ -485,7 +485,8 @@ class ComfyUITTSService:
             request_id=str(uuid.uuid4())[:8],
             priority=priority,
             created_at=time.time(),
-            cycle_id=cycle_id
+            cycle_id=cycle_id,
+            metadata=metadata
         )
         
         self._queue.append(request)
@@ -503,7 +504,8 @@ class ComfyUITTSService:
         self,
         text: str,
         priority: int = None,
-        cycle_id: int = 0
+        cycle_id: int = 0,
+        metadata: Dict[str, Any] = None
     ) -> Optional[TTSRequest]:
         """
         Queue a TTS request AND start background synthesis immediately.
@@ -529,7 +531,7 @@ class ComfyUITTSService:
             return None
         
         # Queue the request
-        request = await self.queue_tts(text, priority, cycle_id)
+        request = await self.queue_tts(text, priority, cycle_id, metadata)
         
         # Start synthesis in background
         async def _synthesize():
@@ -650,7 +652,13 @@ class ComfyUITTSService:
         if self.on_playback_start and duration_ms:
             try:
                 log.info(f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms")
-                await self.on_playback_start(request.text, duration_ms)
+                # Try passing metadata if accepted, handle legacy signature if not
+                import inspect
+                sig = inspect.signature(self.on_playback_start)
+                if 'metadata' in sig.parameters:
+                    await self.on_playback_start(request.text, duration_ms, metadata=request.metadata)
+                else:
+                    await self.on_playback_start(request.text, duration_ms)
             except Exception as cb_err:
                 log.warning(f"🔊 on_playback_start callback error: {cb_err}")
         

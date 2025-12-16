@@ -163,6 +163,9 @@ class TwitchChatService:
         if self._bot:
             try:
                 await self._bot.close()
+            except AttributeError:
+                # Common twitchio error during shutdown if not fully connected
+                pass
             except Exception as e:
                 log.warning(f"Error closing Twitch bot: {e}")
         self._running = False

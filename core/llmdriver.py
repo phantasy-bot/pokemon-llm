@@ -15,6 +15,7 @@ import concurrent.futures
 import functools
 import subprocess
 import threading
+from typing import Dict, Any
 
 from PIL import Image
 from core.token_counter import count_tokens, calculate_prompt_tokens
@@ -414,19 +415,24 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
 
     # Initialize ComfyUI TTS service (optional - gracefully disabled if not configured)
     # Create callback to notify UI when TTS starts playing (for synchronized typewriter)
-    async def on_tts_playback_start(text: str, duration_ms: int):
+    async def on_tts_playback_start(text: str, duration_ms: int, metadata: Dict[str, Any] = None):
         """Called when TTS audio is about to start playing. Broadcasts to UI for sync."""
-        log.info(f"🔊 Broadcasting TTS playback start: {len(text)} chars, {duration_ms}ms")
+        log.info(f"🔊 Broadcasting TTS playback start: {len(text)} chars, {duration_ms}ms, meta={bool(metadata)}")
         try:
-            await broadcast_func({
+            payload = {
                 "tts_commentary": {
                     "text": text,
                     "duration_ms": duration_ms,
                     "playing": True
                 }
-            })
+            }
+            # Inject metadata if present (e.g. reply_to info)
+            if metadata:
+                payload["tts_commentary"].update(metadata)
+                
+            await broadcast_func(payload)
         except Exception as e:
-            log.warning(f"Failed to broadcast TTS playback start: {e}")
+            log.error(f"Failed to broadcast TTS start: {e}")
     
     tts_service = create_tts_service(on_playback_start=on_tts_playback_start)
     if tts_service.is_available:
@@ -2902,10 +2908,20 @@ Your intro message:"""
                     # Queue TTS for the response (non-blocking) - if full, text still goes to Twitch
                     tts_queued = False
                     if tts_service.is_available:
+                        # Pass context about what we are replying to
+                        reply_metadata = {
+                            "reply_to": {
+                                "username": decided.display_name,
+                                "platform": "Twitch", # TODO: dynamic if multiproviders
+                                "message": decided.message
+                            }
+                        }
+                        
                         request = await tts_service.queue_and_start_synthesis(
                             response_text,
                             priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                            cycle_id=current_cycle
+                            cycle_id=current_cycle,
+                            metadata=reply_metadata
                         )
                         tts_queued = request is not None
                     

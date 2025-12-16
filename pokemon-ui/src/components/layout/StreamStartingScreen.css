@@ -156,33 +156,10 @@
 }
 
 /* Background color cycles through holographic rainbow, then settles on red */
+/* Background transition - simple fade to red (no rainbow/flashing) */
 @keyframes bg-color-shift {
   0% { 
     background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 50%, #000000 100%);
-  }
-  10% { 
-    background: linear-gradient(180deg, #ff4444 0%, #cc2222 50%, #aa0000 100%);
-  }
-  20% { 
-    background: linear-gradient(180deg, #ffaa44 0%, #ff7700 50%, #cc5500 100%);
-  }
-  30% { 
-    background: linear-gradient(180deg, #ffff44 0%, #cccc00 50%, #aaaa00 100%);
-  }
-  40% { 
-    background: linear-gradient(180deg, #44ff44 0%, #00cc00 50%, #00aa00 100%);
-  }
-  50% { 
-    background: linear-gradient(180deg, #44ffff 0%, #00cccc 50%, #00aaaa 100%);
-  }
-  60% { 
-    background: linear-gradient(180deg, #4444ff 0%, #0000cc 50%, #0000aa 100%);
-  }
-  70% { 
-    background: linear-gradient(180deg, #ff44ff 0%, #cc00cc 50%, #aa00aa 100%);
-  }
-  85% { 
-    background: linear-gradient(180deg, #ff6b6b 0%, #e55555 50%, #cc4444 100%);
   }
   100% { 
     background: linear-gradient(180deg, #ff6b6b 0%, #e55555 50%, #cc4444 100%);
