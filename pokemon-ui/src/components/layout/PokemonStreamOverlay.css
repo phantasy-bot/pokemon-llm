@@ -604,6 +604,7 @@
   border-radius: 8px; /* Less rounded than 12px */
   background: white;
   position: relative;
+  /* Keep visible for label positioned outside, text element handles its own overflow */
   overflow: visible;
 }
 
@@ -641,6 +642,14 @@
   padding-right: 14px;
   padding-top: 14px; /* Increased from 10px */
   padding-bottom: 10px; /* Added bottom padding for expanded content */
+  
+  /* CRITICAL: Prevent long unbroken text from breaking layout */
+  word-break: break-word; /* Break words at any character when needed */
+  overflow-wrap: anywhere; /* Modern alternative, more aggressive breaking */
+  hyphens: auto; /* Enable hyphenation for better readability */
+  white-space: pre-wrap; /* Allow wrapping while preserving whitespace */
+  overflow: hidden; /* Prevent overflow from escaping container */
+  max-width: 100%; /* Ensure text doesn't exceed container width */
 }
 
 /* Empty spacer at bottom of left column */

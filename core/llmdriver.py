@@ -48,6 +48,7 @@ from trackers.coordinate_tracker import CoordinateTracker
 from core.background_tasks import run_chat_background_task
 from core.game_state_manager import parse_minimap
 from core.llm_controller import LLMController
+from core.navigation_controller import NavigationController, GoalType
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -322,6 +323,16 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         reset_on_start=not is_continuing_run
     )
     log.info(f"📍 Coordinate tracker initialized (history: {coord_tracker.get_context_summary()[:100] if coord_tracker.history else 'empty'})")
+
+    # Initialize navigation controller for goal-based navigation
+    navigation_controller = NavigationController(
+        coord_tracker=coord_tracker,
+        memory_manager=memory_manager,
+        map_visit_tracker=map_visit_tracker,
+        storage_path="data/navigation_state.json",
+        reset_on_start=not is_continuing_run
+    )
+    log.info(f"🧭 Navigation controller initialized ({len(navigation_controller.goal_stack)} goals)")
 
     # Capture the main event loop for thread-safe callbacks
     # This MUST be done before defining callbacks that will run in executor threads
@@ -1296,6 +1307,37 @@ Your intro message:"""
             if coord_context:
                 llm_input_state["coordinate_history"] = coord_context
                 log.info(f"📍 Coord context: {len(coord_tracker.history)} positions tracked")
+            
+            # ═══════════════════════════════════════════════════════════════════════════
+            # NAVIGATION CONTROLLER UPDATE - Goal-based navigation with computed paths
+            # ═══════════════════════════════════════════════════════════════════════════
+            try:
+                nav_state = navigation_controller.update(
+                    current_cycle=current_cycle,
+                    current_pos=(pos[0], pos[1]),
+                    current_map_name=map_name,
+                    current_map_id=map_id,
+                    position_history=position_history
+                )
+                
+                # Add navigation context to LLM input
+                nav_context = navigation_controller.get_context_for_llm(map_name)
+                if nav_context:
+                    llm_input_state["navigation_goal"] = nav_context
+                    log.info(f"🧭 Nav: {nav_state.goal_description[:60]} (status: {nav_state.stuck_status})")
+                
+                # Add computed path suggestion if available
+                if nav_state.next_moves:
+                    llm_input_state["computed_path"] = f"FOLLOW THIS PATH: {nav_state.next_moves}"
+                    log.info(f"🛤️ Path: {nav_state.next_moves}")
+                
+                # Add navigation suggestion
+                if nav_state.suggestion:
+                    llm_input_state["navigation_suggestion"] = nav_state.suggestion
+                
+            except Exception as e:
+                log.warning(f"Navigation controller update failed: {e}")
+
         
         # ═══════════════════════════════════════════════════════════════════════════
         # MAP OSCILLATION DETECTION - Prevent bouncing between same maps
@@ -1470,6 +1512,44 @@ Your intro message:"""
                             memory_manager.add_lass_marking(
                                 map_name, potential_npc_coords, "N", confidence=0.5
                             )
+                
+                # ═══════════════════════════════════════════════════════════════════════════
+                # AUTO-SET NAVIGATION GOAL FROM DETECTED EXITS
+                # ═══════════════════════════════════════════════════════════════════════════
+                # If no navigation goal is active and we can see exits, pick the nearest one
+                if exits and not navigation_controller.goal_stack:
+                    try:
+                        # Parse exit coordinates from format like "Grid[5,10] = World[12,8] (SOUTH EXIT)"
+                        # Note: re module is imported at module level
+                        nearest_exit = None
+                        nearest_dist = float('inf')
+                        current_pos = current_mGBA_state.get('position', [])
+                        
+                        for exit_str in exits:
+                            # Extract World coordinates from "World[x,y]" format
+                            world_match = re.search(r'World\[(\d+),\s*(\d+)\]', exit_str)
+                            if world_match:
+                                exit_x, exit_y = int(world_match.group(1)), int(world_match.group(2))
+                                if current_pos and len(current_pos) >= 2:
+                                    dist = abs(exit_x - current_pos[0]) + abs(exit_y - current_pos[1])
+                                    if dist < nearest_dist:
+                                        nearest_dist = dist
+                                        # Extract direction hint (NORTH/SOUTH/EAST/WEST EXIT)
+                                        dir_match = re.search(r'\((\w+)\s+EXIT\)', exit_str)
+                                        direction = dir_match.group(1) if dir_match else "unknown"
+                                        nearest_exit = (exit_x, exit_y, direction)
+                        
+                        if nearest_exit and nearest_dist <= 15:  # Only set goal if exit is reasonably close
+                            navigation_controller.set_exit_goal(
+                                exit_coords=(nearest_exit[0], nearest_exit[1]),
+                                map_name=map_name,
+                                map_id=map_id,
+                                destination=f"{nearest_exit[2]} exit",
+                                current_cycle=current_cycle
+                            )
+                            log.info(f"🎯 Auto-set navigation goal to nearest exit: {nearest_exit}")
+                    except Exception as e:
+                        log.debug(f"Exit goal auto-set failed: {e}")
         
         # Add battle context using game memory (more accurate than vision)
         try:
@@ -2145,12 +2225,38 @@ Your intro message:"""
                 if commentary_text and len(commentary_text) > 5:
                     log.info(f"🔊 Playing TTS: {commentary_text[:60]}...")
                     
-                    # Update chat response service context
+                    # Update chat response service context with FULL game state
+                    # This ensures Lass can give factual answers about her team, location, etc.
                     if chat_response_service.is_available:
+                        # Build rich team summary for chat context
+                        team_summary = ""
+                        if new_team and len(new_team) > 0:
+                            team_parts = []
+                            for mon in new_team:
+                                name = mon.get('name', 'Unknown')
+                                level = mon.get('level', '?')
+                                hp = mon.get('hp', mon.get('current_hp', '?'))
+                                max_hp = mon.get('max_hp', '?')
+                                team_parts.append(f"{name} Lv{level} ({hp}/{max_hp}HP)")
+                            team_summary = ", ".join(team_parts)
+                        else:
+                            team_summary = "No Pokemon yet!"
+                        
+                        # Build rich game context
+                        game_status = f"In {current_mGBA_state.get('map_name', 'unknown')}"
+                        if current_mGBA_state.get('battle_type') and current_mGBA_state.get('battle_type') != 'None':
+                            game_status = f"In battle! ({current_mGBA_state.get('battle_type', 'wild')} battle)"
+                        
+                        # Include recent actions/history
+                        # Note: History tracking could be added later if needed
+                        history_text = ""
+                        
                         chat_response_service.update_context(
-                            game_context=f"Currently in {current_mGBA_state.get('map_name', 'unknown')}",
+                            game_context=game_status,
                             commentary=commentary_text,
                             location=current_mGBA_state.get('map_name', 'unknown'),
+                            team=team_summary,
+                            history=history_text,
                             memory=memory_manager.get_narrative_context()
                         )
                     
