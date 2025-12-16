@@ -21,6 +21,7 @@ This document provides sequential navigation hints for the AI agent to complete 
 
 ### Pallet Town (Initial)
 
+- **ROUTE 1 EXIT**: Walk to coordinates **[10,1]** or **[11,1]** (north edge) to enter Route 1 and trigger Oak scene.
 - Go **North** into the tall grass at the edge of town to trigger Professor Oak.
 - **Do not** go to the Lab first; you must be stopped by Oak in the grass.
 - In the Lab: Talk to Oak (at top of room), select a ball (table), and try to leave to trigger Rival battle.
