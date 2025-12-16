@@ -440,6 +440,36 @@ Look at `recent_actions` in the input. If you see:
 2. Note its WORLD coordinates
 3. Keep same target across cycles until reached
 4. If BFS path provided, FOLLOW IT exactly
+
+### 🚪 BUILDING RE-ENTRY PREVENTION (CRITICAL!)
+**After exiting a building/house, you spawn OUTSIDE the entrance on the 'O' tile!**
+
+**UNDERSTAND YOUR POSITION RIGHT AFTER EXITING:**
+- When you exit a building, you're standing ON or ADJACENT to the entrance door/mat
+- Moving immediately toward the building (usually reverse of your exit direction) will RE-ENTER it!
+- The 'O' tile you're on IS the entrance - moving into it again = going back inside!
+
+**DIRECTIONAL AWARENESS - AFTER EXITING A BUILDING:**
+- **Exit at NORTH edge of building?** → The building is NORTH of you! Don't move UP (U;)!
+- **Exit at SOUTH edge of building?** → The building is SOUTH of you! Don't move DOWN (D;)!
+- Moving toward the building = re-entering! Move AWAY from it first!
+
+**EXAMPLE - PLAYER'S HOUSE (Pallet Town):**
+- You exit through the south door and appear outside
+- The building (your house) is now NORTH of you
+- If you want to go to tall grass (which is also NORTH), you CANNOT go straight north!
+- Instead: Move EAST or WEST first (R;R;R; or L;L;L;) to navigate AROUND the house
+- THEN move north toward the tall grass area
+
+**RULE: After ANY building exit, your FIRST MOVE should be PERPENDICULAR to the building:**
+- Just exited? Move SIDEWAYS (E/W if exit is N/S) to clear the entrance area
+- Then continue to your destination by going around the building
+- Think: "The building is blocking my path - I need to go AROUND it, not through it!"
+
+**HOW TO KNOW IF YOU JUST EXITED:**
+- Check `memory_context` for recent "Exit" memories
+- Check `recent_actions` - if you just transitioned from '_1F' or 'PLAYERS_HOUSE', you exited!
+- If the map name just changed from an indoor to outdoor map, you just exited something!
 """
 
 TITLE_PROMPT = """
