@@ -1434,7 +1434,7 @@ Your intro message:"""
                     log.info(f"🌍 Exploration: {exp_map.exploration_pct:.1f}% ({len(exp_map.visited_tiles)}/{exp_map.total_walkable})")
 
                 analysis_str = (
-                    f"⚠️ MINIMAP DATA (USE THIS - DO NOT PARSE RAW MINIMAP!) ⚠️\n"
+                    f"⚠️ MINIMAP DATA (Viewport centered on you - usually 21x21, smaller at map edges!) ⚠️\n"
                     f"Grid: {minimap_analysis['grid_size']} | Player: {minimap_analysis['player_position']}\n"
                     f"═══════════════════════════════════════\n"
                     f"NORTH: {adj['north']} {'❌ BLOCKED!' if 'NORTH (U)' in blocked else '✓ walkable'}\n"

@@ -31,7 +31,7 @@ function getMarkerLabel(type: 'N' | 'O' | 'E'): string {
  */
 export function LassMinimapOverlay({
   markings = [],
-  gridSize = { width: 21, height: 19 }, // Match the actual minimap grid size
+  gridSize = { width: 21, height: 21 }, // Match backend MINI_MAP_SIZE
 }: LassMinimapOverlayProps) {
   if (!markings || markings.length === 0) {
     return null;
