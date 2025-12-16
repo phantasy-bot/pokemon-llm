@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import type { PokemonTeamBarProps } from "../../types/display";
+import type { LassMarking } from "../../types/gameTypes";
 import { PokemonCard } from "./PokemonCard";
 import { Minimap } from "./Minimap";
 import "./PokemonTeamBar.css";
@@ -11,15 +12,9 @@ interface ExtendedPokemonTeamBarProps extends PokemonTeamBarProps {
   minimapLocation?: string;
   minimapTimestamp?: string;
   minimapVisible?: boolean;
-  explorationPct?: number; // Exploration percentage for current map
-  lassMarkings?: Array<{  // Lass's minimap overlay markers
-    x: number;
-    y: number;
-    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
-    opacity: number;
-    age_hours?: number;
-  }>;
-  minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay
+  explorationPct?: number;
+  lassMarkings?: LassMarking[];
+  minimapGridSize?: { width: number; height: number };
 }
 
 export function PokemonTeamBar({ 

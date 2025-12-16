@@ -651,14 +651,8 @@ class ComfyUITTSService:
         # Notify UI that playback is about to start
         if self.on_playback_start and duration_ms:
             try:
-                log.info(f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms")
-                # Try passing metadata if accepted, handle legacy signature if not
-                import inspect
-                sig = inspect.signature(self.on_playback_start)
-                if 'metadata' in sig.parameters:
-                    await self.on_playback_start(request.text, duration_ms, metadata=request.metadata)
-                else:
-                    await self.on_playback_start(request.text, duration_ms)
+                log.info(f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms, metadata={bool(request.metadata)}")
+                await self.on_playback_start(request.text, duration_ms, request.metadata)
             except Exception as cb_err:
                 log.warning(f"🔊 on_playback_start callback error: {cb_err}")
         
@@ -905,7 +899,8 @@ class ComfyUITTSService:
         self,
         text: str,
         priority: int = None,
-        wait: bool = True
+        wait: bool = True,
+        metadata: Dict[str, Any] = None
     ) -> bool:
         """
         Synthesize speech and play it ephemerally (no file retention needed by caller).
@@ -917,6 +912,7 @@ class ComfyUITTSService:
             text: Text to synthesize
             priority: Priority level (PRIORITY_COMMENTARY or PRIORITY_CHAT_RESPONSE)
             wait: If True, wait for playback to complete before returning
+            metadata: Optional context data (e.g. reply_to info for UI display)
         
         Returns:
             True if synthesis and playback started successfully
@@ -966,8 +962,8 @@ class ComfyUITTSService:
                 # Notify UI that playback is about to start (for typewriter sync)
                 if self.on_playback_start and duration_ms:
                     try:
-                        log.info(f"🔊 Calling on_playback_start callback: text={text[:30]}..., duration={duration_ms}ms")
-                        await self.on_playback_start(text, duration_ms)
+                        log.info(f"🔊 Calling on_playback_start callback: text={text[:30]}..., duration={duration_ms}ms, metadata={bool(metadata)}")
+                        await self.on_playback_start(text, duration_ms, metadata)
                     except Exception as cb_err:
                         log.warning(f"🔊 on_playback_start callback error: {cb_err}")
                 

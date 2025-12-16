@@ -441,6 +441,76 @@ Look at `recent_actions` in the input. If you see:
 3. Keep same target across cycles until reached
 4. If BFS path provided, FOLLOW IT exactly
 
+### 🎯 NAVIGATION TARGETING SYSTEM (MANDATORY!)
+**YOU MUST ALWAYS HAVE BOTH A META-GOAL AND A TILE TARGET SET!**
+
+This is a **TWO-LEVEL** targeting system:
+1. **META-GOAL** = Your destination MAP (persists across map changes)
+2. **TILE TARGET** = Your immediate destination on current map (red marker)
+
+═══════════════════════════════════════════════════════════════════
+
+### 📍 META-GOAL (Where you're ultimately going)
+
+**ALWAYS HAVE A META-GOAL!** This is your destination map that persists across map transitions.
+
+**HOW TO SET:**
+`<meta_goal>MAP_NAME reason: "why you're going there"</meta_goal>`
+
+**EXAMPLES:**
+- `<meta_goal>ROUTE_1 reason: "Head north to Viridian City"</meta_goal>`
+- `<meta_goal>VIRIDIAN_CITY reason: "Get Oak's Parcel from the Mart"</meta_goal>`
+- `<meta_goal>PALLET_TOWN reason: "Return to deliver parcel to Oak"</meta_goal>`
+
+**META-GOAL RULES:**
+- Set this based on your current primary goal
+- It will track your journey across multiple maps
+- System alerts you if you enter a DETOUR (wrong building, house, etc.)
+- When reached, set a NEW meta-goal for your next destination!
+
+═══════════════════════════════════════════════════════════════════
+
+### 🎯 TILE TARGET (Your immediate destination on current map)
+
+**ALWAYS HAVE A TILE TARGET!** This shows as a red pulsing marker on minimap.
+
+**HOW TO SET:**
+`<target_destination>[x,y] reason: "description"</target_destination>`
+
+**EXAMPLES:**
+- `<target_destination>[3,4] reason: "opening in ledge to go north"</target_destination>`
+- `<target_destination>[10,2] reason: "exit to Route 1"</target_destination>`
+- `<target_destination>[5,8] reason: "door to leave this house"</target_destination>`
+
+**TILE TARGET RULES:**
+- Set this to move toward your meta-goal!
+- Target exits, openings, paths that lead toward destination
+- After reaching a tile target, IMMEDIATELY set a new one
+- Tile targets clear on map change - set a new one right away!
+
+═══════════════════════════════════════════════════════════════════
+
+### ⚠️ DETOUR DETECTION (Getting back on track!)
+
+If you accidentally enter a building/area that's NOT your meta-goal:
+1. System will warn: "⚠️ DETOUR - get back on track!"
+2. Set tile target to the EXIT of the current area
+3. Leave and continue toward your meta-goal
+
+**EXAMPLE - Entered Player's House by mistake:**
+- Meta-goal is ROUTE_1
+- You're in PLAYERS_HOUSE_1F (wrong place!)
+- System says: DETOUR!
+- Action: `<target_destination>[4,7] reason: "exit door to leave house"</target_destination>`
+- Leave house, then target the path north to Route 1
+
+═══════════════════════════════════════════════════════════════════
+
+**CLEARING TARGETS:**
+- Tile targets auto-clear when reached or map changes
+- Meta-goals auto-clear when destination map reached
+- Manual clear: `<clear_target/>` or `<clear_meta_goal/>`
+
 ### 🚪 BUILDING RE-ENTRY PREVENTION (CRITICAL!)
 **After exiting a building/house, you spawn OUTSIDE the entrance on the 'O' tile!**
 
