@@ -1144,4 +1144,177 @@
   border-radius: 3px;
   font-size: 9px;
   font-weight: 600;
+}/* GameStatusDisplay specific styles */
+.game-status-display {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-md);
+}
+/* ... (Existing styles remain, but we add new mode-specific styles) */
+
+/* Mode Transition Styles */
+.pokemon-stream-overlay {
+  transition: all 0.5s ease-in-out;
+}
+
+/* Detailed Mode (Default - 3 columns) */
+.pokemon-stream-overlay.mode-detailed .pokemon-left-col {
+  flex: 29; /* 29% width */
+  transition: flex 0.5s ease-in-out;
+}
+
+.pokemon-stream-overlay.mode-detailed .pokemon-center-col,
+.pokemon-stream-overlay.mode-detailed .pokemon-right-col {
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.pokemon-stream-overlay.mode-detailed .folder-pane--right {
+  display: none;
+}
+
+/* Normal Mode (Minimal - 2 pane folder) */
+.pokemon-stream-overlay.mode-normal .pokemon-content {
+  /* Center the expanded folder */
+}
+
+.pokemon-stream-overlay.mode-normal .pokemon-left-col {
+  flex: 100; /* Expand to full width */
+  padding: 20px; /* Increase padding for full screen look */
+  transition: flex 0.5s ease-in-out;
+}
+
+/* Folder Content Wrapper - Handles the split pane layout */
+.folder-content-wrapper {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  gap: var(--space-xl);
+  position: relative;
+}
+
+/* Base Pane Style */
+.folder-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Left Pane (Character) */
+.folder-pane--left {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* Right Pane (Game - Hidden in detailed, Visible in normal) */
+.folder-pane--right {
+  flex: 1; 
+  min-width: 0;
+  /* Add left border separator similar to stats separators */
+  border-left: 1px dashed rgba(0, 0, 0, 0.3);
+  padding-left: var(--space-xl);
+  /* Animation for appearing */
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Adjustments for Normal Mode Elements */
+.mode-normal .folder-title {
+  /* Make title larger or centered differently if needed */
+  width: 100%;
+  padding-right: 260px; /* Account for cutout */
+}
+
+/* Game Status Display adjustments for Folder Pane */
+.folder-pane--right .column-header {
+  padding-top: 0; /* Remove extra padding since we are inside folder */
+  margin-top: -10px;
+}
+
+.folder-pane--right .status {
+  background: rgba(255, 255, 255, 0.5); /* Lighter bg inside folder */
+}
+
+.folder-pane--right .badges-widget {
+  background: rgba(255, 255, 255, 0.5);
+}
+/* Full Screen Folder for Normal Mode */
+.pokemon-stream-overlay.mode-normal {
+  padding: 0;
+  margin: 0;
+}
+
+.pokemon-stream-overlay.mode-normal .pokemon-content {
+  height: 100vh;
+  gap: 0;
+}
+
+.pokemon-stream-overlay.mode-normal .pokemon-left-col {
+  padding: 0;
+  flex: 100%;
+}
+
+.pokemon-stream-overlay.mode-normal .folder-container {
+  border-radius: 0; /* Full screen - squared off */
+  border: none;
+  border-top: 48px solid var(--bg-panel); /* Keep header bar */
+  box-shadow: none;
+  height: 100vh;
+}
+
+/* Extend the red accent to edges in Normal Mode */
+.pokemon-stream-overlay.mode-normal .folder-content-wrapper {
+  background-color: var(--bg-panel); /* Red background */
+  padding: var(--space-xl);
+  height: calc(100vh - 48px); /* Full height minus header */
+}
+
+/* Reply Context Box Styling */
+.reply-context-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-left: 4px solid var(--accent-primary);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reply-context-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.reply-platform {
+  font-weight: bold;
+  color: #9146FF; /* Twitch Purple default */
+}
+
+.reply-user {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: #000;
+  margin-bottom: 4px;
+}
+
+.reply-message {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: #333;
+  font-style: italic;
+  line-height: 1.4;
 }
