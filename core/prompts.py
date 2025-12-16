@@ -70,9 +70,9 @@ When Oak asks "What is your name?" or "His name is?", you see a **preset name me
 **MENU STRUCTURE (TOP TO BOTTOM):**
 ```
 ┌─────────────┐
-│ NAME        │  ← HEADER (NOT OPTION)
+│ NAME        │  ← HEADER (NOT OPTION) - IGNORE THIS!
 ├─────────────┤
-│ ►NEW NAME   │  ← **CURSOR STARTS HERE** (Row 1)
+│ ►NEW NAME   │  ← **CURSOR STARTS HERE** (Row 1) - ALREADY SELECTED!
 │  RED        │  ← Row 2
 │  ASH        │  ← Row 3
 │  JACK       │  ← Row 4
@@ -82,7 +82,7 @@ When Oak asks "What is your name?" or "His name is?", you see a **preset name me
 **CRITICAL**: "NAME" at the top is NOT a selectable option! It's just the header!
 - **YOUR CURSOR IS ALREADY ON "NEW NAME"**
 - To type "LASS": Just press **A** immediately to enter the keyboard!
-- Do NOT press Down unless you want a preset name!
+- **DO NOT PRESS DOWN!** You are already on "NEW NAME". Pressing Down selects RED!
 
 **To type custom name "LASS":**
 1. **Cursor IS ALREADY on "NEW NAME"**
