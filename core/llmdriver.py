@@ -840,39 +840,20 @@ Your intro message:"""
             
             # Run vision analysis on the paused screenshot
             try:
-                first_cycle_vision = await run_vision_analysis_async(
-                    vision_client,
-                    SAVED_SCREENSHOT_PATH,
-                    first_cycle_state
-                )
+                first_cycle_vision = None
+                if vision_manager:
+                    vision_result, _ = vision_manager.analyze_image(SAVED_SCREENSHOT_PATH)
+                    first_cycle_vision = vision_result
                 if first_cycle_vision:
                     log.info(f"👁️ First cycle vision ready: {first_cycle_vision[:100]}...")
             except Exception as ve:
                 log.warning(f"⚠️ First cycle vision failed: {ve}")
             
-            # Run LLM analysis for first cycle
+            # Run LLM analysis for first cycle (skipped - would need controller)
             if first_cycle_vision:
-                await broadcast_func({"processingStatus": "THINKING..."})
-                try:
-                    # Build a simple context for first cycle
-                    first_cycle_analysis = await run_llm_analysis_async(
-                        client, MODEL, first_cycle_state, first_cycle_vision,
-                        memory_manager, exploration_tracker, goal_tracker, [], ""
-                    )
-                    if first_cycle_analysis:
-                        log.info(f"🧠 First cycle LLM ready: {first_cycle_analysis.get('commentary', '')[:80]}...")
-                        
-                        # Preload first cycle TTS
-                        if tts_service and tts_service.is_available:
-                            commentary = first_cycle_analysis.get("commentary", "")
-                            if commentary:
-                                try:
-                                    first_cycle_tts_path = await tts_service.synthesize_only(commentary)
-                                    log.info(f"🔊 First cycle TTS preloaded")
-                                except Exception as te:
-                                    log.warning(f"First cycle TTS preload failed: {te}")
-                except Exception as le:
-                    log.warning(f"⚠️ First cycle LLM failed: {le}")
+                # Note: Full LLM analysis requires controller.call_with_timeout()
+                # which is not available during intro. Skipping preload.
+                log.info("📝 First cycle vision ready, LLM analysis will run on game start")
             
             await broadcast_func({"processingStatus": ""})
     except Exception as e:
