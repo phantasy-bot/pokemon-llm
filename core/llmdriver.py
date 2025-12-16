@@ -47,9 +47,10 @@ from services.chat_response_service import ChatResponseService, create_chat_resp
 from trackers.history_tracker import ScreenshotHistoryTracker
 from trackers.coordinate_tracker import CoordinateTracker
 from core.background_tasks import run_chat_background_task
-from core.game_state_manager import parse_minimap
+from core.game_state_manager import parse_minimap, grid_to_world
 from core.llm_controller import LLMController
 from core.navigation_controller import NavigationController, GoalType
+from core.target_tracker import TargetTracker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('llmdriver')
@@ -334,6 +335,10 @@ async def run_auto_loop(sock, state: dict, broadcast_func, interval: float = 10.
         reset_on_start=not is_continuing_run
     )
     log.info(f"🧭 Navigation controller initialized ({len(navigation_controller.goal_stack)} goals)")
+
+    # Initialize target tracker for explicit pathfinding destinations
+    target_tracker = TargetTracker()
+    log.info("🎯 Target tracker initialized for explicit pathfinding")
 
     # Capture the main event loop for thread-safe callbacks
     # This MUST be done before defining callbacks that will run in executor threads
@@ -1420,6 +1425,11 @@ Your intro message:"""
                     update_payload["explorationPct"] = exp_map.exploration_pct
                     log.info(f"🌍 Exploration: {exp_map.exploration_pct:.1f}% ({len(exp_map.visited_tiles)}/{exp_map.total_walkable})")
 
+                # Get target context for LLM (includes both meta-goal and tile target)
+                player_grid_x = minimap_analysis.get('player_col', 10)
+                player_grid_y = minimap_analysis.get('player_row', 10)
+                target_context = target_tracker.get_full_navigation_context(player_grid_x, player_grid_y, map_name)
+
                 analysis_str = (
                     f"⚠️ MINIMAP DATA (Viewport centered on you - usually 21x21, smaller at map edges!) ⚠️\n"
                     f"Grid: {minimap_analysis['grid_size']} | Player: {minimap_analysis['player_position']}\n"
@@ -1433,7 +1443,8 @@ Your intro message:"""
                     f"✅ ALLOWED MOVES: {walkable}\n"
                     f"🚪 EXIT TILES: {exits if exits else 'None visible in current view'}\n"
                     f"🚶 NPCs: {npcs if npcs else 'None visible'}\n"
-                    f"🌉 PASSAGES (paths through walls - might lead somewhere!): {chr(10).join(passages) if passages else 'None detected'}"
+                    f"🌉 PASSAGES (paths through walls - might lead somewhere!): {chr(10).join(passages) if passages else 'None detected'}\n"
+                    f"{target_context}"
                 )
                 llm_input_state["minimap_data"] = analysis_str
                 log.info(f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
@@ -1687,6 +1698,62 @@ Your intro message:"""
         
         # Broadcast Lass markings for current map (N=NPC, O=Opening)
         lass_marks = memory_manager.get_lass_markings_for_map(map_name)
+        if lass_marks:
+            lass_marks = list(lass_marks)  # Make mutable copy
+        else:
+            lass_marks = []
+        
+        # === TARGET TRACKING ===
+        # Check meta-goal progress first
+        if target_tracker.has_meta_goal:
+            meta_reached = target_tracker.check_meta_goal_reached(map_name)
+            if meta_reached:
+                llm_input_state["meta_goal_reached"] = f"🎯 META-GOAL REACHED! You arrived at {map_name}! Set a new meta-goal for your next destination."
+            else:
+                # Increment meta-goal cycle counter
+                if target_tracker.meta_goal:
+                    target_tracker.meta_goal.cycles_active += 1
+                    
+                    # Log progress periodically
+                    if target_tracker.meta_goal.cycles_active % 10 == 0:
+                        log.info(f"🎯 Meta-goal progress: {target_tracker.meta_goal.cycles_active} cycles toward {target_tracker.meta_goal.destination_map}")
+        
+        # Check if current tile target is reached
+        if target_tracker.has_target and current_pos:
+            player_world_x, player_world_y = current_pos
+            target_reached = target_tracker.check_reached(player_world_x, player_world_y, map_id)
+            if target_reached:
+                log.info("🎯 TILE TARGET REACHED! Notifying LLM to set a new target.")
+                if target_tracker.has_meta_goal:
+                    llm_input_state["target_reached"] = f"🎯 TILE TARGET REACHED! Set a new tile target toward meta-goal: {target_tracker.meta_goal.destination_map}"
+                else:
+                    llm_input_state["target_reached"] = "🎯 TILE TARGET REACHED! Set a new tile target. Also consider setting a meta-goal for your destination map."
+        
+        # Log warning if no targets set
+        if not target_tracker.has_target and not target_tracker.has_meta_goal:
+            log.warning("🎯 NO TARGETS SET - LLM should set both meta-goal and tile target for navigation!")
+        elif not target_tracker.has_target:
+            log.info("🎯 No tile target - LLM should set one toward meta-goal")
+        
+        # Update target grid position based on viewport shift
+        if target_tracker.has_target and minimap_analysis and current_pos:
+            player_world_x, player_world_y = current_pos
+            player_grid_x = minimap_analysis.get('player_col', 10)
+            player_grid_y = minimap_analysis.get('player_row', 10)
+            target_tracker.update_grid_position(
+                player_world_x, player_world_y,
+                player_grid_x, player_grid_y
+            )
+            
+            # Add target marker to lassMarkings for overlay display
+            target_marker = target_tracker.get_marker_for_overlay()
+            if target_marker:
+                lass_marks.append(target_marker)
+            
+            # Increment cycle counter for tile target
+            target_tracker.increment_cycle()
+        
+        # Broadcast markings (with target if present)
         if lass_marks:
             state['lassMarkings'] = lass_marks
             update_payload['lassMarkings'] = lass_marks
@@ -2118,6 +2185,70 @@ Your intro message:"""
             action_start = action_count + 1
             action_end = action_count + buttons_in_action
             log.info(f"📊 Calculated action counts: #{action_start}-#{action_end} ({buttons_in_action} buttons)")
+        
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PARSE TARGET DESTINATION from LLM response
+        # Format: <target_destination>[x,y] reason: "description"</target_destination>
+        # ═══════════════════════════════════════════════════════════════════════════
+        if game_analysis:
+            # Parse target_destination tag
+            target_match = re.search(
+                r'<target_destination>\s*\[(\d+)\s*,\s*(\d+)\]\s*(?:reason:\s*["\']?(.+?)["\']?)?\s*</target_destination>',
+                game_analysis,
+                re.IGNORECASE | re.DOTALL
+            )
+            if target_match:
+                try:
+                    target_grid_x = int(target_match.group(1))
+                    target_grid_y = int(target_match.group(2))
+                    target_reason = target_match.group(3).strip() if target_match.group(3) else "Navigation target"
+                    
+                    # Convert grid to world coordinates
+                    if current_pos and minimap_analysis:
+                        player_world_x, player_world_y = current_pos
+                        player_grid_x = minimap_analysis.get('player_col', 10)
+                        player_grid_y = minimap_analysis.get('player_row', 10)
+                        
+                        target_world_x, target_world_y = grid_to_world(
+                            target_grid_x, target_grid_y,
+                            player_grid_x, player_grid_y,
+                            player_world_x, player_world_y
+                        )
+                        
+                        target_tracker.set_target(
+                            grid_x=target_grid_x,
+                            grid_y=target_grid_y,
+                            world_x=target_world_x,
+                            world_y=target_world_y,
+                            map_id=map_id,
+                            map_name=map_name,
+                            reason=target_reason
+                        )
+                except (ValueError, TypeError) as e:
+                    log.warning(f"🎯 Failed to parse target_destination: {e}")
+            
+            # Also check for <clear_target/>
+            if re.search(r'<clear_target\s*/?\s*>', game_analysis, re.IGNORECASE):
+                target_tracker.clear_target("llm_cleared")
+            
+            # Parse <meta_goal> tag for high-level navigation objectives
+            # Format: <meta_goal>MAP_NAME reason: "description"</meta_goal>
+            meta_match = re.search(
+                r'<meta_goal>\s*(\w+)\s*(?:reason:\s*["\']?(.+?)["\']?)?\s*</meta_goal>',
+                game_analysis,
+                re.IGNORECASE | re.DOTALL
+            )
+            if meta_match:
+                try:
+                    dest_map = meta_match.group(1).strip().upper()
+                    meta_reason = meta_match.group(2).strip() if meta_match.group(2) else "Navigation goal"
+                    target_tracker.set_meta_goal(dest_map, meta_reason)
+                except (ValueError, TypeError) as e:
+                    log.warning(f"🎯 Failed to parse meta_goal: {e}")
+            
+            # Check for <clear_meta_goal/>
+            if re.search(r'<clear_meta_goal\s*/?\s*>', game_analysis, re.IGNORECASE):
+                target_tracker.clear_meta_goal("llm_cleared")
         
         # Create log entries BEFORE action execution
         log_entries = []

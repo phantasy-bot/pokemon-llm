@@ -1,6 +1,59 @@
 import logging
+from typing import Tuple, Optional
 
 log = logging.getLogger("game_state_manager")
+
+
+def grid_to_world(
+    grid_x: int,
+    grid_y: int,
+    player_grid_x: int,
+    player_grid_y: int,
+    player_world_x: int,
+    player_world_y: int
+) -> Tuple[int, int]:
+    """
+    Convert minimap grid coordinates to world coordinates.
+    
+    Args:
+        grid_x, grid_y: Position in minimap grid
+        player_grid_x, player_grid_y: Player's position in grid (usually center)
+        player_world_x, player_world_y: Player's world coordinates
+        
+    Returns:
+        (world_x, world_y) tuple
+    """
+    # Offset from player in grid space
+    dx = grid_x - player_grid_x
+    dy = grid_y - player_grid_y
+    # Apply to world space
+    return (player_world_x + dx, player_world_y + dy)
+
+
+def world_to_grid(
+    world_x: int,
+    world_y: int,
+    player_grid_x: int,
+    player_grid_y: int,
+    player_world_x: int,
+    player_world_y: int
+) -> Tuple[int, int]:
+    """
+    Convert world coordinates to minimap grid coordinates.
+    
+    Args:
+        world_x, world_y: Position in world coordinates
+        player_grid_x, player_grid_y: Player's position in grid (usually center)
+        player_world_x, player_world_y: Player's world coordinates
+        
+    Returns:
+        (grid_x, grid_y) tuple
+    """
+    # Offset from player in world space
+    dx = world_x - player_world_x
+    dy = world_y - player_world_y
+    # Apply to grid space
+    return (player_grid_x + dx, player_grid_y + dy)
 
 def parse_minimap(minimap_2d: str, world_position: list = None) -> dict:
     """

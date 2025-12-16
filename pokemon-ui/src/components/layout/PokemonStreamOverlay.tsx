@@ -690,6 +690,26 @@ export function PokemonStreamOverlay({
                         </div>
                       )}
                     </div>
+                    
+                    {/* Replying To Section (Compact in Detailed Mode) */}
+                    <div className="detailed-reply-section">
+                      <span className="detailed-reply-section__label">REPLYING TO</span>
+                      {(ttsCommentary?.reply_to || lingerContext) ? (
+                        <div className="detailed-reply-section__content">
+                          <span className={`detailed-reply-section__platform detailed-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
+                            {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
+                          </span>
+                          <span className="detailed-reply-section__user">
+                            @{ttsCommentary?.reply_to?.username || lingerContext?.username}
+                          </span>
+                          <span className="detailed-reply-section__message">
+                            "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="detailed-reply-section__empty">Waiting for chat...</span>
+                      )}
+                    </div>
                   </div>
                 )}
 

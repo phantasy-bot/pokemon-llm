@@ -122,6 +122,27 @@ export interface Badge {
   earned: boolean;
 }
 
+/**
+ * Lass's minimap marker types:
+ * - N: NPC (system-marked from map data)
+ * - O: Opening/Exit (system-marked from map data)
+ * - E: Exit (Lass-discovered during exploration)
+ * - T: Target (Lass-marked navigation destination)
+ */
+export type LassMarkingType = 'N' | 'O' | 'E' | 'T';
+
+/**
+ * Lass's minimap overlay marker
+ */
+export interface LassMarking {
+  x: number;
+  y: number;
+  type: LassMarkingType;
+  opacity: number; // 0.0-1.0 (decays over time)
+  age_hours?: number;
+  reason?: string; // For targets - why we're navigating there
+}
+
 export interface PokemonGameState {
   // Badges
   badges: BadgeType[];
@@ -147,13 +168,7 @@ export interface PokemonGameState {
   cursorPosition?: [number, number];
   cameraPosition?: [number, number];
   explorationPct?: number; // Percentage of current map explored (0-100)
-  lassMarkings?: Array<{  // Lass's minimap overlay markers
-    x: number;
-    y: number;
-    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map), E=Exit (Lass-discovered)
-    opacity: number; // 0.0-1.0 (decays over time)
-    age_hours?: number;
-  }>;
+  lassMarkings?: LassMarking[]; // Lass's minimap overlay markers
   minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay positioning
 
   // Pokemon Team

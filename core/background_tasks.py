@@ -101,11 +101,21 @@ async def run_chat_background_task(
                     else:
                         response_text = random.choice(mock_responses).format(user=username)
                     
+                    # Build reply metadata for UI display
+                    reply_metadata = {
+                        "reply_to": {
+                            "username": username,
+                            "platform": "Pump.fun" if use_pumpfun else "Twitch",
+                            "message": message
+                        }
+                    }
+                    
                     # Queue it!
                     await tts_service.queue_and_start_synthesis(
                         response_text, 
                         priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                        cycle_id=cycle_id
+                        cycle_id=cycle_id,
+                        metadata=reply_metadata
                     )
             
             # 2. Check for ready audio to play

@@ -1,12 +1,5 @@
 import './LassMinimapOverlay.css';
-
-interface LassMarking {
-  x: number;
-  y: number;
-  type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
-  opacity: number;
-  age_hours?: number;
-}
+import type { LassMarking, LassMarkingType } from '../../types/gameTypes';
 
 interface LassMinimapOverlayProps {
   markings?: LassMarking[];
@@ -14,11 +7,12 @@ interface LassMinimapOverlayProps {
 }
 
 // Helper to get human-readable marker name
-function getMarkerLabel(type: 'N' | 'O' | 'E'): string {
+function getMarkerLabel(type: LassMarkingType): string {
   switch (type) {
     case 'N': return 'NPC';
     case 'O': return 'Opening';
     case 'E': return 'Exit';
+    case 'T': return 'Target';
     default: return type;
   }
 }
@@ -69,9 +63,11 @@ export function LassMinimapOverlay({
               height: `${heightPct}%`,
               opacity: mark.opacity,
             }}
-            title={`${getMarkerLabel(mark.type)} at (${mark.x}, ${mark.y})${mark.age_hours ? ` - ${mark.age_hours}h ago` : ''}`}
+            title={`${getMarkerLabel(mark.type)} at (${mark.x}, ${mark.y})${mark.reason ? ` - ${mark.reason}` : ''}${mark.age_hours ? ` - ${mark.age_hours}h ago` : ''}`}
           >
-            <span className="lass-overlay__marker-text">{mark.type}</span>
+            <span className="lass-overlay__marker-text">
+              {mark.type === 'T' ? '✕' : mark.type}
+            </span>
           </div>
         );
       })}
