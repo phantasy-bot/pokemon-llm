@@ -1248,31 +1248,63 @@
 .pokemon-stream-overlay.mode-normal {
   padding: 0;
   margin: 0;
+  background: var(--accent-primary-bright); /* Red base */
 }
 
 .pokemon-stream-overlay.mode-normal .pokemon-content {
   height: 100vh;
   gap: 0;
+  background: var(--accent-primary-bright); /* Red fill */
 }
 
 .pokemon-stream-overlay.mode-normal .pokemon-left-col {
   padding: 0;
   flex: 100%;
+  background: var(--accent-primary-bright); /* Red fill */
 }
 
 .pokemon-stream-overlay.mode-normal .folder-container {
   border-radius: 0; /* Full screen - squared off */
   border: none;
-  border-top: 48px solid var(--bg-panel); /* Keep header bar */
   box-shadow: none;
   height: 100vh;
+  background: var(--accent-primary-bright); /* Red fill */
 }
 
-/* Extend the red accent to edges in Normal Mode */
+/* Folder Header Row - Title + Badges side by side */
+.pokemon-stream-overlay.mode-normal .folder-header-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) var(--space-xl);
+  background: var(--bg-panel); /* Gray header bar */
+  border-bottom: 1px solid var(--border-default);
+}
+
+.pokemon-stream-overlay.mode-normal .folder-title {
+  position: static; /* Remove absolute positioning */
+  background: none;
+  padding: 0;
+  font-size: 18px;
+}
+
+.pokemon-stream-overlay.mode-normal .folder-badges {
+  display: flex;
+  gap: 4px;
+}
+
+/* Hide corner container in normal mode - using header row instead */
+.pokemon-stream-overlay.mode-normal .corner-container,
+.pokemon-stream-overlay.mode-normal .folder-stats {
+  display: none;
+}
+
+/* Extend the red accent to folder content */
 .pokemon-stream-overlay.mode-normal .folder-content-wrapper {
-  background-color: var(--bg-panel); /* Red background */
+  background-color: var(--accent-primary-bright); /* Red background */
   padding: var(--space-xl);
-  height: calc(100vh - 48px); /* Full height minus header */
+  height: calc(100vh - 60px); /* Full height minus header row */
 }
 
 /* Reply Context Box Styling */
@@ -1317,4 +1349,71 @@
   color: #333;
   font-style: italic;
   line-height: 1.4;
+}
+
+/* Minimal Mode Replying To Section - Replaces Goals */
+.minimal-reply-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-height: 100px;
+}
+
+.minimal-reply-section__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-sm);
+}
+
+.minimal-reply-section__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.minimal-reply-section__platform {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.minimal-reply-section__platform--twitch {
+  color: #9146FF;
+}
+
+.minimal-reply-section__platform--pumpfun {
+  color: #00D632;
+}
+
+.minimal-reply-section__user {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+}
+
+.minimal-reply-section__message {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: #333;
+  font-style: italic;
+  line-height: 1.5;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.minimal-reply-section__empty {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-md);
 }
