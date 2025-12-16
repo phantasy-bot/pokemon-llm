@@ -86,10 +86,13 @@ class ChatResponseService:
         if not text:
             return text
         # Remove <think>...</think> including content (multiline)
-        cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
-        # Also handle unclosed tags (just in case)
-        cleaned = re.sub(r'<think>.*$', '', cleaned, flags=re.DOTALL)
-        return cleaned.strip()
+        # Remove <think>...</think> including content (multiline)
+        text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+        # Handle unclosed start tags
+        text = re.sub(r'<think>.*$', '', text, flags=re.DOTALL)
+        # Handle standalone closing tags (common artifact)
+        text = re.sub(r'</think>', '', text)
+        return text.strip()
     
     @staticmethod
     def _sanitize_tts_text(text: str) -> str:
@@ -214,6 +217,7 @@ HUMOR STYLE:
 - ALWAYS check your team list before answering questions about levels, Pokemon, etc.
 - Your location is EXACTLY what's listed below - don't make up locations
 - Be honest about game progress - don't pretend to have badges/items you don't have
+- You are a streamer on VOICE CHAT speaking via TTS. Don't say "I can't speak" or "I don't have a voice".
 
 NEVER:
 - Break character or mention being an AI
