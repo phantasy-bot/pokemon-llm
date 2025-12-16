@@ -2251,13 +2251,25 @@ Your intro message:"""
                         # Note: History tracking could be added later if needed
                         history_text = ""
                         
+                        # Fetch $LASS token info for chat context (uses DexScreener, cached 60s)
+                        token_info_text = ""
+                        try:
+                            token_service = get_token_service()
+                            if token_service.is_available:
+                                token_info = await token_service.get_token_info()
+                                if token_info:
+                                    token_info_text = token_info.format_summary()
+                        except Exception as ti_err:
+                            log.debug(f"Token info fetch failed (non-critical): {ti_err}")
+                        
                         chat_response_service.update_context(
                             game_context=game_status,
                             commentary=commentary_text,
                             location=current_mGBA_state.get('map_name', 'unknown'),
                             team=team_summary,
                             history=history_text,
-                            memory=memory_manager.get_narrative_context()
+                            memory=memory_manager.get_narrative_context(),
+                            token_info=token_info_text
                         )
                     
                     # Synthesize and play TTS - WAIT for it to complete

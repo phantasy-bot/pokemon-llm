@@ -1,16 +1,30 @@
 # --- solana_token_service.py ---
 """
 Solana Token Balance Service for Pokemon LLM Agent.
-Queries token balances to determine "whale" status for chat priority.
 
-Uses multiple FREE tier RPC providers with automatic fallback:
+BALANCE QUERIES (Whale Detection):
+Uses multiple FREE tier Solana RPC providers with automatic fallback:
 1. Helius (1M credits/month, 10 req/sec)
-2. Alchemy (30M CUs/month, 500 CUPs)  
+2. Alchemy (30M CUs/month, 500 CUps)  
 3. Shyft (unlimited credits, 10 req/sec)
-4. Syndica (10M req/month, 100 req/sec)
+4. QuickNode (10M req/month)
 5. Public Solana RPC (fallback, rate limited)
 
-Includes aggressive caching to minimize API calls.
+These RPCs can ONLY query token balances, NOT price/market data.
+Used for whale detection (is this wallet holding 100k+ $LASS tokens?).
+
+MARKET DATA (Token Info):
+Uses DexScreener API (FREE, no API key required, no rate limits for reasonable usage).
+https://api.dexscreener.com/latest/dex/tokens/{address}
+Provides: price, market cap, 24h volume, price change.
+
+TEST MODE:
+Set TOKEN_TEST_MODE=true to use a test token (kabuto) for development.
+This avoids needing to deploy $LASS to test the integration.
+
+Includes aggressive caching:
+- Whale status: 15 min TTL (configurable via WHALE_CACHE_TTL)
+- Token info: 60 sec TTL (market data changes frequently)
 """
 
 import asyncio
