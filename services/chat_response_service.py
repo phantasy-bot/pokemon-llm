@@ -67,6 +67,7 @@ class ChatResponseService:
         self._player_team: str = ""
         self._recent_history: str = ""  # Brief summary of recent actions
         self._memory_context: str = ""  # Important events/milestones
+        self._token_context: str = ""   # $LASS token price/market info
         
         if not self._is_configured:
             env_prefix = "ALKAHEST" if is_production else "FEATHERLESS"
@@ -158,7 +159,8 @@ class ChatResponseService:
         location: str = None,
         team: str = None,
         history: str = None,
-        memory: str = None
+        memory: str = None,
+        token_info: str = None
     ):
         """Update context for more coherent responses.
         
@@ -169,6 +171,7 @@ class ChatResponseService:
             team: Pokemon team summary (e.g., "Charmander Lv5, Pidgey Lv3")
             history: Brief summary of recent actions
             memory: Important events/milestones
+            token_info: $LASS token market data (e.g., "$LASS: $0.00043 (+12% 24h)")
         """
         if game_context:
             self._recent_game_context = game_context
@@ -182,6 +185,8 @@ class ChatResponseService:
             self._recent_history = history
         if memory:
             self._memory_context = memory
+        if token_info:
+            self._token_context = token_info
     
     def _get_lass_personality_prompt(self) -> str:
         """Get Lass personality context for consistent responses."""
@@ -250,6 +255,17 @@ CURRENT GAME STATE (USE THIS FOR FACTS!)
         # Add commentary for continuity
         if self._recent_commentary:
             context += f"💬 My last commentary: \"{self._recent_commentary}\"\n"
+        
+        context += "═══════════════════════════════════════\n"
+        context += "$LASS TOKEN (FOR PUMP.FUN CHAT)\n"
+        context += "═══════════════════════════════════════\n"
+        context += "You created $LASS on pump.fun as a FAN/SUPPORT token!\n"
+        context += "- It's just for fun and community - NOT an investment!\n"
+        context += "- NEVER give financial advice or price predictions\n"
+        context += "- Always remind: 'just a meme token for fun!'\n"
+        
+        if self._token_context:
+            context += f"📈 {self._token_context}\n"
         
         context += "═══════════════════════════════════════\n"
         

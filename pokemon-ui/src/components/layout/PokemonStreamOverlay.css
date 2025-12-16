@@ -652,6 +652,25 @@
   max-width: 100%; /* Ensure text doesn't exceed container width */
 }
 
+/* Platform mention highlighting in commentary */
+.pokemon-stream-overlay .platform-mention {
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+/* Twitch mentions - Purple */
+.pokemon-stream-overlay .platform-mention--twitch {
+  color: #9146FF; /* Twitch purple */
+  background: rgba(145, 70, 255, 0.15);
+}
+
+/* Pump.fun mentions - Green */
+.pokemon-stream-overlay .platform-mention--pumpfun {
+  color: #00C853; /* Pump.fun green */
+  background: rgba(0, 200, 83, 0.15);
+}
+
 /* Empty spacer at bottom of left column */
 .pokemon-stream-overlay .character-container__spacer {
   flex: 1; /* Smaller than commentary */

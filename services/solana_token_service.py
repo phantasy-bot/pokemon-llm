@@ -40,6 +40,47 @@ WHALE_THRESHOLD = int(os.getenv("PUMPFUN_WHALE_THRESHOLD", "100000"))
 # Default 15 min (900s) is good for streams since users stick around
 WHALE_CACHE_TTL = int(os.getenv("WHALE_CACHE_TTL", "900"))
 
+# Token Test Mode - use a test token for development
+TOKEN_TEST_MODE = os.getenv("TOKEN_TEST_MODE", "false").lower() == "true"
+TOKEN_TEST_ADDRESS = os.getenv("TOKEN_TEST_ADDRESS", "A9E2AopuG56LWYiXsvGLLTcLjUjQ539PY6k5Fhfepump")
+
+# Determine which token address to use
+def get_active_token_address() -> str:
+    """Returns the active token address based on test mode configuration."""
+    if TOKEN_TEST_MODE:
+        log.info(f"🧪 Token test mode enabled, using test token: {TOKEN_TEST_ADDRESS[:16]}...")
+        return TOKEN_TEST_ADDRESS
+    return PUMPFUN_TOKEN_ADDRESS
+
+# Token info cache TTL (60 seconds for market data since prices change quickly)
+TOKEN_INFO_CACHE_TTL = 60
+
+
+@dataclass
+class TokenInfo:
+    """Token market data from DexScreener."""
+    symbol: str = "LASS"
+    name: str = "Lass"
+    price_usd: float = 0.0
+    market_cap_usd: float = 0.0
+    volume_24h_usd: float = 0.0
+    price_change_24h: float = 0.0  # Percentage
+    liquidity_usd: float = 0.0
+    holder_count: int = 0
+    last_updated: float = 0.0
+    
+    def format_summary(self) -> str:
+        """Format token info as a brief summary string for LLM context."""
+        if self.price_usd <= 0:
+            return f"${self.symbol}: Price data unavailable"
+        
+        price_str = f"${self.price_usd:.6f}" if self.price_usd < 0.01 else f"${self.price_usd:.4f}"
+        change_sign = "+" if self.price_change_24h >= 0 else ""
+        mcap_str = f"${self.market_cap_usd/1000:.1f}K" if self.market_cap_usd < 1_000_000 else f"${self.market_cap_usd/1_000_000:.2f}M"
+        
+        return f"${self.symbol}: {price_str} ({change_sign}{self.price_change_24h:.1f}% 24h), {mcap_str} mcap"
+
+
 # RPC Provider configurations (order = priority)
 RPC_PROVIDERS = [
     {
@@ -143,11 +184,16 @@ class SolanaTokenService:
         cache_size: int = 1000,
         cooldown_seconds: int = 3600  # 1 hour cooldown for failed providers
     ):
-        self.token_mint = token_mint or PUMPFUN_TOKEN_ADDRESS
+        # Use test mode address if enabled, otherwise use provided or production address
+        self.token_mint = token_mint or get_active_token_address()
         self.whale_threshold = whale_threshold or WHALE_THRESHOLD
         actual_ttl = cache_ttl if cache_ttl is not None else WHALE_CACHE_TTL
         self.cache = LRUCache(max_size=cache_size, ttl_seconds=actual_ttl)
         self.cooldown_seconds = cooldown_seconds
+        
+        # Token info cache (separate, shorter TTL for market data)
+        self._token_info_cache: Optional[TokenInfo] = None
+        self._token_info_cache_time: float = 0
         
         # Initialize providers
         self.providers: list[ProviderStatus] = []
@@ -402,6 +448,70 @@ class SolanaTokenService:
             whale_status[addr] = is_whale
         
         return whale_status
+    
+    async def get_token_info(self, force_refresh: bool = False) -> Optional[TokenInfo]:
+        """
+        Fetch token market data from DexScreener API.
+        
+        Uses caching to avoid excessive API calls (60 second TTL).
+        DexScreener is free and supports pump.fun tokens.
+        
+        Args:
+            force_refresh: If True, ignore cache and fetch fresh data
+            
+        Returns:
+            TokenInfo dataclass with market data, or None if unavailable
+        """
+        if not self.token_mint:
+            return None
+        
+        # Check cache first (unless force refresh)
+        if not force_refresh and self._token_info_cache:
+            cache_age = time.time() - self._token_info_cache_time
+            if cache_age < TOKEN_INFO_CACHE_TTL:
+                return self._token_info_cache
+        
+        try:
+            client = await self._get_client()
+            
+            # DexScreener API - free, no auth required
+            url = f"https://api.dexscreener.com/latest/dex/tokens/{self.token_mint}"
+            
+            response = await client.get(url, timeout=10.0)
+            response.raise_for_status()
+            
+            data = response.json()
+            pairs = data.get("pairs", [])
+            
+            if not pairs:
+                log.warning(f"No trading pairs found for token {self.token_mint[:16]}...")
+                return None
+            
+            # Use the first pair (usually the main one)
+            pair = pairs[0]
+            
+            token_info = TokenInfo(
+                symbol=pair.get("baseToken", {}).get("symbol", "LASS"),
+                name=pair.get("baseToken", {}).get("name", "Lass"),
+                price_usd=float(pair.get("priceUsd", 0) or 0),
+                market_cap_usd=float(pair.get("marketCap", 0) or pair.get("fdv", 0) or 0),
+                volume_24h_usd=float(pair.get("volume", {}).get("h24", 0) or 0),
+                price_change_24h=float(pair.get("priceChange", {}).get("h24", 0) or 0),
+                liquidity_usd=float(pair.get("liquidity", {}).get("usd", 0) or 0),
+                last_updated=time.time()
+            )
+            
+            # Update cache
+            self._token_info_cache = token_info
+            self._token_info_cache_time = time.time()
+            
+            log.info(f"📊 Token info updated: {token_info.format_summary()}")
+            return token_info
+            
+        except Exception as e:
+            log.warning(f"Failed to fetch token info from DexScreener: {e}")
+            # Return cached data if available (even if stale)
+            return self._token_info_cache
     
     def reset_providers(self):
         """Reset all disabled providers to available state."""
