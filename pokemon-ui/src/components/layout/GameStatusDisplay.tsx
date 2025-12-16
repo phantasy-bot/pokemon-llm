@@ -77,30 +77,33 @@ interface GameStatusDisplayProps {
   gameState: PokemonGameState;
   wsConnected: boolean;
   currentPokemon: PokemonDisplay[];
+  hideBadges?: boolean;
 }
 
-export function GameStatusDisplay({ gameState, wsConnected, currentPokemon }: GameStatusDisplayProps) {
+export function GameStatusDisplay({ gameState, wsConnected, currentPokemon, hideBadges = false }: GameStatusDisplayProps) {
   const badges = gameState.badges || [];
   const location = gameState.minimapLocation || "Unknown Area";
 
   return (
     <div className="game-status-display">
-      {/* Badges at top */}
-      <div className="column-header column-header--center">
-        <div className="badges-widget">
-          <div className="gym-badges">
-            {ALL_BADGE_TYPES.map((badgeType) => {
-              const badgeInfo = KANTO_BADGES[badgeType];
-              const isEarned = badges.includes(badgeType);
-              return (
-                <div key={badgeType} className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}>
-                  <img src={badgeInfo.image} alt="" className="gym-badge-image" />
-                </div>
-              );
-            })}
+      {/* Badges at top - hidden when hideBadges is true */}
+      {!hideBadges && (
+        <div className="column-header column-header--center">
+          <div className="badges-widget">
+            <div className="gym-badges">
+              {ALL_BADGE_TYPES.map((badgeType) => {
+                const badgeInfo = KANTO_BADGES[badgeType];
+                const isEarned = badges.includes(badgeType);
+                return (
+                  <div key={badgeType} className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}>
+                    <img src={badgeInfo.image} alt="" className="gym-badge-image" />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Game Feed Placeholder */}
       <div className="pokemon-game-feed">

@@ -1278,6 +1278,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--space-md) var(--space-xl);
+  padding-right: 220px; /* Make room for cutout */
   background: var(--bg-panel); /* Gray header bar */
   border-bottom: 1px solid var(--border-default);
 }
@@ -1294,8 +1295,16 @@
   gap: 4px;
 }
 
-/* Hide corner container in normal mode - using header row instead */
-.pokemon-stream-overlay.mode-normal .corner-container,
+/* Keep corner container visible - it's the badge cutout area */
+.pokemon-stream-overlay.mode-normal .corner-container {
+  /* Keep visible for the gray cutout look */
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+}
+
+/* Hide stats text in normal mode (cycle/actions/tokens) */
 .pokemon-stream-overlay.mode-normal .folder-stats {
   display: none;
 }
