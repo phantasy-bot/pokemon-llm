@@ -160,6 +160,57 @@ function TalkingCharacter({
 
 
 // Animated ellipsis placeholder: '' -> '.' -> '..' -> '...' -> '' -> ...
+
+/**
+ * HighlightedCommentary - Parses commentary text to highlight platform mentions
+ * - Purple for Twitch mentions: "Username on Twitch"
+ * - Green for Pump.fun mentions: "Username on Pump.fun" or "Username on Pump"
+ */
+function HighlightedCommentary({ text }: { text: string }) {
+  // Match patterns like "Username on Twitch" or "Username on Pump.fun" or "Username on Pump"
+  const parts: React.ReactNode[] = [];
+  
+  // Regex to match "Word(s) on Twitch" or "Word(s) on Pump.fun" or "Word(s) on Pump"
+  // Captures: group 1 = username, group 2 = platform (Twitch, Pump.fun, or Pump)
+  const platformMentionRegex = /(\S+)\s+on\s+(Twitch|Pump\.fun|Pump)/gi;
+  
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = platformMentionRegex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    
+    const username = match[1];
+    const platform = match[2];
+    const isPumpfun = platform.toLowerCase().includes('pump');
+    const colorClass = isPumpfun ? 'platform-mention--pumpfun' : 'platform-mention--twitch';
+    
+    // Add the highlighted mention
+    parts.push(
+      <span key={match.index} className={`platform-mention ${colorClass}`}>
+        {username} on {platform}
+      </span>
+    );
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after last match
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  
+  // If no matches, just return the text
+  if (parts.length === 0) {
+    return <>{text}</>;
+  }
+  
+  return <>{parts}</>;
+}
+
 function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
   const [dots, setDots] = useState(0);
 
@@ -664,8 +715,8 @@ export function PokemonStreamOverlay({
                           onComplete={() => handleTtsComplete(ttsCommentary.text)}
                         />
                       ) : lingerText ? (
-                        // State 2: TTS just finished - show full text for 6 seconds
-                        <>{lingerText}</>
+                        // State 2: TTS just finished - show full text for 6 seconds with highlights
+                        <HighlightedCommentary text={lingerText} />
                       ) : (
                         // State 3: Waiting for next TTS - show animated ellipsis
                         <AnimatedEllipsis interval={600} />
