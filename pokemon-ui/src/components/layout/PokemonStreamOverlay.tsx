@@ -756,7 +756,8 @@ export function PokemonStreamOverlay({
                     <GameStatusDisplay 
                       gameState={gameState} 
                       wsConnected={wsConnected} 
-                      currentPokemon={currentPokemon} 
+                      currentPokemon={currentPokemon}
+                      hideBadges={true}
                     />
                  </div>
               </div>

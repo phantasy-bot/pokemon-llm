@@ -2735,10 +2735,19 @@ Your intro message:"""
                         tts_queued = False
                         if tts_service.is_available:
                             try:
+                                # Include reply_to metadata for test messages
+                                test_reply_metadata = {
+                                    "reply_to": {
+                                        "username": test_msg['display_name'],
+                                        "platform": "Twitch",
+                                        "message": test_msg['message']
+                                    }
+                                }
                                 request = await tts_service.queue_and_start_synthesis(
                                     response_text,
                                     priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                                    cycle_id=current_cycle
+                                    cycle_id=current_cycle,
+                                    metadata=test_reply_metadata
                                 )
                                 tts_queued = request is not None
                                 if tts_queued:
