@@ -161,40 +161,64 @@ function TalkingCharacter({
 // Animated ellipsis placeholder: '' -> '.' -> '..' -> '...' -> '' -> ...
 
 /**
- * HighlightedCommentary - Parses commentary text to highlight platform mentions
+ * HighlightedCommentary - Parses commentary text to highlight platform mentions and special tokens
  * - Purple for Twitch mentions: "Username on Twitch"
  * - Green for Pump.fun mentions: "Username on Pump.fun" or "Username on Pump"
+ * - Rainbow Holographic for "$LASS"
  */
 function HighlightedCommentary({ text }: { text: string }) {
-  // Match patterns like "Username on Twitch" or "Username on Pump.fun" or "Username on Pump"
   const parts: React.ReactNode[] = [];
   
-  // Regex to match "Word(s) on Twitch" or "Word(s) on Pump.fun" or "Word(s) on Pump"
-  // Captures: group 1 = username, group 2 = platform (Twitch, Pump.fun, or Pump)
-  const platformMentionRegex = /(\S+)\s+on\s+(Twitch|Pump\.fun|Pump)/gi;
+  // Combined regex using OR
+  // We need to be careful about iteration order.
+  // Easiest is to split by a master regex that catches all tokens of interest
+  const masterRegex = /((\S+)\s+on\s+(?:Twitch|Pump\.fun|Pump))|(\$LASS)/gi;
   
   let lastIndex = 0;
   let match;
   
-  while ((match = platformMentionRegex.exec(text)) !== null) {
+  while ((match = masterRegex.exec(text)) !== null) {
     // Add text before the match
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
     
-    const username = match[1];
-    const platform = match[2];
-    const isPumpfun = platform.toLowerCase().includes('pump');
-    const colorClass = isPumpfun ? 'platform-mention--pumpfun' : 'platform-mention--twitch';
+    const fullMatch = match[0];
     
-    // Add the highlighted mention
-    parts.push(
-      <span key={match.index} className={`platform-mention ${colorClass}`}>
-        {username} on {platform}
-      </span>
-    );
+    // Check which group matched
+    if (match[3]) { // $LASS group
+      parts.push(
+        <span key={match.index} className="text-holographic">
+          {fullMatch}
+        </span>
+      );
+    } else if (match[1]) { // Platform mention group
+      // We need to extract username/platform from the full match again or use nested groups
+      // match[2] is username
+      // We need platform. Let's re-parse or use the groups from master regex if careful.
+      // match[1] is full string "User on Twitch"
+      // match[2] is "User"
+      // We need to find "Twitch" or "Pump" in match[1]
+      
+      // Let's re-run platform regex on just the match string for safety
+      const pMatch = /(\S+)\s+on\s+(Twitch|Pump\.fun|Pump)/i.exec(fullMatch);
+      if (pMatch) {
+        const username = pMatch[1];
+        const platform = pMatch[2];
+        const isPumpfun = platform.toLowerCase().includes('pump');
+        const colorClass = isPumpfun ? 'platform-mention--pumpfun' : 'platform-mention--twitch';
+        
+        parts.push(
+          <span key={match.index} className={`platform-mention ${colorClass}`}>
+            {username} on {platform}
+          </span>
+        );
+      } else {
+        parts.push(fullMatch); // Fallback
+      }
+    }
     
-    lastIndex = match.index + match[0].length;
+    lastIndex = match.index + fullMatch.length;
   }
   
   // Add remaining text after last match
@@ -202,7 +226,6 @@ function HighlightedCommentary({ text }: { text: string }) {
     parts.push(text.slice(lastIndex));
   }
   
-  // If no matches, just return the text
   if (parts.length === 0) {
     return <>{text}</>;
   }
@@ -281,7 +304,7 @@ function SyncedTypewriterText({
     };
   }, [text, durationMs]); // Removed onComplete from deps - using ref instead
 
-  return <>{displayedText}</>;
+  return <HighlightedCommentary text={displayedText} />;
 }
 
 // Utility function to truncate large numbers
@@ -664,15 +687,19 @@ export function PokemonStreamOverlay({
                           "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
                         </p>
                       </div>
+                    ) : (ttsCommentary?.playing || lingerText) ? (
+                      <div className="minimal-reply-section__game-response">
+                        RESPONDING TO GAME
+                      </div>
                     ) : (
                       <div className="minimal-reply-section__empty">
-                        Waiting for chat messages...
+                        <span>Waiting for chat messages<AnimatedDots /></span>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Detailed Mode: Goals Section */}
+                  {/* Detailed Mode: Goals Section */}
                 {viewMode === 'detailed' && (
                   <div className="folder-content">
                     <div className="goals-log">
@@ -707,7 +734,7 @@ export function PokemonStreamOverlay({
                           </span>
                         </div>
                       ) : (
-                        <span className="detailed-reply-section__empty">Waiting for chat...</span>
+                        <span className="detailed-reply-section__empty">Waiting for chat<AnimatedDots /></span>
                       )}
                     </div>
                   </div>
@@ -748,25 +775,6 @@ export function PokemonStreamOverlay({
                   </div>
                 </div>
 
-                {/* Sponsor (Left Pane Only) */}
-                <div className="folder-sponsor">
-                  <div style={{ position: 'relative', width: '64px', height: '64px' }}>
-                    <img 
-                      src={sponsors[sponsorIndex].image} 
-                      alt={sponsors[sponsorIndex].alt} 
-                      className="folder-sponsor__image"
-                      style={{ width: '100%', height: '100%' }}
-                    />
-                    {isSponsorSwitching && (
-                       <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 60, borderRadius: '4px', overflow: 'hidden' }}>
-                         <div className="vision-screenshot__static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.6 }} />
-                       </div>
-                    )}
-                  </div>
-                  <a href={sponsors[sponsorIndex].link} target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
-                    {sponsors[sponsorIndex].text}
-                  </a>
-                </div>
               </div>
 
               {/* PANE 2: Game Status (Only in Normal Mode) */}
@@ -781,8 +789,28 @@ export function PokemonStreamOverlay({
                     />
                  </div>
               </div>
-
             </div>
+
+            {/* Sponsor (Bottom Left of Folder) */}
+            <div className="folder-sponsor">
+              <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                <img 
+                  src={sponsors[sponsorIndex].image} 
+                  alt={sponsors[sponsorIndex].alt} 
+                  className="folder-sponsor__image"
+                  style={{ width: '100%', height: '100%' }}
+                />
+                {isSponsorSwitching && (
+                    <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 60, borderRadius: '4px', overflow: 'hidden' }}>
+                      <div className="vision-screenshot__static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.6 }} />
+                    </div>
+                )}
+              </div>
+              <a href={sponsors[sponsorIndex].link} target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
+                {sponsors[sponsorIndex].text}
+              </a>
+            </div>
+
           </div>
         </div>
 

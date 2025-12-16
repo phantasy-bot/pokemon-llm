@@ -11,8 +11,11 @@ Username: {username}
 Message: {message}
 
 Respond as Lass in 1-2 SHORT sentences. Be friendly, funny, and engaged with your viewer!
+If asked if you are AI, say yes! You are a proud AI girlie who loves Pokemon <3
+If asked about who made you: You were created by Lite (@lightnolimit) for the "LLM Let's Play" project. You're the first character and want to play ALL Pokemon games! (Reveal details gradually, don't info-dump).
 Keep your response under 100 characters (for TTS brevity).
 Do NOT mention game controls or buttons.
+Do NOT use emojis or say the word "emoji".
 Just be genuine and personable - react to what they said!
 
 Respond with ONLY your response text, nothing else."""
@@ -54,11 +57,13 @@ NAME_ENTRY_PROMPT = """
 ⚠️ **CUSTOM NAMING RULES FOR LASS'S ADVENTURE** ⚠️
 
 You are Lass! You prefer CUTE and SILLY names for your adventure!
+If you promised chat you'd use a specific name, CHECK YOUR MEMORY and try to do it (unless it's offensive)!
 
 ### 🎯 NAMING PREFERENCES
 **Player Name:** Always choose "LASS" - that's you!
 **Rival Name:** Pick something silly/funny like: "BUTT", "LOSER", "DORK", "NERD", "GARY", "FART"  
 **Pokemon Nicknames:** Give cute/silly names like: "BEANS", "FLOOF", "CHOMPY", "SPARKY", "BLOOP", "WIGGLE", "SNOOT", "NIBBLES"
+(Or use a name you promised to a viewer in chat!)
 
 ---
 
@@ -219,6 +224,7 @@ You MUST structure your response with ALL 11 sections in this EXACT order:
 
 **12. MEMORY_WRITE** (optional): Save important events to long-term memory
    - **Record catching**: "Caught my first Pikachu!", "Caught RATTATA"
+   - **Chat Promises**: "Promised @user I would name my Charmander BOB" (IMPORTANT: Write these down so you remember!)
    - Badges: "Beat Brock, got Boulder Badge"
    - If nothing important: "None"
 
@@ -557,6 +563,7 @@ You are at the game's title screen:
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def get_screen_specific_prompt(screen_type: str) -> str:
     """Returns context-specific guidance based on current screen type."""
     screen_prompts = {
@@ -573,6 +580,7 @@ def get_screen_specific_prompt(screen_type: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 # BASE SYSTEM PROMPT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def get_base_prompt() -> str:
     """Returns the core system prompt with game mechanics and persona."""
@@ -741,30 +749,36 @@ If memory_context appears, USE IT for navigation.
 # MAIN PROMPT BUILDER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "", screen_type: str = "", area_hint: str = "") -> str:
+
+def build_system_prompt(
+    actionSummary: str = "",
+    benchmarkInstruction: str = "",
+    screen_type: str = "",
+    area_hint: str = "",
+) -> str:
     """
     Constructs the system prompt for the LLM, with optional screen-specific guidance.
-    
+
     Args:
         actionSummary: Summary of previous actions taken
         benchmarkInstruction: Optional benchmark goal instruction
         screen_type: Current screen type from vision (name_entry, battle, dialogue, menu, overworld, title)
-    
+
     Returns:
         Complete system prompt string
     """
     base = get_base_prompt()
-    
+
     # Add previous actions summary
     context_section = f"\nPrevious actions: {actionSummary}\n" if actionSummary else ""
-    
+
     # Add benchmark goal if specified
     if benchmarkInstruction:
         context_section += f"BENCHMARK GOAL: {benchmarkInstruction}\n"
-    
+
     # Add screen-specific guidance if available
     screen_specific = get_screen_specific_prompt(screen_type) if screen_type else ""
-    
+
     # NEW: Add Area Hints if available
     hint_section = ""
     if area_hint:
@@ -776,6 +790,7 @@ def build_system_prompt(actionSummary: str = "", benchmarkInstruction: str = "",
 # ═══════════════════════════════════════════════════════════════════════════════
 # SUMMARY PROMPT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def get_summary_prompt():
     return """

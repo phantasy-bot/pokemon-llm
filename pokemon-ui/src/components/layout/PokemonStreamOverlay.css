@@ -28,7 +28,7 @@
   flex-direction: column;
   position: relative;
   background: var(--accent-primary-bright); /* Bright red accent */
-  border: 1px solid var(--border-default);
+  border: none; /* Removed border as requested */
   border-top-right-radius: 0; /* Cutout corner */
   border-top-left-radius: 12px;
   border-bottom-left-radius: 6px;
@@ -59,8 +59,8 @@
 .folder-title {
   position: absolute;
   top: 4.5px; /* Lifted up 2px more (6.5 -> 4.5) */
-  left: 0;
-  width: calc(100% - 260px); /* Center in available space (minus cutout) */
+  left: 20px; /* Push right from left edge */
+  width: calc(100% - 280px); /* Center in available space (minus cutout and left padding) */
   text-align: center;
   display: flex;
   justify-content: center;
@@ -608,9 +608,9 @@
 
 /* Detailed Mode: Commentary with horizontal margins and less top spacing */
 .pokemon-stream-overlay.mode-detailed .character-container__commentary {
-  margin-left: var(--space-lg); /* More horizontal padding from column edges */
-  margin-right: var(--space-lg);
-  margin-top: calc(-1 * var(--space-lg)); /* Lift up closer to replying-to section */
+  margin-left: 24px; /* More horizontal padding from column edges (increased +8px) */
+  margin-right: 24px;
+  margin-top: 8px; /* Positive gap to separate from replying-to section (reduced from 16px to 8px) */
 }
 
 /* Minimal Mode: Commentary with horizontal margins for consistent padding */
@@ -1224,6 +1224,9 @@
   padding-left: var(--space-xl);
   /* Animation for appearing */
   animation: fadeIn 0.5s ease-in-out;
+  
+  /* Minimal Mode: Move game view up significantly */
+  margin-top: -60px; 
 }
 
 @keyframes fadeIn {
@@ -1251,6 +1254,15 @@
 .folder-pane--right .badges-widget {
   background: rgba(255, 255, 255, 0.5);
 }
+.pokemon-stream-overlay.mode-normal .pokemon-game-feed {
+  min-height: 500px; /* Taller game feed in minimal mode */
+}
+
+/* Minimal Mode: Remove gray background from Pokemon Team Bar */
+.pokemon-stream-overlay.mode-normal .pokemon-team-bar {
+  background: transparent;
+}
+
 /* Full Screen Folder for Normal Mode */
 .pokemon-stream-overlay.mode-normal {
   padding: 0;
@@ -1291,7 +1303,7 @@
   left: 0;
   /* Width of left pane - approximately 50% minus right pane gap */
   width: calc(50% - var(--space-md));
-  height: 44px; /* Match folder title bar height */
+  height: 60px; /* Increased from 44px to fit larger 36px title */
   background: var(--accent-primary-bright); /* Red to match folder */
   border-bottom: none;
   z-index: 15; /* Above folder content but below cutout */
@@ -1302,7 +1314,8 @@
   position: static; /* Remove absolute positioning */
   background: none;
   padding: 0;
-  font-size: 18px;
+  padding-left: 18px; /* Pushed right 18px */
+  font-size: 36px; /* Increased from 18px to match detailed mode */
   text-align: left;
   width: auto;
 }
@@ -1324,15 +1337,18 @@
   z-index: 10;
 }
 
-/* Hide stats text in normal mode (cycle/actions/tokens) */
+/* Show stats in minimal mode - allow default colors (red/gray) since they sit on the gray cutout */
 .pokemon-stream-overlay.mode-normal .folder-stats {
-  display: none;
+  display: flex;
+  top: 10px; /* Moved down by 6px (from 4px) */
+  right: 14px; /* Moved left by 6px (from 8px) */
 }
 
 /* Extend the red accent to folder content */
 .pokemon-stream-overlay.mode-normal .folder-content-wrapper {
   background-color: var(--accent-primary-bright); /* Red background */
-  padding: var(--space-xl);
+  /* Increased top padding to move content down from header */
+  padding: 72px var(--space-xl) var(--space-xl) var(--space-xl);
   height: calc(100vh - 60px); /* Full height minus header row */
 }
 
@@ -1380,23 +1396,27 @@
   line-height: 1.4;
 }
 
-/* Minimal Mode Replying To Section - Replaces Goals */
+/* Minimal Mode Replying To Section - Dark Theme to match Detailed */
 .minimal-reply-section {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.95); /* Black background */
   border-radius: 12px;
   padding: var(--space-lg);
-  margin-bottom: var(--space-md); /* Original spacing */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  min-height: 100px;
-  margin-left: var(--space-md); /* Horizontal margins for padding from edges */
+  margin-bottom: 32px; /* Increased gap above commentary */
+  box-shadow: none; /* Remove shadow as requested */
+  height: 140px; /* Fixed larger height to prevent layout shift */
+  min-height: 140px;
+  margin-left: var(--space-md);
   margin-right: var(--space-md);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
 }
 
 .minimal-reply-section__label {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.7); /* Light text */
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: var(--space-sm);
@@ -1406,7 +1426,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding-top: var(--space-sm); /* Add padding above content */
+  padding-top: var(--space-sm);
 }
 
 .minimal-reply-section__platform {
@@ -1428,13 +1448,13 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  color: #000;
+  color: white; /* White text */
 }
 
 .minimal-reply-section__message {
   font-family: var(--font-ui);
   font-size: 14px;
-  color: #333;
+  color: rgba(255, 255, 255, 0.9); /* Bright light text */
   font-style: italic;
   line-height: 1.5;
   max-height: 60px;
@@ -1444,40 +1464,81 @@
 .minimal-reply-section__empty {
   font-family: var(--font-ui);
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.5); /* Muted light text */
   font-style: italic;
   text-align: center;
   padding: var(--space-md);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Detailed Mode Replying To Section - Compact below Goals with dark styling */
+/* Large text for when responding to game events */
+.minimal-reply-section__game-response {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 28px; /* Large text */
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 var(--space-sm);
+}
+
+/* Holographic text effect for $LASS */
+@keyframes holographic-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-holographic {
+  background: linear-gradient(
+    270deg, 
+    #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000
+  );
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: holographic-shimmer 3s ease infinite;
+  font-weight: 800;
+  display: inline-block;
+}
+
+/* Detailed Mode Replying To Section - Redesigned to match Minimal style */
 .detailed-reply-section {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  flex-direction: column; /* Stack label and content */
+  gap: 4px;
+  padding: 12px; /* Increased padding */
   margin-top: 0;
-  background: rgba(0, 0, 0, 0.9); /* Dark/black background */
+  background: rgba(0, 0, 0, 0.95); /* Match minimal bg */
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  border-radius: 12px; /* Rounded corners */
   position: relative;
+  min-height: 70px;
 }
 
 .detailed-reply-section__label {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.7); /* Light text for dark bg */
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
-  /* Position on border like TUI labels */
-  position: absolute;
-  top: -8px;
-  left: var(--space-sm);
-  background: rgba(0, 0, 0, 0.9); /* Match parent bg */
-  padding: 0 6px;
+  /* Static positioning inside the box */
+  position: static;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 2px;
 }
 
 .detailed-reply-section__content {
@@ -1487,10 +1548,11 @@
   gap: var(--space-sm);
   flex: 1;
   overflow: hidden;
+  padding: 0; /* Reset padding */
 }
 
 .detailed-reply-section__platform {
-  font-family: var(--font-display);
+  font-family: var(--font-mono); /* Changed to monospace as requested */
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
