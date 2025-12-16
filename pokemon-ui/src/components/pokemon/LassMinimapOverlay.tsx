@@ -27,7 +27,7 @@ function getMarkerLabel(type: 'N' | 'O' | 'E'): string {
  * Translucent overlay showing Lass's markings on the minimap.
  * N = NPC (pink), O = Opening/Exit from map data (pink), E = Lass-discovered Exit (distinct color)
  * Opacity fades as markings age/decay.
- * Uses percentage-based positioning to match the image exactly.
+ * Uses aspect-ratio constrained positioning to match the minimap image exactly.
  */
 export function LassMinimapOverlay({
   markings = [],
@@ -37,12 +37,24 @@ export function LassMinimapOverlay({
     return null;
   }
 
+  // Calculate aspect ratio for the overlay to match grid dimensions
+  const aspectRatio = gridSize.width / gridSize.height;
+
   return (
-    <div className="lass-overlay">
+    <div 
+      className="lass-overlay"
+      style={{
+        // Match the aspect ratio of the grid so overlay positions align with image
+        aspectRatio: aspectRatio,
+      }}
+    >
       {markings.map((mark, index) => {
-        // Convert grid position to percentage of overlay
+        // Convert grid position to percentage of the grid
+        // Note: positions are 0-indexed, so we use mark.x, mark.y directly
         const leftPct = (mark.x / gridSize.width) * 100;
         const topPct = (mark.y / gridSize.height) * 100;
+        
+        // Size of each cell as percentage of grid
         const widthPct = (1 / gridSize.width) * 100;
         const heightPct = (1 / gridSize.height) * 100;
 

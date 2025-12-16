@@ -90,6 +90,58 @@ class ChatResponseService:
         cleaned = re.sub(r'<think>.*$', '', cleaned, flags=re.DOTALL)
         return cleaned.strip()
     
+    @staticmethod
+    def _sanitize_tts_text(text: str) -> str:
+        """
+        Sanitize text for TTS playback by removing or replacing phrases
+        that don't sound good when spoken.
+        
+        Returns the sanitized text.
+        """
+        if not text:
+            return text
+        
+        # Blacklist of exact phrases/patterns to remove (case-insensitive)
+        # These are sounds/exclamations that don't work well in TTS
+        TTS_BLACKLIST = [
+            r'\beee+!*\b',           # "eee!", "eeee!", etc.
+            r'\bahh+!*\b',           # "ahh!", "ahhh!", etc.
+            r'\booh+!*\b',           # "ooh!", "oooh!", etc.
+            r'\buhh+!*\b',           # "uhh!", "uhhh!", etc.
+            r'\bhehe+!*\b',          # "hehe!", "hehehe!", etc.
+            r'\bheehee+!*\b',        # "heehee", etc.
+            r'\bmuahaha+!*\b',       # "muahaha", etc.
+            r'\b(lo+l)+\b',          # "lol", "lolol", "lololol", etc.
+            r'\bowo+\b',             # "owo", "owoo", etc.
+            r'\buwu+\b',             # "uwu", "uwuu", etc.
+            r'\b:3+\b',              # ":3", ":33", etc.
+            r'\bxD+\b',              # "xD", "xDD", etc.
+            r'\bteehee+!*\b',        # "teehee", etc.
+        ]
+        
+        # Emoji patterns to remove (they don't get spoken anyway and can confuse TTS)
+        EMOJI_PATTERN = r'[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001FAFF]+'
+        
+        result = text
+        
+        # Remove blacklisted phrases
+        for pattern in TTS_BLACKLIST:
+            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
+        
+        # Remove emojis
+        result = re.sub(EMOJI_PATTERN, '', result)
+        
+        # Clean up extra whitespace left behind
+        result = re.sub(r'\s+', ' ', result).strip()
+        
+        # Clean up orphaned punctuation (e.g., "! !" -> "!")
+        result = re.sub(r'([!?.,])\s*\1+', r'\1', result)
+        
+        # Clean up leading punctuation
+        result = re.sub(r'^[!?.,\s]+', '', result)
+        
+        return result
+    
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client."""
         if self._client is None:
@@ -397,6 +449,11 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
                 result = self._strip_thinking_tags(raw_result)
                 if not result:
                     log.warning(f"Response was only thinking content, skipping")
+                    return ""
+                # Sanitize for TTS - remove sounds that don't work well
+                result = self._sanitize_tts_text(result)
+                if not result:
+                    log.warning(f"Response was empty after TTS sanitization, skipping")
                     return ""
                 self._response_count += 1
                 log.info(f"✅ Generated response #{self._response_count} in {duration:.2f}s: {result[:50]}...")
