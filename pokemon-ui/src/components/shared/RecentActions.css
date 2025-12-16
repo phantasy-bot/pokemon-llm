@@ -20,8 +20,8 @@
 
 .recent-actions--active .recent-actions__label,
 .recent-actions--active .recent-actions__label-right {
-  color: #fff; /* White text on red bg */
-  background-color: var(--accent-primary-bright); /* Match section bg */
+  color: var(--text-muted); /* Keep original muted color */
+  background-color: var(--bg-panel); /* Keep panel gray, don't inherit red */
 }
 
 /* Update squares/buttons when active */

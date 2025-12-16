@@ -572,10 +572,33 @@ export function PokemonStreamOverlay({
         <div className="pokemon-left-col character-column">
           {/* T3 Folder Container */}
           <div className="folder-container">
-            {/* Title in the header bar */}
-            <div className="folder-title" onClick={toggleViewMode} style={{ cursor: 'pointer' }}>
-              Lass ✿
-            </div>
+            {/* Normal Mode: Header Row with Title + Badges */}
+            {viewMode === 'normal' && (
+              <div className="folder-header-row">
+                <div className="folder-title" onClick={toggleViewMode} style={{ cursor: 'pointer' }}>
+                  Lass ✿
+                </div>
+                <div className="folder-badges">
+                  {/* Inline badges for normal mode */}
+                  {(['Boulder', 'Cascade', 'Thunder', 'Rainbow', 'Soul', 'Marsh', 'Volcano', 'Earth'] as const).map((badgeType) => {
+                    const badgeIndex = ['Boulder', 'Cascade', 'Thunder', 'Rainbow', 'Soul', 'Marsh', 'Volcano', 'Earth'].indexOf(badgeType) + 1;
+                    const isEarned = (gameState.badges || []).includes(badgeType);
+                    return (
+                      <div key={badgeType} className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}>
+                        <img src={`/badges/${badgeIndex}.png`} alt="" className="gym-badge-image" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Mode: Original Title in header bar */}
+            {viewMode === 'detailed' && (
+              <div className="folder-title" onClick={toggleViewMode} style={{ cursor: 'pointer' }}>
+                Lass ✿
+              </div>
+            )}
 
             {/* SVG Corner Cutout */}
             <div className="corner-container">
@@ -625,38 +648,50 @@ export function PokemonStreamOverlay({
               
               {/* PANE 1: Character & Goals (Always Visible) */}
               <div className="folder-pane folder-pane--left">
-                {/* Reply Context Box (Normal View Only) - Shows what she is responding to */}
-                {(viewMode === 'normal' && (ttsCommentary?.reply_to || lingerContext)) && (
-                   <div className="reply-context-box">
-                      <div className="reply-context-label">
-                        Replying to <span className="reply-platform">{ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Chat'}</span>
-                      </div>
-                      <div className="reply-user">
-                        @{ttsCommentary?.reply_to?.username || lingerContext?.username}
-                      </div>
-                      <div className="reply-message">
-                        "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
-                      </div>
-                   </div>
-                )}
-
-                <div className="folder-content">
-                  {/* Goals */}
-                  <div className="goals-log">
-                    <span className="goals-log__label">LONG-TERM GOALS</span>
-                    {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.7 }}>
-                        <p style={{ textAlign: 'center' }}>Initializing goals<AnimatedDots /></p>
+                {/* Normal Mode: "Replying To" Section (replaces Goals) */}
+                {viewMode === 'normal' && (
+                  <div className="minimal-reply-section">
+                    <div className="minimal-reply-section__label">REPLYING TO</div>
+                    {(ttsCommentary?.reply_to || lingerContext) ? (
+                      <div className="minimal-reply-section__content">
+                        <span className={`minimal-reply-section__platform minimal-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
+                          {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
+                        </span>
+                        <span className="minimal-reply-section__user">
+                          @{ttsCommentary?.reply_to?.username || lingerContext?.username}
+                        </span>
+                        <p className="minimal-reply-section__message">
+                          "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
+                        </p>
                       </div>
                     ) : (
-                      <div className="goals-log__content">
-                        <p><strong>1. </strong> {gameState.goals.primary}</p>
-                        <p><strong>2. </strong> {gameState.goals.secondary}</p>
-                        <p><strong>3. </strong> {gameState.goals.tertiary}</p>
-                        <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
+                      <div className="minimal-reply-section__empty">
+                        Waiting for chat messages...
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Detailed Mode: Goals Section */}
+                {viewMode === 'detailed' && (
+                  <div className="folder-content">
+                    <div className="goals-log">
+                      <span className="goals-log__label">LONG-TERM GOALS</span>
+                      {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.7 }}>
+                          <p style={{ textAlign: 'center' }}>Initializing goals<AnimatedDots /></p>
+                        </div>
+                      ) : (
+                        <div className="goals-log__content">
+                          <p><strong>1. </strong> {gameState.goals.primary}</p>
+                          <p><strong>2. </strong> {gameState.goals.secondary}</p>
+                          <p><strong>3. </strong> {gameState.goals.tertiary}</p>
+                          <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                   {/* Character Container */}
                   <div className="character-container">
