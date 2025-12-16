@@ -17,24 +17,6 @@
   font-display: swap;
 }
 
-/* fsJenson1 Italic for display/titles */
-@font-face {
-  font-family: 'fsJenson1Italic';
-  src: url('/fonts/FsJenson1ItalicRegular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* fsJenson1 Regular for body text */
-@font-face {
-  font-family: 'fsJenson1';
-  src: url('/fonts/FsJenson1Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* FjallaOne for headings (fallback) */
 @font-face {
   font-family: 'FjallaOne';
@@ -65,7 +47,7 @@
 :root {
   /* Fonts */
   --font-display: 'UltraHyper', 'FjallaOne', sans-serif;
-  --font-body-serif: 'fsJenson1', 'Georgia', serif;
+  --font-body-serif: 'Georgia', serif;
   --font-mono: 'Sometype Mono', monospace;
   --font-body: var(--font-mono);
 

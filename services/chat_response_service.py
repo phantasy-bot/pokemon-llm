@@ -23,21 +23,21 @@ log = logging.getLogger("chat_response")
 class ChatResponseService:
     """
     Service for generating chat responses using a separate LLM.
-    
+
     Uses Featherless AI (dev) or Alkahest (prod) for chat responses,
     keeping the main game LLM separate from chat interactions.
     """
-    
+
     def __init__(
         self,
         api_key: str = None,
         base_url: str = None,
         model: str = None,
-        is_production: bool = False
+        is_production: bool = False,
     ):
         """
         Initialize the chat response service.
-        
+
         Args:
             api_key: API key for LLM provider
             base_url: Base URL for API calls
@@ -47,126 +47,138 @@ class ChatResponseService:
         # Determine which API to use
         if is_production:
             self.api_key = api_key or os.getenv("ALKAHEST_API_KEY", "")
-            self.base_url = base_url or os.getenv("ALKAHEST_BASE_URL", "https://api.alkahest.ai/v1")
+            self.base_url = base_url or os.getenv(
+                "ALKAHEST_BASE_URL", "https://api.alkahest.ai/v1"
+            )
             self.model = model or os.getenv("ALKAHEST_MODEL", "zai-org/GLM-4.6")
         else:
             self.api_key = api_key or os.getenv("FEATHERLESS_API_KEY", "")
-            self.base_url = base_url or os.getenv("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1")
+            self.base_url = base_url or os.getenv(
+                "FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1"
+            )
             self.model = model or os.getenv("FEATHERLESS_MODEL", "zai-org/GLM-4.6")
-        
+
         self._client: Optional[OpenAI] = None
         self._is_configured = bool(self.api_key and self.base_url and self.model)
-        
+
         # Context for Lass personality consistency
         self._recent_game_context: str = ""
         self._recent_commentary: str = ""
         self._response_count: int = 0
-        
+
         # Enhanced context for better chat responses
         self._player_location: str = ""
         self._player_team: str = ""
         self._recent_history: str = ""  # Brief summary of recent actions
         self._memory_context: str = ""  # Important events/milestones
-        self._token_context: str = ""   # $LASS token price/market info
-        
+        self._token_context: str = ""  # $LASS token price/market info
+
         if not self._is_configured:
             env_prefix = "ALKAHEST" if is_production else "FEATHERLESS"
-            log.warning(f"Chat response service not configured. Set {env_prefix}_API_KEY in .env")
+            log.warning(
+                f"Chat response service not configured. Set {env_prefix}_API_KEY in .env"
+            )
         else:
-            log.info(f"Chat response service configured: {self.base_url} using {self.model}")
-    
+            log.info(
+                f"Chat response service configured: {self.base_url} using {self.model}"
+            )
+
     @property
     def is_available(self) -> bool:
         """Check if service is configured."""
         return self._is_configured
-    
+
     @staticmethod
     def _strip_thinking_tags(text: str) -> str:
         """Remove <think>...</think> blocks from LLM response."""
         if not text:
             return text
         # Remove <think>...</think> including content (multiline)
-        # Remove <think>...</think> including content (multiline)
-        text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         # Handle unclosed start tags
-        text = re.sub(r'<think>.*$', '', text, flags=re.DOTALL)
+        text = re.sub(r"<think>.*$", "", text, flags=re.DOTALL)
         # Handle standalone closing tags (common artifact)
-        text = re.sub(r'</think>', '', text)
+        text = re.sub(r"</think>", "", text)
+
+        # Handle short tags <t>...</t> and malformed/shorthand tags
+        text = re.sub(r"<t>.*?</t>", "", text, flags=re.DOTALL)
+        # Remove standalone <t>, </t>, </ t>, </t > tags
+        text = re.sub(r"</?t\s*>", "", text, flags=re.IGNORECASE)
+
         return text.strip()
-    
+
     @staticmethod
     def _sanitize_tts_text(text: str) -> str:
         """
         Sanitize text for TTS playback by removing or replacing phrases
         that don't sound good when spoken.
-        
+
         Returns the sanitized text.
         """
         if not text:
             return text
-        
+
         # Blacklist of exact phrases/patterns to remove (case-insensitive)
         # These are sounds/exclamations that don't work well in TTS
         TTS_BLACKLIST = [
-            r'\beee+!*\b',           # "eee!", "eeee!", etc.
-            r'\bahh+!*\b',           # "ahh!", "ahhh!", etc.
-            r'\booh+!*\b',           # "ooh!", "oooh!", etc.
-            r'\buhh+!*\b',           # "uhh!", "uhhh!", etc.
-            r'\bhehe+!*\b',          # "hehe!", "hehehe!", etc.
-            r'\bheehee+!*\b',        # "heehee", etc.
-            r'\bmuahaha+!*\b',       # "muahaha", etc.
-            r'\b(lo+l)+\b',          # "lol", "lolol", "lololol", etc.
-            r'\bowo+\b',             # "owo", "owoo", etc.
-            r'\buwu+\b',             # "uwu", "uwuu", etc.
-            r'\b:3+\b',              # ":3", ":33", etc.
-            r'\bxD+\b',              # "xD", "xDD", etc.
-            r'\bteehee+!*\b',        # "teehee", etc.
+            r"\beee+!*\b",  # "eee!", "eeee!", etc.
+            r"\bahh+!*\b",  # "ahh!", "ahhh!", etc.
+            r"\booh+!*\b",  # "ooh!", "oooh!", etc.
+            r"\buhh+!*\b",  # "uhh!", "uhhh!", etc.
+            r"\bhehe+!*\b",  # "hehe!", "hehehe!", etc.
+            r"\bheehee+!*\b",  # "heehee", etc.
+            r"\bmuahaha+!*\b",  # "muahaha", etc.
+            r"\b(lo+l)+\b",  # "lol", "lolol", "lololol", etc.
+            r"\bowo+\b",  # "owo", "owoo", etc.
+            r"\buwu+\b",  # "uwu", "uwuu", etc.
+            r"\b:3+\b",  # ":3", ":33", etc.
+            r"\bxD+\b",  # "xD", "xDD", etc.
+            r"\bteehee+!*\b",  # "teehee", etc.
         ]
-        
+
         # Emoji patterns to remove (they don't get spoken anyway and can confuse TTS)
-        EMOJI_PATTERN = r'[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001FAFF]+'
-        
+        EMOJI_PATTERN = (
+            r"[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001FAFF]+"
+        )
+
         result = text
-        
+
         # Remove blacklisted phrases
         for pattern in TTS_BLACKLIST:
-            result = re.sub(pattern, '', result, flags=re.IGNORECASE)
-        
+            result = re.sub(pattern, "", result, flags=re.IGNORECASE)
+
         # Remove emojis
-        result = re.sub(EMOJI_PATTERN, '', result)
-        
+        result = re.sub(EMOJI_PATTERN, "", result)
+
         # Clean up extra whitespace left behind
-        result = re.sub(r'\s+', ' ', result).strip()
-        
+        result = re.sub(r"\s+", " ", result).strip()
+
         # Clean up orphaned punctuation (e.g., "! !" -> "!")
-        result = re.sub(r'([!?.,])\s*\1+', r'\1', result)
-        
+        result = re.sub(r"([!?.,])\s*\1+", r"\1", result)
+
         # Clean up leading punctuation
-        result = re.sub(r'^[!?.,\s]+', '', result)
-        
+        result = re.sub(r"^[!?.,\s]+", "", result)
+
         return result
-    
+
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client."""
         if self._client is None:
-            self._client = OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
+            self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         return self._client
-    
+
     def update_context(
-        self, 
-        game_context: str = None, 
+        self,
+        game_context: str = None,
         commentary: str = None,
         location: str = None,
         team: str = None,
         history: str = None,
         memory: str = None,
-        token_info: str = None
+        token_info: str = None,
     ):
         """Update context for more coherent responses.
-        
+
         Args:
             game_context: Current game state summary
             commentary: Most recent Lass commentary
@@ -190,7 +202,7 @@ class ChatResponseService:
             self._memory_context = memory
         if token_info:
             self._token_context = token_info
-    
+
     def _get_lass_personality_prompt(self) -> str:
         """Get Lass personality context for consistent responses."""
         base_personality = """You are Lass, a bubbly, silly, and adorable AI playing Pokemon Red on a Twitch livestream.
@@ -231,35 +243,35 @@ CURRENT GAME STATE (USE THIS FOR FACTS!)
 ═══════════════════════════════════════
 """
         context = base_personality
-        
+
         # Add team FIRST and prominently - this is critical for factual responses
         if self._player_team:
             context += f"🎮 MY TEAM: {self._player_team}\n"
         else:
             context += f"🎮 MY TEAM: No Pokemon yet!\n"
-        
+
         # Add location
         if self._player_location:
             context += f"📍 Location: {self._player_location}\n"
-        
+
         # Add game context
         if self._recent_game_context:
             context += f"📊 Status: {self._recent_game_context}\n"
         else:
             context += "📊 Status: Exploring the world of Pokemon!\n"
-        
+
         # Add recent history for context awareness
         if self._recent_history:
             context += f"📜 Recent events: {self._recent_history}\n"
-        
+
         # Add memory/milestones
         if self._memory_context:
             context += f"🏆 Milestones: {self._memory_context}\n"
-        
+
         # Add commentary for continuity
         if self._recent_commentary:
-            context += f"💬 My last commentary: \"{self._recent_commentary}\"\n"
-        
+            context += f'💬 My last commentary: "{self._recent_commentary}"\n'
+
         context += "═══════════════════════════════════════\n"
         context += "$LASS TOKEN (FOR PUMP.FUN CHAT)\n"
         context += "═══════════════════════════════════════\n"
@@ -275,42 +287,47 @@ CURRENT GAME STATE (USE THIS FOR FACTS!)
         context += "\n"
         context += "SAFETY RULES:\n"
         context += "- NEVER give actual financial advice or predictions\n"
-        context += "- If someone asks serious investment Q: 'lol idk I just play Pokemon!'\n"
+        context += (
+            "- If someone asks serious investment Q: 'lol idk I just play Pokemon!'\n"
+        )
         context += "\n"
         context += "EXAMPLE RESPONSES:\n"
         context += "- 'EEEE we're pumping!! I love... big... marketcaps 💕'\n"
-        context += "- 'omg $LASS fam is the best!! thanks for supporting the stream 🎮'\n"
+        context += (
+            "- 'omg $LASS fam is the best!! thanks for supporting the stream 🎮'\n"
+        )
         context += "- 'lol idk about charts, I'm just vibing and catching Pokemon!'\n"
-        
+
         if self._token_context:
             context += f"\n📈 CURRENT: {self._token_context}\n"
-        
+
         context += "═══════════════════════════════════════\n"
-        
+
         return context
-    
+
     async def decide_skip_or_respond(
-        self,
-        messages: List[Dict[str, Any]]
+        self, messages: List[Dict[str, Any]]
     ) -> List[DecidedMessage]:
         """
         Decide SKIP or RESPOND for a batch of messages.
-        
+
         Args:
             messages: List of dicts with username, display_name, message, timestamp
-        
+
         Returns:
             List of DecidedMessage objects with decisions
         """
         if not self.is_available or not messages:
             return []
-        
+
         # Build prompt for batch decision
-        messages_text = "\n".join([
-            f"{i+1}. @{m['display_name']}: \"{m['message']}\""
-            for i, m in enumerate(messages)
-        ])
-        
+        messages_text = "\n".join(
+            [
+                f'{i + 1}. @{m["display_name"]}: "{m["message"]}"'
+                for i, m in enumerate(messages)
+            ]
+        )
+
         prompt = f"""{self._get_lass_personality_prompt()}
 
 TASK: Decide which messages to SKIP or RESPOND to.
@@ -346,13 +363,15 @@ Only output the decisions, no explanations."""
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=100,
-                temperature=0.7
+                temperature=0.7,
             )
             duration = time.time() - start_time
             log.info(f"⚡ Decision LLM request took {duration:.2f}s")
-            
-            result_text = response.choices[0].message.content.strip() if response.choices else ""
-            
+
+            result_text = (
+                response.choices[0].message.content.strip() if response.choices else ""
+            )
+
             # Parse decisions
             decisions = []
             for line in result_text.split("\n"):
@@ -365,79 +384,90 @@ Only output the decisions, no explanations."""
                     try:
                         idx = int(parts[0].strip()) - 1
                         decision_str = parts[1].strip().upper()
-                        if 0 <= idx < len(messages) and decision_str in ("SKIP", "RESPOND"):
+                        if 0 <= idx < len(messages) and decision_str in (
+                            "SKIP",
+                            "RESPOND",
+                        ):
                             msg = messages[idx]
-                            decisions.append(DecidedMessage(
-                                username=msg['username'],
-                                display_name=msg['display_name'],
-                                message=msg['message'],
-                                timestamp=msg['timestamp'],
-                                decision=MessageDecision.RESPOND if decision_str == "RESPOND" else MessageDecision.SKIP
-                            ))
+                            decisions.append(
+                                DecidedMessage(
+                                    username=msg["username"],
+                                    display_name=msg["display_name"],
+                                    message=msg["message"],
+                                    timestamp=msg["timestamp"],
+                                    decision=MessageDecision.RESPOND
+                                    if decision_str == "RESPOND"
+                                    else MessageDecision.SKIP,
+                                )
+                            )
                     except (ValueError, IndexError):
                         continue
-            
+
             # Default any un-decided messages to RESPOND
             decided_idxs = {d.timestamp for d in decisions}
             for msg in messages:
-                if msg['timestamp'] not in decided_idxs:
-                    decisions.append(DecidedMessage(
-                        username=msg['username'],
-                        display_name=msg['display_name'],
-                        message=msg['message'],
-                        timestamp=msg['timestamp'],
-                        decision=MessageDecision.RESPOND,
-                        reason="default"
-                    ))
-            
+                if msg["timestamp"] not in decided_idxs:
+                    decisions.append(
+                        DecidedMessage(
+                            username=msg["username"],
+                            display_name=msg["display_name"],
+                            message=msg["message"],
+                            timestamp=msg["timestamp"],
+                            decision=MessageDecision.RESPOND,
+                            reason="default",
+                        )
+                    )
+
             # Sort by timestamp (oldest first)
             decisions.sort(key=lambda d: d.timestamp)
-            
-            log.info(f"💬 Decided on {len(decisions)} messages: "
-                    f"{sum(1 for d in decisions if d.decision == MessageDecision.RESPOND)} RESPOND, "
-                    f"{sum(1 for d in decisions if d.decision == MessageDecision.SKIP)} SKIP")
-            
+
+            log.info(
+                f"💬 Decided on {len(decisions)} messages: "
+                f"{sum(1 for d in decisions if d.decision == MessageDecision.RESPOND)} RESPOND, "
+                f"{sum(1 for d in decisions if d.decision == MessageDecision.SKIP)} SKIP"
+            )
+
             return decisions
-            
+
         except Exception as e:
             log.error(f"Error deciding on messages: {e}")
             # Default all to RESPOND on error
             return [
                 DecidedMessage(
-                    username=m['username'],
-                    display_name=m['display_name'],
-                    message=m['message'],
-                    timestamp=m['timestamp'],
+                    username=m["username"],
+                    display_name=m["display_name"],
+                    message=m["message"],
+                    timestamp=m["timestamp"],
                     decision=MessageDecision.RESPOND,
-                    reason="error_fallback"
+                    reason="error_fallback",
                 )
                 for m in messages
             ]
-    
+
     async def generate_response(
         self,
         username: str,
         message: str,
         is_past: bool = False,
-        chatter_context: str = ""
+        chatter_context: str = "",
     ) -> str:
         """
         Generate a response to a single chat message.
-        
+
         Args:
             username: Display name of the user
             message: The chat message
             is_past: If True, respond in past tense (catching up)
             chatter_context: Context about the user (e.g. "VIP viewer", "Sentiment: positive")
-        
+
         Returns:
             Response text or empty string on failure
         """
         if not self.is_available:
             return ""
-        
+
         chatter_info = f"\nUser Context: {chatter_context}" if chatter_context else ""
-        
+
         if is_past:
             prompt = f"""{self._get_lass_personality_prompt()}
 
@@ -473,10 +503,10 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=80,
-                temperature=0.9
+                temperature=0.9,
             )
             duration = time.time() - start_time
-            
+
             if response.choices and response.choices[0].message.content:
                 raw_result = response.choices[0].message.content.strip()
                 # Strip <think>...</think> blocks that reasoning models may include
@@ -490,21 +520,23 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
                     log.warning(f"Response was empty after TTS sanitization, skipping")
                     return ""
                 self._response_count += 1
-                log.info(f"✅ Generated response #{self._response_count} in {duration:.2f}s: {result[:50]}...")
+                log.info(
+                    f"✅ Generated response #{self._response_count} in {duration:.2f}s: {result[:50]}..."
+                )
                 return result
             return ""
-            
+
         except Exception as e:
             log.error(f"Error generating chat response: {e}")
             return ""
-    
+
     def get_stats(self) -> dict:
         """Get service statistics."""
         return {
             "available": self.is_available,
             "model": self.model,
             "base_url": self.base_url,
-            "response_count": self._response_count
+            "response_count": self._response_count,
         }
 
 
@@ -512,7 +544,7 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
 def create_chat_response_service(is_production: bool = None) -> ChatResponseService:
     """
     Create a ChatResponseService instance.
-    
+
     Args:
         is_production: Force production mode. If None, auto-detect from environment.
     """
@@ -528,5 +560,5 @@ def create_chat_response_service(is_production: bool = None) -> ChatResponseServ
             has_alkahest = bool(os.getenv("ALKAHEST_API_KEY"))
             has_featherless = bool(os.getenv("FEATHERLESS_API_KEY"))
             is_production = has_alkahest and not has_featherless
-    
+
     return ChatResponseService(is_production=is_production)
