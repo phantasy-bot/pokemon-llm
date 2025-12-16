@@ -693,39 +693,38 @@ export function PokemonStreamOverlay({
                   </div>
                 )}
 
-                  {/* Character Container */}
-                  <div className="character-container">
-                    <div className="character-container__left">
-                      <div className="character-container__commentary">
-                        <span className="character-container__commentary-label">COMMENTARY</span>
-                        <p className="character-container__commentary-text">
-                          {ttsCommentary?.playing ? (
-                            <SyncedTypewriterText 
-                              key={ttsCommentary.text} 
-                              text={ttsCommentary.text} 
-                              durationMs={ttsCommentary.duration_ms}
-                              onComplete={() => handleTtsComplete(ttsCommentary.text, ttsCommentary.reply_to)}
-                            />
-                          ) : lingerText ? (
-                            <HighlightedCommentary text={lingerText} />
-                          ) : (
-                            <AnimatedEllipsis interval={600} />
-                          )}
-                        </p>
-                      </div>
-                      <div className="character-container__spacer" />
+                {/* Character Container */}
+                <div className="character-container">
+                  <div className="character-container__left">
+                    <div className="character-container__commentary">
+                      <span className="character-container__commentary-label">COMMENTARY</span>
+                      <p className="character-container__commentary-text">
+                        {ttsCommentary?.playing ? (
+                          <SyncedTypewriterText 
+                            key={ttsCommentary.text} 
+                            text={ttsCommentary.text} 
+                            durationMs={ttsCommentary.duration_ms}
+                            onComplete={() => handleTtsComplete(ttsCommentary.text, ttsCommentary.reply_to)}
+                          />
+                        ) : lingerText ? (
+                          <HighlightedCommentary text={lingerText} />
+                        ) : (
+                          <AnimatedEllipsis interval={600} />
+                        )}
+                      </p>
                     </div>
-                    
-                    <div className="character-container__right">
-                      <TalkingCharacter 
-                        baseImage={avatarImage}
-                        isSpeaking={ttsCommentary?.playing ?? false}
-                        className="lass-character"
-                        alt="Lass Pokemon Trainer"
-                        speakFrameCount={3}
-                        speakInterval={120}
-                      />
-                    </div>
+                    <div className="character-container__spacer" />
+                  </div>
+                  
+                  <div className="character-container__right">
+                    <TalkingCharacter 
+                      baseImage={avatarImage}
+                      isSpeaking={ttsCommentary?.playing ?? false}
+                      className="lass-character"
+                      alt="Lass Pokemon Trainer"
+                      speakFrameCount={3}
+                      speakInterval={120}
+                    />
                   </div>
                 </div>
 
