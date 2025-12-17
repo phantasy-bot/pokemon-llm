@@ -1,18 +1,29 @@
 export function StreamCycle() {
   return (
     <div className="section clearfix">
-      <img 
-        src="/lass/lass-default.png" 
-        alt="Lass" 
-        className="lass-image lass-float-right"
-      />
-      
-      <h2 className="section-title">Stream Cycle: Flow & Timing</h2>
-      
-      <p>
-        Each cycle of the agent takes <strong>25-75 seconds</strong> depending on LLM speed 
-        and network conditions. Here's exactly what happens:
-      </p>
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            Each cycle of the agent takes <strong>25-75 seconds</strong> depending on LLM speed 
+            and network conditions. Here's exactly what happens:
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header">
+              <span className="badge">AUTO</span>
+              <h4>The Loop</h4>
+            </div>
+            <p>
+              Screenshot → Vision → LLM → Action → Repeat. A continuous cycle of observation and reaction.
+            </p>
+          </div>
+        </div>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
+      </div>
 
       <div className="diagram">
         <pre>{`

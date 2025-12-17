@@ -1,18 +1,33 @@
+import { PixelCode, PixelPlay, PixelChip } from '../icons/PixelIcons'
+
 export function Architecture() {
   return (
     <div className="section clearfix">
-      <img 
-        src="/lass/lass-glasses-thinking.png" 
-        alt="Lass thinking" 
-        className="lass-image lass-float-right"
-      />
-      
-      <h2 className="section-title">System Architecture</h2>
-      
-      <p>
-        The Pokemon LLM harness is a multi-layered system connecting a Game Boy 
-        emulator to modern AI models. Here's how the pieces fit together:
-      </p>
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            The Pokemon LLM harness is a multi-layered system connecting a Game Boy 
+            emulator to modern AI models. Here's how the pieces fit together:
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PixelChip size={20} color="var(--accent-primary)" />
+              <span className="badge">SYSTEM</span>
+              <h4>The Engine</h4>
+            </div>
+            <p>
+              React frontend, Python backend, mGBA emulator, and Lua bridge working in unison 
+              to enable autonomous gameplay.
+            </p>
+          </div>
+        </div>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
+      </div>
 
       <div className="diagram">
         <pre>{`
@@ -34,10 +49,13 @@ export function Architecture() {
         `}</pre>
       </div>
 
-      <h3 className="section-title">Data Flow</h3>
+      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <PixelPlay size={20} color="var(--accent-primary)" />
+        Data Flow
+      </h3>
 
       <div className="info-card">
-        <div className="info-card-header">
+        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="badge">1</span>
           <h4>Game State Collection</h4>
         </div>
@@ -48,7 +66,7 @@ export function Architecture() {
       </div>
 
       <div className="info-card">
-        <div className="info-card-header">
+        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="badge">2</span>
           <h4>LLM Processing</h4>
         </div>
@@ -59,7 +77,7 @@ export function Architecture() {
       </div>
 
       <div className="info-card">
-        <div className="info-card-header">
+        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="badge">3</span>
           <h4>Action Execution</h4>
         </div>
@@ -69,7 +87,10 @@ export function Architecture() {
         <p>Actions like <code>R;R;R;A;</code> are parsed and sent as individual button presses.</p>
       </div>
 
-      <h3 className="section-title">Core Modules</h3>
+      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <PixelCode size={20} color="var(--accent-primary)" />
+        Core Modules
+      </h3>
 
       <table>
         <thead>

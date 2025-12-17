@@ -82,8 +82,12 @@ def get_area_hint(gamestate: dict) -> str:
     # default fallback
     matching_section_key = None
     
-    # 1. PALLET TOWN & ROUTE 1
-    if "PALLET" in map_name or "REDS_HOUSE" in map_name or "OAKS_LAB" in map_name:
+    # 1. PALLET TOWN & ROUTE 1 (including Player's House)
+    if "PALLET" in map_name or "REDS_HOUSE" in map_name or "OAKS_LAB" in map_name or "PLAYERS_HOUSE" in map_name:
+        # Specific navigation help for leaving Pallet Town
+        if map_name == "PALLET_TOWN" and not has_item("POKEDEX") and not has_item("PARCEL"):
+             return "🚪 ROUTE 1 EXIT: Walk to [10,1] or [11,1] (north edge) to trigger Oak scene and access Route 1."
+
         # Check if we have Pokedex
         if has_item("POKEDEX"):
             # If we have Pokedex, we are done with initial quest, likely heading to Viridian or Route 1

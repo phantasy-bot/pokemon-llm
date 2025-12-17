@@ -1,4 +1,5 @@
 import sys
+import os
 from pyAIAgent.utils.file_utils import find_mgba
 
 PORT = 8888 # mGBA socket port
@@ -13,3 +14,6 @@ if not MGBA_EXE:
     print("Error: mGBA executable not found.")
     sys.exit(1)
 
+# Stream countdown duration in seconds (default 5 minutes)
+# Frontend and backend should use the same value for synchronized transitions
+STREAM_COUNTDOWN_SECONDS = int(os.environ.get('STREAM_COUNTDOWN_SECONDS', '300'))

@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger('llm_client_setup')
 
 # --- Configuration Defaults ---
-DEFAULT_MODE = "ZAI" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC, ZAI
+DEFAULT_MODE = "ZAI" # OPENAI, GEMINI, OLLAMA, LMSTUDIO, GROQ, TOGETHER, GROK, ANTHOPIC, ZAI, ZAI_DIRECT
 DEFAULT_OPENAI_MODEL = "o3"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
 DEFAULT_OLLAMA_MODEL = "gemma3:27b-it-q4_K_M"
@@ -20,6 +20,7 @@ DEFAULT_TOGETHER_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
 DEFAULT_GROK_MODEL = "grok-3-mini"
 DEFAULT_ANTHOPIC_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_ZAI_MODEL = "glm-4v"
+DEFAULT_ZAI_DIRECT_MODEL = "glm-4.6v-flash"  # Free multimodal model - combined vision+text
 
 DEFAULT_MODEL_BY_MODE = {
     "OPENAI": DEFAULT_OPENAI_MODEL,
@@ -31,9 +32,11 @@ DEFAULT_MODEL_BY_MODE = {
     "GROK": DEFAULT_GROK_MODEL,
     "ANTHOPIC": DEFAULT_ANTHOPIC_MODEL,
     "ZAI": DEFAULT_ZAI_MODEL,
+    "ZAI_DIRECT": DEFAULT_ZAI_DIRECT_MODEL,  # Combined vision+text in single call
 }
 
 MODES = list(DEFAULT_MODEL_BY_MODE.keys())
+
 
 REASONING_EFFORT = "high" # Default reasoning effort level, can be "low", "medium", or "high" for models that support it
 ONE_IMAGE_PER_PROMPT = True # Set to False to allow multiple images per prompt (Often performs better with single image)
@@ -78,9 +81,18 @@ def parse_mode_arg(modes, default_mode=DEFAULT_MODE):
     mode = args.mode
 
     if not mode:
-        print(f"\nNo LLM mode specified via command line.")
-        print(f"Using default mode: {default_mode}")
-        mode = default_mode
+        # Check environment variable before falling back to default
+        env_mode = os.getenv("MODE")
+        if env_mode and env_mode in modes:
+            print(f"\nNo LLM mode specified via command line.")
+            print(f"Using MODE from .env: {env_mode}")
+            mode = env_mode
+        else:
+            if env_mode:
+                print(f"\nWarning: MODE='{env_mode}' in .env is not valid. Valid modes: {modes}")
+            print(f"No LLM mode specified via command line or .env.")
+            print(f"Using default mode: {default_mode}")
+            mode = default_mode
     else:
         print(f"LLM mode specified via command line: {mode}")
 
@@ -253,8 +265,30 @@ def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str |
             log.error(f"Failed to initialize Z.AI client: {e}", exc_info=True)
             return None, None
 
+    elif MODE == "ZAI_DIRECT":
+        # ZAI_DIRECT: Use standard Z.AI API with GLM-4.6V-flash for combined vision+text
+        # This mode embeds images directly in the API call, eliminating the need for separate vision analysis
+        api_key = os.getenv("ZAI_API_KEY")  # Same API key as ZAI
+        if not api_key:
+            log.error("MODE is ZAI_DIRECT but ZAI_API_KEY not found in environment variables.")
+            return None, None
+        try:
+            # Standard API endpoint (not coding plan)
+            base_url = get_config("ZAI_DIRECT_BASE_URL", "https://api.z.ai/api/paas/v4")
+            client = OpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                timeout=TIMEOUT
+            )
+            model = get_config("ZAI_DIRECT_MODEL", DEFAULT_ZAI_DIRECT_MODEL)
+            supports_reasoning = False  # Standard API doesn't use thinking param
+            log.info(f"Using Z.AI Direct API (combined vision+text). Base URL: {base_url}, Model: {model}")
+        except Exception as e:
+            log.error(f"Failed to initialize Z.AI Direct client: {e}", exc_info=True)
+            return None, None
+
     else:
-        log.error(f"Invalid MODE selected: {MODE}. Set MODE environment variable correctly (e.g., OPENAI, GEMINI, OLLAMA, LMSTUDIO, ZAI).")
+        log.error(f"Invalid MODE selected: {MODE}. Set MODE environment variable correctly (e.g., OPENAI, GEMINI, OLLAMA, LMSTUDIO, ZAI, ZAI_DIRECT).")
         return None, None
 
     if client and model:

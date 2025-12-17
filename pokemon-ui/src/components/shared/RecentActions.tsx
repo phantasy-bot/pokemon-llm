@@ -8,6 +8,7 @@ interface RecentActionsProps {
   animateTrigger?: number; // Timestamp when to trigger button animations
   isWaitingForAction?: boolean; // When true, show "waiting for actions..." in current column
   isActive?: boolean; // When true, highlight the entire section with accent color
+  delayMs?: number; // Delay before starting animation (ms)
 }
 
 const MAX_VISIBLE_KEYS = 5;
@@ -27,7 +28,7 @@ function AnimatedDots() {
   return <span className="animated-dots">{dots}</span>;
 }
 
-export function RecentActions({ logs, totalActions, animateTrigger, isWaitingForAction = false, isActive = false }: RecentActionsProps) {
+export function RecentActions({ logs, totalActions, animateTrigger, isWaitingForAction = false, isActive = false, delayMs = 0 }: RecentActionsProps) {
   // Track when to animate - only animate when animateTrigger changes
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const lastTriggerRef = useRef<number | undefined>(undefined);
@@ -36,13 +37,24 @@ export function RecentActions({ logs, totalActions, animateTrigger, isWaitingFor
   useEffect(() => {
     if (animateTrigger && animateTrigger !== lastTriggerRef.current) {
       lastTriggerRef.current = animateTrigger;
-      setShouldAnimate(true);
       
-      // Reset animation flag after animation completes (about 3s for all buttons)
-      const timer = setTimeout(() => setShouldAnimate(false), 3000);
-      return () => clearTimeout(timer);
+      // If delayMs provided, wait before starting animation
+      if (delayMs > 0) {
+        const startTimer = setTimeout(() => {
+          setShouldAnimate(true);
+          // End animation after it plays (3s roughly covers it)
+          const endTimer = setTimeout(() => setShouldAnimate(false), 3000);
+          return () => clearTimeout(endTimer);
+        }, delayMs);
+        return () => clearTimeout(startTimer);
+      } else {
+        // Immediate start
+        setShouldAnimate(true);
+        const timer = setTimeout(() => setShouldAnimate(false), 3000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [animateTrigger]);
+  }, [animateTrigger, delayMs]);
   
   const actionEntries = logs.filter((log) => log.is_action).slice(0, 2); // Only need 2 for 2-column layout
 

@@ -170,23 +170,51 @@ export function AnalysisPanel({
   const isVisionActive = processingStatus?.toUpperCase().includes('VISION') ?? false;
   const isLlmActive = processingStatus?.toUpperCase().includes('THINKING') ?? false;
   
+  
   // Track action animation state locally for immediate response
-  const [isActionActive, setIsActionActive] = useState(false);
+  const [actionPhase, setActionPhase] = useState<'idle' | 'gathering' | 'sending'>('idle');
   const lastAnimateTrigger = useRef<number | undefined>(undefined);
+  
+  // Track if typewriter animation is currently running
+  // Text should only be dark/visible during typewriter, faded otherwise
+  const [isTypewriting, setIsTypewriting] = useState(false);
   
   useEffect(() => {
     if (animateActions && animateActions !== lastAnimateTrigger.current) {
       lastAnimateTrigger.current = animateActions;
-      setIsActionActive(true);
       
-      // Action animation lasts about 3 seconds
-      const timer = setTimeout(() => setIsActionActive(false), 3000);
-      return () => clearTimeout(timer);
+      // Start Phase 1: Gathering Courage (Highlight ON, Animation Delayed)
+      setActionPhase('gathering');
+      setIsTypewriting(false);
+      
+      // Start Phase 2: Sending Actions (Highlight ON, Animation Playing) after 1s
+      const gatheringTimer = setTimeout(() => {
+        setActionPhase('sending');
+        
+        // End Phase: Idle after 3s of sending
+        const sendingTimer = setTimeout(() => {
+          setActionPhase('idle');
+        }, 3000);
+        
+        return () => clearTimeout(sendingTimer);
+      }, 1000); // 1000ms gathering courage duration
+      
+      return () => clearTimeout(gatheringTimer);
     }
   }, [animateActions]);
   
   // Only one section can be active at a time
+  // Action is active if we are in gathering OR sending phase
+  const isActionActive = actionPhase !== 'idle';
   const activeSection = isActionActive ? 'actions' : isVisionActive ? 'vision' : isLlmActive ? 'llm' : 'none';
+
+  // Override processing status during action phases
+  let displayProcessingStatus = processingStatus;
+  if (actionPhase === 'gathering') {
+    displayProcessingStatus = "gathering courage to act...";
+  } else if (actionPhase === 'sending') {
+    displayProcessingStatus = "sending actions...";
+  }
 
   return (
     <div className="analysis-panel-container">
@@ -205,8 +233,15 @@ export function AnalysisPanel({
             <div className="analysis-panel__list">
               {/* Show only current entry or waiting state */}
               {latestEntry ? (
-                <div className={`analysis-panel__content-wrapper ${activeSection !== 'llm' && activeSection !== 'actions' ? 'analysis-panel__content-wrapper--faded' : ''}`}>
-                  <LogEntryCard key={latestEntry.id} entry={latestEntry} isNew onScroll={scrollToBottom} />
+                <div className={`analysis-panel__content-wrapper ${!isTypewriting ? 'analysis-panel__content-wrapper--faded' : ''}`}>
+                  <LogEntryCard 
+                    key={latestEntry.id} 
+                    entry={latestEntry} 
+                    isNew 
+                    onScroll={scrollToBottom} 
+                    onTypewriterStart={() => setIsTypewriting(true)}
+                    onTypewriterComplete={() => setIsTypewriting(false)}
+                  />
                 </div>
               ) : (
                 /* No analysis yet - show centered processing status or waiting text */
@@ -225,9 +260,9 @@ export function AnalysisPanel({
           </div>
           
           {/* Processing status at bottom - always rendered with fixed height to prevent layout shift */}
-          <div className={`analysis-panel__processing-bottom ${latestEntry && processingStatus ? '' : 'analysis-panel__processing-bottom--hidden'}`}>
+          <div className={`analysis-panel__processing-bottom ${latestEntry && displayProcessingStatus ? '' : 'analysis-panel__processing-bottom--hidden'}`}>
             <SpinningPokeball />
-            <span className="analysis-panel__processing-text">{processingStatus || 'IDLE'}</span>
+            <span className="analysis-panel__processing-text">{displayProcessingStatus || 'IDLE'}</span>
           </div>
         </div>
 
@@ -238,6 +273,7 @@ export function AnalysisPanel({
           animateTrigger={animateActions} 
           isWaitingForAction={activeSection === 'none'}
           isActive={activeSection === 'actions'}
+          delayMs={1000}
         />
 
         {/* 3. Latest Memory Section (Above Vision) */}

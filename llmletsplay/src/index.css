@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&family=Inconsolata:wght@400;700&display=swap');
+@import './fonts.css';
 
 :root {
   /* Theme Colors - Matching pokemon-ui light theme */
@@ -9,7 +9,7 @@
   --text-primary: #2d2a26;  /* Dark text for light theme */
   --text-secondary: #5a5550;
   --text-muted: #8a8580;
-  --border-color: #c0bab8;
+  --border-color: #a0a09f; /* Darkened significantly from #c0bab8 */
   --border-subtle: #d0cac8;
   
   /* Pokemon Red accent - matching pokemon-ui */
@@ -19,9 +19,9 @@
   --cream: #f0eae8;
   
   /* Fonts */
-  --font-display: 'Press Start 2P', monospace;
-  --font-body: 'VT323', monospace;
-  --font-mono: 'Inconsolata', monospace;
+  --font-display: 'UltraHyper', sans-serif;
+  --font-body: 'Sometype Mono', monospace;
+  --font-mono: 'Sometype Mono', monospace;
   
   /* Spacing */
   --space-xs: 4px;
@@ -33,7 +33,7 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   
-  --sidebar-width: 240px;
+  --sidebar-width: 280px;
 }
 
 * {
@@ -73,8 +73,13 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-dark);
-  border-right: 1px solid var(--border-color);
   flex-shrink: 0;
+  position: relative;
+  transition: width 0.2s ease;
+}
+
+.sidebar--collapsed {
+  width: 80px;
 }
 
 .sidebar-header {
@@ -82,7 +87,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: var(--space-lg);
-  border-bottom: 1px solid var(--border-color);
+  /* border-bottom: 1px solid var(--border-color); - REMOVED */
 }
 
 .brand-icon {
@@ -101,8 +106,8 @@ body {
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: 9px;
-  color: var(--accent-primary);
+  font-size: 16px; /* Increased from 9px */
+  color: var(--accent-primary-bright); /* Changed to bright primary */
   line-height: 1.4;
 }
 
@@ -117,36 +122,45 @@ body {
 }
 
 .nav-item {
-  font-family: var(--font-display);
-  font-size: 8px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
   padding: 12px 14px;
-  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  background: none;
+  border: none;
 }
 
 .nav-item:hover {
-  background-color: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: var(--accent-primary);
-  color: white;
+  color: var(--accent-primary);
 }
 
 .nav-icon {
+  font-size: 18px; /* Slightly larger icon wrapper */
+  display: flex; /* Ensure flex for centering */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sub-item nav items (indented under parent) */
+.nav-item--sub {
+  padding-left: 32px;
   font-size: 14px;
 }
 
 /* SIDEBAR FOOTER with social links */
 .sidebar-footer {
   padding: var(--space-md);
-  border-top: 1px solid var(--border-color);
+  /* border-top: 1px solid var(--border-color); - REMOVED */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -158,6 +172,39 @@ body {
   justify-content: center;
 }
 
+
+.sidebar-nav li button,
+.sidebar-nav li a {
+  display: flex;
+  align-items: center; /* Fix vertical alignment */
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  gap: 10px; /* Ensure space between icon and text */
+}
+
+/* Ensure SVG icons inside are centered */
+.sidebar-nav li button svg,
+.sidebar-nav li a svg {
+  display: block; /* Remove baseline vertical-align issues */
+  flex-shrink: 0;
+}
+
+.sidebar-nav li button:hover,
+.sidebar-nav li a:hover,
+.sidebar-nav li.active button,
+.sidebar-nav li.active a {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
 .social-link {
   display: flex;
   align-items: center;
@@ -165,15 +212,14 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: var(--bg-hover);
+  background: transparent;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .social-link:hover {
-  background: var(--accent-primary);
-  color: white;
+  color: var(--accent-primary);
 }
 
 .social-link svg {
@@ -198,7 +244,16 @@ body {
   flex-direction: column;
   padding: 14px;
   padding-left: 0;
+  padding-right: 0; /* Extend to right edge */
+  padding-bottom: 0; /* Extend to bottom */
   overflow: hidden;
+}
+
+/* Hide sponsor text on narrow viewports when sidebar becomes responsive */
+@media (max-width: 768px) {
+  .sponsor-text {
+    display: none !important;
+  }
 }
 
 /* ============================================
@@ -211,27 +266,32 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--accent-primary-bright);
-  border: 1px solid var(--border-color);
+  /* border: 1px solid var(--border-color); - REMOVED */
   border-top-right-radius: 0;
   border-top-left-radius: 12px;
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 0; /* Align with bottom */
+  border-bottom-right-radius: 0; /* Align with bottom */
   overflow: hidden;
+  /* Clips holographic trail to stay within folder bounds */
+  clip-path: inset(0 0 0 0);
 }
 
 /* FOLDER TITLE in the red bar */
 .folder-title {
   position: absolute;
-  top: 6px;
+  top: -4px;
   left: 0;
   width: calc(100% - 220px);
   text-align: center;
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: clamp(24px, 4vw, 48px); /* Responsive: min 24px, preferred 4vw, max 48px */
   font-weight: 700;
   color: rgba(0, 0, 0, 0.85);
   z-index: 20;
   pointer-events: none;
+  /* Background to mask scrolling content */
+  background: var(--accent-primary-bright);
+  padding: 8px 0 24px 0; /* Extra bottom padding to cover scrolling content */
 }
 
 /* CORNER CUTOUT SVG */
@@ -261,6 +321,12 @@ body {
   display: flex;
   gap: var(--space-lg);
   align-items: center;
+}
+
+@media (min-width: 769px) {
+  .folder-stats {
+    padding-right: 16px; /* Only on Tablet/Desktop */
+  }
 }
 
 .stat-item {
@@ -314,7 +380,6 @@ body {
   object-position: top;
 }
 
-/* FOLDER CONTENT */
 .folder-content {
   flex: 1;
   display: flex;
@@ -328,6 +393,8 @@ body {
   margin-top: calc(var(--space-sm) + 40px);
   overflow-y: auto;
   overflow-x: hidden;
+  z-index: 1; /* Below folder title (z-index: 20) to prevent scroll overlap */
+  position: relative; /* Create stacking context */
   
   /* Hide scrollbar for clean presentation */
   scrollbar-width: none; /* Firefox */
@@ -349,14 +416,14 @@ h1, h2, h3, h4 {
   line-height: 1.5;
 }
 
-h1 { font-size: 14px; margin-bottom: var(--space-md); }
-h2 { font-size: 11px; margin-bottom: var(--space-sm); }
-h3 { font-size: 9px; margin-bottom: var(--space-sm); }
-h4 { font-size: 8px; }
+h1 { font-size: 32px; margin-bottom: var(--space-md); }
+h2 { font-size: 26px; margin-bottom: var(--space-sm); margin-top: 0; }
+h3 { font-size: 24px; margin-bottom: var(--space-sm); } /* Increased from 20px */
+h4 { font-size: 18px; } /* Increased from 16px */
 
 p, li, td, th {
   font-family: var(--font-body);
-  font-size: 18px;
+  font-size: 16px; /* Decreased from 18px */
   line-height: 1.5;
 }
 
@@ -395,13 +462,51 @@ a:hover {
 
 .section {
   margin-bottom: var(--space-lg);
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .section-title {
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
   margin-bottom: var(--space-md);
   padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px dotted var(--border-color);
+  background: var(--cream);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Highlighted text in lists */
+.highlight {
+  background: var(--text-primary);
+  color: var(--cream);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+/* Lists inside sections */
+.section ol,
+.section ul {
+  background: var(--cream);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  padding-left: 40px;
+  margin: var(--space-md) 0;
+  border: 1px solid var(--border-color);
+}
+
+.section ol li,
+.section ul li {
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 /* ============================================
@@ -421,14 +526,16 @@ table {
 th, td {
   padding: var(--space-sm) var(--space-md);
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 2px dotted black; /* Dotted and black */
 }
 
 th {
   background: var(--bg-hover);
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
   font-family: var(--font-display);
-  font-size: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  border-bottom: 2px solid var(--border-color);
 }
 
 tr:hover {
@@ -441,18 +548,39 @@ tr:hover {
 
 .info-card {
   background: var(--cream);  /* Cream bg for visibility on red folder */
-  border: 1px solid var(--border-color);
+  border: 2px solid rgba(0, 0, 0, 0.8);  /* Darker, more black border */
   border-radius: var(--radius-md);
-  padding: var(--space-md);
+  padding: var(--space-lg);
   margin: var(--space-md) 0;
+}
+
+.info-card--dotted {
+  background: #1a1a1a;  /* Pure dark black bg */
+  border: 2px dashed white;  /* Changed to dashed */
+  color: white;
+}
+
+.info-card--dotted h4,
+.info-card--dotted .info-card-header {
+  color: white;
+}
+
+/* Technical specs icons and labels use accent color */
+.info-card--dotted svg {
+  color: var(--accent-primary-bright) !important;
+}
+
+.info-card--dotted div[style*="letterSpacing: '2px'"] {
+  color: var(--accent-primary-bright) !important;
 }
 
 .info-card-header {
   display: flex;
   align-items: center;
+  justify-content: center; /* Ensure titles are centered */
   gap: var(--space-sm);
   margin-bottom: var(--space-sm);
-  color: var(--accent-primary-bright);
+  color: var(--text-primary);
 }
 
 /* ============================================
@@ -484,9 +612,10 @@ tr:hover {
   display: inline-block;
   background: var(--accent-primary);
   color: white;
-  font-family: var(--font-display);
-  font-size: 7px;
-  padding: 3px 8px;
+  font-family: var(--font-mono); /* Changed to monospace */
+  font-weight: 700;
+  font-size: 10px; /* Increased from 7px */
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   margin-right: var(--space-xs);
 }
@@ -504,16 +633,38 @@ tr:hover {
 
 .lass-float-right {
   float: right;
-  margin-left: var(--space-lg);
+  margin-left: 40px;
   margin-bottom: var(--space-md);
-  width: 140px;
+  width: 220px; 
 }
 
 .lass-float-left {
   float: left;
   margin-right: var(--space-lg);
   margin-bottom: var(--space-md);
-  width: 140px;
+  width: 220px;
+}
+
+/* About Section Specific Layout */
+.about-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  margin-bottom: var(--space-lg);
+}
+
+.about-text-content {
+  flex: 1;
+}
+
+.lass-intro-image {
+  width: 200px; /* Bigger size */
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--accent-primary);
+  flex-shrink: 0;
+  margin-right: -22px; /* Overflow to the right */
 }
 
 /* ============================================
@@ -547,69 +698,83 @@ li::marker {
    RESPONSIVE
    ============================================ */
 
-@media (max-width: 900px) {
+/* Hide sidebar on mobile, show hamburger menu */
+@media (max-width: 768px) {
   .sidebar {
-    width: 60px;
-  }
-  
-  .brand-name,
-  .nav-item span:not(.nav-icon),
-  .social-links,
-  .copyright {
     display: none;
   }
   
-  .nav-links {
-    padding: var(--space-sm);
-  }
-  
-  .nav-item {
-    justify-content: center;
-    padding: var(--space-sm);
+  .menu-toggle {
+    display: flex !important;
   }
   
   .folder-title {
-    font-size: 12px;
+    font-size: clamp(18px, 5vw, 32px) !important;
+    letter-spacing: 2px !important;
+    width: calc(100% - 180px);
   }
   
-  .lass-float-right,
-  .lass-float-left {
-    float: none;
-    margin: var(--space-md) auto;
-    display: block;
-    width: 100px;
+  .corner-container {
+    width: 180px;
+  }
+  
+  .folder-stats {
+    right: 8px;
+    gap: var(--space-md);
+  }
+  
+  .stat-label {
+    font-size: 8px;
+  }
+  
+  .stat-count {
+    font-size: 14px;
   }
 }
 
+/* Tablet adjustments */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .folder-title {
+    font-size: clamp(20px, 4vw, 40px) !important;
+    letter-spacing: 4px !important;
+  }
+}
+
+/* Landing Page Buttons */
 /* Landing Page Buttons */
 .landing-button {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: var(--bg-card); /* Transparent/Dark depending on theme, expecting transparent here */
   background-color: var(--cream);
   border: 2px solid var(--border-color);
+  border-bottom-width: 6px; /* Enhanced 3D effect */
   border-radius: 12px;
   font-family: var(--font-display);
   font-size: 14px;
   color: var(--text-primary);
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy transition */
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 4px 0 rgba(0,0,0,0.1);
   text-transform: uppercase;
+  margin-bottom: 4px; /* Space for the 3D effect */
 }
 
 .landing-button:hover {
   transform: translateY(-2px);
+  border-bottom-width: 8px; /* Grow 3D effect on hover */
+  margin-bottom: 2px; /* Adjust margin to keep position stable */
   box-shadow: 0 6px 0 rgba(0,0,0,0.1);
   color: var(--accent-primary);
   border-color: var(--accent-primary);
 }
 
 .landing-button:active {
-  transform: translateY(2px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.1);
+  transform: translateY(4px); /* Push down */
+  border-bottom-width: 2px; /* Collapse 3D effect */
+  margin-bottom: 6px; /* Adjust margin */
+  box-shadow: none;
 }
 
 .landing-button.primary {
@@ -621,20 +786,1984 @@ li::marker {
 .landing-button.primary:hover {
   background-color: var(--accent-primary-bright);
   color: white;
+  border-color: var(--accent-primary);
 }
 
 .landing-button.twitch {
   background-color: #9146FF;
   color: white;
-  border-color: #9146FF;
+  border-color: #772ce8; /* Darker purple for 3D border */
 }
 
 .landing-button.twitch:hover {
   background-color: #a970ff;
   color: white;
+  border-color: #9146FF;
 }
 
 /* Make sure text colors in landing buttons override default link colors */
 .landing-button, .landing-button:visited {
   text-decoration: none;
+}
+
+/* ============================================
+   CRT STATIC EFFECT (Optimized for memory)
+   ============================================ */
+
+@keyframes static-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes static-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Simplified keyframes for better performance */
+@keyframes static-scroll {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-5%, 5%); }
+  50% { transform: translate(5%, -5%); }
+  75% { transform: translate(-5%, -5%); }
+}
+
+@keyframes static-flicker {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.7; }
+}
+
+.crt-static-overlay {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  /* Use a simpler noise pattern */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  /* Animation paused by default - only runs when container has .crt-active class */
+  animation: static-scroll 0.2s steps(4) infinite, static-flicker 0.3s linear infinite;
+  animation-play-state: paused;
+  will-change: transform, opacity;
+  pointer-events: none;
+  content-visibility: auto;
+}
+
+/* Active state for when CRT effect should animate */
+.crt-container:hover .crt-static-overlay,
+.crt-active .crt-static-overlay {
+  animation-play-state: running;
+}
+
+.crt-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 20;
+}
+
+
+/* COMING SOON PAGE STYLES - CONSOLIDATED (DEC 13) */
+
+/* Wrapper */
+.coming-soon-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding-top: 40px;
+}
+
+/* Base Group Container - Desktop Default */
+.coming-soon-group {
+  position: fixed;
+  bottom: -20px;
+  right: 15%; /* Desktop Shift Right (15%) */
+  height: 85vh; 
+  max-height: 850px;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+  transition: all 0.3s ease;
+}
+
+/* Character Image */
+.coming-soon-character {
+  height: 100%;
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+  position: relative; 
+}
+
+/* Bubble - Desktop Default (Top-Left of Group / Left of Char) */
+.coming-soon-bubble {
+  position: absolute;
+  /* Strong Vertical Anchor */
+  top: auto;
+  bottom: 85%; /* Lifts bubble high relative to character */
+  
+  /* Horizontal Anchor */
+  left: 0;
+  transform: translateX(-100%); /* Places strictly to left */
+  
+  z-index: 100;
+  width: max-content;
+  max-width: 450px; 
+  padding: 24px 48px;
+  margin-right: 40px; /* Space from character */
+  
+  /* Styling */
+  background: var(--cream);
+  border: 2px solid var(--accent-primary);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+  
+  /* Animation: appear after character lands (4s delay = 1s after 3s landing in 4s animation) */
+  opacity: 0;
+  animation: bubble-fade-in 0.5s ease-out 4s forwards;
+}
+
+.coming-soon-title {
+  font-family: var(--font-display);
+  font-size: 26px;  /* Reduced from 32px */
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  letter-spacing: 2px;
+}
+
+.coming-soon-text {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Tails Display */
+.coming-soon-tail-desktop { display: block; position: absolute; bottom: -28px; right: 40px; width: 50px; height: 35px; }
+.coming-soon-tail-tablet { display: none; }
+.coming-soon-tail-mobile { display: none; }
+
+
+/* RESPONSIVE BREAKPOINTS */
+
+/* 1. Large Screens (1600px+) */
+@media (min-width: 1600px) {
+  .coming-soon-group {
+    right: 15%;
+  }
+  
+  .coming-soon-bubble {
+    max-width: 600px !important;  /* Larger on big screens */
+  }
+  
+  .coming-soon-title {
+    font-size: 28px !important;  /* Slightly larger on big screens */
+  }
+}
+
+/* 2. Small Desktop (1025px - 1366px) */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .coming-soon-group {
+    right: 5%; 
+    height: 75vh; 
+  }
+}
+
+/* 3. Tablet (769px - 1024px) - COMING SOON LAYOUT ADJUSTMENTS */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Sidebar uses JS-based auto-collapse now (Sidebar.tsx handles this) */
+  
+  /* Hide toggle button on tablet (already collapsed) */
+  .sidebar-toggle { display: none !important; }
+
+  /* --- Coming Soon Layout Flip --- */
+  .coming-soon-group {
+    right: auto;
+    left: 20%; 
+    height: 70vh;
+    bottom: 0px;
+  }
+  
+  .coming-soon-character {
+    position: relative;
+    right: auto; left: auto; top: auto; bottom: auto;
+  }
+  
+  .coming-soon-bubble {
+    bottom: auto; 
+    top: 0;
+    margin-top: -100px;
+    left: auto;
+    right: 45%;
+    transform: none;
+    margin-right: 0;
+    margin-left: 0; 
+    max-width: 350px; 
+  }
+  
+  /* Swap Tails */
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { 
+    display: block; 
+    position: absolute; 
+    bottom: -28px; 
+    right: 20px; /* Moved to right side */
+    left: auto;
+    width: 50px; 
+    height: 35px;
+    transform: scaleX(-1); /* Flip horizontally */
+  }
+}
+
+/* 4. Mobile (<= 768px) */
+@media (max-width: 768px) {
+  .coming-soon-wrapper {
+    height: auto;
+    display: block;
+  }
+  
+  /* Break Group */
+  .coming-soon-group {
+    position: static; 
+    height: auto;
+    width: 100%;
+  }
+
+  /* Character Fixed Bottom */
+  .coming-soon-character {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 50vh;
+    width: auto;
+    z-index: 5;
+  }
+  
+  /* Bubble Fixed Top */
+  .coming-soon-bubble {
+    position: fixed; 
+    top: 180px; /* Low enough */
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    
+    /* Fit Fixes */
+    width: 90%; 
+    max-width: none;
+    height: auto;
+    padding: 20px 24px;
+    z-index: 10;
+  }
+  
+  .coming-soon-title { font-size: 20px !important; letter-spacing: 1px; }
+  .coming-soon-text { font-size: 14px !important; }
+
+  .coming-soon-tail-desktop { display: none; }
+  .coming-soon-tail-tablet { display: none; }
+  .coming-soon-tail-mobile { 
+    display: block; 
+    position: absolute;
+    bottom: -28px;
+    left: 45%; /* Shift beak 5% left */
+    transform: translateX(-50%);
+    width: 40px; height: 30px;
+  } 
+}
+
+/* Utility Overrides */
+.sidebar-toggle:hover {
+  background: var(--text-primary) !important;
+  border-color: var(--text-primary) !important;
+}
+.sidebar-toggle:hover svg {
+  color: var(--bg-dark) !important;
+}
+
+/* Homepage Folder Title Match */
+.landing-page .folder-title {
+  top: -4px;
+}
+@media (max-width: 1024px) {
+  .folder-title, .landing-page .folder-title {
+    top: 6px !important;
+  }
+}
+
+/* FINAL CONSOLIDATED OVERRIDES (DEC 13 - ROUND 14) */
+
+/* 1. Desktop: Fixed height (no shrinking), moved right */
+@media (min-width: 1025px) {
+  .coming-soon-group {
+    right: 12% !important; /* Moved right 100px (~5%) (was 17%) */
+    max-height: 750px !important;
+    height: 85vh !important; /* Fixed height - no shrinking */
+  }
+  
+  /* Move bubble closer to character by adjusting transform - 25px closer to right */
+  .coming-soon-bubble {
+    transform: translateX(calc(-60% + 25px)) !important;
+    max-width: clamp(350px, 40vw, 550px) !important;
+    margin-right: 0 !important;
+  }
+  
+  /* Desktop title size */
+  .coming-soon-title {
+    font-size: 24px !important;
+  }
+}
+
+/* 1b. Small Desktop: Push LEFT more + bubble up more */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .coming-soon-group {
+    right: 3% !important; /* Pushed left for small desktop */
+    height: 60vh !important;
+  }
+  
+  /* Lift bubble up */
+  .coming-soon-bubble {
+    bottom: 95% !important;
+  }
+  
+  /* Smaller text on small desktop */
+  .coming-soon-title { font-size: 18px !important; letter-spacing: 1px !important; }
+  .coming-soon-text { font-size: 12px !important; }
+}
+
+/* 2. Tablet: Narrower, medium text, bubble down 25px */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+
+  /* Group: Pushed LEFT */
+  .coming-soon-group {
+    position: fixed !important;
+    left: 15% !important;
+    right: auto !important;
+    bottom: -20px !important;
+    height: 70vh !important;
+  }
+  
+  /* Character: Relative to group */
+  .coming-soon-character {
+    position: relative !important;
+    left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+    height: 100% !important;
+  }
+  
+  /* Bubble: Pushed DOWN 25px (was -25%, now -20%) */
+  .coming-soon-bubble {
+    position: absolute !important;
+    top: -20% !important; /* Down 25px (~5%) from -25% */
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    max-width: 300px !important;
+    width: max-content !important;
+    padding: 16px 24px !important;
+  }
+  
+  /* Medium text on tablet */
+  .coming-soon-title { font-size: 20px !important; letter-spacing: 1px !important; }
+  .coming-soon-text { font-size: 13px !important; }
+  
+  /* Tablet Tail */
+  .coming-soon-tail-desktop { display: none !important; }
+  .coming-soon-tail-tablet { display: block !important; }
+}
+
+/* 3. Mobile: Slightly bigger char, bubble up 25px */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    position: fixed !important;
+    top: 325px !important;
+    bottom: auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 85% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 20px 24px !important;
+    z-index: 10 !important;
+    /* Override desktop animation for mobile - no character animation so show sooner */
+    animation: bubble-fade-in-mobile-base 0.5s ease-out 1s forwards !important;
+  }
+  
+  .coming-soon-character {
+    height: 48vh !important;
+  }
+  
+  .coming-soon-title { font-size: 22px !important; }
+  .coming-soon-text { font-size: 14px !important; line-height: 1.5 !important; }
+  
+  .coming-soon-tail-mobile { display: block !important; }
+}
+
+/* Mobile: Center bubble text */
+@media (max-width: 768px) {
+  .coming-soon-bubble {
+    text-align: center !important;
+  }
+}
+
+/* Large Desktop (1367px - 1600px): Move right more */
+@media (min-width: 1367px) and (max-width: 1600px) {
+  .coming-soon-group {
+    right: 8% !important; /* More to right (vs 12% at normal desktop) */
+  }
+}
+
+/* Extra Large Desktop (1600px+): Even more right */
+@media (min-width: 1601px) {
+  .coming-soon-group {
+    right: 5% !important; /* Maximum right shift */
+  }
+}
+
+/* Menu toggle hover effect */
+.menu-toggle:hover {
+  opacity: 1 !important;
+}
+
+/* Mobile: Lift beak on all pages */
+@media (max-width: 768px) {
+  .coming-soon-tail-mobile {
+    bottom: -24px !important; /* Lifted up from -28px */
+  }
+}
+
+/* ============================================
+   HOLOGRAPHIC AFTERIMAGE EFFECT
+   Creates rainbow ghost trail behind character
+   with entrance animation from left
+   ============================================ */
+
+/* === KEYFRAME ANIMATIONS === */
+
+/* Rainbow hue cycling for ghosts */
+@keyframes holographic-shift {
+  0% { filter: hue-rotate(0deg) saturate(1.8) brightness(1.1); }
+  16% { filter: hue-rotate(60deg) saturate(2) brightness(1.2); }
+  33% { filter: hue-rotate(120deg) saturate(1.8) brightness(1.1); }
+  50% { filter: hue-rotate(180deg) saturate(2) brightness(1.15); }
+  66% { filter: hue-rotate(240deg) saturate(1.8) brightness(1.2); }
+  83% { filter: hue-rotate(300deg) saturate(2) brightness(1.1); }
+  100% { filter: hue-rotate(360deg) saturate(1.8) brightness(1.1); }
+}
+
+/* Subtle shimmer/pulse for stationary ghosts */
+@keyframes ghost-shimmer {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.5; }
+}
+
+/* Character slides in from left with landing impact (scale + diagonal shake) */
+@keyframes character-slide-in {
+  0% {
+    transform: translateX(-100vw) scale(1);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  /* Impact: grow slightly */
+  78% {
+    transform: translateX(0) scale(1.08);
+  }
+  /* Diagonal shake while shrinking back */
+  81% { 
+    transform: translate(4px, -3px) scale(1.05) rotate(0.8deg); 
+  }
+  84% { 
+    transform: translate(-3px, 4px) scale(1.03) rotate(-0.6deg); 
+  }
+  87% { 
+    transform: translate(3px, 2px) scale(1.02) rotate(0.4deg); 
+  }
+  90% { 
+    transform: translate(-2px, -2px) scale(1.01) rotate(-0.3deg); 
+  }
+  93% { 
+    transform: translate(1px, 1px) scale(1) rotate(0.1deg); 
+  }
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Page shake effect - triggered on folder container when character lands */
+@keyframes page-shake {
+  0%, 75% { transform: translate(0, 0); }
+  78% { transform: translate(0, 0); }
+  81% { transform: translate(3px, -2px); }
+  84% { transform: translate(-2px, 3px); }
+  87% { transform: translate(2px, 1px); }
+  90% { transform: translate(-1px, -1px); }
+  93% { transform: translate(1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Trail ghosts - appear along path, then linger and fade out slowly */
+@keyframes trail-ghost-1 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  10% { transform: translateX(-85vw); opacity: 0.65; }
+  50% { transform: translateX(-85vw); opacity: 0.5; }
+  100% { transform: translateX(-85vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-2 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  18% { transform: translateX(-70vw); opacity: 0.6; }
+  55% { transform: translateX(-70vw); opacity: 0.45; }
+  100% { transform: translateX(-70vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-3 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  26% { transform: translateX(-55vw); opacity: 0.55; }
+  60% { transform: translateX(-55vw); opacity: 0.4; }
+  100% { transform: translateX(-55vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-4 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  34% { transform: translateX(-40vw); opacity: 0.5; }
+  65% { transform: translateX(-40vw); opacity: 0.35; }
+  100% { transform: translateX(-40vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-5 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  42% { transform: translateX(-28vw); opacity: 0.45; }
+  70% { transform: translateX(-28vw); opacity: 0.3; }
+  100% { transform: translateX(-28vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-6 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  50% { transform: translateX(-18vw); opacity: 0.4; }
+  75% { transform: translateX(-18vw); opacity: 0.25; }
+  100% { transform: translateX(-18vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-7 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  58% { transform: translateX(-10vw); opacity: 0.35; }
+  80% { transform: translateX(-10vw); opacity: 0.2; }
+  100% { transform: translateX(-10vw); opacity: 0; }
+}
+
+@keyframes trail-ghost-8 {
+  0% { transform: translateX(-100vw); opacity: 0; }
+  66% { transform: translateX(-5vw); opacity: 0.3; }
+  85% { transform: translateX(-5vw); opacity: 0.15; }
+  100% { transform: translateX(-5vw); opacity: 0; }
+}
+
+/* Stationary ghosts fade in after entrance completes */
+@keyframes stationary-ghost-fade-in {
+  0%, 90% { opacity: 0; }
+  100% { opacity: var(--ghost-opacity, 0.35); }
+}
+
+/* === CONTAINER STYLES === */
+
+/* Container that holds the character and ghost layers */
+.holographic-afterimage {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+  width: auto;
+  overflow: visible;
+}
+
+/* === TRAIL GHOST LAYERS (fade out after entrance) === */
+
+.holographic-afterimage .trail-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  object-fit: contain;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Each trail ghost has unique animation timing - 4s duration for slower fade */
+.holographic-afterimage .trail-1 {
+  animation: trail-ghost-1 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  z-index: 1;
+}
+.holographic-afterimage .trail-2 {
+  animation: trail-ghost-2 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -0.2s;
+  z-index: 2;
+}
+.holographic-afterimage .trail-3 {
+  animation: trail-ghost-3 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -0.4s;
+  z-index: 3;
+}
+.holographic-afterimage .trail-4 {
+  animation: trail-ghost-4 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -0.6s;
+  z-index: 4;
+}
+.holographic-afterimage .trail-5 {
+  animation: trail-ghost-5 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -0.8s;
+  z-index: 5;
+}
+.holographic-afterimage .trail-6 {
+  animation: trail-ghost-6 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -1s;
+  z-index: 6;
+}
+.holographic-afterimage .trail-7 {
+  animation: trail-ghost-7 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -1.2s;
+  z-index: 7;
+}
+.holographic-afterimage .trail-8 {
+  animation: trail-ghost-8 4s ease-out forwards, holographic-shift 1.5s ease-in-out infinite;
+  animation-delay: 0s, -1.4s;
+  z-index: 8;
+}
+
+/* === STATIONARY GHOST LAYERS (permanent after entrance) === */
+
+.holographic-afterimage .ghost-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  object-fit: contain;
+  opacity: 0;
+}
+
+/* Ghost 1 - Furthest back, most offset */
+.holographic-afterimage .ghost-1 {
+  --ghost-opacity: 0.25;
+  transform: translateX(-12px);
+  animation: 
+    stationary-ghost-fade-in 2.5s ease-out forwards,
+    holographic-shift 3s ease-in-out infinite 2.5s,
+    ghost-shimmer 2s ease-in-out infinite 2.5s;
+  z-index: 9;
+}
+
+/* Ghost 2 - Middle layer */
+.holographic-afterimage .ghost-2 {
+  --ghost-opacity: 0.35;
+  transform: translateX(-8px);
+  animation: 
+    stationary-ghost-fade-in 2.5s ease-out forwards,
+    holographic-shift 3s ease-in-out infinite 2.5s,
+    ghost-shimmer 2s ease-in-out infinite 2.5s;
+  animation-delay: 0s, 2.5s, 2.8s;
+  z-index: 10;
+}
+
+/* Ghost 3 - Closest ghost */
+.holographic-afterimage .ghost-3 {
+  --ghost-opacity: 0.45;
+  transform: translateX(-4px);
+  animation: 
+    stationary-ghost-fade-in 2.5s ease-out forwards,
+    holographic-shift 3s ease-in-out infinite 2.5s,
+    ghost-shimmer 2s ease-in-out infinite 2.5s;
+  animation-delay: 0s, 2.5s, 3.1s;
+  z-index: 11;
+}
+
+/* === MAIN CHARACTER === */
+
+.holographic-afterimage .main-character {
+  position: relative;
+  z-index: 20;
+  height: 100%;
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+  animation: character-slide-in 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* === RESPONSIVE ADJUSTMENTS === */
+
+@media (max-width: 1024px) {
+  .holographic-afterimage .ghost-1 { transform: translateX(-10px); }
+  .holographic-afterimage .ghost-2 { transform: translateX(-6px); }
+  .holographic-afterimage .ghost-3 { transform: translateX(-3px); }
+}
+
+@media (max-width: 768px) {
+  /* Fix: Holographic wrapper needs to inherit mobile fixed positioning */
+  .holographic-afterimage {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    height: 48vh !important;
+    width: auto !important;
+    z-index: 5 !important;
+    /* Center the flex content */
+    display: flex !important;
+    justify-content: center !important;
+  }
+  
+  /* Remove character slide-in animation on mobile - just show with afterimage */
+  .holographic-afterimage .main-character {
+    animation: none !important;
+    opacity: 1 !important;
+    z-index: 100 !important; /* Ensure main character is on top on mobile */
+    position: relative !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+  
+  /* Lower z-index for ghosts on mobile to ensure main character is on top */
+  .holographic-afterimage .ghost-1 { transform: translateX(-8px); z-index: 1 !important; left: 0 !important; }
+  .holographic-afterimage .ghost-2 { transform: translateX(-5px); z-index: 2 !important; left: 0 !important; }
+  .holographic-afterimage .ghost-3 { transform: translateX(-2px); z-index: 3 !important; left: 0 !important; }
+  
+  /* Hide trail ghosts on mobile for cleaner look */
+  .holographic-afterimage .trail-ghost {
+    display: none;
+  }
+}
+
+/* Mobile-specific entrance animation */
+@keyframes character-slide-in-mobile {
+  0% {
+    transform: translateX(-50vw) translateY(20vh);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Ensure main character stays centered on mobile after animation */
+@media (max-width: 768px) {
+  .holographic-afterimage .main-character {
+    /* Override any positioning offsets - ensure true center */
+    position: relative !important;
+    left: 0 !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* Bubble fade-in animation (appears after character lands) */
+@keyframes bubble-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-100%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%) translateY(0);
+  }
+}
+
+/* Mobile bubble fade-in animation with centering transform */
+@keyframes bubble-fade-in-mobile-base {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================
+   HOMEPAGE-SPECIFIC STYLES
+   Character centered with folder title on homepage
+   Bubble positioned directly above character with center beak
+   ============================================ */
+
+/* Desktop: Center character and bubble above it */
+@media (min-width: 769px) {
+  .homepage .coming-soon-group {
+    /* Center the group with -125px offset as requested */
+    right: auto !important;
+    left: calc(50% - 125px) !important;
+    transform: translateX(-50%) !important;
+    /* Make character smaller on homepage desktop */
+    height: 65vh !important;
+    max-height: 650px !important;
+    /* Smooth transition for sidebar toggle */
+    transition: left 0.3s ease !important;
+  }
+  
+  .homepage .coming-soon-bubble {
+    /* Bubble directly above character, centered with 100px more gap */
+    position: absolute !important;
+    bottom: calc(90% + 100px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    text-align: center !important;
+    animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
+  }
+
+  /* Show mobile tail (center beak) on homepage desktop, hide others */
+  .homepage .coming-soon-tail-desktop { display: none !important; }
+  .homepage .coming-soon-tail-tablet { display: none !important; }
+  .homepage .coming-soon-tail-mobile { 
+    display: block !important;
+    position: absolute;
+    bottom: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px; 
+    height: 30px;
+  }
+  
+  @media (max-width: 1024px) {
+  /* Add padding to stats cutout on tablet/mobile */
+  .folder-stats {
+    padding-right: 16px;
+  }
+}
+
+/* Page shake when character lands */
+  .folder-container {
+    animation: page-shake 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+/* Mobile Persona Styles */
+@media (max-width: 768px) {
+  .persona-layout {
+    flex-direction: column;
+    display: flex;
+    /* Break out of folder padding */
+    margin: 0 -24px;
+    width: calc(100% + 48px);
+  }
+  
+  .persona-cards-column {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    padding: 0 16px; /* Add small padding so cards don't touch edge */
+    margin-top: 0;
+  }
+
+  /* Right column mobile adjustments */
+  .persona-right-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Sponsor link on mobile - large padding and forced to top */
+  .persona-sponsor-link {
+    padding: 32px !important;
+    order: -1;
+  }
+}
+
+/* Default sponsor link padding */
+.persona-sponsor-link {
+  padding: 32px !important;
+}
+
+@keyframes bubble-fade-in-homepage-desktop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Homepage tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* --- COMING SOON PAGE (Generic) --- */
+  .coming-soon-group {
+    left: 40px !important; /* Move group near left edge */
+    right: auto !important;
+    transform: none !important; /* Remove centering transform */
+    height: 60vh !important;
+    max-height: 550px !important;
+  }
+
+  /* Desktop generic adjustment for Coming Soon page */
+  @media (min-width: 1025px) {
+    .coming-soon-group {
+      left: 190px !important; /* Shift right by 150px (40 + 150) */
+    }
+  }
+
+  /* Push character image to the right on tablet - specific to Coming Soon page */
+  .coming-soon-group .holographic-afterimage {
+    transform: translateX(150px);
+  }
+  
+  /* Coming Soon Page Bubble */
+  .coming-soon-bubble {
+    /* Push bubble to the left logic */
+    margin-left: -280px !important; 
+    /* Moved down 75px (100px -> 25px) */
+    bottom: calc(85% + 25px) !important;
+    top: auto !important;    /* Fix stretching */
+    height: auto !important; /* Fix stretching */
+    max-width: 500px !important;
+    width: max-content !important;
+    white-space: nowrap !important;
+    animation: bubble-fade-in-homepage-desktop 0.5s ease-out 4s forwards;
+  }
+
+  /* --- HOMEPAGE RESTORATION (Overrides Generic) --- */
+  .homepage .coming-soon-group {
+    left: calc(50% - 125px) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Reset character shift on homepage */
+  .homepage .coming-soon-group .holographic-afterimage {
+    transform: none !important;
+  }
+
+  .homepage .coming-soon-title {
+    white-space: nowrap !important;
+  }
+
+  /* Homepage Bubble - Restore Centering */
+  .homepage .coming-soon-bubble {
+     margin-left: 0 !important;
+     bottom: calc(85% + 100px) !important;
+     left: 50% !important;
+     transform: translateX(-50%) !important;
+     top: auto !important;
+     height: auto !important;
+  }
+  
+  /* Beak position on tablet - matches desktop */
+  .homepage .coming-soon-tail-mobile {
+    bottom: -24px !important;
+  }
+}
+
+/* Homepage mobile - ensure holographic wrapper AND main character are centered */
+@media (max-width: 768px) {
+  .homepage .coming-soon-group {
+    /* Reset to static so holographic handles positioning */
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .homepage .holographic-afterimage {
+    /* Override to ensure proper centering */
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    height: 48vh !important;
+    width: auto !important;
+    z-index: 5 !important;
+    /* Center the flex content */
+    display: flex !important;
+    justify-content: center !important;
+  }
+  
+  /* Ensure main character is centered within the holographic wrapper */
+  .homepage .holographic-afterimage .main-character {
+    position: relative !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+  
+  /* Center ghost layers relative to main character */
+  .homepage .holographic-afterimage .ghost-layer {
+    left: 0 !important;
+  }
+  
+  .homepage .coming-soon-bubble {
+    animation: bubble-fade-in-mobile 0.5s ease-out 1s forwards;
+  }
+}
+
+@keyframes bubble-fade-in-mobile {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================
+   COMING SOON PAGE ADJUSTMENTS
+   Bubble moved up 25px and left 50px on desktop
+   ============================================ */
+
+@media (min-width: 1025px) {
+  /* Coming soon pages only (not homepage) */
+  .main-wrapper:not(.homepage) .coming-soon-bubble {
+    /* Move right 25px and up 25px */
+    transform: translateX(calc(-60% + 25px)) translateY(-25px) !important;
+  }
+  
+  /* Move character/bubble group 75px left to align with title */
+  .main-wrapper:not(.homepage) .coming-soon-group {
+    right: calc(220px + 75px) !important;
+  }
+}
+
+/* ============================================
+   PERSONA PAGE - 3-Column Layout with Mobile Carousel
+   ============================================ */
+
+/* Main layout container */
+.persona-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+/* Left column - Cards */
+.persona-cards-column {
+  flex: 0 0 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 48px;
+  z-index: 2;
+}
+
+/* Desktop: Show both cards stacked */
+.persona-cards-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Mobile: Card carousel hidden on desktop */
+.persona-cards-mobile {
+  display: none;
+}
+
+/* Right column - Sponsor + Buttons */
+.persona-right-column {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  width: 220px;
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Increase left padding significantly "even further" to narrow content area from left */
+  padding: 0 16px 32px 40px;
+  z-index: 50;
+}
+
+/* Sponsor image in right column */
+.persona-sponsor {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+/* Holographic character - centered accounting for sidebar */
+.persona-holographic {
+  position: fixed;
+  bottom: 0;
+  /* Account for sidebar (280px) - center in remaining space */
+  left: calc(50% + 70px);
+  transform: translateX(-50%);
+  height: 65vh;
+  max-height: 650px;
+  z-index: 1;
+  transition: left 0.3s ease;
+}
+
+/* Card navigation (mobile only) */
+.persona-card-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.persona-card-nav-btn {
+  background: var(--cream);
+  border: 2px solid var(--accent-primary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+  transition: transform 0.1s ease;
+}
+
+.persona-card-nav-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 rgba(0,0,0,0.1);
+}
+
+.persona-card-nav-dots {
+  display: none; /* Hidden - not needed */
+}
+
+.persona-card-nav-dots span.active {
+  color: var(--accent-primary);
+}
+
+/* Tablet - adjust character position */
+@media (max-width: 1024px) {
+  .persona-holographic {
+    left: calc(50% + 30px);
+  }
+  
+  .persona-cards-column {
+    flex: 0 0 380px;
+  }
+}
+
+/* Mobile - Full carousel mode */
+@media (max-width: 768px) {
+  /* Remove folder content padding on mobile to allow full width without hacks */
+  .folder-content {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .persona-layout {
+    flex-direction: column;
+    display: flex;
+    margin: 0;
+    width: 100%;
+  }
+  
+  .persona-cards-column {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    padding: 0 16px; /* Add small padding so cards don't touch edge */
+    margin-top: 0;
+  }
+  
+  /* Hide desktop cards, show mobile carousel */
+  .persona-cards-desktop {
+    display: none;
+  }
+  
+  .persona-cards-mobile {
+    display: block;
+    width: 100%;
+  }
+  
+  .persona-card-carousel {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+  
+  .persona-card-carousel .info-card {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+  
+  .persona-holographic {
+    left: 50%;
+    height: 40vh;
+    max-height: 350px;
+    pointer-events: none; /* Ensure it doesn't block clicks */
+  }
+  
+  /* Card navigation - fixed bottom left with gap between buttons */
+  .persona-card-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999; /* Max z-index to ensure clickability */
+    background: transparent; /* Removed background */
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .persona-card-nav-btn {
+    background: transparent; /* Removed background */
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+  
+  /* Right column - visible on mobile, just buttons */
+  .persona-right-column {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    right: 0;
+    width: 200px;
+    height: auto;
+    padding: 16px;
+    z-index: 60;
+  }
+  
+  .persona-sponsor {
+    display: none; /* Hide sponsor on mobile */
+  }
+}
+
+
+/* ============================================
+   BATTLE SCREEN STYLES
+   Epic battle interface with VS presentation
+   ============================================ */
+
+/* Main Layout */
+.battle-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* VS SPLASH ANIMATION */
+.battle-vs-splash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: vs-splash-fade 2.5s ease-in-out forwards;
+}
+
+@keyframes vs-splash-fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+.battle-vs-text {
+  font-family: var(--font-display);
+  font-size: clamp(80px, 20vw, 200px);
+  font-weight: 900;
+  color: var(--accent-primary-bright);
+  text-shadow: 
+    0 0 20px rgba(255, 107, 107, 0.8),
+    0 0 40px rgba(255, 107, 107, 0.6),
+    0 0 60px rgba(255, 107, 107, 0.4),
+    4px 4px 0 rgba(0, 0, 0, 0.5);
+  animation: vs-pulse 0.5s ease-in-out infinite alternate;
+  z-index: 10;
+}
+
+@keyframes vs-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+.battle-vs-lightning {
+  position: absolute;
+  width: 200px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+  animation: lightning-flash 0.3s ease-in-out infinite;
+}
+
+.battle-vs-lightning--left {
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.battle-vs-lightning--right {
+  right: 15%;
+  animation-delay: 0.15s;
+}
+
+@keyframes lightning-flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.battle-vs-burst {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(255, 107, 107, 0.3) 0%, transparent 70%);
+  animation: burst-pulse 0.8s ease-out infinite;
+}
+
+@keyframes burst-pulse {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Battle Content */
+.battle-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.battle-content--active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Battle Arena - Top Section */
+.battle-arena {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  max-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+  margin: 0 8px 8px 8px;
+}
+
+.battle-arena-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.battle-arena-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(26, 26, 46, 0.95) 0%,
+    rgba(45, 25, 55, 0.9) 50%,
+    rgba(26, 26, 46, 0.95) 100%
+  );
+}
+
+.battle-arena-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+}
+
+/* Pokemon Field Layout */
+.battle-pokemon-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 900px;
+  padding: 16px;
+  z-index: 1;
+}
+
+.battle-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-side-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+/* VS Divider */
+.battle-vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-vs-icon {
+  font-size: 24px;
+  color: #ffd700;
+  animation: icon-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes icon-glow {
+  from { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+  to { text-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 30px rgba(255, 215, 0, 0.5); }
+}
+
+.battle-vs-line {
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(180deg, transparent, rgba(255, 215, 0, 0.6), transparent);
+}
+
+/* POKEMON BATTLE CARD */
+.battle-pokemon-card {
+  background: linear-gradient(145deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 35, 0.98));
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 16px;
+  width: 100%;
+  max-width: 280px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.battle-pokemon-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.battle-pokemon-card--player {
+  border-color: rgba(100, 180, 255, 0.4);
+}
+
+.battle-pokemon-card--enemy {
+  border-color: rgba(255, 100, 100, 0.4);
+}
+
+/* Sprite Container */
+.battle-pokemon-sprite-container {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.battle-pokemon-sprite-glow {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  animation: sprite-glow 2s ease-in-out infinite;
+}
+
+@keyframes sprite-glow {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.battle-pokemon-sprite {
+  width: 80px;
+  height: 80px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  position: relative;
+  z-index: 1;
+}
+
+.battle-pokemon-sprite-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, rgba(100, 100, 150, 0.3), rgba(50, 50, 80, 0.3));
+  border-radius: 50%;
+}
+
+/* Pokemon Info */
+.battle-pokemon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-pokemon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.battle-pokemon-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.battle-pokemon-level {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.battle-pokemon-types {
+  display: flex;
+  gap: 6px;
+}
+
+.battle-pokemon-type-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* HP Bar */
+.battle-hp-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-hp-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 1px;
+}
+
+.battle-hp-bar {
+  flex: 1;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.battle-hp-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease, background-color 0.5s ease;
+  position: relative;
+}
+
+.battle-hp-shine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+  border-radius: 4px 4px 0 0;
+}
+
+.battle-hp-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 50px;
+  text-align: right;
+}
+
+.battle-hp-text--unknown {
+  color: rgba(255, 100, 100, 0.7);
+}
+
+.battle-pokemon-status {
+  margin-top: 4px;
+}
+
+.battle-status-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  background: #9b59b6;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* BOTTOM SECTION */
+.battle-bottom-section {
+  display: flex;
+  gap: 16px;
+  padding: 0 8px 8px 8px;
+  min-height: 200px;
+  max-height: 280px;
+  flex: 1;
+}
+
+/* Battle Log */
+.battle-log-container {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+}
+
+.battle-log {
+  background: var(--cream);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.battle-log-header {
+  background: var(--bg-hover);
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.battle-log-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+.battle-log-entries {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.battle-log-entry {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  animation: log-slide-in 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+@keyframes log-slide-in {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.battle-log-arrow {
+  color: var(--accent-primary);
+  font-weight: bold;
+}
+
+.battle-log-entry--system {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.battle-log-entry--effective {
+  color: #e74c3c;
+  font-weight: 700;
+}
+
+.battle-log-entry--player-action {
+  color: #3498db;
+}
+
+.battle-log-entry--enemy-action {
+  color: #9b59b6;
+}
+
+/* Character Container */
+.battle-character-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+  min-width: 200px;
+}
+
+.battle-holographic {
+  height: 100%;
+  max-height: 250px;
+}
+
+.battle-holographic .main-character,
+.battle-main-character {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+/* Stats Column */
+.battle-stats-column {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.battle-stats-card {
+  background: var(--cream);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.battle-stats-header {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color);
+  margin-bottom: 8px;
+}
+
+.battle-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.battle-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.battle-stat-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+/* Action Buttons */
+.battle-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--cream);
+  border: 2px solid var(--accent-primary);
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.12);
+}
+
+.battle-action-btn--twitch {
+  background: #9146FF;
+  border-color: #9146FF;
+  color: white;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .battle-pokemon-field {
+    gap: 16px;
+  }
+  
+  .battle-pokemon-card {
+    max-width: 220px;
+    padding: 12px;
+  }
+  
+  .battle-pokemon-sprite-container {
+    height: 80px;
+  }
+  
+  .battle-pokemon-sprite,
+  .battle-pokemon-sprite-glow {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .battle-bottom-section {
+    flex-wrap: wrap;
+  }
+  
+  .battle-character-container {
+    order: -1;
+    flex-basis: 100%;
+    max-height: 150px;
+  }
+  
+  .battle-holographic {
+    max-height: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .battle-arena {
+    min-height: 220px;
+    max-height: 280px;
+  }
+  
+  .battle-pokemon-field {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .battle-vs-divider {
+    flex-direction: row;
+    gap: 12px;
+  }
+  
+  .battle-vs-line {
+    width: 40px;
+    height: 2px;
+  }
+  
+  .battle-pokemon-card {
+    max-width: 100%;
+    flex-direction: row;
+    padding: 10px;
+    gap: 12px;
+  }
+  
+  .battle-pokemon-sprite-container {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+  
+  .battle-pokemon-sprite,
+  .battle-pokemon-sprite-glow {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .battle-bottom-section {
+    flex-direction: column;
+    max-height: none;
+  }
+  
+  .battle-log-container {
+    max-width: none;
+  }
+  
+  .battle-character-container {
+    display: none;
+  }
+  
+  .battle-stats-column {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .battle-stats-card {
+    flex: 1;
+  }
+  
+  .battle-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+  
+  .battle-action-btn {
+    flex: 1;
+  }
 }

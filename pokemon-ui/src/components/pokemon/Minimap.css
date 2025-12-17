@@ -142,11 +142,14 @@
   object-fit: contain;
 }
 
-/* Overlay MUST match the image's actual rendered dimensions */
+/* Overlay MUST match the image's actual rendered dimensions using aspect-ratio */
+/* The aspect-ratio is set inline from React component based on grid size */
 .minimap__image-container > .lass-overlay {
-  width: 100%;
-  height: 100%;
-  /* The overlay markers use percentage positioning which works relative to the grid cell */
+  /* Don't use width/height 100% - use aspect-ratio from inline style + max constraints */
+  width: auto;
+  height: 100%; /* Constrain by height */
+  max-width: 100%; /* Don't exceed container width */
+  position: relative; /* For absolute positioned markers inside */
 }
 
 .minimap__image--visible {

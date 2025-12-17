@@ -92,11 +92,65 @@ from interactive import interactive_console
 from core.llmdriver import run_auto_loop, MODEL
 from run_persistence import RunPersistence
 
+# --- Logging Setup: Console + File ---
+def setup_logging(run_id: str = None, is_new_run: bool = True):
+    """Configure logging to both console and file.
+    
+    Args:
+        run_id: Unique run identifier for log file naming
+        is_new_run: If True, overwrite log file. If False, append.
+    """
+    # Create logs directory if it doesn't exist
+    logs_dir = "logs"
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    # Log file path - use run_id if available, otherwise 'latest'
+    log_filename = f"{run_id}.log" if run_id else "latest.log"
+    log_path = os.path.join(logs_dir, log_filename)
+    
+    # Also always write to 'latest.log' for easy access
+    latest_log_path = os.path.join(logs_dir, "latest.log")
+    
+    # Determine file mode: write for new runs, append for continued runs
+    file_mode = 'w' if is_new_run else 'a'
+    
+    # Create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
+    # Get root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Clear any existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+    
+    # File handler for run-specific log
+    if run_id:
+        file_handler = logging.FileHandler(log_path, mode=file_mode, encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    
+    # File handler for latest.log (always overwrite)
+    latest_handler = logging.FileHandler(latest_log_path, mode='w', encoding='utf-8')
+    latest_handler.setLevel(logging.INFO)
+    latest_handler.setFormatter(formatter)
+    root_logger.addHandler(latest_handler)
+    
+    return log_path
+
+# Initialize basic logging first (will be reconfigured after run ID is known)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log = logging.getLogger("main")
+
 # --- Configuration (excluding WebSocket specific) ---
 import config
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s:%(name)s: %(message)s')
-log = logging.getLogger("main")
 
 # Global reference for graceful shutdown
 _global_socket = None
@@ -184,7 +238,14 @@ state = {
     "avgCycleTime": 0,  # Average cycle time over last 20 cycles
 }
 
-def start_mgba_with_scripting(rom_path=None, port=config.PORT):
+def start_mgba_with_scripting(rom_path=None, port=config.PORT, muted=False):
+    """Start mGBA with Lua scripting enabled.
+    
+    Args:
+        rom_path: Path to ROM file
+        port: Socket port for mGBA communication
+        muted: If True, start mGBA with audio muted (-C mute=1)
+    """
     rom_path = rom_path or os.path.join(os.path.dirname(__file__), get_rom_path())
     if not os.path.exists(rom_path):
         log.error(f"ROM file not found: {rom_path}")
@@ -217,7 +278,13 @@ def start_mgba_with_scripting(rom_path=None, port=config.PORT):
         except Exception as e:
             log.warning(f"Could not clean snapshots dir: {e}")
 
-    cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT, rom_path]
+    # Build mGBA command - add mute flag if requested
+    cmd = [config.MGBA_EXE, '--script', config.LUA_SCRIPT]
+    if muted:
+        cmd.extend(['-C', 'mute=1'])
+        log.info("🔇 Starting mGBA with audio MUTED for intro")
+    cmd.append(rom_path)
+    
     log.info(f"Starting mGBA: {' '.join(cmd)}")
     try:
         # Redirect stdout to DEVNULL, capture stderr
@@ -359,8 +426,10 @@ async def main_async(auto, max_loops_arg=None, selected_mode=None, persistence=N
     tasks_to_await = []
 
     try:
-        # config.LOAD_SAVESTATE global will be used by start_mgba_with_scripting
-        proc, sock = start_mgba_with_scripting()
+        # Start mGBA with audio enabled (not muted)
+        # Game audio will play during intro - this is acceptable
+        # First cycle analysis is preloaded during countdown
+        proc, sock = start_mgba_with_scripting(muted=False)
 
         if auto:
             log.info("Auto mode enabled. Starting WebSocket server and LLM driver.")
@@ -499,6 +568,12 @@ if __name__ == '__main__':
         save_type, save_path = auto_detect_savestate()
         save_exists = save_type is not None
         run_state = persistence.get_or_create_run(save_state_exists=save_exists, save_state_path=save_path)
+        
+        # Configure file logging with run ID
+        # New runs overwrite, continued runs append
+        is_new_run = run_state.action_count == 0
+        log_path = setup_logging(run_id=run_state.run_id, is_new_run=is_new_run)
+        log.info(f"📝 Logging to: {log_path}")
         
         # Initialize shared state from persisted run state
         if run_state.action_count > 0:

@@ -1,51 +1,89 @@
-import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { FolderContainer } from './FolderContainer'
 import { About } from './sections/About'
-import { Architecture } from './sections/Architecture'
-import { Memory } from './sections/Memory'
-import { StreamCycle } from './sections/StreamCycle'
-import { Prompts } from './sections/Prompts'
+import { ComingSoon } from './sections/ComingSoon'
+import { Persona } from './sections/Persona'
+import { Tokenomics } from './sections/Tokenomics'
+// import { Battle } from './sections/Battle'  // TODO: Re-enable when battle screen is ready
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Icon } from '@iconify/react'
+import { 
+  PixelHome2, 
+  PixelInfo, 
+  PixelChip, 
+  PixelHierarchy, 
+  PixelLoadingCircle, 
+  PixelTerminal,
+  PixelTV,
+  PixelCoin
+} from './icons/PixelIcons'
 
 const navItems = [
-  { id: 'about', label: 'About', icon: '📖' },
-  { id: 'architecture', label: 'Architecture', icon: '🏗️' },
-  { id: 'memory', label: 'Memory Map', icon: '🧠' },
-  { id: 'stream', label: 'Stream Cycle', icon: '🔄' },
-  { id: 'prompts', label: 'LLM Prompts', icon: '💬' },
+  { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <Icon icon="streamline-pixel:photography-focus-flower" width={18} height={18} />, hasDivider: true },
+  // { id: 'battle', label: 'Battle Mode', icon: <Icon icon="streamline-pixel:lightning-bolt-pixel" width={18} height={18} />, isSubItem: true },  // TODO: Re-enable
+  { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
+  { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
+  { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
+  { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
+  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
+  { id: 'tokenomics', label: 'Tokenomics', icon: <PixelCoin size={18} />, isSubItem: true },
+  { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
 const sectionTitles: Record<string, string> = {
-  about: 'About the Harness',
-  architecture: 'System Architecture',
-  memory: 'Memory Map',
+  lass: 'Lass ✿',
+  // battle: 'Battle!',  // TODO: Re-enable
+  about: 'About',
+  architecture: 'Architecture',
+  memory: 'Memory',
   stream: 'Stream Cycle',
-  prompts: 'LLM Prompts',
+  prompts: 'Prompts',
+  tokenomics: 'Tokenomics',
 }
 
-const sections: Record<string, React.ComponentType> = {
-  about: About,
-  architecture: Architecture,
-  memory: Memory,
-  stream: StreamCycle,
-  prompts: Prompts,
-}
+export function LassLayout() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Extract active section from URL path (e.g. /lass/about -> about)
+  // If /lass or /lass/, segment[2] is undefined -> default to 'lass'
+  const pathSegment = location.pathname.split('/')[2]
+  const activeSection = navItems.find(item => item.id === pathSegment)?.id || (location.pathname.endsWith('/lass') || location.pathname.endsWith('/lass/') ? 'lass' : '')
+  const currentTitle = sectionTitles[activeSection] || 'Lass'
 
-export function LassPage() {
-  const [activeSection, setActiveSection] = useState('about')
-  const ActiveComponent = sections[activeSection] || About
-  const currentTitle = sectionTitles[activeSection] || 'About'
+  const handleNavigate = (id: string) => {
+    if (id === 'home') navigate('/')
+    else if (id === 'lass') navigate('/lass')
+    else navigate(`/lass/${id}`)
+  }
 
   return (
     <div className="app-container">
       <Sidebar
         navItems={navItems}
         activeSection={activeSection}
-        onNavigate={setActiveSection}
+        onNavigate={handleNavigate}
       />
-      <main className="main-wrapper">
-        <FolderContainer title={currentTitle}>
-          <ActiveComponent />
+      <main className="main-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
+        <FolderContainer 
+          key={location.pathname}
+          title={currentTitle} 
+          titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}
+          navItems={navItems}
+          activeSection={activeSection}
+          onNavigate={handleNavigate}
+        >
+          <Routes>
+            <Route index element={<Persona />} />
+            {/* <Route path="battle" element={<Battle />} /> */}  {/* TODO: Re-enable */}
+            <Route path="about" element={<ComingSoon title="About" />} />
+            <Route path="architecture" element={<ComingSoon title="Architecture" />} />
+            <Route path="memory" element={<ComingSoon title="Memory Map" />} />
+            <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
+            <Route path="prompts" element={<ComingSoon title="LLM Prompts" />} />
+            <Route path="tokenomics" element={<Tokenomics />} />
+          </Routes>
         </FolderContainer>
       </main>
     </div>

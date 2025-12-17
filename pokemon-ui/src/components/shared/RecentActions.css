@@ -11,13 +11,61 @@
 }
 
 /* Active state - when action is being executed */
+/* Active state - when action is being executed */
 .recent-actions--active {
   border-color: var(--accent-primary-bright);
+  background-color: var(--accent-primary-bright);
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.3); /* Add glow */
 }
 
 .recent-actions--active .recent-actions__label,
 .recent-actions--active .recent-actions__label-right {
-  color: var(--accent-primary-bright);
+  color: var(--text-muted); /* Keep original muted color */
+  background-color: var(--bg-panel); /* Keep panel gray, don't inherit red */
+}
+
+/* Update squares/buttons when active */
+.recent-actions--active .recent-actions__item {
+  color: rgba(255, 255, 255, 0.9);
+  border-right-color: rgba(255, 255, 255, 0.3);
+}
+
+.recent-actions--active .recent-actions__number {
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 1;
+}
+
+.recent-actions--active .recent-actions__waiting-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.recent-actions--active .recent-actions__square {
+  background: #fff; /* White button */
+  color: var(--accent-primary-bright); /* Red text */
+  box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+}
+
+.recent-actions--active .recent-actions__square.flash {
+  /* Inverse flash animation for white buttons */
+  animation: flash-action-inverse 0.5s ease-out forwards;
+}
+
+@keyframes flash-action-inverse {
+  0% {
+    background-color: var(--accent-primary-bright); /* Red flash */
+    color: #fff;
+    transform: scale(1.1);
+  }
+  30% {
+    background-color: #fff;
+    color: var(--accent-primary-bright);
+    transform: scale(1);
+  }
+  100% {
+    background-color: #fff;
+    color: var(--accent-primary-bright);
+    transform: scale(1);
+  }
 }
 
 .recent-actions__label {

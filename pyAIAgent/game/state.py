@@ -377,6 +377,34 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
             log.info(f"name_entry: NOT detected (last_item={last_item}, cursor=({cursor_x},{cursor_y}))")
             return None
         
+        # ADDITIONAL CHECK: Read tile buffer to verify keyboard letters exist
+        # The name entry keyboard has specific tile patterns at rows 6-10 of the screen
+        # (20 tiles per row, 18 rows total = 0xC3A0-C507)
+        # Row 6 starts at offset 6*20=120, contains "A B C D E F G H I"
+        # We check for the 'A' tile (0x80) and 'I' tile (0x88) at expected positions
+        try:
+            _flush_socket(sock)
+            # Read row 6 of tile screen (offsets 120-139): should contain keyboard row 1
+            keyboard_area = readrange(sock, hex(0xC3A0 + 120), "20")  # Row 6
+            
+            # In Pokemon Red, uppercase letters A-Z are tiles 0x80-0x99
+            # 'A' = 0x80, 'B' = 0x81, ... 'I' = 0x88
+            # The keyboard row 1 should have 'A' at position 3 (column 2)
+            has_keyboard_tiles = False
+            if len(keyboard_area) >= 10:
+                # Check for 'A' (0x80) and 'B' (0x81) tiles in the first half of the row
+                for i in range(10):
+                    tile = keyboard_area[i]
+                    if 0x80 <= tile <= 0x88:  # A-I tiles
+                        has_keyboard_tiles = True
+                        break
+            
+            if not has_keyboard_tiles:
+                log.info(f"name_entry: NOT detected - no keyboard tiles found in screen buffer")
+                return None
+        except Exception as e:
+            log.warning(f"name_entry: Tile buffer check failed: {e} - proceeding with detection")
+        
         # Basic character mapping for the name entry grid (9 columns per row)
         # Row 0: A B C D E F G H I (indices 0-8)
         # Row 1: J K L M N O P Q R (indices 9-17)

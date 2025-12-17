@@ -2,12 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   PokemonGameState,
   LogEntry,
-  BadgeType,
   Pokemon,
 } from "../../types/gameTypes";
 import type { PokemonDisplay } from "../../types/display";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
-import { PokemonTeamBar } from "../pokemon/PokemonTeamBar";
+import { GameStatusDisplay } from "./GameStatusDisplay";
 import "./PokemonStreamOverlay.css";
 
 /**
@@ -160,6 +159,80 @@ function TalkingCharacter({
 
 
 // Animated ellipsis placeholder: '' -> '.' -> '..' -> '...' -> '' -> ...
+
+/**
+ * HighlightedCommentary - Parses commentary text to highlight platform mentions and special tokens
+ * - Purple for Twitch mentions: "Username on Twitch"
+ * - Green for Pump.fun mentions: "Username on Pump.fun" or "Username on Pump"
+ * - Rainbow Holographic for "$LASS"
+ */
+function HighlightedCommentary({ text }: { text: string }) {
+  const parts: React.ReactNode[] = [];
+  
+  // Combined regex using OR
+  // We need to be careful about iteration order.
+  // Easiest is to split by a master regex that catches all tokens of interest
+  const masterRegex = /((\S+)\s+on\s+(?:Twitch|Pump\.fun|Pump))|(\$LASS)/gi;
+  
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = masterRegex.exec(text)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    
+    const fullMatch = match[0];
+    
+    // Check which group matched
+    if (match[3]) { // $LASS group
+      parts.push(
+        <span key={match.index} className="text-holographic">
+          {fullMatch}
+        </span>
+      );
+    } else if (match[1]) { // Platform mention group
+      // We need to extract username/platform from the full match again or use nested groups
+      // match[2] is username
+      // We need platform. Let's re-parse or use the groups from master regex if careful.
+      // match[1] is full string "User on Twitch"
+      // match[2] is "User"
+      // We need to find "Twitch" or "Pump" in match[1]
+      
+      // Let's re-run platform regex on just the match string for safety
+      const pMatch = /(\S+)\s+on\s+(Twitch|Pump\.fun|Pump)/i.exec(fullMatch);
+      if (pMatch) {
+        const username = pMatch[1];
+        const platform = pMatch[2];
+        const isPumpfun = platform.toLowerCase().includes('pump');
+        const colorClass = isPumpfun ? 'platform-mention--pumpfun' : 'platform-mention--twitch';
+        
+        parts.push(
+          <span key={match.index} className={`platform-mention ${colorClass}`}>
+            {username} on {platform}
+          </span>
+        );
+      } else {
+        parts.push(fullMatch); // Fallback
+      }
+    }
+    
+    lastIndex = match.index + fullMatch.length;
+  }
+  
+  // Add remaining text after last match
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  
+  if (parts.length === 0) {
+    return <>{text}</>;
+  }
+  
+  return <>{parts}</>;
+}
+
 function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
   const [dots, setDots] = useState(0);
 
@@ -231,7 +304,7 @@ function SyncedTypewriterText({
     };
   }, [text, durationMs]); // Removed onComplete from deps - using ref instead
 
-  return <>{displayedText}</>;
+  return <HighlightedCommentary text={displayedText} />;
 }
 
 // Utility function to truncate large numbers
@@ -263,108 +336,22 @@ function AnimatedDots() {
   return <span style={{ display: 'inline-block', width: '1.5em', textAlign: 'left' }}>{dots}</span>;
 }
 
-// Session timer that shows total game time since session started (h:m:s format)
-function SessionTimer({ 
-  sessionStartTime 
-}: { 
-  sessionStartTime?: number;
-}) {
-  const [elapsed, setElapsed] = useState<string>('0h 0m 0s');
 
-  useEffect(() => {
-    if (!sessionStartTime) {
-      setElapsed('0h 0m 0s');
-      return;
-    }
 
-    const updateTimer = () => {
-      const now = Date.now();
-      const diffMs = now - sessionStartTime;
-      const totalSeconds = Math.floor(diffMs / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      setElapsed(`${hours}h ${minutes}m ${seconds}s`);
-    };
 
-    // Initial update
-    updateTimer();
-    
-    // Tick every second
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [sessionStartTime]);
 
-  return <span className="session-timer">{elapsed}</span>;
-}
 
-// Live cycle timer component that ticks every 0.1 seconds
-// Uses timestamp-based approach for reliable reset to 0
-function LiveCycleTimer({ 
-  cycleNumber, 
-}: { 
-  cycleNumber: number; 
-}) {
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [isFlashing, setIsFlashing] = useState(false);
-  const cycleStartTimeRef = useRef<number>(Date.now()); // Track when cycle started
-  const lastCycleRef = useRef<number>(cycleNumber);
-  const timerRef = useRef<number | null>(null);
-
-  // Tick every 0.1 second - calculate elapsed from start time
-  useEffect(() => {
-    timerRef.current = window.setInterval(() => {
-      const elapsed = (Date.now() - cycleStartTimeRef.current) / 1000;
-      setElapsedTime(elapsed);
-    }, 100);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
-
-  // Reset timer when cycle changes
-  useEffect(() => {
-    if (cycleNumber !== lastCycleRef.current) {
-      // Cycle completed - flash and reset start time
-      setIsFlashing(true);
-      setTimeout(() => setIsFlashing(false), 500);
-      cycleStartTimeRef.current = Date.now(); // Reset start time
-      setElapsedTime(0);
-      lastCycleRef.current = cycleNumber;
-      console.log(`[CycleTimer] Reset to 0, new cycle: ${cycleNumber}`);
-    }
-  }, [cycleNumber]);
-
-  return (
-    <span className={`cycle-timer ${isFlashing ? 'cycle-timer--flash' : ''}`}>
-      {elapsedTime.toFixed(1)}s
-    </span>
-  );
-}
-
-// Kanto gym badges with image paths (1.png - 8.png in order)
-const KANTO_BADGES: Record<BadgeType, { image: string; name: string; index: number }> = {
-  Boulder: { image: "/badges/1.png", name: "Boulder Badge", index: 1 },
-  Cascade: { image: "/badges/2.png", name: "Cascade Badge", index: 2 },
-  Thunder: { image: "/badges/3.png", name: "Thunder Badge", index: 3 },
-  Rainbow: { image: "/badges/4.png", name: "Rainbow Badge", index: 4 },
-  Soul: { image: "/badges/5.png", name: "Soul Badge", index: 5 },
-  Marsh: { image: "/badges/6.png", name: "Marsh Badge", index: 6 },
-  Volcano: { image: "/badges/7.png", name: "Volcano Badge", index: 7 },
-  Earth: { image: "/badges/8.png", name: "Earth Badge", index: 8 },
-};
-
-// All badge types in order for silhouette display
-const ALL_BADGE_TYPES: BadgeType[] = ["Boulder", "Cascade", "Thunder", "Rainbow", "Soul", "Marsh", "Volcano", "Earth"];
 
 // TTS Commentary data from backend
 interface TTSCommentary {
   text: string;
   duration_ms: number;
   playing: boolean;
+  reply_to?: {
+    username: string;
+    platform: string;
+    message?: string;
+  };
 }
 
 interface PokemonStreamOverlayProps {
@@ -377,6 +364,24 @@ interface PokemonStreamOverlayProps {
   onTtsCommentaryComplete?: () => void;
 }
 
+import "../vision/VisionScreenshot.css"; // Import CRT styles
+
+// Sponsors Configuration
+const sponsors = [
+  { 
+    image: '/sponsors/mystery-gift.png', 
+    link: 'https://mysterygift.fun', 
+    alt: 'Mystery Gift',
+    text: 'mysterygift.fun'
+  },
+  { 
+    image: '/sponsors/phantasy.png', 
+    link: 'https://phantasy.bot', 
+    alt: 'Phantasy Bot',
+    text: 'phantasy.bot'
+  }
+];
+
 export function PokemonStreamOverlay({
   gameState,
   wsConnected,
@@ -388,6 +393,22 @@ export function PokemonStreamOverlay({
 }: PokemonStreamOverlayProps) {
   // Walking animation state
   const [walkingFrame, setWalkingFrame] = useState<1 | 2>(1);
+
+  // Sponsor Rotation State
+  const [sponsorIndex, setSponsorIndex] = useState(0);
+  const [isSponsorSwitching, setIsSponsorSwitching] = useState(false);
+
+  // Sponsor Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsSponsorSwitching(true);
+      setTimeout(() => {
+        setSponsorIndex((prev) => (prev + 1) % sponsors.length);
+        setTimeout(() => setIsSponsorSwitching(false), 200);
+      }, 200);
+    }, 45000); // 45 seconds to match main site
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -488,22 +509,26 @@ export function PokemonStreamOverlay({
   // Commentary display state - controlled by TTS playback
   // lingerText: text to show after TTS completes (for 6 seconds)
   const [lingerText, setLingerText] = useState<string | null>(null);
+  // lingerContext: the reply context to show while lingering
+  const [lingerContext, setLingerContext] = useState<TTSCommentary['reply_to'] | undefined>(undefined);
   const lingerTimerRef = useRef<number | null>(null);
   
   // Handle TTS completion: start 6-second linger period
   // Text is passed in because ttsCommentary may be cleared by parent before this runs
-  const handleTtsComplete = (spokenText: string) => {
+  const handleTtsComplete = (spokenText: string, context?: TTSCommentary['reply_to']) => {
     if (spokenText) {
       setLingerText(spokenText);
+      setLingerContext(context);
       
       // Clear any existing timer
       if (lingerTimerRef.current) {
         clearTimeout(lingerTimerRef.current);
       }
       
-      // After 6 seconds, clear the linger text
+      // After 6 seconds, clear the linger text and context
       lingerTimerRef.current = window.setTimeout(() => {
         setLingerText(null);
+        setLingerContext(undefined);
       }, 6000);
     }
     
@@ -521,30 +546,91 @@ export function PokemonStreamOverlay({
   }, []);
 
 
-  const badges = gameState.badges || [];
-  const location = gameState.minimapLocation || "Unknown Area";
+  // View Mode State: 'detailed' (3-col) or 'normal' (minimal 2-col)
+  // AUTO-SWITCHING based on cycle number:
+  // Even cycles = Detailed view
+  // Odd cycles = Normal view
+  const [viewMode, setViewMode] = useState<'detailed' | 'normal'>('detailed');
+  
+  // Track manual override to prevent fighting the auto-switcher if user clicked something
+  const [manualOverride, setManualOverride] = useState(false);
+
+  // Sync view mode with cycle number (auto-director)
+  useEffect(() => {
+    if (manualOverride) return;
+
+    // cycle 0 (intro) -> detailed
+    // cycle 1 -> normal
+    // cycle 2 -> detailed
+    // etc.
+    const targetMode = (gameState.cycle % 2 === 0) ? 'detailed' : 'normal';
+    if (viewMode !== targetMode) {
+      setViewMode(targetMode);
+    }
+  }, [gameState.cycle, manualOverride, viewMode]);
+
+  const toggleViewMode = () => {
+    setManualOverride(true); // Disable auto-switcher if user interacts
+    setViewMode(prev => prev === 'detailed' ? 'normal' : 'detailed');
+  };
+
+
 
   return (
-    <div className="pokemon-stream-overlay">
-      {/* Main content area - no header, each column has its own header content */}
+    <div className={`pokemon-stream-overlay mode-${viewMode}`}>
+      {/* Click handler on title to toggle view mode (Easter Egg / Control) */}
+      <div 
+        style={{ position: 'fixed', top: 0, left: 0, width: '20px', height: '20px', zIndex: 9999, cursor: 'pointer' }}
+        onClick={toggleViewMode}
+        title={`Switch to ${viewMode === 'detailed' ? 'Normal' : 'Detailed'} View`}
+      />
+
+      {/* Main content area */}
       <div className="pokemon-content">
-        {/* Left Column - Character Panel (Lass + Goals) */}
+        
+        {/* Left Col / Main Container 
+            In Normal mode: This expands to fill the screen
+            In Detailed mode: This is just the left column
+        */}
         <div className="pokemon-left-col character-column">
           {/* T3 Folder Container */}
           <div className="folder-container">
-            {/* Title in the header bar */}
-            <div className="folder-title">Lass ✿</div>
+            {/* Normal Mode: Header Row with Title + Badges */}
+            {viewMode === 'normal' && (
+              <div className="folder-header-row">
+                <div className="folder-title" onClick={toggleViewMode} style={{ cursor: 'pointer' }}>
+                  Lass ✿
+                </div>
+                <div className="folder-badges">
+                  {/* Inline badges for normal mode */}
+                  {(['Boulder', 'Cascade', 'Thunder', 'Rainbow', 'Soul', 'Marsh', 'Volcano', 'Earth'] as const).map((badgeType) => {
+                    const badgeIndex = ['Boulder', 'Cascade', 'Thunder', 'Rainbow', 'Soul', 'Marsh', 'Volcano', 'Earth'].indexOf(badgeType) + 1;
+                    const isEarned = (gameState.badges || []).includes(badgeType);
+                    return (
+                      <div key={badgeType} className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}>
+                        <img src={`/badges/${badgeIndex}.png`} alt="" className="gym-badge-image" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Mode: Original Title in header bar */}
+            {viewMode === 'detailed' && (
+              <div className="folder-title" onClick={toggleViewMode} style={{ cursor: 'pointer' }}>
+                Lass ✿
+              </div>
+            )}
 
             {/* SVG Corner Cutout */}
             <div className="corner-container">
               <svg viewBox="0 0 200 48" className="corner-svg" preserveAspectRatio="none">
-                {/* Path 1: The Mask - fills the corner with background color */}
                 <path 
                   d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H194 Q200,36 200,42 L200,0 Z" 
                   fill="var(--bg-panel)" 
                   stroke="none"
                 />
-                {/* Path 2: The Border (main curve) */}
                 <path 
                   d="M0,0 c6,0 11,5 11,11 v14 c0,6 5,11 11,11 H194" 
                   fill="none" 
@@ -552,7 +638,6 @@ export function PokemonStreamOverlay({
                   strokeWidth="1"
                   transform="translate(0, 0.5)"
                 />
-                {/* Path 3: The Rounded Corner Tip */}
                 <path 
                   d="M194,36 Q200,36 200,42" 
                   fill="none" 
@@ -581,199 +666,194 @@ export function PokemonStreamOverlay({
               </div>
             </div>
 
-            {/* Folder Content */}
-            <div className="folder-content">
-              {/* Goals with TUI box styling */}
-              <div className="goals-log">
-                <span className="goals-log__label">LONG-TERM GOALS</span>
-                {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    height: '100%',
-                    opacity: 0.7 
-                  }}>
-                    <p style={{ textAlign: 'center' }}>
-                      Initializing goals<AnimatedDots />
-                    </p>
-                  </div>
-                ) : (
-                  <div className="goals-log__content">
-                    <p><strong>1. </strong> {gameState.goals.primary}</p>
-                    <p><strong>2. </strong> {gameState.goals.secondary}</p>
-                    <p><strong>3. </strong> {gameState.goals.tertiary}</p>
-                    <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
+            {/* Folder Content Wrapper */}
+            <div className="folder-content-wrapper">
+              
+              {/* PANE 1: Character & Goals (Always Visible) */}
+              <div className="folder-pane folder-pane--left">
+                {/* Normal Mode: "Replying To" Section (replaces Goals) */}
+                {viewMode === 'normal' && (
+                  <div className="minimal-reply-section">
+                    <div className="minimal-reply-section__label">REPLYING TO</div>
+                    {(ttsCommentary?.reply_to || lingerContext) ? (
+                      <div className="minimal-reply-section__content">
+                        <span className={`minimal-reply-section__platform minimal-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
+                          {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
+                        </span>
+                        <span className="minimal-reply-section__user">
+                          @{ttsCommentary?.reply_to?.username || lingerContext?.username}
+                        </span>
+                        <p className="minimal-reply-section__message">
+                          "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
+                        </p>
+                      </div>
+                    ) : (ttsCommentary?.playing || lingerText) ? (
+                      <div className="minimal-reply-section__game-response">
+                        RESPONDING TO GAME
+                      </div>
+                    ) : (
+                      <div className="minimal-reply-section__empty">
+                        <span>Waiting for chat messages<AnimatedDots /></span>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                  {/* Detailed Mode: Goals Section */}
+                {viewMode === 'detailed' && (
+                  <div className="folder-content">
+                    <div className="goals-log">
+                      <span className="goals-log__label">LONG-TERM GOALS</span>
+                      {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.7 }}>
+                          <p style={{ textAlign: 'center' }}>Initializing goals<AnimatedDots /></p>
+                        </div>
+                      ) : (
+                        <div className="goals-log__content">
+                          <p><strong>1. </strong> {gameState.goals.primary}</p>
+                          <p><strong>2. </strong> {gameState.goals.secondary}</p>
+                          <p><strong>3. </strong> {gameState.goals.tertiary}</p>
+                          <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Replying To Section (Compact in Detailed Mode) */}
+                    <div className="detailed-reply-section">
+                      <span className="detailed-reply-section__label">REPLYING TO</span>
+                      {(ttsCommentary?.reply_to || lingerContext) ? (
+                        <div className="detailed-reply-section__content">
+                          <span className={`detailed-reply-section__platform detailed-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
+                            {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
+                          </span>
+                          <span className="detailed-reply-section__user">
+                            @{ttsCommentary?.reply_to?.username || lingerContext?.username}
+                          </span>
+                          <span className="detailed-reply-section__message">
+                            "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="detailed-reply-section__empty">Waiting for chat<AnimatedDots /></span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Character Container */}
+                <div className="character-container">
+                  <div className="character-container__left">
+                    <div className="character-container__commentary">
+                      <span className="character-container__commentary-label">COMMENTARY</span>
+                      <p className="character-container__commentary-text">
+                        {ttsCommentary?.playing ? (
+                          <SyncedTypewriterText 
+                            key={ttsCommentary.text} 
+                            text={ttsCommentary.text} 
+                            durationMs={ttsCommentary.duration_ms}
+                            onComplete={() => handleTtsComplete(ttsCommentary.text, ttsCommentary.reply_to)}
+                          />
+                        ) : lingerText ? (
+                          <HighlightedCommentary text={lingerText} />
+                        ) : (
+                          <AnimatedEllipsis interval={600} />
+                        )}
+                      </p>
+                    </div>
+                    <div className="character-container__spacer" />
+                  </div>
+                  
+                  <div className="character-container__right">
+                    <TalkingCharacter 
+                      baseImage={avatarImage}
+                      isSpeaking={ttsCommentary?.playing ?? false}
+                      className="lass-character"
+                      alt="Lass Pokemon Trainer"
+                      speakFrameCount={3}
+                      speakInterval={120}
+                    />
+                  </div>
+                </div>
+
               </div>
 
-              {/* Character Container (2-column layout) */}
-              <div className="character-container">
-                {/* Left Column - Commentary */}
-                <div className="character-container__left">
-                  {/* 
-                    Commentary display states:
-                    1. TTS playing: synced typewriter animation
-                    2. Linger period (6s after TTS): static completed text
-                    3. Waiting: animated ellipsis placeholder
-                  */}
-                  <div className="character-container__commentary">
-                    <span className="character-container__commentary-label">COMMENTARY</span>
-                    <p className="character-container__commentary-text">
-                      {ttsCommentary?.playing ? (
-                        // State 1: TTS is playing - show synced typewriter
-                        <SyncedTypewriterText 
-                          key={ttsCommentary.text} // Force remount on new text
-                          text={ttsCommentary.text} 
-                          durationMs={ttsCommentary.duration_ms}
-                          onComplete={() => handleTtsComplete(ttsCommentary.text)}
-                        />
-                      ) : lingerText ? (
-                        // State 2: TTS just finished - show full text for 6 seconds
-                        <>{lingerText}</>
-                      ) : (
-                        // State 3: Waiting for next TTS - show animated ellipsis
-                        <AnimatedEllipsis interval={600} />
-                      )}
-                    </p>
-                  </div>
-                  <div className="character-container__spacer" />
-                </div>
-                
-                {/* Right Column - Character Image */}
-                <div className="character-container__right">
-                  <TalkingCharacter 
-                    baseImage={avatarImage}
-                    isSpeaking={ttsCommentary?.playing ?? false}
-                    className="lass-character"
-                    alt="Lass Pokemon Trainer"
-                    speakFrameCount={3}
-                    speakInterval={120}
-                  />
-                </div>
+              {/* PANE 2: Game Status (Only in Normal Mode) */}
+              <div className="folder-pane folder-pane--right">
+                 {/* This pane is only visible/active in Normal Mode */}
+                 <div className="folder-content">
+                    <GameStatusDisplay 
+                      gameState={gameState} 
+                      wsConnected={wsConnected} 
+                      currentPokemon={currentPokemon}
+                      hideBadges={true}
+                    />
+                 </div>
               </div>
             </div>
 
-            {/* Sponsor Section - Bottom Right */}
+            {/* Sponsor (Bottom Left of Folder) */}
             <div className="folder-sponsor">
-              <img 
-                src="/sponsors/mystery-gift.png" 
-                alt="Mystery Gift Sponsor" 
-                className="folder-sponsor__image"
-              />
-              <a href="https://mysterygift.fun" target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
-                mysterygift.fun
+              <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                <img 
+                  src={sponsors[sponsorIndex].image} 
+                  alt={sponsors[sponsorIndex].alt} 
+                  className="folder-sponsor__image"
+                  style={{ width: '100%', height: '100%' }}
+                />
+                {isSponsorSwitching && (
+                    <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 60, borderRadius: '4px', overflow: 'hidden' }}>
+                      <div className="vision-screenshot__static-overlay" style={{ mixBlendMode: 'normal', opacity: 0.6 }} />
+                    </div>
+                )}
+              </div>
+              <a href={sponsors[sponsorIndex].link} target="_blank" rel="noopener noreferrer" className="folder-sponsor__link">
+                {sponsors[sponsorIndex].text}
               </a>
             </div>
+
           </div>
         </div>
 
-        {/* Center Column - Badges + Game Feed and Team */}
-        <div className="pokemon-center-col">
-          {/* Badges at top of center column */}
-          <div className="column-header column-header--center">
-            <div className="badges-widget">
-
-              <div className="gym-badges">
-                {ALL_BADGE_TYPES.map((badgeType) => {
-                  const badgeInfo = KANTO_BADGES[badgeType];
-                  const isEarned = badges.includes(badgeType);
-                  return (
-                    <div
-                      key={badgeType}
-                      className={`gym-badge ${isEarned ? 'earned' : 'unearned'}`}
-                    >
-                      <img 
-                        src={badgeInfo.image} 
-                        alt=""
-                        className="gym-badge-image"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-
-
-          <div className="pokemon-game-feed">
-            <div className="game-placeholder">
-              Pokemon Game Feed Placeholder
-            </div>
-          </div>
-
-          <div className="status">
-            <span>
-              {wsConnected ? (
-                <>
-                  <SessionTimer sessionStartTime={gameState.sessionStartTime} />
-                </>
-              ) : (
-                <>Connecting<AnimatedEllipsis interval={400} /></>
-              )}
-            </span>
-            <span
-              className={`ws-status ${wsConnected ? "connected" : "disconnected"}`}
-            >
-              • {wsConnected ? "Connected" : "Disconnected"}
-            </span>
-            {wsConnected && (
-              <span className="cycle-timing">
-                Cycle: <LiveCycleTimer 
-                  cycleNumber={gameState.cycle} 
-                />
-                {gameState.prevCycleTime !== undefined && gameState.prevCycleTime > 0 && (
-                  <> | Prev: {gameState.prevCycleTime}s</>
-                )}
-                {gameState.avgCycleTime !== undefined && gameState.avgCycleTime > 0 && (
-                  <> | Avg: {gameState.avgCycleTime}s</>
-                )}
-              </span>
-            )}
-          </div>
-
-          <div className="pokemon-team-section">
-            <PokemonTeamBar 
-              pokemon={currentPokemon}
-              minimapLocation={location}
-              minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
-              minimapVisible={gameState.minimapVisible}
-              explorationPct={gameState.explorationPct}
-              lassMarkings={gameState.lassMarkings}
-              minimapGridSize={gameState.minimapGridSize}
+        {/* Center Column (Detailed Mode Only) */}
+        {viewMode === 'detailed' && (
+          <div className="pokemon-center-col">
+            <GameStatusDisplay 
+              gameState={gameState} 
+              wsConnected={wsConnected} 
+              currentPokemon={currentPokemon} 
             />
           </div>
-        </div>
+        )}
 
-        {/* Right Column - Title + LLM Analysis */}
-        <div className="pokemon-right-col analysis-column">
-          {/* Title at top of right column */}
-          <div className="column-header">
-            <div className="title">LLM LETS PLAY: <span className="title-accent">POKEMON RED</span></div>
+        {/* Right Column (Detailed Mode Only) */}
+        {viewMode === 'detailed' && (
+          <div className="pokemon-right-col analysis-column">
+            <div className="column-header">
+              <div className="title">LLM LETS PLAY: <span className="title-accent">POKEMON RED</span></div>
+            </div>
+            
+            <div className="pokemon-analysis-panel">
+            <AnalysisPanel
+                logs={logs}
+                totalActions={gameState.actions}
+                animateActions={gameState.animateActions}
+                isProcessing={
+                  !!gameState.processingStatus ||
+                  gameState.gameStatus === "Thinking..." || 
+                  gameState.gameStatus === "Processing..." ||
+                  gameState.gameStatus === "Running..." ||
+                  gameState.gameStatus.includes("Auto")
+                }
+                processingStatus={gameState.processingStatus}
+                memoryWrite={memoryWrite}
+                onMemoryWriteClear={onMemoryWriteClear}
+                debugMode={gameState.debugMode}
+              />
+            </div>
           </div>
-          
-          <div className="pokemon-analysis-panel">
-          <AnalysisPanel
-              logs={logs}
-              totalActions={gameState.actions}
-              animateActions={gameState.animateActions}
-              isProcessing={
-                !!gameState.processingStatus ||
-                gameState.gameStatus === "Thinking..." || 
-                gameState.gameStatus === "Processing..." ||
-                gameState.gameStatus === "Running..." ||
-                gameState.gameStatus.includes("Auto")
-              }
-              processingStatus={gameState.processingStatus}
-              memoryWrite={memoryWrite}
-              onMemoryWriteClear={onMemoryWriteClear}
-              debugMode={gameState.debugMode}
-            />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
+

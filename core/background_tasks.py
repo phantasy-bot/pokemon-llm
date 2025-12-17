@@ -5,56 +5,117 @@ from typing import Optional, Any
 
 log = logging.getLogger("background_tasks")
 
-async def run_chat_background_task(stop_event: asyncio.Event, tts_service: Any, twitch_service: Any, cycle_id: int):
+async def run_chat_background_task(
+    stop_event: asyncio.Event, 
+    tts_service: Any, 
+    twitch_service: Any, 
+    cycle_id: int,
+    pumpfun_service: Any = None,
+    chat_response_service: Any = None
+):
     """
     Background task to generate and play chat responses while LLM is thinking.
     Runs until stop_event is set.
+    Supports both Twitch and Pump.fun chat sources.
+    Uses Featherless LLM when CHAT_TEST_LLM=true, otherwise mock responses.
     """
-    from services.twitch_chat_service import TWITCH_TEST_MODE
+    from services.twitch_chat_service import CHAT_TEST_MODE, CHAT_TEST_LLM
     
-    if not TWITCH_TEST_MODE or not tts_service:
+    # Check if test mode is enabled
+    test_mode_enabled = CHAT_TEST_MODE
+    
+    if not test_mode_enabled or not tts_service:
         return
 
-    log.info("🚀 Starting background chat response task")
+    use_llm = CHAT_TEST_LLM and chat_response_service and chat_response_service.is_available
+    if use_llm:
+        log.info("🚀 Starting background chat response task (Featherless LLM enabled)")
+    else:
+        log.info("🚀 Starting background chat response task (Mock responses)")
+    
+    # Mock responses for Twitch (Pokemon themed) - includes "on Twitch" tag
+    twitch_mock_responses = [
+        "Omg hi @{user} on Twitch! I'm so happy you're here with me!",
+        "@{user} on Twitch that is so funny! I literally can't even right now!",
+        "Wait @{user} on Twitch, really? I had no idea about that!",
+        "Thanks for the tip @{user} on Twitch! I'll try to remember that!",
+        "@{user} on Twitch you are always so supportive, thank you!",
+        "I'm trying my best @{user} on Twitch, this game is harder than it looks!",
+        "Haha @{user} on Twitch I saw that! wild!",
+    ]
+    
+    # Mock responses for Pump.fun (crypto themed) - includes "on pump" tag
+    pumpfun_mock_responses = [
+        "@{user} on pump LFG! Diamond hands all the way! 💎🙌",
+        "Haha @{user} on pump we're all gonna make it! WAGMI! 🚀",
+        "@{user} on pump thanks for watching! This is so much fun!",
+        "Omg @{user} on pump you're right, to the moon! 🌙",
+        "@{user} on pump appreciate the hype! Let's gooo!",
+        "Thanks @{user} on pump! We're building something special here!",
+        "@{user} on pump love the energy in chat tonight!",
+    ]
     
     while not stop_event.is_set():
         try:
-            # 1. Check if we need to queue more messages (keep buffer full)
-            # queue_status = tts_service.get_queue_status()
-            # if queue_status["pending"] < 3: ...
-            
-            # Generate a message if we don't have enough pending
-            # Note: queue_and_start_synthesis checks MAX_QUEUE_SIZE internally
-            
             # Random chance to generate a new message (don't spam too fast)
             if random.random() < 0.3:  # 30% chance per loop iteration
-                test_msg = twitch_service.generate_single_test_message()
+                # Randomly pick source if both are available
+                use_pumpfun = (
+                    pumpfun_service and 
+                    CHAT_TEST_MODE and 
+                    random.random() < 0.5  # 50/50 split between platforms
+                )
+                
+                if use_pumpfun and pumpfun_service:
+                    test_msg = pumpfun_service.generate_single_test_message()
+                    mock_responses = pumpfun_mock_responses
+                    platform_tag = "on pump"
+                elif twitch_service and CHAT_TEST_MODE:
+                    test_msg = twitch_service.generate_single_test_message()
+                    mock_responses = twitch_mock_responses
+                    platform_tag = "on Twitch"
+                else:
+                    test_msg = None
+                    
                 if test_msg:
                     username = test_msg['display_name']
-                    msg_text = test_msg['message']
+                    message = test_msg.get('message', '')
                     
-                    # Generate response
-                    # from services.twitch_chat_service import CHAT_RESPONSE_PROMPT
-                    # We can't use the full LLM here as it would block/compete with main analysis
-                    # In test mode, we use the simple mock response generator
+                    # Use Featherless LLM if enabled, otherwise mock
+                    if use_llm:
+                        try:
+                            response_text = await chat_response_service.generate_response(
+                                username, message, is_past=False
+                            )
+                            if response_text:
+                                # Add platform tag if not already present
+                                if platform_tag not in response_text:
+                                    response_text = response_text.replace(f"@{username}", f"@{username} {platform_tag}")
+                                log.info(f"⚡ [BG+LLM] Generated response for @{username}: {response_text[:50]}...")
+                            else:
+                                # Fallback to mock if LLM returns empty
+                                response_text = random.choice(mock_responses).format(user=username)
+                        except Exception as e:
+                            log.warning(f"[BG] LLM error, falling back to mock: {e}")
+                            response_text = random.choice(mock_responses).format(user=username)
+                    else:
+                        response_text = random.choice(mock_responses).format(user=username)
                     
-                    # Simulating the mock response logic from the main loop:
-                    mock_responses = [
-                        "Omg hi @{user}! I'm so happy you're here with me!",
-                        "@{user} that is so funny! I literally can't even right now!",
-                        "Wait @{user}, really? I had no idea about that!",
-                        "Thanks for the tip @{user}! I'll try to remember that!",
-                        "@{user} you are always so supportive, thank you!",
-                        "I'm trying my best @{user}, this game is harder than it looks!",
-                        "Haha @{user} I saw that! wild!",
-                    ]
-                    response_text = random.choice(mock_responses).format(user=username)
+                    # Build reply metadata for UI display
+                    reply_metadata = {
+                        "reply_to": {
+                            "username": username,
+                            "platform": "Pump.fun" if use_pumpfun else "Twitch",
+                            "message": message
+                        }
+                    }
                     
                     # Queue it!
                     await tts_service.queue_and_start_synthesis(
                         response_text, 
                         priority=tts_service.PRIORITY_CHAT_RESPONSE,
-                        cycle_id=cycle_id
+                        cycle_id=cycle_id,
+                        metadata=reply_metadata
                     )
             
             # 2. Check for ready audio to play
@@ -83,3 +144,4 @@ async def run_chat_background_task(stop_event: asyncio.Event, tts_service: Any, 
         except Exception as e:
             log.error(f"Error in background chat task: {e}")
             await asyncio.sleep(1.0)  # Sleep on error to avoid log spam
+

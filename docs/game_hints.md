@@ -12,12 +12,16 @@ This document provides sequential navigation hints for the AI agent to complete 
 
 ## 📍 PALLET TOWN & ROUTE 1
 
-### Player's House (Bedroom)
+### Player's House (Bedroom) - PLAYERS_HOUSE_2F
 
-- The exit stairs are in the **top-right corner** of the room. Stand on the mat to descend.
+- **STAIRCASE LOCATION**: The exit stairs are at coordinates **(7,1)** in the **TOP-RIGHT (NORTHEAST) corner** of the room.
+- **COMMON MISTAKE**: The **WEST/SOUTHWEST edge** of the room is the player's **BED**, NOT an exit. Do NOT try to find a door or stairs there.
+- **To exit**: Walk to the TOP-RIGHT corner toward (7,1). The staircase leads down to PLAYERS_HOUSE_1F.
+- The room is small - the exit is the ONLY tile transition in the top-right.
 
 ### Pallet Town (Initial)
 
+- **ROUTE 1 EXIT**: Walk to coordinates **[10,1]** or **[11,1]** (north edge) to enter Route 1 and trigger Oak scene.
 - Go **North** into the tall grass at the edge of town to trigger Professor Oak.
 - **Do not** go to the Lab first; you must be stopped by Oak in the grass.
 - In the Lab: Talk to Oak (at top of room), select a ball (table), and try to leave to trigger Rival battle.

@@ -1,20 +1,15 @@
 import { useState, useEffect } from "react";
 import { LassMinimapOverlay } from "./LassMinimapOverlay";
+import type { LassMarking } from "../../types/gameTypes";
 
 interface MinimapProps {
   location: string;
   visible?: boolean;
   className?: string;
-  timestamp?: string; // Add timestamp prop
-  explorationPct?: number; // Exploration percentage for current map
-  lassMarkings?: Array<{
-    x: number;
-    y: number;
-    type: 'N' | 'O' | 'E'; // N=NPC, O=Opening (map tile), E=Exit (Lass-discovered)
-    opacity: number;
-    age_hours?: number;
-  }>;
-  minimapGridSize?: { width: number; height: number }; // Grid dimensions for overlay
+  timestamp?: string;
+  explorationPct?: number;
+  lassMarkings?: LassMarking[];
+  minimapGridSize?: { width: number; height: number };
 }
 
 // Removed MINIMAP_POLL_INTERVAL

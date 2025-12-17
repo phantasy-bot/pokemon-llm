@@ -1,146 +1,115 @@
-import { useState } from 'react'
 import { FolderContainer } from './FolderContainer'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { Sidebar } from './Sidebar'
+import { LassSubpageLayout } from './LassSubpageLayout'
+import { PixelHome2 } from './icons/PixelIcons'
+import { Icon } from '@iconify/react'
+import { TypewriterText } from './shared/TypewriterText'
+
+const navItems = [
+  { id: 'home', label: 'Home', icon: <PixelHome2 size={18} /> },
+  { id: 'lass', label: 'Lass Plays Pokemon', icon: <Icon icon="streamline-pixel:photography-focus-flower" width={18} height={18} /> }, 
+]
 
 export function LandingPage() {
-  const [copied, setCopied] = useState(false)
-  const tokenAddress = "0x0000000000000000000000000000000000000000" // Placeholder
+  const navigate = useNavigate()
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(tokenAddress)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleNavigate = (id: string) => {
+    if (id === 'home') navigate('/')
+    if (id === 'lass') navigate('/lass')
   }
 
   return (
     <div className="app-container">
-      <main className="main-wrapper" style={{ paddingLeft: '14px' }}> {/* Add padding to match right side since no sidebar */}
-        <FolderContainer title="WELCOME TO LLM LETS PLAY">
-          <div className="landing-content" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            gap: '24px',
-            textAlign: 'center'
-          }}>
-            {/* Large Character Image */}
-            <div className="landing-hero" style={{
-              position: 'relative',
-              width: '280px',
-              height: '280px',
-              marginTop: '20px'
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '320px', // Larger bg circle
-                height: '320px',
-                background: 'var(--cream)',
-                borderRadius: '50%',
-                zIndex: 0
-              }} />
-              <img 
-                src="/lass/lass-hello.png" 
-                alt="Lass" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  imageRendering: 'pixelated',
-                  position: 'relative',
-                  zIndex: 1,
-                  filter: 'drop-shadow(0 4px 0 rgba(0,0,0,0.1))'
-                }}
-              />
-            </div>
+      <Sidebar
+        navItems={navItems}
+        activeSection="home"
+        onNavigate={handleNavigate}
+      />
+      <main className="main-wrapper homepage" style={{ position: 'relative', overflow: 'hidden' }}>
+        <FolderContainer title="LLM LET'S PLAY" titleStyle={{ fontSize: '64px', letterSpacing: '8px' }}>
+          <LassSubpageLayout hideCharacter={true}>
+            <div className="coming-soon-wrapper">
+              {/* Group Container - Anchors Character and Bubble together */}
+              <div className="coming-soon-group">
+                {/* Character Image with Holographic Afterimage - Using lass-glasses for homepage */}
+                <div className="holographic-afterimage">
+                  {/* Trail ghosts - appear along path during entrance, then fade */}
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+                  
+                  {/* Stationary ghosts - fade in after entrance, stay permanently */}
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+                  <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+                  
+                  {/* Main character - solid, on top */}
+                  <img 
+                    src="/lass/lass-glasses.png" 
+                    alt="Coming Soon" 
+                    className="main-character coming-soon-character"
+                  />
+                </div>
 
-            {/* Tagline */}
-            <h1 style={{ 
-              fontSize: '24px', 
-              color: 'var(--text-primary)',
-              maxWidth: '600px',
-              margin: '0',
-              textShadow: '2px 2px 0 var(--cream)'
-            }}>
-              AN AI AGENT PLAYING POKEMON ON TWITCH
-            </h1>
+                {/* Speech Bubble - Relative to Group */}
+                <div className="coming-soon-bubble">
+                  <h2 className="coming-soon-title">
+                    <TypewriterText 
+                      text="Lass wants to meet you!" 
+                      speed={50} 
+                      startDelay={4500} // Start after bubble fades in (4s delay + 0.5s fade)
+                    />
+                  </h2>
+                  <div className="coming-soon-text">
+                    <TypewriterText 
+                      text="Join me on my Pokémon journey ♡." 
+                      speed={30} 
+                      startDelay={6700} // Start 1s after title finishes (Title: ~1.15s + 4.5s = 5.65s)
+                    />
+                  </div>
+                  
+                  {/* Desktop Tail */}
+                  <svg className="coming-soon-tail-desktop" viewBox="0 0 50 35">
+                    <polygon 
+                      points="0,0 50,0 48,33"
+                      fill="var(--cream)"
+                      stroke="var(--accent-primary)"
+                      strokeWidth="2"
+                    />
+                    <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
+                  </svg>
 
-            {/* Token Address Section */}
-            <div className="token-section" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              background: 'var(--cream)',
-              padding: '12px 20px',
-              borderRadius: '12px',
-              border: '2px solid var(--accent-primary)',
-              boxShadow: '4px 4px 0 rgba(0,0,0,0.1)',
-              maxWidth: '90%',
-              flexWrap: 'wrap',
-              justifyContent: 'center'
-            }}>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '14px',
-                color: 'var(--text-secondary)',
-                fontWeight: 'bold'
-              }}>
-                CA:
-              </span>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '16px',
-                color: 'var(--text-primary)',
-                wordBreak: 'break-all'
-              }}>
-                {tokenAddress}
-              </span>
-              <button 
-                onClick={handleCopy}
-                style={{
-                  background: 'var(--accent-primary)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '10px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  transform: copied ? 'scale(0.95)' : 'scale(1)',
-                }}
-              >
-                {copied ? 'COPIED!' : 'COPY'}
-              </button>
-            </div>
+                  {/* Tablet Tail */}
+                  <svg className="coming-soon-tail-tablet" viewBox="0 0 50 35">
+                    <polygon 
+                      points="0,0 50,0 2,33"
+                      fill="var(--cream)"
+                      stroke="var(--accent-primary)"
+                      strokeWidth="2"
+                    />
+                    <rect x="0" y="-2" width="50" height="5" fill="var(--cream)" />
+                  </svg>
 
-            {/* Main Links Grid */}
-            <div className="landing-links" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-              marginTop: '12px',
-              width: '100%',
-              maxWidth: '500px'
-            }}>
-              <Link to="/lass" className="landing-button primary">
-                READ DOCS
-              </Link>
-              <a href="https://twitch.tv/llmletsplay" target="_blank" rel="noreferrer" className="landing-button twitch">
-                WATCH STREAM
-              </a>
-              <a href="https://x.com/llmletsplay" target="_blank" rel="noreferrer" className="landing-button">
-                TWITTER / X
-              </a>
-              <a href="https://github.com/area/pokemon-llm" target="_blank" rel="noreferrer" className="landing-button">
-                GITHUB
-              </a>
+                  {/* Mobile Tail */}
+                  <svg className="coming-soon-tail-mobile" viewBox="0 0 40 30">
+                    <polygon 
+                      points="0,0 40,0 20,28"
+                      fill="var(--cream)"
+                      stroke="var(--accent-primary)"
+                      strokeWidth="2"
+                    />
+                    <rect x="0" y="-2" width="40" height="5" fill="var(--cream)" />
+                  </svg>
+                </div>
+              </div>
             </div>
-          </div>
+          </LassSubpageLayout>
         </FolderContainer>
       </main>
     </div>

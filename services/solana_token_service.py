@@ -1,0 +1,578 @@
+# --- solana_token_service.py ---
+"""
+Solana Token Balance Service for Pokemon LLM Agent.
+
+BALANCE QUERIES (Whale Detection):
+Uses multiple FREE tier Solana RPC providers with automatic fallback:
+1. Helius (1M credits/month, 10 req/sec)
+2. Alchemy (30M CUs/month, 500 CUps)  
+3. Shyft (unlimited credits, 10 req/sec)
+4. QuickNode (10M req/month)
+5. Public Solana RPC (fallback, rate limited)
+
+These RPCs can ONLY query token balances, NOT price/market data.
+Used for whale detection (is this wallet holding 100k+ $LASS tokens?).
+
+MARKET DATA (Token Info):
+Uses DexScreener API (FREE, no API key required, no rate limits for reasonable usage).
+https://api.dexscreener.com/latest/dex/tokens/{address}
+Provides: price, market cap, 24h volume, price change.
+
+TEST MODE:
+Set TOKEN_TEST_MODE=true to use a test token (kabuto) for development.
+This avoids needing to deploy $LASS to test the integration.
+
+Includes aggressive caching:
+- Whale status: 15 min TTL (configurable via WHALE_CACHE_TTL)
+- Token info: 60 sec TTL (market data changes frequently)
+"""
+
+import asyncio
+import logging
+import time
+import json
+import os
+from typing import Optional, Dict, Tuple
+from dataclasses import dataclass
+from collections import OrderedDict
+
+log = logging.getLogger("solana_token")
+
+# Check if httpx is available
+try:
+    import httpx
+    HTTPX_AVAILABLE = True
+except ImportError:
+    HTTPX_AVAILABLE = False
+    log.warning("httpx not installed. Token balance queries disabled. Install with: pip install httpx")
+
+
+# Configuration from environment
+PUMPFUN_TOKEN_ADDRESS = os.getenv("PUMPFUN_TOKEN_ADDRESS", "")
+WHALE_THRESHOLD = int(os.getenv("PUMPFUN_WHALE_THRESHOLD", "100000"))
+# Cache TTL in seconds - longer = fewer API calls but slower to detect balance changes
+# Default 15 min (900s) is good for streams since users stick around
+WHALE_CACHE_TTL = int(os.getenv("WHALE_CACHE_TTL", "900"))
+
+# Token Test Mode - use a test token for development
+TOKEN_TEST_MODE = os.getenv("TOKEN_TEST_MODE", "false").lower() == "true"
+TOKEN_TEST_ADDRESS = os.getenv("TOKEN_TEST_ADDRESS", "A9E2AopuG56LWYiXsvGLLTcLjUjQ539PY6k5Fhfepump")
+
+# Determine which token address to use
+def get_active_token_address() -> str:
+    """Returns the active token address based on test mode configuration."""
+    if TOKEN_TEST_MODE:
+        log.info(f"🧪 Token test mode enabled, using test token: {TOKEN_TEST_ADDRESS[:16]}...")
+        return TOKEN_TEST_ADDRESS
+    return PUMPFUN_TOKEN_ADDRESS
+
+# Token info cache TTL (60 seconds for market data since prices change quickly)
+TOKEN_INFO_CACHE_TTL = 60
+
+
+@dataclass
+class TokenInfo:
+    """Token market data from DexScreener."""
+    symbol: str = "LASS"
+    name: str = "Lass"
+    price_usd: float = 0.0
+    market_cap_usd: float = 0.0
+    volume_24h_usd: float = 0.0
+    price_change_24h: float = 0.0  # Percentage
+    liquidity_usd: float = 0.0
+    holder_count: int = 0
+    last_updated: float = 0.0
+    
+    def format_summary(self) -> str:
+        """Format token info as a brief summary string for LLM context."""
+        if self.price_usd <= 0:
+            return f"${self.symbol}: Price data unavailable"
+        
+        price_str = f"${self.price_usd:.6f}" if self.price_usd < 0.01 else f"${self.price_usd:.4f}"
+        change_sign = "+" if self.price_change_24h >= 0 else ""
+        mcap_str = f"${self.market_cap_usd/1000:.1f}K" if self.market_cap_usd < 1_000_000 else f"${self.market_cap_usd/1_000_000:.2f}M"
+        
+        return f"${self.symbol}: {price_str} ({change_sign}{self.price_change_24h:.1f}% 24h), {mcap_str} mcap"
+
+
+# RPC Provider configurations (order = priority)
+RPC_PROVIDERS = [
+    {
+        "name": "helius",
+        "url_template": "https://mainnet.helius-rpc.com/?api-key={api_key}",
+        "api_key_env": "HELIUS_API_KEY",
+        "rate_limit": 10,  # requests per second
+    },
+    {
+        "name": "alchemy", 
+        "url_template": "https://solana-mainnet.g.alchemy.com/v2/{api_key}",
+        "api_key_env": "ALCHEMY_SOLANA_API_KEY",
+        "rate_limit": 50,
+    },
+    {
+        "name": "shyft",
+        "url_template": "https://rpc.shyft.to?api_key={api_key}",
+        "api_key_env": "SHYFT_API_KEY",
+        "rate_limit": 10,
+    },
+    {
+        "name": "quicknode",
+        "url_template": "{api_key}",  # QuickNode provides full URL as the key
+        "api_key_env": "QUICKNODE_SOLANA_URL",
+        "rate_limit": 25,
+    },
+    {
+        "name": "public",
+        "url_template": "https://api.mainnet-beta.solana.com",
+        "api_key_env": None,  # No API key needed
+        "rate_limit": 4,  # Very conservative for public RPC
+    },
+]
+
+
+@dataclass
+class ProviderStatus:
+    """Tracks status of an RPC provider."""
+    name: str
+    url: str
+    is_available: bool = True
+    last_error: Optional[str] = None
+    error_count: int = 0
+    last_request_time: float = 0
+    requests_this_minute: int = 0
+    disabled_until: float = 0  # Timestamp when provider can be used again
+
+
+class LRUCache:
+    """Simple LRU cache for token balances."""
+    
+    def __init__(self, max_size: int = 1000, ttl_seconds: int = 300):
+        self.max_size = max_size
+        self.ttl = ttl_seconds
+        self._cache: OrderedDict[str, Tuple[float, int]] = OrderedDict()
+    
+    def get(self, key: str) -> Optional[int]:
+        """Get value if exists and not expired."""
+        if key not in self._cache:
+            return None
+        
+        timestamp, value = self._cache[key]
+        if time.time() - timestamp > self.ttl:
+            del self._cache[key]
+            return None
+        
+        # Move to end (most recently used)
+        self._cache.move_to_end(key)
+        return value
+    
+    def set(self, key: str, value: int):
+        """Set value with current timestamp."""
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        elif len(self._cache) >= self.max_size:
+            self._cache.popitem(last=False)  # Remove oldest
+        
+        self._cache[key] = (time.time(), value)
+    
+    def clear(self):
+        """Clear all cached values."""
+        self._cache.clear()
+
+
+class SolanaTokenService:
+    """
+    Service for querying Solana token balances with multi-provider fallback.
+    
+    Features:
+    - Automatic failover between RPC providers
+    - Aggressive caching (5 min default)
+    - Rate limiting per provider
+    - Whale threshold detection
+    """
+    
+    def __init__(
+        self,
+        token_mint: str = None,
+        whale_threshold: int = None,
+        cache_ttl: int = None,  # Default from env: WHALE_CACHE_TTL (15 min)
+        cache_size: int = 1000,
+        cooldown_seconds: int = 3600  # 1 hour cooldown for failed providers
+    ):
+        # Use test mode address if enabled, otherwise use provided or production address
+        self.token_mint = token_mint or get_active_token_address()
+        self.whale_threshold = whale_threshold or WHALE_THRESHOLD
+        actual_ttl = cache_ttl if cache_ttl is not None else WHALE_CACHE_TTL
+        self.cache = LRUCache(max_size=cache_size, ttl_seconds=actual_ttl)
+        self.cooldown_seconds = cooldown_seconds
+        
+        # Token info cache (separate, shorter TTL for market data)
+        self._token_info_cache: Optional[TokenInfo] = None
+        self._token_info_cache_time: float = 0
+        
+        # Initialize providers
+        self.providers: list[ProviderStatus] = []
+        self._init_providers()
+        
+        # Sticky provider tracking
+        self._current_provider_index = 0
+        
+        # HTTP client
+        self._client: Optional[httpx.AsyncClient] = None
+        
+        # Stats
+        self.stats = {
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "api_calls": 0,
+            "api_errors": 0,
+            "whales_detected": 0
+        }
+        
+        if not self.token_mint:
+            log.warning("No token mint address configured. Whale detection disabled.")
+    
+    def _init_providers(self):
+        """Initialize available RPC providers."""
+        for config in RPC_PROVIDERS:
+            api_key = None
+            if config["api_key_env"]:
+                api_key = os.getenv(config["api_key_env"], "")
+                if not api_key:
+                    continue  # Skip providers without API keys
+            
+            # Build URL
+            if api_key:
+                url = config["url_template"].format(api_key=api_key)
+            else:
+                url = config["url_template"]
+            
+            provider = ProviderStatus(
+                name=config["name"],
+                url=url,
+                is_available=True
+            )
+            self.providers.append(provider)
+            log.info(f"✅ Initialized Solana RPC provider: {config['name']}")
+        
+        if not self.providers:
+            log.warning("No Solana RPC providers configured. Using public RPC only.")
+            # Add public RPC as last resort
+            self.providers.append(ProviderStatus(
+                name="public",
+                url="https://api.mainnet-beta.solana.com",
+                is_available=True
+            ))
+    
+    @property
+    def is_available(self) -> bool:
+        """Check if any provider is available."""
+        return HTTPX_AVAILABLE and bool(self.token_mint) and len(self.providers) > 0
+    
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=10.0)
+        return self._client
+    
+    async def get_token_balance(self, wallet_address: str) -> int:
+        """
+        Get token balance for a wallet address.
+        Returns balance in smallest units (raw amount).
+        Uses cache and multi-provider fallback.
+        """
+        if not self.is_available:
+            return 0
+        
+        if not wallet_address or len(wallet_address) < 32:
+            return 0
+        
+        # Check cache first
+        cache_key = f"{wallet_address}:{self.token_mint}"
+        cached = self.cache.get(cache_key)
+        if cached is not None:
+            self.stats["cache_hits"] += 1
+            return cached
+        
+        self.stats["cache_misses"] += 1
+        
+        # Try to find a working provider
+        attempts = 0
+        max_attempts = len(self.providers) * 2  # Safety limit
+        
+        while attempts < max_attempts:
+            attempts += 1
+            
+            # Get current provider
+            provider = self.providers[self._current_provider_index]
+            
+            # Check if disabled
+            if provider.disabled_until > time.time():
+                # Move to next connection
+                self._rotate_provider()
+                
+                # If we've circled back to a still-disabled provider, check if we should reset
+                # Only check reset on full cycles to avoid spamming
+                if attempts >= len(self.providers):
+                    # Check if ALL providers are disabled
+                    all_disabled = all(p.disabled_until > time.time() for p in self.providers)
+                    if all_disabled:
+                        # If all are disabled, perhaps one is close to expiry? 
+                        # Or just fail?
+                        # User requirement: "repeat until we get to free provider or reset after the day"
+                        # For now, if all are disabled, we fail this request but don't force reset unless manually intervened
+                        # OR: we could force reset the oldest disabled one if we are desperate?
+                        # Let's just log and fail for now to respect the cooldown.
+                        log.warning("All RPC providers are currently on cooldown.")
+                        break
+                continue
+                
+            try:
+                balance = await self._query_balance(provider, wallet_address)
+                
+                # Cache the result
+                self.cache.set(cache_key, balance)
+                self.stats["api_calls"] += 1
+                
+                # Success! Keep using this provider.
+                # Clear any error tracking if it had any transient ones (though we disable on first error now)
+                provider.error_count = 0 
+                
+                return balance
+                
+            except Exception as e:
+                self.stats["api_errors"] += 1
+                log.warning(f"RPC error from {provider.name}: {e}")
+                
+                # Mark as disabled
+                provider.disabled_until = time.time() + self.cooldown_seconds
+                provider.last_error = str(e)
+                provider.error_count += 1
+                
+                log.warning(f"❌ Disabled RPC provider {provider.name} for {self.cooldown_seconds}s. Switching...")
+                
+                # Rotate to next
+                self._rotate_provider()
+                continue
+        
+        # All providers failed or are disabled
+        log.error("All Solana RPC providers failed or are unavailable!")
+        return 0
+
+    def _rotate_provider(self):
+        """Move to the next provider in the list."""
+        self._current_provider_index = (self._current_provider_index + 1) % len(self.providers)
+    
+    async def _query_balance(self, provider: ProviderStatus, wallet_address: str) -> int:
+        """Query token balance from a specific provider."""
+        client = await self._get_client()
+        
+        # Build JSON-RPC request for getTokenAccountsByOwner
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getTokenAccountsByOwner",
+            "params": [
+                wallet_address,
+                {"mint": self.token_mint},
+                {"encoding": "jsonParsed"}
+            ]
+        }
+        
+        response = await client.post(
+            provider.url,
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        if "error" in data:
+            raise Exception(data["error"].get("message", "Unknown RPC error"))
+        
+        # Parse response
+        result = data.get("result", {})
+        accounts = result.get("value", [])
+        
+        if not accounts:
+            return 0
+        
+        # Sum up all token accounts (usually just one)
+        total_balance = 0
+        for account in accounts:
+            account_data = account.get("account", {}).get("data", {})
+            parsed = account_data.get("parsed", {})
+            info = parsed.get("info", {})
+            token_amount = info.get("tokenAmount", {})
+            amount = int(token_amount.get("amount", 0))
+            total_balance += amount
+        
+        return total_balance
+    
+    async def is_whale(self, wallet_address: str) -> bool:
+        """
+        Check if a wallet is a "whale" (holds >= threshold tokens).
+        
+        Returns:
+            True if wallet balance >= whale threshold, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        balance = await self.get_token_balance(wallet_address)
+        
+        # Convert to human-readable units (assuming 6 decimals like most tokens)
+        # Most pump.fun tokens have 6 decimals
+        decimals = 6
+        human_balance = balance / (10 ** decimals)
+        
+        is_whale = human_balance >= self.whale_threshold
+        
+        if is_whale:
+            self.stats["whales_detected"] += 1
+            log.info(f"🐋 Whale detected! {wallet_address[:8]}... holds {human_balance:,.0f} tokens")
+        
+        return is_whale
+    
+    async def check_whale_status_batch(self, wallet_addresses: list[str]) -> Dict[str, bool]:
+        """
+        Check whale status for multiple wallets efficiently.
+        Uses semaphore to limit concurrent requests.
+        """
+        if not self.is_available:
+            return {addr: False for addr in wallet_addresses}
+        
+        # Limit concurrent requests
+        semaphore = asyncio.Semaphore(5)
+        
+        async def check_one(addr: str) -> Tuple[str, bool]:
+            async with semaphore:
+                return (addr, await self.is_whale(addr))
+        
+        # Check all wallets concurrently
+        tasks = [check_one(addr) for addr in wallet_addresses]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Build result dict, handling errors
+        whale_status = {}
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+            addr, is_whale = result
+            whale_status[addr] = is_whale
+        
+        return whale_status
+    
+    async def get_token_info(self, force_refresh: bool = False) -> Optional[TokenInfo]:
+        """
+        Fetch token market data from DexScreener API.
+        
+        Uses caching to avoid excessive API calls (60 second TTL).
+        DexScreener is free and supports pump.fun tokens.
+        
+        Args:
+            force_refresh: If True, ignore cache and fetch fresh data
+            
+        Returns:
+            TokenInfo dataclass with market data, or None if unavailable
+        """
+        if not self.token_mint:
+            return None
+        
+        # Check cache first (unless force refresh)
+        if not force_refresh and self._token_info_cache:
+            cache_age = time.time() - self._token_info_cache_time
+            if cache_age < TOKEN_INFO_CACHE_TTL:
+                return self._token_info_cache
+        
+        try:
+            client = await self._get_client()
+            
+            # DexScreener API - free, no auth required
+            url = f"https://api.dexscreener.com/latest/dex/tokens/{self.token_mint}"
+            
+            response = await client.get(url, timeout=10.0)
+            response.raise_for_status()
+            
+            data = response.json()
+            pairs = data.get("pairs", [])
+            
+            if not pairs:
+                log.warning(f"No trading pairs found for token {self.token_mint[:16]}...")
+                return None
+            
+            # Use the first pair (usually the main one)
+            pair = pairs[0]
+            
+            token_info = TokenInfo(
+                symbol=pair.get("baseToken", {}).get("symbol", "LASS"),
+                name=pair.get("baseToken", {}).get("name", "Lass"),
+                price_usd=float(pair.get("priceUsd", 0) or 0),
+                market_cap_usd=float(pair.get("marketCap", 0) or pair.get("fdv", 0) or 0),
+                volume_24h_usd=float(pair.get("volume", {}).get("h24", 0) or 0),
+                price_change_24h=float(pair.get("priceChange", {}).get("h24", 0) or 0),
+                liquidity_usd=float(pair.get("liquidity", {}).get("usd", 0) or 0),
+                last_updated=time.time()
+            )
+            
+            # Update cache
+            self._token_info_cache = token_info
+            self._token_info_cache_time = time.time()
+            
+            log.info(f"📊 Token info updated: {token_info.format_summary()}")
+            return token_info
+            
+        except Exception as e:
+            log.warning(f"Failed to fetch token info from DexScreener: {e}")
+            # Return cached data if available (even if stale)
+            return self._token_info_cache
+    
+    def reset_providers(self):
+        """Reset all disabled providers to available state."""
+        for provider in self.providers:
+            provider.disabled_until = 0
+            provider.error_count = 0
+            provider.last_error = None
+        self._current_provider_index = 0
+        log.info("Reset all RPC providers to available state")
+    
+    def get_stats(self) -> dict:
+        """Get service statistics."""
+        return {
+            **self.stats,
+            "providers": [
+                {
+                    "name": p.name,
+                    "available": p.is_available,
+                    "errors": p.error_count,
+                    "last_error": p.last_error
+                }
+                for p in self.providers
+            ],
+            "cache_size": len(self.cache._cache),
+            "whale_threshold": self.whale_threshold,
+            "token_mint": self.token_mint[:16] + "..." if self.token_mint else None
+        }
+    
+    async def close(self):
+        """Close HTTP client."""
+        if self._client:
+            await self._client.aclose()
+
+
+# Singleton instance
+_token_service: Optional[SolanaTokenService] = None
+
+
+def get_token_service() -> SolanaTokenService:
+    """Get or create the singleton token service instance."""
+    global _token_service
+    if _token_service is None:
+        _token_service = SolanaTokenService()
+    return _token_service
+
+
+async def check_whale_status(wallet_address: str) -> bool:
+    """Convenience function to check if a wallet is a whale."""
+    service = get_token_service()
+    return await service.is_whale(wallet_address)

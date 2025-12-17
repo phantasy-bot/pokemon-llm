@@ -1,18 +1,32 @@
 export function Prompts() {
   return (
     <div className="section clearfix">
-      <img 
-        src="/lass/lass-speech.png" 
-        alt="Lass speaking" 
-        className="lass-image lass-float-right"
-      />
-      
-      <h2 className="section-title">LLM Prompts Documentation</h2>
-      
-      <p>
-        The agent uses a standardized <strong>12-section format</strong> for all screen types, 
-        ensuring consistent and parseable output.
-      </p>
+      <div className="about-intro">
+        <div className="about-text-content">
+          <p>
+            The agent uses a standardized <strong>12-section format</strong> for all screen types, 
+            ensuring consistent and parseable output.
+          </p>
+          
+          <div className="info-card">
+            <div className="info-card-header">
+              <span className="badge">STRATEGY</span>
+              <h4>Prompt Focus</h4>
+            </div>
+            <p>
+              Section 7 becomes <strong>MINIMAP</strong>: Grid analysis with blocked/walkable directions and exit tiles.
+            </p>
+            <p style={{ marginTop: '8px', fontStyle: 'italic' }}>
+              Action limited to 1-5 moves, near exits use only 1-3 moves.
+            </p>
+          </div>
+        </div>
+        <img 
+          src="/lass/lass-default.png" 
+          alt="Lass" 
+          className="lass-intro-image"
+        />
+      </div>
 
       <h3 className="section-title">12-Section Analysis Format</h3>
       
@@ -159,7 +173,7 @@ export function Prompts() {
           <h4>Navigation Prompt</h4>
         </div>
         <p>Section 7 becomes <strong>MINIMAP</strong>: Grid analysis with blocked/walkable directions and exit tiles.</p>
-        <p>Action limited to 2-5 moves, near exits use only 2-3 moves.</p>
+        <p>Action limited to 1-5 moves, near exits use only 1-3 moves.</p>
       </div>
 
       <div className="info-card">
@@ -168,7 +182,7 @@ export function Prompts() {
           <h4>Combat Prompt</h4>
         </div>
         <p>Section 7 becomes <strong>MOVES</strong>: Available moves with PP, type effectiveness analysis.</p>
-        <p>Actions navigate battle menus: <code>D;R;A;</code></p>
+        <p>Actions navigate battle menus: <code>U;D;L;R;A;B;</code> to select moves or switch pokemon.</p>
       </div>
 
       <div className="info-card">

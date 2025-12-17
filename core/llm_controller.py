@@ -325,6 +325,15 @@ class LLMController:
              # ZAI mode but no vision client
              log.warning("ZAI mode detected but no vision available")
              payload["vision_analysis"] = "[Vision client not initialized]"
+        
+        elif self.config["mode"] == "ZAI_DIRECT":
+             # ZAI_DIRECT mode: Images are embedded directly in API call
+             # No separate vision analysis needed - the model handles both vision and analysis
+             log.info("ZAI_DIRECT mode: Image will be embedded directly in API call (combined vision+text)")
+             # Update status to show we're doing combined analysis
+             self.update_processing_status("ANALYZING (COMBINED)...")
+             # Set placeholder vision analysis so action logging works in llmdriver
+             vision_analysis_for_ui = "[Combined vision+text analysis - image embedded in LLM call]"
 
         # Build Message
         image_parts = []
@@ -395,12 +404,24 @@ class LLMController:
                      response = self.client.chat.completions.create(**kwargs)
                      cycle_metrics["llm"] = (time.time() - t_start) * 1000
                      full_output = response.choices[0].message.content
+            
+            elif self.config["mode"] == "ZAI_DIRECT":
+                # ZAI_DIRECT: Use non-streaming for more reliable multimodal responses
+                log.info("Using ZAI_DIRECT mode (non-streaming with embedded images).")
+                kwargs["stream"] = False
+                t_start = time.time()
+                response = self.client.chat.completions.create(**kwargs)
+                cycle_metrics["llm"] = (time.time() - t_start) * 1000
+                full_output = response.choices[0].message.content
+                log.info(f"⏱️ ZAI_DIRECT LLM: {cycle_metrics['llm']/1000:.2f}s")
                      
             else:
                 log.info("Using standard model (streaming).")
                 kwargs["stream"] = True
+                t_start = time.time()
                 response = self.client.chat.completions.create(**kwargs)
                 full_output = self._handle_streaming(response, timeout)
+                cycle_metrics["llm"] = (time.time() - t_start) * 1000
 
         except Exception as e:
             log.error(f"LLM Interaction failed: {e}", exc_info=True)
@@ -442,8 +463,12 @@ class LLMController:
 
     def _call_zai_api(self, kwargs: dict, cycle_metrics: dict) -> str:
         """Handle ZAI specific API call (manual HTTP to support thinking param)."""
-        # ... Reimplementation of ZAI logic ...
-        # For brevity, implementing a simplified version that matches llmdriver logic
+        import os
+        
+        # Check if thinking mode is enabled via env var (default: enabled)
+        thinking_enabled = os.getenv("ZAI_THINKING_MODE", "enabled").lower()
+        use_thinking = thinking_enabled in ("enabled", "true", "1", "yes")
+        
         # Construct ZAI kwargs
         zai_kwargs = {
             "model": kwargs.get("model"),
@@ -451,7 +476,6 @@ class LLMController:
             "stream": False,
             "max_tokens": kwargs.get("max_tokens"),
             "temperature": kwargs.get("temperature"),
-            "thinking": {"type": "enabled"}
         }
         
         # Convert to text-only messages
@@ -473,6 +497,11 @@ class LLMController:
             "max_tokens": zai_kwargs.get("max_tokens"),
             "temperature": zai_kwargs.get("temperature")
         }
+        
+        # Add thinking param if enabled
+        if use_thinking:
+            api_data["thinking"] = {"type": "enabled"}
+            log.info("🧠 ZAI thinking mode enabled")
         
         headers = {
             "Authorization": f"Bearer {self.client.api_key}",
