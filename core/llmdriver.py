@@ -1319,6 +1319,9 @@ Your intro message:"""
 
         llm_input_state = copy.deepcopy(current_mGBA_state)
 
+        # Initialize minimap_analysis to None (will be set later if minimap data exists)
+        minimap_analysis = None
+
         # REMOVE raw minimap_2d - LLM should use pre-computed minimap_analysis instead
         # This prevents LLM from doing its own buggy parsing
         if "minimap_2d" in llm_input_state:
@@ -1516,12 +1519,47 @@ Your intro message:"""
             except Exception as e:
                 log.warning(f"Navigation controller update failed: {e}")
 
+            # ═══════════════════════════════════════════════════════════════════════════
+            # DEV MARKERS CONTEXT - Special locations like starter Pokémon
+            # ═══════════════════════════════════════════════════════════════════════════
+            try:
+                from core.dev_markers import get_dev_marker_registry
+
+                dev_marker_registry = get_dev_marker_registry()
+
+                # Add dev marker context if on a map with special locations
+                dev_marker_context = dev_marker_registry.get_llm_context_for_map(
+                    map_name=map_name, current_world_x=pos[0], current_world_y=pos[1]
+                )
+
+                if dev_marker_context:
+                    llm_input_state["special_locations"] = dev_marker_context
+
+                    # Special handling for starter Pokémon choice
+                    starters = dev_marker_registry.get_starter_pokemon_choices(map_name)
+                    if starters and len(starters) > 0:
+                        log.info(
+                            f"🎮 STARTER POKEMON AVAILABLE: {len(starters)} choices"
+                        )
+                        # Add starter choice context
+                        starter_names = [s.label for s in starters]
+                        llm_input_state["starter_choice_available"] = (
+                            f"⭐ CHOOSE YOUR STARTER POKEMON! Available: {', '.join(starter_names)}\n"
+                            f"To choose, navigate to adjacent tile and face the Pokéball, then press A.\n"
+                            f"Set a navigation target to the starter you want!"
+                        )
+
+            except Exception as e:
+                log.warning(f"Dev markers context failed: {e}")
+
         # ═══════════════════════════════════════════════════════════════════════════
         # MAP OSCILLATION DETECTION - Prevent bouncing between same maps
         # ═══════════════════════════════════════════════════════════════════════════
         current_map_name = current_mGBA_state.get("map_name", "")
+        map_changed_this_cycle = False  # Track for enhanced target prompt
         if current_map_name and current_map_name != last_map_name:
             # Map changed! Record the transition
+            map_changed_this_cycle = True
             entry_pos = current_mGBA_state.get("position")
             map_visit_tracker.record_map_entry(
                 map_name=current_map_name,
@@ -1727,6 +1765,20 @@ Your intro message:"""
                             )
 
                 # ═══════════════════════════════════════════════════════════════════════════
+                # SPECIAL START GAME AUTO-GOAL (Pallet Town Loop Breaker)
+                # ═══════════════════════════════════════════════════════════════════════════
+                if map_name == "PALLET_TOWN" and not navigation_controller.goal_stack:
+                    # Force Route 1 goal to break house loop
+                    navigation_controller.set_exit_goal(
+                        exit_coords=(10, 1),
+                        map_name=map_name,
+                        map_id=map_id,
+                        destination="Route 1 (Go EAST around house!)",
+                        current_cycle=current_cycle,
+                    )
+                    log.info("🎯 Auto-set starter goal: Route 1 Exit to break loop")
+
+                # ═══════════════════════════════════════════════════════════════════════════
                 # AUTO-SET NAVIGATION GOAL FROM DETECTED EXITS
                 # ═══════════════════════════════════════════════════════════════════════════
                 # If no navigation goal is active and we can see exits, pick the nearest one
@@ -1924,7 +1976,8 @@ Your intro message:"""
 
         pos = current_mGBA_state.get("position")
         map_id = current_mGBA_state.get("map_id", "N/A")
-        map_name = current_mGBA_state.get("map_name", "")
+        # Ensure map_name is never None (handles missing key AND explicit None value)
+        map_name = current_mGBA_state.get("map_name") or ""
         loc_str = "Unknown"
         if pos:
             loc_str = (
@@ -1952,6 +2005,38 @@ Your intro message:"""
         lass_marks = memory_manager.get_lass_markings_for_map(map_name)
         if lass_marks:
             lass_marks = list(lass_marks)  # Make mutable copy
+
+            # CRITICAL FIX: Transform absolute world coordinates to relative grid coordinates
+            # The frontend displays a cropped minimap, so absolute coords will be off-screen
+            # We calculate the offset based on player position (world vs relative grid)
+            if minimap_analysis and current_pos:
+                player_world_x, player_world_y = current_pos
+                # Default to center (10,10) if analysis missing
+                player_grid_x = minimap_analysis.get("player_col", 10)
+                player_grid_y = minimap_analysis.get("player_row", 10)
+
+                # Offset = World - Grid
+                # e.g. World(50) - Grid(10) = Offset(40)
+                # Then Marker(52) - Offset(40) = Relative(12)
+                offset_x = player_world_x - player_grid_x
+                offset_y = player_world_y - player_grid_y
+
+                # Apply offset to all memory markers
+                valid_marks = []
+                grid_w = state.get("minimapGridSize", {}).get("width", 21)
+                grid_h = state.get("minimapGridSize", {}).get("height", 21)
+
+                for mark in lass_marks:
+                    rel_x = mark["x"] - offset_x
+                    rel_y = mark["y"] - offset_y
+
+                    # Only keep markers that are visible on the current minimap crop
+                    if 0 <= rel_x < grid_w and 0 <= rel_y < grid_h:
+                        mark["x"] = rel_x
+                        mark["y"] = rel_y
+                        valid_marks.append(mark)
+
+                lass_marks = valid_marks
         else:
             lass_marks = []
 
@@ -1975,6 +2060,8 @@ Your intro message:"""
                         )
 
         # Check if current tile target is reached
+        # Note: check_reached() also clears target when map changes (returns False in that case)
+        target_was_active = target_tracker.has_target
         if target_tracker.has_target and current_pos:
             player_world_x, player_world_y = current_pos
             target_reached = target_tracker.check_reached(
@@ -1991,6 +2078,61 @@ Your intro message:"""
                         "🎯 TILE TARGET REACHED! Set a new tile target. Also consider setting a meta-goal for your destination map."
                     )
 
+        # Enhanced prompt for map change (target auto-cleared)
+        # Target was active before check_reached(), but now cleared due to map change
+        if (
+            map_changed_this_cycle
+            and target_was_active
+            and not target_tracker.has_target
+        ):
+            log.info(
+                "MAP TRANSITION: Target was cleared, providing enhanced prompt with exits"
+            )
+
+            # Build enhanced map transition prompt
+            prompt_parts = []
+            prompt_parts.append("\nCRITICAL: MAP TRANSITION DETECTED")
+            prompt_parts.append(
+                f"Map changed from {last_map_name or 'Unknown'} to {current_map_name}."
+            )
+            prompt_parts.append(
+                "Your tile target was automatically cleared (targets are map-specific)."
+            )
+
+            if target_tracker.has_meta_goal:
+                prompt_parts.append(
+                    f"Meta-goal remains active: {target_tracker.meta_goal.destination_map}."
+                )
+
+            prompt_parts.append("\nIMMEDIATE ACTION REQUIRED:")
+            prompt_parts.append(
+                "Set a new tile target in this response using: <target_destination>x,y</target_destination>"
+            )
+
+            # Add available exits if minimap_analysis exists
+            if minimap_analysis:
+                adjacent_exits = minimap_analysis.get("adjacent_exits", [])
+                all_exits = minimap_analysis.get("all_exit_tiles", [])
+
+                if adjacent_exits:
+                    prompt_parts.append(
+                        "\nAdjacent exits (recommend setting target to one):"
+                    )
+                    for exit_str in adjacent_exits:
+                        prompt_parts.append(f"  - {exit_str}")
+
+                if all_exits:
+                    prompt_parts.append("\nAll visible exits:")
+                    # Limit to 5 exits to prevent prompt bloat
+                    for exit_tile in all_exits[:5]:
+                        prompt_parts.append(f"  - {exit_tile}")
+                    if len(all_exits) > 5:
+                        prompt_parts.append(
+                            f"  ({len(all_exits) - 5} additional exits not shown)"
+                        )
+
+            llm_input_state["target_reached"] = "\n".join(prompt_parts)
+
         # Log warning if no targets set
         if not target_tracker.has_target and not target_tracker.has_meta_goal:
             log.warning(
@@ -2000,21 +2142,59 @@ Your intro message:"""
             log.info("🎯 No tile target - LLM should set one toward meta-goal")
 
         # Update target grid position based on viewport shift
-        if target_tracker.has_target and minimap_analysis and current_pos:
-            player_world_x, player_world_y = current_pos
-            player_grid_x = minimap_analysis.get("player_col", 10)
-            player_grid_y = minimap_analysis.get("player_row", 10)
-            target_tracker.update_grid_position(
-                player_world_x, player_world_y, player_grid_x, player_grid_y
-            )
+        # NOTE: Target marker should always be added if it exists, even without minimap_analysis
+        if target_tracker.has_target:
+            if minimap_analysis and current_pos:
+                # Update grid position based on viewport (normal case with minimap)
+                player_world_x, player_world_y = current_pos
+                player_grid_x = minimap_analysis.get("player_col", 10)
+                player_grid_y = minimap_analysis.get("player_row", 10)
+                target_tracker.update_grid_position(
+                    player_world_x, player_world_y, player_grid_x, player_grid_y
+                )
 
             # Add target marker to lassMarkings for overlay display
+            # This should work even without minimap_analysis (fallback positioning)
             target_marker = target_tracker.get_marker_for_overlay()
             if target_marker:
                 lass_marks.append(target_marker)
+                log.debug(
+                    f"🎯 Added target marker to overlay at grid ({target_marker['x']}, {target_marker['y']})"
+                )
 
             # Increment cycle counter for tile target
             target_tracker.increment_cycle()
+
+        # === DEV MARKERS (STATIC SPECIAL LOCATIONS) ===
+        # Add developer-defined markers (e.g., starter Pokémon in Oak's lab)
+        from core.dev_markers import get_dev_marker_registry
+
+        dev_marker_registry = get_dev_marker_registry()
+
+        if minimap_analysis and current_pos:
+            player_world_x, player_world_y = current_pos
+            player_grid_x = minimap_analysis.get("player_col", 10)
+            player_grid_y = minimap_analysis.get("player_row", 10)
+            grid_w = state.get("minimapGridSize", {}).get("width", 21)
+            grid_h = state.get("minimapGridSize", {}).get("height", 21)
+
+            dev_markers = dev_marker_registry.get_overlay_markers_for_map(
+                map_name,
+                player_world_x,
+                player_world_y,
+                player_grid_x,
+                player_grid_y,
+                grid_w,
+                grid_h,
+            )
+
+            # Log dev marker detection for debugging
+            log.info(
+                f"[DEV_MARKERS] Map: {map_name}, Found {len(dev_markers)} dev markers"
+            )
+            if dev_markers:
+                log.debug(f"[DEV_MARKERS] Markers: {dev_markers}")
+                lass_marks.extend(dev_markers)
 
         # Broadcast markings (with target if present)
         if lass_marks:
@@ -2550,6 +2730,17 @@ Your intro message:"""
                             map_name=map_name,
                             reason=target_reason,
                         )
+
+                        # Sync to NavigationController to enable BFS pathfinding
+                        navigation_controller.set_goal(
+                            goal_type=GoalType.COORDINATE,
+                            target_x=target_world_x,
+                            target_y=target_world_y,
+                            map_name=map_name,
+                            map_id=map_id,
+                            reason=target_reason,
+                            current_cycle=current_cycle,
+                        )
                 except (ValueError, TypeError) as e:
                     log.warning(f"🎯 Failed to parse target_destination: {e}")
 
@@ -2688,6 +2879,21 @@ Your intro message:"""
                     commentary_text,
                     flags=re.IGNORECASE | re.DOTALL,
                 ).strip()
+
+                # Strip meta_goal and target_destination tags that leak into commentary
+                commentary_text = re.sub(
+                    r"<meta_goal>[\s\S]*?</meta_goal>",
+                    "",
+                    commentary_text,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+                commentary_text = re.sub(
+                    r"<target_destination>[\s\S]*?</target_destination>",
+                    "",
+                    commentary_text,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+
                 # Handle short tags <t>...</t> and malformed/shorthand tags
                 commentary_text = re.sub(
                     r"<t>.*?</t>", "", commentary_text, flags=re.DOTALL | re.IGNORECASE
@@ -2750,6 +2956,15 @@ Your intro message:"""
                                 f"Token info fetch failed (non-critical): {ti_err}"
                             )
 
+                        # Deduce screen type for context awareness
+                        screen_type_ctx = "overworld"
+                        if current_mGBA_state.get(
+                            "name_entry_context"
+                        ) or current_mGBA_state.get("name_entry_state"):
+                            screen_type_ctx = "name_entry"
+                        elif current_mGBA_state.get("battle_type", "None") != "None":
+                            screen_type_ctx = "battle"
+
                         chat_response_service.update_context(
                             game_context=game_status,
                             commentary=commentary_text,
@@ -2758,6 +2973,7 @@ Your intro message:"""
                             history=history_text,
                             memory=memory_manager.get_narrative_context(),
                             token_info=token_info_text,
+                            screen_type=screen_type_ctx,
                         )
 
                     # Synthesize and play TTS - WAIT for it to complete
