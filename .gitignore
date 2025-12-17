@@ -1,5 +1,13 @@
 .env
 __pycache__
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+venv/
+.venv/
+node_modules/
+tmp/
 
 # Runtime Data - Generated/Ephemeral Files
 *.db
@@ -9,6 +17,9 @@ __pycache__
 logs/
 ui.log
 snapshots/
+exploration_data.json
+game_goals.json
+pokemon_memories.json
 
 # Runtime Screenshots
 latest.png
