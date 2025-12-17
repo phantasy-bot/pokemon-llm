@@ -7,6 +7,7 @@ import type {
 import type { PokemonDisplay } from "../../types/display";
 import { AnalysisPanel } from "../analysis/AnalysisPanel";
 import { GameStatusDisplay } from "./GameStatusDisplay";
+import { RecentActions } from "../shared/RecentActions";
 import "./PokemonStreamOverlay.css";
 
 /**
@@ -757,9 +758,23 @@ export function PokemonStreamOverlay({
                           <HighlightedCommentary text={lingerText} />
                         ) : (
                           <AnimatedEllipsis interval={600} />
-                        )}
-                      </p>
+                        )}\n                      </p>
                     </div>
+
+                    {/* Recent Actions in Normal/Minimal Mode */}
+                    {viewMode === 'normal' && (
+                      <div className="character-container__recent-actions">
+                        <RecentActions 
+                          logs={logs} 
+                          totalActions={totalActions} 
+                          animateTrigger={animateActions} 
+                          isWaitingForAction={gamePhase === 'idle'}
+                          isActive={gamePhase === 'executing'}
+                          delayMs={1000}
+                        />
+                      </div>
+                    )}
+
                     <div className="character-container__spacer" />
                   </div>
                   

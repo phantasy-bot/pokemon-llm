@@ -682,6 +682,18 @@
   background: rgba(0, 200, 83, 0.15);
 }
 
+/* Recent Actions in Character Container (Normal/Minimal Mode) */
+.pokemon-stream-overlay .character-container__recent-actions {
+  margin-top: var(--space-md);
+  padding: 0;
+}
+
+/* Override recent actions styling when in character container */
+.pokemon-stream-overlay .character-container__recent-actions .recent-actions {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 /* Empty spacer at bottom of left column */
 .pokemon-stream-overlay .character-container__spacer {
   flex: 1; /* Smaller than commentary */

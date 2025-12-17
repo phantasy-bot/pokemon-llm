@@ -412,9 +412,12 @@ async def run_auto_loop(
         # Guard against "Event loop is closed" during shutdown
         if loop.is_running():
             try:
-                asyncio.run_coroutine_threadsafe(broadcast_func({"processingStatus": status}), loop)
+                asyncio.run_coroutine_threadsafe(
+                    broadcast_func({"processingStatus": status}), loop
+                )
             except RuntimeError:
                 pass  # Loop closed during call - ignore
+
     set_status_callback(status_callback)
     log.info("📢 Processing status callback initialized (thread-safe)")
 
@@ -463,9 +466,12 @@ async def run_auto_loop(
         # Guard against "Event loop is closed" during shutdown
         if loop.is_running():
             try:
-                asyncio.run_coroutine_threadsafe(broadcast_func(broadcast_payload), loop)
+                asyncio.run_coroutine_threadsafe(
+                    broadcast_func(broadcast_payload), loop
+                )
             except RuntimeError:
                 pass  # Loop closed during call - ignore
+
     controller.set_vision_callback(vision_callback)
     log.info("🤖 LLM Controller initialized")
 
@@ -2261,93 +2267,141 @@ Your intro message:"""
             state["nameEntryState"] = name_entry_state
             update_payload["nameEntryState"] = name_entry_state
 
-            # Activate keyboard tracker when name entry is detected
-            kb_tracker = get_keyboard_tracker()
-            kb_tracker.activate()
-
             # Get the name planner
             name_planner = get_name_planner()
 
-            # Detect what type of name we're entering (use dialog_text only - vision not yet available)
+            # Detect what type of name we're entering
             dialog_text = text_state.get("text", "") if text_state else ""
-            name_type = name_planner.detect_name_type(dialog_text, "")
+            readable_text = current_mGBA_state.get("readable_text", "")
+            name_type = name_planner.detect_name_type(dialog_text, readable_text)
 
-            # Get tracked position (more reliable than memory reads)
-            tracked_state = kb_tracker.get_state_dict()
-            row = tracked_state.get("row", 1)
-            col = tracked_state.get("col", 1)
-            selected_char = tracked_state.get("selected_char", "A")
-            cursor_idx = tracked_state.get("cursor_index", 0)
+            # Check if this is PRESET MENU or KEYBOARD
+            is_preset_menu = name_entry_state.get("is_preset_menu", False)
+            is_keyboard = name_entry_state.get("is_keyboard", False)
 
-            # Also log memory-read position for comparison/debugging
-            mem_char = name_entry_state.get("selected_char", "?")
-            mem_idx = name_entry_state.get("cursor_index", -1)
-            log.info(
-                f"📝 Name entry: TRACKED='{selected_char}' (Row {row}, Col {col}) | MEM='{mem_char}' (idx {mem_idx}) | TYPE={name_type}"
-            )
+            if is_preset_menu:
+                # ═══════════════════════════════════════════════════════════════
+                # STAGE 1: PRESET MENU - Select RED/BLUE preset
+                # ═══════════════════════════════════════════════════════════════
 
-            # Build context based on name type
-            if name_type == "player":
-                # Always type "LASS" for player
-                target_name = "LASS"
-                if not name_planner.current_name:
-                    name_planner.start_typing(target_name)
+                cursor_option = name_entry_state.get("cursor_option", "NEW NAME")
+                cursor_index = name_entry_state.get("cursor_index", 0)
 
-                next_step = name_planner.get_current_step()
-                progress = name_planner.get_progress_string()
+                # Always recommend selecting RED/BLUE preset
+                recommended_action = "D;A;"
 
-                if next_step:
-                    # Calculate target position for context (1-indexed for display)
-                    target_row = next_step["to_pos"][0] + 1
-                    target_col = next_step["to_pos"][1] + 1
-                    name_entry_context = (
-                        f"🎮 NAME ENTRY - TYPING '{target_name}'\n"
-                        f"══════════════════════════════════════\n"
-                        f"📝 PROGRESS: {progress}\n"
-                        f"\n"
-                        f"🎯 NEXT CHARACTER: '{next_step['char']}'\n"
-                        f"   ▶️ EXACT ACTION TO USE: {next_step['path']}\n"
-                        f"\n"
-                        f"⚠️ COPY THE ACTION ABOVE EXACTLY - DO NOT CALCULATE YOUR OWN PATH!\n"
-                        f"\n"
-                        f"📍 Current cursor on '{selected_char}' | Target '{next_step['char']}' is at Row{target_row},Col{target_col}\n"
-                    )
+                # Determine which preset to select
+                if name_type == "player":
+                    target_name = "RED"
+                    preset_explanation = "RED preset (fast and simple!)"
+                elif name_type == "rival":
+                    target_name = "BLUE"
+                    preset_explanation = "BLUE preset (fast and simple!)"
                 else:
-                    name_entry_context = (
-                        f"🎮 NAME ENTRY - DONE TYPING '{target_name}'!\n"
-                        f"══════════════════════════════════════\n"
-                        f"✅ All letters typed! Press START to confirm the name.\n"
-                        f"\n"
-                        f"▶️ ACTION: S;\n"
-                    )
+                    target_name = "preset"
+                    preset_explanation = "preset name"
 
-            elif name_type == "rival":
-                # Let LLM choose rival name with cute/silly suggestions
-                suggestions = ", ".join(RIVAL_NAME_SUGGESTIONS[:6])
+                name_entry_context = (
+                    f"🎮 NAME SELECTION MENU\n"
+                    f"══════════════════════════════════════\n"
+                    f"📍 CURSOR: '{cursor_option}' (Row {cursor_index})\n"
+                    f"\n"
+                    f"⭐ SELECT {target_name} PRESET!\n"
+                    f"\n"
+                    f"▶️ RECOMMENDED ACTION: {recommended_action}\n"
+                    f"   • D; = Move down to {target_name} (Row 1)\n"
+                    f"   • A; = Confirm selection\n"
+                    f"\n"
+                    f"💡 This selects {preset_explanation}\n"
+                    f"   No keyboard navigation needed!\n"
+                    f"\n"
+                    f"DO NOT press A; without D; first - that would enter keyboard mode!\n"
+                    f"\n"
+                    f"⚠️ TRUST THIS CONTEXT, NOT VISION - Vision is unreliable for name entry!\n"
+                )
 
-                if not name_planner.rival_name:
-                    # Need to pick a name first
-                    name_entry_context = (
-                        f"💕 TIME TO NAME YOUR RIVAL! 💕\n"
-                        f"══════════════════════════════════════\n"
-                        f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
-                        f"\n"
-                        f"🎀 Pick a silly/cute/playful name for him!\n"
-                        f"   Suggestions: {suggestions}\n"
-                        f"\n"
-                        f"⌨️ KEYBOARD LAYOUT:\n"
-                        f"   Row 1: A B C D E F G H I\n"
-                        f"   Row 2: J K L M N O P Q R\n"
-                        f"   Row 3: S T U V W X Y Z _\n"
-                        f"\n"
-                        f"🕹️ D/U/L/R=navigate | A=type char | START=confirm\n"
-                        f"\n"
-                        f"💡 First decide what name you want, then navigate to each letter!\n"
-                        f"   Example for 'MEANY': M is at Row2,Col4 → D;R;R;R;A;\n"
-                    )
-                else:
-                    # Continue typing the chosen rival name
+                log.info(
+                    f"📝 Preset menu: cursor on '{cursor_option}', recommending D;A; to select '{target_name}'"
+                )
+
+            elif is_keyboard:
+                # ═══════════════════════════════════════════════════════════════
+                # STAGE 2: KEYBOARD MODE - Use pre-computed sequences
+                # ═══════════════════════════════════════════════════════════════
+
+                # Activate keyboard tracker
+                kb_tracker = get_keyboard_tracker()
+                kb_tracker.activate()
+
+                # Get tracked position (more reliable than memory reads)
+                tracked_state = kb_tracker.get_state_dict()
+                row = tracked_state.get("row", 1)  # 1-indexed for display
+                col = tracked_state.get("col", 1)  # 1-indexed for display
+                selected_char = tracked_state.get("selected_char", "A")
+
+                # Build context based on name type
+                # NOTE: This keyboard mode is an EMERGENCY FALLBACK
+                # User should select presets (RED/BLUE) instead via D;A; on preset menu
+
+                if name_type == "player":
+                    # Fallback: Type "LASS" if keyboard mode was accidentally entered
+                    target_name = "LASS"
+                    if not name_planner.current_name:
+                        name_planner.start_typing(target_name)
+
+                    next_step = name_planner.get_current_step()
+                    progress = name_planner.get_progress_string()
+
+                    if next_step:
+                        # Calculate target position for context (1-indexed for display)
+                        target_row = next_step["to_pos"][0] + 1
+                        target_col = next_step["to_pos"][1] + 1
+                        step_num = name_planner.current_char_index + 1
+                        total_steps = len(name_planner.typing_sequence)
+
+                        name_entry_context = (
+                            f"⚠️ KEYBOARD MODE - EMERGENCY FALLBACK\n"
+                            f"══════════════════════════════════════\n"
+                            f"You accidentally entered keyboard mode!\n"
+                            f"Typing '{target_name}' to complete name entry.\n"
+                            f"\n"
+                            f"📝 Progress: {progress} (Step {step_num}/{total_steps})\n"
+                            f"\n"
+                            f"🎯 Next character: '{next_step['char']}'\n"
+                            f"▶️ Pre-computed action: {next_step['path']}\n"
+                            f"\n"
+                            f"⚠️ JUST EXECUTE THIS ACTION EXACTLY!\n"
+                            f"   Do NOT manually navigate - use the pre-computed path.\n"
+                            f"\n"
+                            f"📍 Current: '{selected_char}' (Row {row}, Col {col})\n"
+                            f"   Target: '{next_step['char']}' (Row {target_row}, Col {target_col})\n"
+                            f"\n"
+                            f"💡 Next time: Press D;A; on preset menu to avoid keyboard!\n"
+                        )
+                    elif name_planner.is_done_typing():
+                        # All letters typed, need to confirm with START
+                        name_entry_context = (
+                            f"✅ TYPING COMPLETE: '{target_name}'\n"
+                            f"══════════════════════════════════════\n"
+                            f"All letters typed successfully!\n"
+                            f"\n"
+                            f"▶️ ACTION: START; (Press START to confirm)\n"
+                            f"\n"
+                            f"🔴 CRITICAL - MEMORY_WRITE REQUIRED:\n"
+                            f"   After confirming, you MUST write in section 12:\n"
+                            f'   "Named myself {target_name}"\n'
+                            f"\n"
+                            f"Example MEMORY_WRITE entry:\n"
+                            f'**12. MEMORY_WRITE**: "Named myself {target_name}"\n'
+                        )
+
+                elif name_type == "rival":
+                    # Fallback: Type a funny name if keyboard mode was accidentally entered
+                    if not name_planner.rival_name:
+                        name_planner.rival_name = name_planner.get_random_rival_name()
+
                     target_name = name_planner.rival_name
+
                     if (
                         not name_planner.current_name
                         or name_planner.current_name != target_name
@@ -2358,43 +2412,69 @@ Your intro message:"""
                     progress = name_planner.get_progress_string()
 
                     if next_step:
+                        step_num = name_planner.current_char_index + 1
+                        total_steps = len(name_planner.typing_sequence)
+
                         name_entry_context = (
-                            f"💕 RIVAL NAME: '{target_name}'\n"
+                            f"⚠️ KEYBOARD MODE - EMERGENCY FALLBACK\n"
                             f"══════════════════════════════════════\n"
-                            f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
-                            f"📝 PROGRESS: {progress}\n"
+                            f"You accidentally entered keyboard mode!\n"
+                            f"Typing '{target_name}' to complete rival naming.\n"
                             f"\n"
-                            f"🎯 NEXT: Type '{next_step['char']}'\n"
-                            f"   ▶️ USE THIS ACTION: {next_step['path']}\n"
+                            f"📝 Progress: {progress} (Step {step_num}/{total_steps})\n"
                             f"\n"
-                            f"⚠️ Just copy the action above exactly!\n"
+                            f"🎯 Next character: '{next_step['char']}'\n"
+                            f"▶️ Pre-computed action: {next_step['path']}\n"
+                            f"\n"
+                            f"⚠️ JUST EXECUTE THIS ACTION EXACTLY!\n"
+                            f"\n"
+                            f"📍 Current cursor: '{selected_char}' (Row {row}, Col {col})\n"
+                            f"\n"
+                            f"💡 Next time: Press D;A; on preset menu to avoid keyboard!\n"
                         )
-                    else:
+                    elif name_planner.is_done_typing():
                         name_entry_context = (
-                            f"💕 DONE TYPING RIVAL NAME '{target_name}'!\n"
+                            f"✅ TYPING COMPLETE: '{target_name}'\n"
                             f"══════════════════════════════════════\n"
-                            f"✅ All letters typed! Press START to confirm.\n"
+                            f"All letters typed successfully!\n"
                             f"\n"
-                            f"▶️ ACTION: S;\n"
+                            f"▶️ ACTION: START; (Press START to confirm)\n"
+                            f"\n"
+                            f"🔴 CRITICAL - MEMORY_WRITE REQUIRED:\n"
+                            f"   After confirming, you MUST write in section 12:\n"
+                            f'   "Named rival {target_name}"\n'
+                            f"\n"
+                            f"Example MEMORY_WRITE entry:\n"
+                            f'**12. MEMORY_WRITE**: "Named rival {target_name}"\n'
                         )
 
+                else:
+                    # Generic name entry (pokemon nickname - optional)
+                    name_entry_context = (
+                        f"🐾 POKEMON NICKNAME (OPTIONAL)\n"
+                        f"══════════════════════════════════════\n"
+                        f"📍 Cursor: '{selected_char}' (Row {row}, Col {col})\n"
+                        f"\n"
+                        f"💡 You can skip nicknaming by pressing START!\n"
+                        f"\n"
+                        f"▶️ RECOMMENDED ACTION: S; (Skip nickname)\n"
+                        f"\n"
+                        f"If you want to nickname:\n"
+                        f"   - Pick a cute/silly name\n"
+                        f"   - Pre-computed sequences will be provided\n"
+                    )
+
             else:
-                # Generic name entry (pokemon nickname - optional)
+                # Unknown state - shouldn't happen
                 name_entry_context = (
-                    f"🎮 NAME ENTRY KEYBOARD\n"
+                    f"🎮 NAME ENTRY DETECTED\n"
                     f"══════════════════════════════════════\n"
-                    f"📍 CURSOR: Row {row}, Col {col} → '{selected_char}'\n"
-                    f"\n"
-                    f"🐾 This is for a Pokemon nickname (optional!)\n"
-                    f"   If you don't want to nickname, just press START to skip.\n"
-                    f"\n"
-                    f"⌨️ KEYBOARD: Row1=ABCDEFGHI | Row2=JKLMNOPQR | Row3=STUVWXYZ\n"
-                    f"🕹️ D/U/L/R=navigate | A=type char | START=confirm/skip | B=cancel\n"
+                    f"Processing name entry state...\n"
                 )
 
             llm_input_state["name_entry_context"] = name_entry_context
             log.info(
-                f"✅ Added name_entry_context: type={name_type}, cursor at Row {row}, Col {col} = '{selected_char}'"
+                f"✅ Added name_entry_context: type={name_type}, preset={is_preset_menu}, keyboard={is_keyboard}"
             )
         else:
             # Deactivate keyboard tracker when not in name entry
@@ -2615,6 +2695,59 @@ Your intro message:"""
             )
             tokens_used_session = controller.tokens_used_session
 
+            # ═══════════════════════════════════════════════════════════════
+            # AUTO-EXECUTE NAME ENTRY ACTIONS (Bypass LLM hallucinations)
+            # ═══════════════════════════════════════════════════════════════
+            # If we're in name entry mode, override the LLM's action with pre-computed sequence
+            name_entry_state = current_mGBA_state.get("name_entry_state")
+
+            if name_entry_state:
+                is_preset_menu = name_entry_state.get("is_preset_menu", False)
+                is_keyboard = name_entry_state.get("is_keyboard", False)
+
+                if is_preset_menu or is_keyboard:
+                    log.info(
+                        f"🎮 NAME ENTRY DETECTED - Auto-executing pre-computed action (bypass LLM)"
+                    )
+
+                    if is_preset_menu:
+                        # Always execute D;A; to select preset (RED or BLUE)
+                        action = "D;A;"
+                        log.info(
+                            f"📋 Preset menu: Auto-executing D;A; to select preset"
+                        )
+
+                    elif is_keyboard:
+                        # Get pre-computed sequence from name planner
+                        name_planner = get_name_planner()
+
+                        # Check if planner is initialized for current name
+                        next_step = name_planner.get_current_step()
+
+                        if next_step:
+                            # Execute next step in pre-computed sequence
+                            action = next_step["path"]
+                            char_to_type = next_step["char"]
+                            progress = name_planner.get_progress_string()
+                            step_num = name_planner.current_char_index + 1
+                            total_steps = len(name_planner.typing_sequence)
+
+                            log.info(
+                                f"⌨️  Keyboard mode: Auto-executing step {step_num}/{total_steps}: "
+                                f"'{char_to_type}' → {action} (Progress: {progress})"
+                            )
+                        elif name_planner.is_done_typing():
+                            # All characters typed, confirm with START
+                            action = "START;"
+                            log.info(
+                                f"✅ Name complete - Auto-executing START; to confirm"
+                            )
+                        else:
+                            # Planner not initialized - this shouldn't happen but fallback to LLM
+                            log.warning(
+                                f"⚠️ Name planner not initialized in keyboard mode - using LLM action"
+                            )
+
         finally:
             # Signal chat task to stop and cancel if still running
             chat_stop_event.set()
@@ -2668,6 +2801,24 @@ Your intro message:"""
 
         if vision_analysis_for_ui:
             update_payload["vision_analysis"] = vision_analysis_for_ui
+
+            # Extract screen_type from vision analysis for UI and chat context
+            detected_screen_type = ""
+            try:
+                vision_json = json.loads(vision_analysis_for_ui)
+                detected_screen_type = vision_json.get("screen_type", "")
+            except json.JSONDecodeError:
+                # Fallback: regex extraction
+                match = re.search(
+                    r'"screen_type"\s*:\s*"([^"]+)"', vision_analysis_for_ui
+                )
+                if match:
+                    detected_screen_type = match.group(1)
+
+            if detected_screen_type:
+                update_payload["screen_type"] = detected_screen_type
+                state["screen_type"] = detected_screen_type
+                log.debug(f"📺 Detected screen type: {detected_screen_type}")
 
         action_to_send = None
         log_action_text = "No action taken (LLM failed)."
@@ -2963,15 +3114,6 @@ Your intro message:"""
                                 f"Token info fetch failed (non-critical): {ti_err}"
                             )
 
-                        # Deduce screen type for context awareness
-                        screen_type_ctx = "overworld"
-                        if current_mGBA_state.get(
-                            "name_entry_context"
-                        ) or current_mGBA_state.get("name_entry_state"):
-                            screen_type_ctx = "name_entry"
-                        elif current_mGBA_state.get("battle_type", "None") != "None":
-                            screen_type_ctx = "battle"
-
                         chat_response_service.update_context(
                             game_context=game_status,
                             commentary=commentary_text,
@@ -2980,7 +3122,7 @@ Your intro message:"""
                             history=history_text,
                             memory=memory_manager.get_narrative_context(),
                             token_info=token_info_text,
-                            screen_type=screen_type_ctx,
+                            screen_type=state.get("screen_type", ""),
                         )
 
                     # Synthesize and play TTS - WAIT for it to complete
@@ -3024,13 +3166,26 @@ Your intro message:"""
                 # Update keyboard tracker with the action (for name entry screens)
                 kb_tracker = get_keyboard_tracker()
                 if kb_tracker.active:
+                    # Update tracker with full action (handles D/U/L/R navigation)
                     kb_tracker.apply_action(action_to_send)
+                    log.info(
+                        f"🎹 Keyboard tracker updated with action: {action_to_send}"
+                    )
 
-                    # Advance name planner for each 'A' press (typing a character)
+                    # Advance name planner step if action contains 'A' (typing a character)
                     name_planner = get_name_planner()
-                    a_presses = action_to_send.upper().count("A")
-                    for _ in range(a_presses):
-                        name_planner.advance()
+                    if "A" in action_to_send.upper() and name_planner.current_name:
+                        # Only advance if we're actively typing (not just pressing A on menu)
+                        if not name_planner.is_done_typing():
+                            name_planner.advance()
+                            log.info(
+                                f"🎹 Name planner advanced: {name_planner.get_progress_string()}"
+                            )
+                        else:
+                            # Done typing, pressing START will reset the planner
+                            log.info(
+                                f"🎹 Name planner complete, ready for START confirmation"
+                            )
 
                 # Wait 6s AFTER sending action to let screen fully render before next screenshot
                 # This prevents cut-off/partial screenshots and ensures dialog text is captured
@@ -3053,6 +3208,54 @@ Your intro message:"""
                         llm_input_state["stuck_warning"] = (
                             llm_input_state.get("stuck_warning", "") + f" {npc_warning}"
                         )
+
+                # VALIDATION: Check if name was just confirmed and MEMORY_WRITE was forgotten
+                name_planner = get_name_planner()
+                if "S" in action_to_send.upper() or "START" in action_to_send.upper():
+                    # Check if we just completed a name entry
+                    if name_planner.name_type and game_analysis:
+                        expected_memory = None
+                        if (
+                            name_planner.name_type == "player"
+                            and name_planner.player_name
+                        ):
+                            expected_memory = f"Named myself {name_planner.player_name}"
+                        elif (
+                            name_planner.name_type == "rival"
+                            and name_planner.rival_name
+                        ):
+                            expected_memory = f"Named rival {name_planner.rival_name}"
+
+                        if expected_memory:
+                            # Check if MEMORY_WRITE section contains the expected entry
+                            if "MEMORY_WRITE" in game_analysis:
+                                # Found MEMORY_WRITE section, check if name is mentioned
+                                if expected_memory not in game_analysis:
+                                    # MEMORY_WRITE exists but name not mentioned - WARNING!
+                                    warning_msg = (
+                                        f"⚠️ CRITICAL WARNING: You just confirmed your "
+                                        f"{'name' if name_planner.name_type == 'player' else 'rival name'} "
+                                        f"but didn't write it to MEMORY_WRITE! "
+                                        f"You MUST include: '{expected_memory}' in section 12 or you'll forget the name!"
+                                    )
+                                    llm_input_state["stuck_warning"] = (
+                                        llm_input_state.get("stuck_warning", "")
+                                        + f" {warning_msg}"
+                                    )
+                                    log.warning(f"🔴 {warning_msg}")
+                            else:
+                                # No MEMORY_WRITE section at all - CRITICAL ERROR!
+                                warning_msg = (
+                                    f"🔴 CRITICAL ERROR: You just confirmed your "
+                                    f"{'name' if name_planner.name_type == 'player' else 'rival name'} "
+                                    f"but completely forgot section 12 (MEMORY_WRITE)! "
+                                    f"You MUST write: '{expected_memory}' in section 12 immediately or you'll forget the name forever!"
+                                )
+                                llm_input_state["stuck_warning"] = (
+                                    llm_input_state.get("stuck_warning", "")
+                                    + f" {warning_msg}"
+                                )
+                                log.error(f"🔴 {warning_msg}")
 
             except socket.error as se:
                 log.error(

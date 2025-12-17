@@ -89,7 +89,7 @@ FACTUAL_PROMPT = (
     "- overworld: Player sprite visible walking around in the world. NPCs may be present.\n"
     "- menu: START menu, item list, pokemon list\n"
     "- dialogue: REQUIRE visible text box at bottom with black borders. If no box, it is NOT dialogue.\n"
-    "- name_entry: keyboard grid or preset name list. Press B to delete incorrect characters.\n"
+    "- name_entry: keyboard grid or preset name list. IMPORTANT: Vision cursor detection is UNRELIABLE here - trust the name_entry_context field instead.\n"
     "- **battle**: VERY STRICT REQUIREMENTS - ALL of these must be present:\n"
     "  1. The screen is mostly WHITE/light colored (not the colorful overworld)\n"
     "  2. Pokemon sprites are shown LARGE - not small 16x16 overworld sprites\n"
@@ -136,6 +136,7 @@ FACTUAL_PROMPT = (
     "PREFER selecting preset names like RED or BLUE over typing custom names."
 )
 
+
 class VisionManager:
     def __init__(self, client: Any, model: str, enabled: bool = True):
         self.client = client
@@ -148,9 +149,11 @@ class VisionManager:
         """Initialize the Z.AI MCP vision client."""
         if not self.enabled or not self.client:
             return
-            
+
         try:
-            self.vision_client = create_zai_vision_client(self.client, self.model, use_mcp=True)
+            self.vision_client = create_zai_vision_client(
+                self.client, self.model, use_mcp=True
+            )
             log.info("Z.AI sync vision client initialized")
         except Exception as e:
             log.warning(f"Failed to initialize Z.AI vision client: {e}")
@@ -161,9 +164,14 @@ class VisionManager:
         if not self.vision_client:
             return
 
-        if hasattr(self.vision_client, 'mcp_process') and self.vision_client.mcp_process:
+        if (
+            hasattr(self.vision_client, "mcp_process")
+            and self.vision_client.mcp_process
+        ):
             if self.vision_client.mcp_process.poll() is not None:
-                log.warning(f"MCP server process has terminated with code: {self.vision_client.mcp_process.returncode}")
+                log.warning(
+                    f"MCP server process has terminated with code: {self.vision_client.mcp_process.returncode}"
+                )
                 log.warning("Attempting to restart MCP server...")
                 try:
                     self.vision_client._start_mcp_server_sync()
@@ -171,10 +179,14 @@ class VisionManager:
                         log.info("MCP server restarted successfully")
                     else:
                         log.warning("Failed to restart MCP server")
-                        self.vision_client.handle_vision_failure("MCP server process terminated and restart failed")
+                        self.vision_client.handle_vision_failure(
+                            "MCP server process terminated and restart failed"
+                        )
                 except Exception as restart_error:
                     log.error(f"Failed to restart MCP server: {restart_error}")
-                    self.vision_client.handle_vision_failure(f"MCP server restart failed: {str(restart_error)}")
+                    self.vision_client.handle_vision_failure(
+                        f"MCP server restart failed: {str(restart_error)}"
+                    )
 
     def analyze_image(self, image_path: str) -> Tuple[Optional[str], float]:
         """
@@ -182,23 +194,32 @@ class VisionManager:
         Returns (vision_json_str, time_taken_ms).
         Returns (None, 0) if analysis failed or disabled.
         """
-        if not self.enabled or not self.vision_client or not image_path or not os.path.exists(image_path):
+        if (
+            not self.enabled
+            or not self.vision_client
+            or not image_path
+            or not os.path.exists(image_path)
+        ):
             return None, 0
 
         # Ensure MCP process is healthy
         self.ensure_mcp_alive()
 
         try:
-            log.info("Z.AI MCP vision server analyzing screenshot with robust retry mechanism...")
-            
+            log.info(
+                "Z.AI MCP vision server analyzing screenshot with robust retry mechanism..."
+            )
+
             t_start = time.time()
-            if hasattr(self.vision_client, 'analyze_image_sync'):
-                vision_result = self.vision_client.analyze_image_sync(image_path, FACTUAL_PROMPT)
+            if hasattr(self.vision_client, "analyze_image_sync"):
+                vision_result = self.vision_client.analyze_image_sync(
+                    image_path, FACTUAL_PROMPT
+                )
             else:
                 # Fallback purely defensive, should not happen if initialized correctly
                 vision_result = None
             t_duration_ms = (time.time() - t_start) * 1000
-            
+
             if not vision_result:
                 log.error("❌ Z.AI MCP vision analysis failed (returned None).")
                 return None, t_duration_ms
@@ -215,37 +236,45 @@ class VisionManager:
         """Clean up raw vision output: remove Japanese chars, extract JSON."""
         if not raw_result:
             return ""
-            
+
         clean = raw_result
         try:
             # Remove Japanese characters
-            clean = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]', '', clean)
-            
+            clean = re.sub(r"[\u3040-\u309F\u30A0-\u30FF]", "", clean)
+
             # Extract JSON if present
-            json_match = re.search(r'\{.*\}', clean, re.DOTALL)
+            json_match = re.search(r"\{.*\}", clean, re.DOTALL)
             if json_match:
                 # If we found JSON, use just that block + any text before it maybe?
                 # Actually usually we want just the analysis.
                 # But current usage expects the full text description sometimes?
                 # The prompt asks for JSON output.
                 pass
-                
+
         except Exception:
             pass
-            
+
         return clean
 
-    def ui_diff_check(self, image_path1: str, image_path2: str, max_attempts: int = 1, timeout: int = 15) -> Optional[str]:
+    def ui_diff_check(
+        self,
+        image_path1: str,
+        image_path2: str,
+        max_attempts: int = 1,
+        timeout: int = 15,
+    ) -> Optional[str]:
         """
         Run UI diff check between two images using the MCP client.
         Wraps the client's ui_diff_check_sync method.
         """
         if not self.enabled or not self.vision_client:
             return None
-            
+
         try:
-            if hasattr(self.vision_client, 'ui_diff_check_sync'):
-                return self.vision_client.ui_diff_check_sync(image_path1, image_path2, max_attempts, timeout)
+            if hasattr(self.vision_client, "ui_diff_check_sync"):
+                return self.vision_client.ui_diff_check_sync(
+                    image_path1, image_path2, max_attempts, timeout
+                )
             return None
         except Exception as e:
             log.warning(f"UI diff check failed: {e}")
@@ -253,7 +282,7 @@ class VisionManager:
 
     def handle_vision_failure(self, error_message: str):
         """Handle critical vision failures via the MCP client."""
-        if self.vision_client and hasattr(self.vision_client, 'handle_vision_failure'):
+        if self.vision_client and hasattr(self.vision_client, "handle_vision_failure"):
             try:
                 self.vision_client.handle_vision_failure(error_message)
             except Exception as e:

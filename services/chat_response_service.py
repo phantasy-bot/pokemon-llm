@@ -72,6 +72,9 @@ class ChatResponseService:
         self._recent_history: str = ""  # Brief summary of recent actions
         self._memory_context: str = ""  # Important events/milestones
         self._token_context: str = ""  # $LASS token price/market info
+        self._screen_type: str = (
+            ""  # Current screen type (title, overworld, battle, etc.)
+        )
 
         if not self._is_configured:
             env_prefix = "ALKAHEST" if is_production else "FEATHERLESS"
@@ -176,6 +179,7 @@ class ChatResponseService:
         history: str = None,
         memory: str = None,
         token_info: str = None,
+        screen_type: str = None,
     ):
         """Update context for more coherent responses.
 
@@ -187,6 +191,7 @@ class ChatResponseService:
             history: Brief summary of recent actions
             memory: Important events/milestones
             token_info: $LASS token market data (e.g., "$LASS: $0.00043 (+12% 24h)")
+            screen_type: Current screen type (title, overworld, battle, menu, dialogue, name_entry)
         """
         if game_context:
             self._recent_game_context = game_context
@@ -202,6 +207,8 @@ class ChatResponseService:
             self._memory_context = memory
         if token_info:
             self._token_context = token_info
+        if screen_type:
+            self._screen_type = screen_type
 
     def _get_lass_personality_prompt(self) -> str:
         """Get Lass personality context for consistent responses."""
@@ -243,6 +250,18 @@ CURRENT GAME STATE (USE THIS FOR FACTS!)
 ═══════════════════════════════════════
 """
         context = base_personality
+
+        # Add screen type if available for context
+        if self._screen_type:
+            screen_emoji = {
+                "battle": "⚔️",
+                "overworld": "🗺️",
+                "menu": "📋",
+                "dialogue": "💬",
+                "title": "🎮",
+                "name_entry": "✏️",
+            }.get(self._screen_type.lower(), "🎮")
+            context += f"{screen_emoji} Screen: {self._screen_type}\\n"
 
         # Add team FIRST and prominently - this is critical for factual responses
         if self._player_team:
