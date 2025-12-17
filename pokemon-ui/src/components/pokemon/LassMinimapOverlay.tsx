@@ -45,8 +45,9 @@ export function LassMinimapOverlay({
       {markings.map((mark, index) => {
         // Convert grid position to percentage of the grid
         // Note: positions are 0-indexed, so we use mark.x, mark.y directly
-        const leftPct = (mark.x / gridSize.width) * 100;
-        const topPct = (mark.y / gridSize.height) * 100;
+        // Add +0.5 offset to center markers in grid cells
+        const leftPct = ((mark.x + 0.5) / gridSize.width) * 100;
+        const topPct = ((mark.y + 0.5) / gridSize.height) * 100;
         
         // Size of each cell as percentage of grid
         const widthPct = (1 / gridSize.width) * 100;
