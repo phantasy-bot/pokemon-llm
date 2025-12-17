@@ -6,3 +6,5 @@ Pillow
 websockets
 tiktoken
 twitchio>=2.8.0
+mutagen
+soundfile

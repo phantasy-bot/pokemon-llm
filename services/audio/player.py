@@ -41,6 +41,12 @@ class AudioPlayer:
             elif system == "Linux":
                 # Try paplay (PulseAudio) first, fall back to aplay
                 cmd = ["paplay", audio_path]
+            elif system == "Windows":
+                # Use ffplay on Windows
+                # -nodisp: No window
+                # -autoexit: Exit when done
+                # -hide_banner: Less log spam
+                cmd = ["ffplay", "-nodisp", "-autoexit", "-hide_banner", audio_path]
             else:
                 log.warning(f"Unsupported platform for audio playback: {system}")
                 return False
@@ -52,11 +58,20 @@ class AudioPlayer:
             self._cancelled = False
             
             # Start audio playback as subprocess
+            # Note: Don't capture stderr on Windows as it can block
             self._audio_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,  # CRITICAL: Don't capture stderr - causes blocking
+                creationflags=subprocess.CREATE_NO_WINDOW if system == "Windows" else 0
             )
+            
+            # Brief check for immediate crash
+            import time as time_mod
+            time_mod.sleep(0.1)
+            if self._audio_process.poll() is not None:
+                log.error(f"Audio player crashed immediately (code {self._audio_process.returncode})")
+                return False
             
             log.info(f"🔊 Playing audio: {os.path.basename(audio_path)}")
             return True
