@@ -725,7 +725,7 @@ class ZAIMCPClient:
             # Read response with short timeout - 10s for vision to keep cycles fast
             log.info(f"Waiting for MCP server response for {tool_name}...")
             # Windows needs longer timeout for MCP vision
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=120.0)
+            response_data = self._read_response_with_id_match(analyze_request_id, timeout=20.0)
             
             if response_data is None:
                 log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")
