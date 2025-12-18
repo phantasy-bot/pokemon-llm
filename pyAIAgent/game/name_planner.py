@@ -64,6 +64,11 @@ class NamePlanner:
         # Name type detection
         self.name_type: Optional[str] = None  # "player", "rival", "pokemon"
 
+        # State tracking
+        self.confirmation_sent = (
+            False  # True if we've sent the START confirmation command
+        )
+
     def get_random_rival_name(self) -> str:
         """Pick a random funny rival name from the suggestions."""
         return random.choice(RIVAL_NAME_SUGGESTIONS)
@@ -139,6 +144,11 @@ class NamePlanner:
         for step in self.typing_sequence:
             log.info(f"  → '{step['char']}': {step['path']}")
 
+    def set_confirmation_sent(self, sent: bool = True):
+        """Set whether the final START confirmation has been sent."""
+        self.confirmation_sent = sent
+        log.info(f"🎹 NamePlanner: Confirmation sent flag set to {sent}")
+
     def get_next_action(self) -> Optional[str]:
         """
         Get the next action to type the current character.
@@ -146,6 +156,9 @@ class NamePlanner:
         Returns:
             Action string like "D;R;R;A;" or None if done
         """
+        if self.confirmation_sent:
+            return None
+
         if self.current_char_index >= len(self.typing_sequence):
             return None  # Done typing
 
@@ -195,6 +208,8 @@ class NamePlanner:
         self.current_char_index = 0
         self.typing_sequence = []
         self.name_type = None
+        self.confirmation_sent = False
+        log.info("🎹 NamePlanner: Reset state")
 
 
 # Global singleton

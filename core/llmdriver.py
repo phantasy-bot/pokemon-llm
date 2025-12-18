@@ -2421,7 +2421,10 @@ Your intro message:"""
                             f"   Target: '{next_step['char']}' (Row {target_row}, Col {target_col})\n"
                         )
                         forced_auto_action = next_step["path"]
-                    elif name_planner.is_done_typing():
+                    elif (
+                        name_planner.is_done_typing()
+                        and not name_planner.confirmation_sent
+                    ):
                         # All letters typed, need to confirm with START
                         forced_auto_action = "START;"
                         name_entry_context = (
@@ -2438,6 +2441,13 @@ Your intro message:"""
                             f"Example MEMORY_WRITE entry:\n"
                             f'**12. MEMORY_WRITE**: "Named myself {target_name}"\n'
                         )
+                        name_planner.set_confirmation_sent(True)
+                    elif name_planner.confirmation_sent:
+                        # Wait for state transition
+                        name_entry_context = (
+                            "✅ Name confirmed. Waiting for transition..."
+                        )
+                        forced_auto_action = None
 
                 elif name_type == "rival":
                     # Fallback: Type a funny name if keyboard mode was accidentally entered
@@ -2472,7 +2482,10 @@ Your intro message:"""
                             f"📍 Current cursor: '{selected_char}' (Row {row}, Col {col})\n"
                         )
                         forced_auto_action = next_step["path"]
-                    elif name_planner.is_done_typing():
+                    elif (
+                        name_planner.is_done_typing()
+                        and not name_planner.confirmation_sent
+                    ):
                         forced_auto_action = "START;"
                         name_entry_context = (
                             f"✅ TYPING COMPLETE: '{target_name}'\n"
@@ -2488,6 +2501,12 @@ Your intro message:"""
                             f"Example MEMORY_WRITE entry:\n"
                             f'**12. MEMORY_WRITE**: "Named rival {target_name}"\n'
                         )
+                        name_planner.set_confirmation_sent(True)
+                    elif name_planner.confirmation_sent:
+                        name_entry_context = (
+                            "✅ Name confirmed. Waiting for transition..."
+                        )
+                        forced_auto_action = None
 
                 else:
                     # Generic name entry (pokemon nickname - optional)
