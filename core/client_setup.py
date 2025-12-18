@@ -44,6 +44,12 @@ DEFAULT_MODEL_BY_MODE = {
     "OPENCODE": DEFAULT_OPENCODE_MODEL,
 }
 
+# --- Vision Configuration ---
+# Valid providers: "ZAI", "ZAI_DIRECT", "COMFYUI", "DEFAULT" (uses main LLM if possible)
+DEFAULT_VISION_PROVIDER = "DEFAULT"
+# Models to use when VISION_PROVIDER is ZAI/ZAI_DIRECT
+DEFAULT_VISION_MODEL = "glm-4.6v-flash"
+
 MODES = list(DEFAULT_MODEL_BY_MODE.keys())
 
 
@@ -133,6 +139,26 @@ def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str |
     supports_reasoning = False
 
     log.info(f"--- Initializing LLM Client (Mode: {MODE}) ---")
+
+    # Determine if LLM supports vision natively (can be overridden by env var)
+    # Default assumption: Most modern models support vision, but specific text-only models don't.
+    # User should set LLM_SUPPORTS_VISION=false for text-only models like o1-preview or deepseek-reasoner
+    llm_supports_vision_default = True
+    if MODE == "OLLAMA" and "llama" in get_config("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL):
+        # Heuristic: base llamas often text-only unless explicitly vision
+        pass
+
+    if MODE == "OPENCODE":
+        opencode_model = get_config("OPENCODE_MODEL", DEFAULT_OPENCODE_MODEL)
+        if "grok-code" in opencode_model:
+            llm_supports_vision_default = False
+
+    llm_supports_vision_str = os.getenv(
+        "LLM_SUPPORTS_VISION", str(llm_supports_vision_default)
+    ).lower()
+    llm_supports_vision = llm_supports_vision_str in ("true", "1", "yes", "on")
+
+    log.info(f"LLM Vision Support: {llm_supports_vision}")
 
     if MODE == "OPENAI":
         # OpenAI requires a real API key from environment
@@ -355,4 +381,10 @@ def setup_llm_client(mode: str = None) -> tuple[OpenAI | None, str | None, str |
 
     log.info(f"LLM Client setup complete. Image Detail: {IMAGE_DETAIL}")
     print(f"Client: {client}, model: {model}, supports_reasoning: {supports_reasoning}")
+
+    if not llm_supports_vision:
+        log.warning(
+            "⚠️ LLM configured as TEXT-ONLY. Images will NOT be sent to the main model."
+        )
+
     return client, model, supports_reasoning

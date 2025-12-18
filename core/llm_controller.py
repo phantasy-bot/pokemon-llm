@@ -345,26 +345,28 @@ class LLMController:
         image_parts = []
         text_content = json.dumps(payload)
 
-        # Include vision analysis directly in text for ZAI
-        if self.config["mode"] == "ZAI" and vision_analysis:
-            text_content = (
-                f"{text_content}\n\nIMPORTANT VISION ANALYSIS:\n{vision_analysis}"
-            )
+        # Include vision analysis directly in text for non-vision LLMs
+        if not self.config.get("llm_supports_vision", True) and vision_analysis:
+            text_content = f"## 👁️ CURRENT SCREEN VISION ANALYSIS\n{vision_analysis}\n\n**CRITICAL: This is what you see on screen right now. Use this information for your analysis!**\n\n{text_content}"
 
         current_content = [{"type": "text", "text": text_content}]
 
-        if screenshot and isinstance(screenshot.get("image_url"), dict):
-            current_content.append(
-                {"type": "image_url", "image_url": screenshot["image_url"]}
-            )
-        if (
-            minimap
-            and self.config.get("minimap_enabled", False)
-            and isinstance(minimap.get("image_url"), dict)
-        ):
-            current_content.append(
-                {"type": "image_url", "image_url": minimap["image_url"]}
-            )
+        # Only attach images if the LLM supports vision
+        llm_supports_vision = self.config.get("llm_supports_vision", True)
+
+        if llm_supports_vision:
+            if screenshot and isinstance(screenshot.get("image_url"), dict):
+                current_content.append(
+                    {"type": "image_url", "image_url": screenshot["image_url"]}
+                )
+            if (
+                minimap
+                and self.config.get("minimap_enabled", False)
+                and isinstance(minimap.get("image_url"), dict)
+            ):
+                current_content.append(
+                    {"type": "image_url", "image_url": minimap["image_url"]}
+                )
 
         current_user_message = {"role": "user", "content": current_content}
 

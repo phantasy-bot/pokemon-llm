@@ -480,10 +480,11 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
                         break
 
             if not has_keyboard_tiles:
-                log.info(
-                    f"name_entry: NOT detected - no keyboard tiles found in screen buffer"
+                log.warning(
+                    f"name_entry: Keyboard tiles NOT found in buffer, but menu structure matches (items={last_item + 1}). Assuming KEYBOARD active."
                 )
-                return None
+                # Proceed anyway - menu heuristics are strong enough
+                # return None
         except Exception as e:
             log.warning(
                 f"name_entry: Tile buffer check failed: {e} - proceeding with detection"

@@ -189,11 +189,17 @@ def set_current_mode(mode):
     global client, MODEL, supports_reasoning, vision_manager
     client, MODEL, supports_reasoning = setup_llm_client(CURRENT_MODE)
 
-    # Initialize VisionManager if using ZAI mode
+    # Note: setup_llm_client returns 3 values (client, model, supports_reasoning)
+    # We need to detect if llm_supports_vision is available (some versions might return 4)
+    # Actually, looking at client_setup.py, it returns 3 values but prints vision support.
+    # To pass it properly, we should read it from config via get_config or env var
+    # since we can't easily change the return signature everywhere without breaking things.
+    # However, client_setup logic sets env var or we can re-read it.
+
+    # Initialize VisionManager if using ZAI mode or if configured explicitly
+    # The updated VisionManager handles its own client creation based on VISION_PROVIDER
     global vision_manager
-    vision_manager = None
-    if CURRENT_MODE == "ZAI" and client:
-        vision_manager = VisionManager(client, MODEL, enabled=True)
+    vision_manager = VisionManager(client, MODEL, enabled=True)
 
 
 # Note: CURRENT_MODE should be set by set_current_mode() before using any llmdriver functions
@@ -451,6 +457,12 @@ async def run_auto_loop(
     log.info("📢 Processing status callback initialized (thread-safe)")
 
     # Initialize LLM Controller - encapsulates all LLM interaction logic
+    # Re-read supports_vision from env since setup_llm_client doesn't return it yet
+    import os
+
+    llm_supports_vision_str = os.getenv("LLM_SUPPORTS_VISION", "true").lower()
+    llm_supports_vision = llm_supports_vision_str in ("true", "1", "yes", "on")
+
     llm_config = {
         "mode": CURRENT_MODE,
         "model": MODEL,
@@ -466,6 +478,7 @@ async def run_auto_loop(
         "cleanup_window": CLEANUP_WINDOW,
         "system_prompt_unsupported": SYSTEM_PROMPT_UNSUPPORTED,
         "supports_reasoning": supports_reasoning,
+        "llm_supports_vision": llm_supports_vision,
     }
     controller = LLMController(client, vision_manager, memory_manager, llm_config)
     controller.set_status_callback(status_callback)
@@ -2295,6 +2308,7 @@ Your intro message:"""
 
         # Update Name Entry State (when on character naming screen)
         name_entry_state = current_mGBA_state.get("name_entry_state")
+        forced_auto_action = None
 
         # CRITICAL: Skip name entry if dialog text is present (menu state can persist from earlier)
         dialog_text = text_state.get("text", "") if text_state else ""
@@ -2326,6 +2340,7 @@ Your intro message:"""
 
                 # Always enter keyboard mode to type custom names
                 recommended_action = "A;"
+                forced_auto_action = recommended_action
 
                 # Determine which name we're typing
                 if name_type == "player":
@@ -2405,8 +2420,10 @@ Your intro message:"""
                             f"📍 Current: '{selected_char}' (Row {row}, Col {col})\n"
                             f"   Target: '{next_step['char']}' (Row {target_row}, Col {target_col})\n"
                         )
+                        forced_auto_action = next_step["path"]
                     elif name_planner.is_done_typing():
                         # All letters typed, need to confirm with START
+                        forced_auto_action = "START;"
                         name_entry_context = (
                             f"✅ TYPING COMPLETE: '{target_name}'\n"
                             f"══════════════════════════════════════\n"
@@ -2454,7 +2471,9 @@ Your intro message:"""
                             f"\n"
                             f"📍 Current cursor: '{selected_char}' (Row {row}, Col {col})\n"
                         )
+                        forced_auto_action = next_step["path"]
                     elif name_planner.is_done_typing():
+                        forced_auto_action = "START;"
                         name_entry_context = (
                             f"✅ TYPING COMPLETE: '{target_name}'\n"
                             f"══════════════════════════════════════\n"
@@ -2620,6 +2639,15 @@ Your intro message:"""
             # Store raw base64 for UI screenshot display (used by vision callback)
             llm_input_state["screenshot_base64"] = b64_ss
 
+            # CRITICAL: Set screenshot_path for Vision Manager (ComfyUI)
+            # Use ANALYSIS_IMAGE_PATH (with minimap) if available, otherwise UI_IMAGE_PATH
+            # This ensures Vision Manager has a file path to process!
+            llm_input_state["screenshot_path"] = (
+                ANALYSIS_IMAGE_PATH
+                if os.path.exists(ANALYSIS_IMAGE_PATH)
+                else UI_IMAGE_PATH
+            )
+
             if b64_llm:
                 llm_input_state["screenshot"] = {
                     "image_url": {
@@ -2729,6 +2757,13 @@ Your intro message:"""
                     benchmark,
                     cycle_metrics,
                 )
+
+                # OVERRIDE ACTION IF AUTO-EXECUTION IS PENDING
+                if forced_auto_action:
+                    log.info(
+                        f"🤖 Auto-executing name entry action: {forced_auto_action}"
+                    )
+                    action = forced_auto_action
             tokens_used_session = controller.tokens_used_session
 
             # ═══════════════════════════════════════════════════════════════

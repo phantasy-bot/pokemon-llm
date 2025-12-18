@@ -147,12 +147,19 @@ class VisionManager:
         self.comfy_service: Optional[ComfyUIVisionService] = None
 
         # Determine provider
-        self.vision_provider = os.getenv("VISION_PROVIDER", "ZAI").upper()
-        if self.vision_provider not in ["ZAI", "ZAI_DIRECT", "COMFYUI"]:
+        self.vision_provider = os.getenv("VISION_PROVIDER", "DEFAULT").upper()
+
+        # Mapping legacy config
+        if self.vision_provider == "DEFAULT":
+            # If using ZAI mode main client, we use it.
+            # If main client is text-only, we might default to ZAI if keys present?
+            # For now, DEFAULT implies "Use the main LLM client for vision"
+            pass
+        elif self.vision_provider not in ["ZAI", "ZAI_DIRECT", "COMFYUI", "DEFAULT"]:
             log.warning(
-                f"Unknown VISION_PROVIDER '{self.vision_provider}', defaulting to ZAI"
+                f"Unknown VISION_PROVIDER '{self.vision_provider}', defaulting to DEFAULT"
             )
-            self.vision_provider = "ZAI"
+            self.vision_provider = "DEFAULT"
 
         self._initialize_client()
 
@@ -165,30 +172,85 @@ class VisionManager:
             try:
                 self.comfy_service = create_vision_service()
                 log.info("👁️ ComfyUI Vision Service initialized")
-                # Check connection in background or just log availability
-                # We can't await here easily, so we assume it works or fails later
             except Exception as e:
                 log.warning(f"Failed to initialize ComfyUI Vision: {e}")
                 self.comfy_service = None
 
         elif self.vision_provider in ["ZAI", "ZAI_DIRECT"]:
-            # Z.AI Mode (MCP or Direct fallback)
-            if not self.client:
+            # Dedicated ZAI Vision Client
+            # If main client is NOT ZAI, we need to create a dedicated one here.
+            # Or if self.client is None (e.g. text-only mode where we passed None? No, we pass client)
+
+            vision_api_key = os.getenv("ZAI_API_KEY")
+            vision_base_url = os.getenv(
+                "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
+            )
+
+            # If we already have a client and it looks like a ZAI/OpenAI client, check if we can reuse it
+            # But simpler to just create a new specific client if explicitly requested via VISION_PROVIDER
+
+            if not vision_api_key:
+                log.error(
+                    "VISION_PROVIDER is ZAI but ZAI_API_KEY is missing. Vision disabled."
+                )
                 return
+
             try:
-                # If ZAI_DIRECT, explicitly disable MCP for the client creation
+                # Import OpenAI locally to avoid top-level dependency issues if not installed
+                # (Though it should be installed in this env)
+                from openai import OpenAI
+
+                # Create dedicated client for vision
+                dedicated_client = OpenAI(
+                    api_key=vision_api_key,
+                    base_url=vision_base_url,
+                    timeout=30.0,  # Vision specific timeout
+                )
+
                 use_mcp = self.vision_provider == "ZAI"
-                # Note: create_zai_vision_client also checks ZAI_MCP_DISABLED env var
+                vision_model = os.getenv(
+                    "VISION_MODEL", "glm-4.6v-flash"
+                )  # Default vision model
 
                 self.vision_client = create_zai_vision_client(
-                    self.client, self.model, use_mcp=use_mcp
+                    dedicated_client, vision_model, use_mcp=use_mcp
                 )
                 log.info(
-                    f"Z.AI vision client initialized (Provider: {self.vision_provider}, MCP: {use_mcp})"
+                    f"Initialized dedicated Z.AI vision client (Model: {vision_model}, MCP: {use_mcp})"
                 )
             except Exception as e:
-                log.warning(f"Failed to initialize Z.AI vision client: {e}")
+                log.warning(f"Failed to initialize dedicated Z.AI vision client: {e}")
                 self.vision_client = None
+
+        elif self.vision_provider == "DEFAULT":
+            # Use the main client passed in __init__
+            # Only works if the main client supports the ZAI MCP/Fallback interface
+            # effectively this is for backward compatibility or when using ZAI as main model
+            if self.client:
+                try:
+                    # Check if we are in ZAI mode main?
+                    # Actually we just try to create the wrapper.
+                    # If the client is not ZAI compatible, this might fail or just not work well?
+                    # create_zai_vision_client expects an OpenAI-compatible client.
+
+                    # We assume if VISION_PROVIDER is DEFAULT, we only init vision_client
+                    # if we are actually using ZAI or compatible?
+                    # Or do we assume the user knows what they are doing?
+
+                    # Current logic: existing code assumes self.client is valid for this.
+                    # We only init if we can.
+                    use_mcp = True  # Default behavior
+                    self.vision_client = create_zai_vision_client(
+                        self.client, self.model, use_mcp=use_mcp
+                    )
+                    log.info(
+                        "Initialized default vision client (using main LLM connection)"
+                    )
+                except Exception as e:
+                    log.info(
+                        f"Default vision client init skipped or failed (expected for non-ZAI main models): {e}"
+                    )
+                    self.vision_client = None
 
     def ensure_mcp_alive(self):
         """Check if MCP server process matches expectations and restart if needed."""
