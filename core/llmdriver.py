@@ -1366,7 +1366,9 @@ Your intro message:"""
             await asyncio.sleep(max(0, interval - (time.time() - loop_start_time)))
             continue
 
+        t_deepcopy_start = time.time()
         llm_input_state = copy.deepcopy(current_mGBA_state)
+        cycle_metrics["deepcopy"] = (time.time() - t_deepcopy_start) * 1000
 
         # Initialize minimap_analysis to None (will be set later if minimap data exists)
         minimap_analysis = None
@@ -2759,12 +2761,14 @@ Your intro message:"""
             if tts_service and tts_service.is_available:
                 tts_service.cancel_pending_chat_responses()
 
+            t_chat_wait_start = time.time()
             try:
                 await parallel_chat_task
             except asyncio.CancelledError:
                 pass
             except Exception as e:
                 log.error(f"Error awaiting parallel chat task: {e}")
+            cycle_metrics["chat_wait"] = (time.time() - t_chat_wait_start) * 1000
 
         # Clear processing status after completion
         state["processingStatus"] = ""
@@ -3106,6 +3110,7 @@ Your intro message:"""
 
                         # Fetch $LASS token info for chat context (uses DexScreener, cached 60s)
                         token_info_text = ""
+                        t_token_start = time.time()
                         try:
                             token_service = get_token_service()
                             if token_service.is_available:
@@ -3116,6 +3121,7 @@ Your intro message:"""
                             log.debug(
                                 f"Token info fetch failed (non-critical): {ti_err}"
                             )
+                        cycle_metrics["token"] = (time.time() - t_token_start) * 1000
 
                         chat_response_service.update_context(
                             game_context=game_status,
@@ -3579,15 +3585,44 @@ Your intro message:"""
         # Detailed timing breakdown
         mgba_s = cycle_metrics.get("mGBA", 0) / 1000
         snapshot_s = cycle_metrics.get("snapshot", 0) / 1000
+        deepcopy_s = cycle_metrics.get("deepcopy", 0) / 1000
         context_s = cycle_metrics.get("context", 0) / 1000
         nav_s = cycle_metrics.get("nav", 0) / 1000
         img_prep_s = cycle_metrics.get("img_prep", 0) / 1000
         vision_s = cycle_metrics.get("vision", 0) / 1000
         llm_s = cycle_metrics.get("llm", 0) / 1000
         diff_s = cycle_metrics.get("diff", 0) / 1000
+        chat_wait_s = cycle_metrics.get("chat_wait", 0) / 1000
+        token_s = cycle_metrics.get("token", 0) / 1000
         tts_s = cycle_metrics.get("tts", 0) / 1000 if "tts" in cycle_metrics else 0
         action_s = (
             cycle_metrics.get("action", 0) / 1000 if "action" in cycle_metrics else 0
+        )
+
+        # Calculate accounted vs unaccounted time
+        accounted_s = (
+            mgba_s
+            + snapshot_s
+            + deepcopy_s
+            + context_s
+            + nav_s
+            + img_prep_s
+            + vision_s
+            + llm_s
+            + diff_s
+            + chat_wait_s
+            + token_s
+            + tts_s
+            + action_s
+        )
+        other_s = max(0, true_cycle_duration_s - accounted_s)
+
+        log.info(
+            f"⏱️ Breakdown: mGBA={mgba_s:.1f}s | Snap={snapshot_s:.1f}s | DeepCP={deepcopy_s:.1f}s | "
+            f"Context={context_s:.1f}s | Nav={nav_s:.1f}s | Img={img_prep_s:.1f}s | "
+            f"Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | ChatW={chat_wait_s:.1f}s | "
+            f"Token={token_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s | "
+            f"Unaccounted={other_s:.1f}s"
         )
 
         # Calculate accounted vs unaccounted time
@@ -3658,12 +3693,15 @@ Your intro message:"""
                             cycle_metrics.get("mGBA", 0) / 1000, 1
                         ),  # Convert ms to s
                         "snapshot": round(cycle_metrics.get("snapshot", 0) / 1000, 1),
+                        "deepcopy": round(cycle_metrics.get("deepcopy", 0) / 1000, 1),
                         "context": round(cycle_metrics.get("context", 0) / 1000, 1),
                         "nav": round(cycle_metrics.get("nav", 0) / 1000, 1),
                         "img_prep": round(cycle_metrics.get("img_prep", 0) / 1000, 1),
                         "vision": round(cycle_metrics.get("vision", 0) / 1000, 1),
                         "diff": round(cycle_metrics.get("diff", 0) / 1000, 1),
                         "llm": round(cycle_metrics.get("llm", 0) / 1000, 1),
+                        "chat_wait": round(cycle_metrics.get("chat_wait", 0) / 1000, 1),
+                        "token": round(cycle_metrics.get("token", 0) / 1000, 1),
                         "tts": round(cycle_metrics.get("tts", 0) / 1000, 1),
                         "action": round(cycle_metrics.get("action", 0) / 1000, 1),
                         "total": round(true_cycle_duration_s, 1),
