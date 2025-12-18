@@ -211,10 +211,6 @@ action_count = 0
 tokens_used_session = 0
 start_time = datetime.datetime.now()
 
-# Agent-requested ui_diff flag - Only run diff when agent asks for it
-# This saves 10-20s per cycle when diff is not needed
-agent_requested_diff = False
-
 # Global status callback for real-time processing status updates
 # Set by run_auto_loop, called by llm_stream_action during vision processing
 _status_callback = None
@@ -1003,7 +999,7 @@ Your intro message:"""
             try:
                 first_cycle_vision = None
                 if vision_manager:
-                    vision_result, _ = vision_manager.analyze_image(
+                    vision_result, _ = await vision_manager.analyze_image(
                         SAVED_SCREENSHOT_PATH
                     )
                     first_cycle_vision = vision_result
@@ -2571,8 +2567,6 @@ Your intro message:"""
             # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
             # The minimap context is no longer sent to vision - user prefers clean image
             llm_input_state["screenshot_path"] = UI_IMAGE_PATH
-            # Add all diff pairs for multi-diff analysis (N-1 through N-4)
-            llm_input_state["diff_pairs"] = screenshot_history.get_diff_pairs()
             # Keep previous_screenshot_path for backwards compatibility
             llm_input_state["previous_screenshot_path"] = (
                 screenshot_history.get_previous_screenshot()
@@ -3591,7 +3585,6 @@ Your intro message:"""
         img_prep_s = cycle_metrics.get("img_prep", 0) / 1000
         vision_s = cycle_metrics.get("vision", 0) / 1000
         llm_s = cycle_metrics.get("llm", 0) / 1000
-        diff_s = cycle_metrics.get("diff", 0) / 1000
         chat_wait_s = cycle_metrics.get("chat_wait", 0) / 1000
         token_s = cycle_metrics.get("token", 0) / 1000
         tts_s = cycle_metrics.get("tts", 0) / 1000 if "tts" in cycle_metrics else 0
@@ -3609,7 +3602,6 @@ Your intro message:"""
             + img_prep_s
             + vision_s
             + llm_s
-            + diff_s
             + chat_wait_s
             + token_s
             + tts_s
@@ -3623,25 +3615,6 @@ Your intro message:"""
             f"Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | ChatW={chat_wait_s:.1f}s | "
             f"Token={token_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s | "
             f"Unaccounted={other_s:.1f}s"
-        )
-
-        # Calculate accounted vs unaccounted time
-        accounted_s = (
-            mgba_s
-            + snapshot_s
-            + context_s
-            + nav_s
-            + img_prep_s
-            + vision_s
-            + llm_s
-            + diff_s
-            + tts_s
-            + action_s
-        )
-        other_s = max(0, true_cycle_duration_s - accounted_s)
-
-        log.info(
-            f"⏱️ Breakdown: mGBA={mgba_s:.1f}s | Snap={snapshot_s:.1f}s | Context={context_s:.1f}s | Nav={nav_s:.1f}s | Img={img_prep_s:.1f}s | Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s | Unaccounted={other_s:.1f}s"
         )
 
         log.info(
@@ -3698,7 +3671,6 @@ Your intro message:"""
                         "nav": round(cycle_metrics.get("nav", 0) / 1000, 1),
                         "img_prep": round(cycle_metrics.get("img_prep", 0) / 1000, 1),
                         "vision": round(cycle_metrics.get("vision", 0) / 1000, 1),
-                        "diff": round(cycle_metrics.get("diff", 0) / 1000, 1),
                         "llm": round(cycle_metrics.get("llm", 0) / 1000, 1),
                         "chat_wait": round(cycle_metrics.get("chat_wait", 0) / 1000, 1),
                         "token": round(cycle_metrics.get("token", 0) / 1000, 1),

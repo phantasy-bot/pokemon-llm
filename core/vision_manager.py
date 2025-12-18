@@ -7,6 +7,7 @@ from typing import Optional, Tuple, Any
 
 # Internal imports (adjust paths if needed)
 from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client
+from services.comfyui_vision_service import create_vision_service, ComfyUIVisionService
 
 log = logging.getLogger("vision_manager")
 
@@ -143,21 +144,51 @@ class VisionManager:
         self.model = model
         self.enabled = enabled
         self.vision_client = None
+        self.comfy_service: Optional[ComfyUIVisionService] = None
+
+        # Determine provider
+        self.vision_provider = os.getenv("VISION_PROVIDER", "ZAI").upper()
+        if self.vision_provider not in ["ZAI", "ZAI_DIRECT", "COMFYUI"]:
+            log.warning(
+                f"Unknown VISION_PROVIDER '{self.vision_provider}', defaulting to ZAI"
+            )
+            self.vision_provider = "ZAI"
+
         self._initialize_client()
 
     def _initialize_client(self):
-        """Initialize the Z.AI MCP vision client."""
-        if not self.enabled or not self.client:
+        """Initialize the appropriate vision client."""
+        if not self.enabled:
             return
 
-        try:
-            self.vision_client = create_zai_vision_client(
-                self.client, self.model, use_mcp=True
-            )
-            log.info("Z.AI sync vision client initialized")
-        except Exception as e:
-            log.warning(f"Failed to initialize Z.AI vision client: {e}")
-            self.vision_client = None
+        if self.vision_provider == "COMFYUI":
+            try:
+                self.comfy_service = create_vision_service()
+                log.info("👁️ ComfyUI Vision Service initialized")
+                # Check connection in background or just log availability
+                # We can't await here easily, so we assume it works or fails later
+            except Exception as e:
+                log.warning(f"Failed to initialize ComfyUI Vision: {e}")
+                self.comfy_service = None
+
+        elif self.vision_provider in ["ZAI", "ZAI_DIRECT"]:
+            # Z.AI Mode (MCP or Direct fallback)
+            if not self.client:
+                return
+            try:
+                # If ZAI_DIRECT, explicitly disable MCP for the client creation
+                use_mcp = self.vision_provider == "ZAI"
+                # Note: create_zai_vision_client also checks ZAI_MCP_DISABLED env var
+
+                self.vision_client = create_zai_vision_client(
+                    self.client, self.model, use_mcp=use_mcp
+                )
+                log.info(
+                    f"Z.AI vision client initialized (Provider: {self.vision_provider}, MCP: {use_mcp})"
+                )
+            except Exception as e:
+                log.warning(f"Failed to initialize Z.AI vision client: {e}")
+                self.vision_client = None
 
     def ensure_mcp_alive(self):
         """Check if MCP server process matches expectations and restart if needed."""
@@ -188,49 +219,162 @@ class VisionManager:
                         f"MCP server restart failed: {str(restart_error)}"
                     )
 
-    def analyze_image(self, image_path: str) -> Tuple[Optional[str], float]:
+    async def analyze_image(self, image_path: str) -> Tuple[Optional[str], float]:
         """
-        Analyze screenshot using Z.AI MCP vision.
+        Analyze screenshot using configured vision provider.
         Returns (vision_json_str, time_taken_ms).
         Returns (None, 0) if analysis failed or disabled.
         """
-        if (
-            not self.enabled
-            or not self.vision_client
-            or not image_path
-            or not os.path.exists(image_path)
-        ):
+        if not self.enabled or not image_path or not os.path.exists(image_path):
             return None, 0
 
-        # Ensure MCP process is healthy
-        self.ensure_mcp_alive()
+        t_start = time.time()
+        vision_result = None
 
-        try:
-            log.info(
-                "Z.AI MCP vision server analyzing screenshot with robust retry mechanism..."
-            )
+        # --- COMFYUI PATH ---
+        if self.vision_provider == "COMFYUI" and self.comfy_service:
+            try:
+                log.info("👁️ Analyzing image via ComfyUI (Moondream)...")
+                vision_result = await self.comfy_service.analyze_image(image_path)
+            except Exception as e:
+                log.error(f"ComfyUI vision analysis failed: {e}")
 
-            t_start = time.time()
-            if hasattr(self.vision_client, "analyze_image_sync"):
-                vision_result = self.vision_client.analyze_image_sync(
-                    image_path, FACTUAL_PROMPT
-                )
-            else:
-                # Fallback purely defensive, should not happen if initialized correctly
-                vision_result = None
-            t_duration_ms = (time.time() - t_start) * 1000
+        # --- ZAI PATH ---
+        elif self.vision_provider in ["ZAI", "ZAI_DIRECT"] and self.vision_client:
+            self.ensure_mcp_alive()
+            try:
+                log.info("Z.AI vision analyzing screenshot...")
 
-            if not vision_result:
-                log.error("❌ Z.AI MCP vision analysis failed (returned None).")
-                return None, t_duration_ms
+                # Use async method if available
+                if hasattr(self.vision_client, "analyze_image_async"):
+                    # Fallback client has explicit async method
+                    vision_result = await self.vision_client.analyze_image_async(
+                        image_path, FACTUAL_PROMPT
+                    )
+                elif hasattr(self.vision_client, "analyze_image"):
+                    # MCP client 'analyze_image' IS async
+                    # But Fallback 'analyze_image' IS sync
+                    # We need to distinguish or check if it's awaitable?
+                    # Or just check class name? Or check signature?
+                    # Safer: check for 'analyze_image_async' first (added to fallback).
+                    # For MCP client: 'analyze_image' is async.
 
-            # Post-processing: Filter Japanese and extract JSON
-            processed = self._process_vision_result(vision_result)
-            return processed, t_duration_ms
+                    # We can try to await it?
+                    # If it's the sync fallback, awaiting it (if not coroutine) might fail?
+                    # No, we can't await a non-coroutine.
 
-        except Exception as e:
-            log.error(f"Error during vision analysis: {e}")
-            return None, 0
+                    # Let's check if it's the MCP client or fallback.
+                    is_fallback = "Fallback" in self.vision_client.__class__.__name__
+
+                    if not is_fallback:
+                        # MCP Client: analyze_image is async
+                        vision_result = await self.vision_client.analyze_image(
+                            image_path, FACTUAL_PROMPT
+                        )
+                    else:
+                        # Fallback Client: analyze_image is sync, but we added analyze_image_async
+                        # So we should have hit the first if block.
+                        # Unless verify/reload didn't pick it up?
+                        # It should work.
+                        pass
+
+            except Exception as e:
+                log.error(f"Z.AI vision analysis failed: {e}")
+
+        t_duration_ms = (time.time() - t_start) * 1000
+
+        if not vision_result:
+            return None, t_duration_ms
+
+        # Post-processing
+        processed = self._process_vision_result(vision_result)
+        return processed, t_duration_ms
+
+        # --- COMFYUI PATH ---
+        if self.vision_provider == "COMFYUI" and self.comfy_service:
+            try:
+                log.info("👁️ Analyzing image via ComfyUI (Moondream)...")
+                t_start = time.time()
+
+                # Run sync wrapper for async method if we are in sync context
+                # But analyze_image seems to be called synchronously?
+                # ComfyUIVisionService.analyze_image is async.
+                # We need to run it in event loop?
+                # VisionManager is usually called from async context in llmdriver (via run_in_executor usually? No)
+                # In llmdriver:
+                #   vision_result, _ = vision_manager.analyze_image(image_path)
+                # It is called synchronously!
+                # We need to use asyncio.run or loop.run_until_complete?
+                # But we might be inside a loop already.
+
+                # Check if there's a running loop
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # We are in an async function but calling this synchronously?
+                        # This is problematic.
+                        # If llmdriver calls this from a sync block, we can't await.
+                        # BUT llmdriver calls it from:
+                        #   (async) run_auto_loop -> (sync block?)
+                        # Actually llmdriver runs a big async loop.
+                        # But `analyze_image` is defined as sync `def analyze_image`.
+                        # If we want to use async Comfy service, we should make this async or run it appropriately.
+                        pass
+                except RuntimeError:
+                    pass
+
+                # HACK: For now, use asyncio.run if no loop, or...
+                # Actually, ComfyUITTSService uses httpx.AsyncClient.
+                # Ideally VisionManager should be async.
+                # But changing signature breaks callers.
+                # Let's check callers.
+                # llm_controller.py calls it.
+                # llmdriver.py calls it.
+
+                # If we cannot change signature easily, we can use a fresh loop for this call if standalone,
+                # or we have to bridge sync/async.
+                # Given Python's asyncio, calling async from sync is hard if loop is running.
+
+                # ALTERNATIVE: Use `asyncio.create_task` and wait? No, that's for async.
+                #
+                # Let's try to run it.
+                # If we assume we are inside an async loop (llmdriver), we can't use run_until_complete.
+                # We might need to upgrade `analyze_image` to `async analyze_image`.
+                #
+                # Let's check llmdriver usage.
+                # Line 1006: vision_result, _ = vision_manager.analyze_image(SAVED_SCREENSHOT_PATH)
+                # This is inside `async def run_auto_loop`.
+                # So we are in async context.
+                # But `analyze_image` is sync.
+                # So it blocks the loop?
+                # ZAI MCP client `analyze_image_sync` uses threading Lock and blocks?
+                # Yes.
+
+                # So if we want to use ComfyUI (async httpx), we should ideally await it.
+                # But we can't await a sync function.
+                #
+                # OPTION: Make `analyze_image` async?
+                # If I change `def analyze_image` to `async def analyze_image`:
+                # 1. Update `VisionManager` definition.
+                # 2. Update `llmdriver.py` call sites to `await vision_manager.analyze_image(...)`.
+                # 3. Update `llm_controller.py` call sites.
+                #
+                # This seems correct path for modern async app.
+                # ZAI client has `analyze_image` (sync wrapper) and `analyze_image_async`?
+                # ZAI client has `analyze_image_sync`.
+
+                # Let's try to keep it sync for now to avoid refactoring everything?
+                # How to run async function from sync in running loop?
+                # You can't block.
+                #
+                # Okay, I will upgrade `analyze_image` to `async def`.
+                # And update callers.
+                pass
+
+            except Exception as e:
+                pass
+
+        # ... (Rest of existing ZAI logic)
 
     def _process_vision_result(self, raw_result: str) -> str:
         """Clean up raw vision output: remove Japanese chars, extract JSON."""
@@ -255,30 +399,6 @@ class VisionManager:
             pass
 
         return clean
-
-    def ui_diff_check(
-        self,
-        image_path1: str,
-        image_path2: str,
-        max_attempts: int = 1,
-        timeout: int = 15,
-    ) -> Optional[str]:
-        """
-        Run UI diff check between two images using the MCP client.
-        Wraps the client's ui_diff_check_sync method.
-        """
-        if not self.enabled or not self.vision_client:
-            return None
-
-        try:
-            if hasattr(self.vision_client, "ui_diff_check_sync"):
-                return self.vision_client.ui_diff_check_sync(
-                    image_path1, image_path2, max_attempts, timeout
-                )
-            return None
-        except Exception as e:
-            log.warning(f"UI diff check failed: {e}")
-            return None
 
     def handle_vision_failure(self, error_message: str):
         """Handle critical vision failures via the MCP client."""

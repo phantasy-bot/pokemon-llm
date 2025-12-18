@@ -570,8 +570,8 @@ class ZAIMCPClient:
             log.warning(f"Flash fallback exception: {e}")
             return None
 
-    async def ui_diff_check(
-        self, prev_image_path: str, curr_image_path: str
+    def analyze_image_sync(
+        self, image_path: str, prompt: str = "What does this image show?"
     ) -> Optional[str]:
         """
         Compare two screenshots using ui_diff_check MCP tool to detect UI changes.
@@ -796,7 +796,7 @@ class ZAIMCPClient:
             log.info(f"Waiting for MCP server response for {tool_name}...")
             # Windows needs longer timeout for MCP vision
             response_data = self._read_response_with_id_match(
-                analyze_request_id, timeout=20.0
+                analyze_request_id, timeout=30.0
             )
 
             if response_data is None:
@@ -1037,6 +1037,82 @@ class ZAIVisionFallback:
             "ZAIVisionFallback.analyze_image_sync called (GLM-4.6V-Flash direct API)"
         )
         return self.analyze_image(image_path, prompt)
+
+    async def analyze_image_async(
+        self, image_path: str, prompt: str = "What does this image show?"
+    ) -> Optional[str]:
+        """
+        Async version of analyze_image using httpx.AsyncClient.
+        """
+        if not self.should_attempt_fallback_analysis():
+            return None
+
+        try:
+            import base64
+            import httpx
+
+            with open(image_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode("utf-8")
+
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_data}",
+                                "detail": "low",
+                            },
+                        },
+                    ],
+                }
+            ]
+
+            api_data = {
+                "model": self.model,
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7,
+            }
+
+            headers = {
+                "Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}",
+                "Content-Type": "application/json",
+            }
+
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                response = await http_client.post(
+                    "https://api.z.ai/api/paas/v4/chat/completions",
+                    json=api_data,
+                    headers=headers,
+                )
+
+                if response.status_code == 200:
+                    response_data = response.json()
+                    if "choices" in response_data and response_data["choices"]:
+                        result = response_data["choices"][0]["message"]["content"]
+                        self.handle_fallback_success()
+                        return result
+                    else:
+                        error_msg = (
+                            f"Vision API response missing choices: {response_data}"
+                        )
+                        self.handle_fallback_failure(error_msg)
+                        log.error(error_msg)
+                        return None
+                else:
+                    error_msg = f"Vision API HTTP request failed: {response.status_code} - {response.text}"
+                    self.handle_fallback_failure(error_msg)
+                    log.error(error_msg)
+                    return None
+
+        except Exception as e:
+            error_msg = f"Fallback vision analysis exception: {str(e)}"
+            self.handle_fallback_failure(error_msg)
+            log.error(f"Fallback image analysis failed: {e}", exc_info=True)
+            return None
 
     def analyze_image(
         self, image_path: str, prompt: str = "What does this image show?"
