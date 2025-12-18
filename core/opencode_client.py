@@ -1,0 +1,206 @@
+import httpx
+import logging
+import json
+import os
+import base64
+
+log = logging.getLogger("opencode_client")
+
+
+class OpenCodeClient:
+    def __init__(self, base_url="http://localhost:4096"):
+        self.base_url = base_url.rstrip("/")
+        self.session_id = None
+        self.http = httpx.Client(timeout=60.0)
+        self.chat = self._Chat(self)
+        self._last_msg_len = 0
+        self.models = self._Models(self)
+
+    class _Chat:
+        def __init__(self, client):
+            self.completions = self._Completions(client)
+
+        class _Completions:
+            def __init__(self, client):
+                self.client = client
+
+            def create(self, **kwargs):
+                return self.client._create_completion(**kwargs)
+
+    class _Models:
+        def __init__(self, client):
+            self.client = client
+            self.data = []  # Mock data
+
+        def list(self):
+            # Mock response for client_setup verification
+            class ModelList:
+                data = [{"id": "opencode-agent"}]
+
+            return ModelList()
+
+    def _ensure_session(self):
+        if not self.session_id:
+            try:
+                # Create a new session
+                # API: POST /session
+                # Body: { title: "Pokemon Agent" }
+                resp = self.http.post(
+                    f"{self.base_url}/session",
+                    json={"title": "Pokemon Agent"},
+                )
+                if resp.status_code != 200:
+                    log.error(
+                        f"Failed to create session: {resp.status_code} {resp.text}"
+                    )
+                    raise Exception(f"OpenCode Session Create Failed: {resp.text}")
+
+                data = resp.json()
+                self.session_id = data.get("id")
+                log.info(f"Created OpenCode session: {self.session_id}")
+            except httpx.ConnectError:
+                log.critical(
+                    f"❌ Could not connect to OpenCode server at {self.base_url}"
+                )
+                log.critical(
+                    "   Please verify that 'opencode --port 4096' is running in another terminal."
+                )
+                # We raise a clean exception to stop the crash loop with a clear message
+                raise Exception(
+                    "OpenCode server is not running. Please start it with 'opencode --port 4096'"
+                )
+            except Exception as e:
+                log.error(f"Failed to connect to OpenCode: {e}")
+                raise
+
+    def _create_completion(self, messages, model=None, **kwargs):
+        # 1. State Management
+        # If the history length decreased, it means a reset/summary occurred.
+        if len(messages) < self._last_msg_len:
+            log.info("Context length decreased - assuming reset. Creating new session.")
+            self.session_id = None
+
+        self._ensure_session()
+        self._last_msg_len = len(messages)
+
+        # 2. Extract Latest Message
+        # We assume OpenCode maintains the history statefully.
+        # We only send the *last* message (the new user prompt).
+        if not messages:
+            return self._wrap_response("")
+
+        last_msg = messages[-1]
+
+        # 3. Extract System Prompt
+        # We check for a system prompt to send as a parameter
+        system_content = None
+        sys_msg = next((m for m in messages if m.get("role") == "system"), None)
+        if sys_msg:
+            content = sys_msg.get("content")
+            if isinstance(content, list):
+                system_content = " ".join(
+                    [x.get("text", "") for x in content if x.get("type") == "text"]
+                )
+            else:
+                system_content = str(content)
+
+        # 4. Prepare Body Parts
+        parts = []
+        content = last_msg.get("content")
+
+        if isinstance(content, str):
+            parts.append({"type": "text", "text": content})
+        elif isinstance(content, list):
+            for item in content:
+                if item.get("type") == "text":
+                    parts.append({"type": "text", "text": item.get("text")})
+                elif item.get("type") == "image_url":
+                    img_url = item.get("image_url", {}).get("url", "")
+                    if img_url.startswith("data:image"):
+                        try:
+                            # Parse mime type from data URI
+                            # Format: data:image/png;base64,...
+                            header, encoded = img_url.split(",", 1)
+                            mime = header.split(":")[1].split(";")[0]
+
+                            # OpenCode expects 'file' type for images with 'url' field
+                            parts.append(
+                                {
+                                    "type": "file",
+                                    "mime": mime,
+                                    "url": img_url,  # Pass full data URI
+                                }
+                            )
+                        except Exception as e:
+                            log.error(f"Failed to parse data URI: {e}")
+                    else:
+                        # For remote URLs, we can also use 'file' type if supported,
+                        # or just pass it through if OpenCode supports it.
+                        # For now, let's try passing as file with URL
+                        parts.append(
+                            {
+                                "type": "file",
+                                "mime": "image/jpeg",  # Default fallback
+                                "url": img_url,
+                            }
+                        )
+
+        # 5. Construct Request Body
+        body = {"parts": parts, "noReply": False}
+
+        if system_content:
+            body["system"] = system_content
+
+        # Model handling
+        # Ignore placeholder model "opencode-agent"
+        if model and model != "opencode-agent":
+            if "/" in model:
+                p, m = model.split("/", 1)
+                body["model"] = {"providerID": p, "modelID": m}
+            else:
+                body["model"] = {"modelID": model}
+
+        # 6. Send Request
+        try:
+            url = f"{self.base_url}/session/{self.session_id}/message"
+            # log.info(f"Sending to OpenCode: {url}")
+            # log.debug(f"Body: {json.dumps(body)[:200]}...") # Log truncated body
+
+            resp = self.http.post(url, json=body)
+            resp.raise_for_status()
+
+            response_content = ""
+            data = resp.json()
+
+            # Parse response parts
+            # Response format: { info: Message, parts: Part[] }
+            if "parts" in data:
+                for p in data["parts"]:
+                    if p.get("type") == "text":
+                        response_content += p.get("text", "")
+
+            return self._wrap_response(response_content)
+
+        except httpx.HTTPStatusError as e:
+            log.error(
+                f"OpenCode API Error: {e.response.status_code} - {e.response.text}"
+            )
+            raise
+        except Exception as e:
+            log.error(f"Prompt failed: {e}")
+            raise
+
+    def _wrap_response(self, content):
+        class Message:
+            def __init__(self, c):
+                self.content = c
+
+        class Choice:
+            def __init__(self, c):
+                self.message = Message(c)
+
+        class Response:
+            def __init__(self, c):
+                self.choices = [Choice(c)]
+
+        return Response(content)
