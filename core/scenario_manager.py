@@ -55,6 +55,11 @@ class ScenarioManager:
         if is_keyboard:
             planner = get_name_planner()
 
+            # Prevent loop: If already confirmed, hand back to agent
+            if planner.confirmation_sent:
+                # Returning None here lets llmdriver handle the "Waiting for transition" logic
+                return None
+
             # Initialize planner if needed
             if not planner.current_name:
                 # Determine who we are naming
@@ -76,6 +81,7 @@ class ScenarioManager:
             # Get next step
             if planner.is_done_typing():
                 log.info("✅ Name typing complete. Confirming with START.")
+                planner.set_confirmation_sent(True)
                 return "START;"
 
             step = planner.get_current_step()
