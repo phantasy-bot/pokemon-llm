@@ -4,6 +4,24 @@
 
 Z.AI provides enhanced vision capabilities through a Model Context Protocol (MCP) server. This setup is optional - the system will work with direct API calls, but MCP provides better image understanding.
 
+## Quick Toggle: Disable MCP
+
+To temporarily disable the MCP server and use GLM-4.6V-Flash fallback directly:
+
+```bash
+# Disable MCP, use Flash fallback
+export ZAI_MCP_DISABLED=true
+
+# Re-enable MCP (default)
+export ZAI_MCP_DISABLED=false
+```
+
+This is useful when:
+- MCP server is slow or unstable
+- Testing Flash vision performance
+- Debugging MCP-related issues
+- Running on systems without Node.js
+
 ## Prerequisites
 
 - Node.js >= v22.0.0
@@ -74,6 +92,7 @@ ZAI_API_KEY=your_zai_api_key_here    # Required
 ZAI_MODEL=glm-4v                      # Optional, default model
 ZAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/  # Optional, custom endpoint
 ZAI_MODE=ZAI                          # Required for MCP
+ZAI_MCP_DISABLED=false                # Set to "true" to bypass MCP and use Flash fallback
 ```
 
 ## Supported Image Formats

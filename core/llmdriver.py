@@ -15,13 +15,22 @@ import concurrent.futures
 import functools
 import subprocess
 import threading
+import random
 from typing import Dict, Any
 
 from PIL import Image
 from core.token_counter import count_tokens, calculate_prompt_tokens
 
 from pyAIAgent.game.state import prep_llm, get_rom_path
-from pyAIAgent.game.state import prep_llm, get_rom_path
+from pyAIAgent.game.state import (
+    prep_llm,
+    get_rom_path,
+    get_menu_state,
+    get_name_entry_state,
+    get_battle_state,
+    get_text_state,
+    get_location,
+)
 from pyAIAgent.navigation import touch_controls_path_find, find_path
 from pyAIAgent.json_parser import parse_optional_fenced_json
 from pyAIAgent.utils.socket_utils import send_command
@@ -54,6 +63,7 @@ from core.client_setup import (
 
 # from pyAIAgent.llm.zai_mcp_client import create_zai_vision_client # Removed, handled by VisionManager
 from core.vision_manager import VisionManager
+from core.scenario_manager import ScenarioManager
 from core.memory.manager import MemoryManager, MapVisitTracker
 from core.battle_strategy import (
     read_battle_state,
@@ -229,6 +239,25 @@ def update_processing_status(status: str):
 LLM_TOTAL_TIMEOUT = 75  # Extended to 75s cycle timeout
 
 
+def get_fast_game_state(sock) -> dict:
+    """
+    Fast fetch of critical state components to check for race conditions
+    (e.g. did we JUST enter a battle or name entry screen?)
+    """
+    try:
+        location = get_location(sock)
+        return {
+            "menu_state": get_menu_state(sock),
+            "name_entry_state": get_name_entry_state(sock),
+            "battle_state": get_battle_state(sock),
+            "text_state": get_text_state(sock),
+            "map_name": location.get("map_name", "Unknown") if location else "Unknown",
+        }
+    except Exception as e:
+        log.error(f"Error getting fast game state: {e}")
+        return {}
+
+
 def encode_image_base64(image_path: str) -> str | None:
     """Reads an image file and returns its base64 encoded string."""
     if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
@@ -400,6 +429,10 @@ async def run_auto_loop(
     # Initialize target tracker for explicit pathfinding destinations
     target_tracker = TargetTracker()
     log.info("🎯 Target tracker initialized for explicit pathfinding")
+
+    # Initialize scenario manager for scripted overrides and goals
+    scenario_manager = ScenarioManager(navigation_controller)
+    log.info("🎬 Scenario manager initialized")
 
     # Capture the main event loop for thread-safe callbacks
     # This MUST be done before defining callbacks that will run in executor threads
@@ -1264,6 +1297,7 @@ Your intro message:"""
             log.info("Received game state from mGBA.")
 
             # --- ATOMIC SNAPSHOT LOGIC ---
+            t_snapshot_start = time.time()
             # Create a unique snapshot for this cycle to prevent race conditions (Vision vs UI sync)
             os.makedirs("snapshots", exist_ok=True)
             snapshot_path = f"snapshots/cycle_{current_cycle}.png"
@@ -1280,6 +1314,8 @@ Your intro message:"""
                     f"Failed to create atomic snapshot: {e}. Falling back to global path."
                 )
                 SCREENSHOT_PATH = SAVED_SCREENSHOT_PATH
+
+            cycle_metrics["snapshot"] = (time.time() - t_snapshot_start) * 1000
         except socket.timeout:
             consecutive_mgba_failures += 1
             log.error(
@@ -1337,9 +1373,11 @@ Your intro message:"""
 
         # REMOVE raw minimap_2d - LLM should use pre-computed minimap_analysis instead
         # This prevents LLM from doing its own buggy parsing
-        if "minimap_2d" in llm_input_state:
-            del llm_input_state["minimap_2d"]
-
+        # if "minimap_2d" in llm_input_state:
+        #     del llm_input_state["minimap_2d"]
+        #
+        t_context_start = time.time()
+        cycle_metrics["context"] = 0
         state_update_start = time.time()
 
         # Track position for stuck detection
@@ -1501,6 +1539,10 @@ Your intro message:"""
             # ═══════════════════════════════════════════════════════════════════════════
             # NAVIGATION CONTROLLER UPDATE - Goal-based navigation with computed paths
             # ═══════════════════════════════════════════════════════════════════════════
+            # Pause context timing
+            cycle_metrics["context"] += (time.time() - t_context_start) * 1000
+
+            t_nav_start = time.time()
             try:
                 nav_state = navigation_controller.update(
                     current_cycle=current_cycle,
@@ -1531,6 +1573,10 @@ Your intro message:"""
 
             except Exception as e:
                 log.warning(f"Navigation controller update failed: {e}")
+
+            cycle_metrics["nav"] = (time.time() - t_nav_start) * 1000
+            # Resume context timing
+            t_context_start = time.time()
 
             # ═══════════════════════════════════════════════════════════════════════════
             # DEV MARKERS CONTEXT - Special locations like starter Pokémon
@@ -1689,7 +1735,9 @@ Your intro message:"""
                     f"🌉 PASSAGES (paths through walls - might lead somewhere!): {chr(10).join(passages) if passages else 'None detected'}\n"
                     f"{target_context}"
                 )
-                llm_input_state["minimap_data"] = analysis_str
+                llm_input_state["minimap_data"] = (
+                    "See 'minimap_2d' field for ASCII grid layout."
+                )
                 log.info(
                     f"🗺️ Minimap: Player at {minimap_analysis['player_position']}, "
                     f"blocked: {blocked}, npcs: {len(npcs)}, passages: {len(passages)}"
@@ -1778,18 +1826,9 @@ Your intro message:"""
                             )
 
                 # ═══════════════════════════════════════════════════════════════════════════
-                # SPECIAL START GAME AUTO-GOAL (Pallet Town Loop Breaker)
+                # SCENARIO MANAGER - AUTO-GOALS & OVERRIDES (e.g. Pallet Town Loop)
                 # ═══════════════════════════════════════════════════════════════════════════
-                if map_name == "PALLET_TOWN" and not navigation_controller.goal_stack:
-                    # Force Route 1 goal to break house loop
-                    navigation_controller.set_exit_goal(
-                        exit_coords=(10, 1),
-                        map_name=map_name,
-                        map_id=map_id,
-                        destination="Route 1 (Go EAST around house!)",
-                        current_cycle=current_cycle,
-                    )
-                    log.info("🎯 Auto-set starter goal: Route 1 Exit to break loop")
+                scenario_manager.check_for_override(llm_input_state, current_cycle)
 
                 # ═══════════════════════════════════════════════════════════════════════════
                 # AUTO-SET NAVIGATION GOAL FROM DETECTED EXITS
@@ -2281,47 +2320,44 @@ Your intro message:"""
 
             if is_preset_menu:
                 # ═══════════════════════════════════════════════════════════════
-                # STAGE 1: PRESET MENU - Select RED/BLUE preset
+                # STAGE 1: PRESET MENU - Enter keyboard mode to type custom name
                 # ═══════════════════════════════════════════════════════════════
 
                 cursor_option = name_entry_state.get("cursor_option", "NEW NAME")
                 cursor_index = name_entry_state.get("cursor_index", 0)
 
-                # Always recommend selecting RED/BLUE preset
-                recommended_action = "D;A;"
+                # Always enter keyboard mode to type custom names
+                recommended_action = "A;"
 
-                # Determine which preset to select
+                # Determine which name we're typing
                 if name_type == "player":
-                    target_name = "RED"
-                    preset_explanation = "RED preset (fast and simple!)"
+                    target_name = "LASS"
+                    name_explanation = "your name 'LASS'"
                 elif name_type == "rival":
-                    target_name = "BLUE"
-                    preset_explanation = "BLUE preset (fast and simple!)"
+                    target_name = "BUTT"
+                    name_explanation = "rival's name 'BUTT'"
                 else:
-                    target_name = "preset"
-                    preset_explanation = "preset name"
+                    target_name = "custom name"
+                    name_explanation = "a custom name"
 
                 name_entry_context = (
                     f"🎮 NAME SELECTION MENU\n"
                     f"══════════════════════════════════════\n"
                     f"📍 CURSOR: '{cursor_option}' (Row {cursor_index})\n"
                     f"\n"
-                    f"⭐ SELECT {target_name} PRESET!\n"
+                    f"⭐ ENTERING KEYBOARD MODE TO TYPE '{target_name}'!\n"
                     f"\n"
-                    f"▶️ RECOMMENDED ACTION: {recommended_action}\n"
-                    f"   • D; = Move down to {target_name} (Row 1)\n"
-                    f"   • A; = Confirm selection\n"
+                    f"▶️ ACTION: {recommended_action} (AUTO-EXECUTED)\n"
+                    f"   This selects 'NEW NAME' and enters keyboard mode.\n"
                     f"\n"
-                    f"💡 This selects {preset_explanation}\n"
-                    f"   No keyboard navigation needed!\n"
-                    f"\n"
-                    f"DO NOT press A; without D; first - that would enter keyboard mode!\n"
+                    f"💡 Typing {name_explanation}\n"
+                    f"   The keyboard sequence is auto-executed!\n"
                     f"\n"
                     f"⚠️ TRUST THIS CONTEXT, NOT VISION - Vision is unreliable for name entry!\n"
                 )
 
                 log.info(
-                    f"📝 Preset menu: cursor on '{cursor_option}', recommending D;A; to select '{target_name}'"
+                    f"📝 Preset menu: cursor on '{cursor_option}', entering keyboard mode to type '{target_name}'"
                 )
 
             elif is_keyboard:
@@ -2340,11 +2376,10 @@ Your intro message:"""
                 selected_char = tracked_state.get("selected_char", "A")
 
                 # Build context based on name type
-                # NOTE: This keyboard mode is an EMERGENCY FALLBACK
-                # User should select presets (RED/BLUE) instead via D;A; on preset menu
+                # NOTE: Name entry is AUTO-EXECUTED - LLM just needs context for commentary
 
                 if name_type == "player":
-                    # Fallback: Type "LASS" if keyboard mode was accidentally entered
+                    # Type "LASS" for player
                     target_name = "LASS"
                     if not name_planner.current_name:
                         name_planner.start_typing(target_name)
@@ -2360,23 +2395,17 @@ Your intro message:"""
                         total_steps = len(name_planner.typing_sequence)
 
                         name_entry_context = (
-                            f"⚠️ KEYBOARD MODE - EMERGENCY FALLBACK\n"
+                            f"⌨️ KEYBOARD MODE - TYPING 'LASS'\n"
                             f"══════════════════════════════════════\n"
-                            f"You accidentally entered keyboard mode!\n"
-                            f"Typing '{target_name}' to complete name entry.\n"
+                            f"Auto-executing keyboard input for player name.\n"
                             f"\n"
                             f"📝 Progress: {progress} (Step {step_num}/{total_steps})\n"
                             f"\n"
                             f"🎯 Next character: '{next_step['char']}'\n"
-                            f"▶️ Pre-computed action: {next_step['path']}\n"
-                            f"\n"
-                            f"⚠️ JUST EXECUTE THIS ACTION EXACTLY!\n"
-                            f"   Do NOT manually navigate - use the pre-computed path.\n"
+                            f"▶️ Action: {next_step['path']} (AUTO-EXECUTED)\n"
                             f"\n"
                             f"📍 Current: '{selected_char}' (Row {row}, Col {col})\n"
                             f"   Target: '{next_step['char']}' (Row {target_row}, Col {target_col})\n"
-                            f"\n"
-                            f"💡 Next time: Press D;A; on preset menu to avoid keyboard!\n"
                         )
                     elif name_planner.is_done_typing():
                         # All letters typed, need to confirm with START
@@ -2385,7 +2414,7 @@ Your intro message:"""
                             f"══════════════════════════════════════\n"
                             f"All letters typed successfully!\n"
                             f"\n"
-                            f"▶️ ACTION: START; (Press START to confirm)\n"
+                            f"▶️ ACTION: START; (AUTO-EXECUTED)\n"
                             f"\n"
                             f"🔴 CRITICAL - MEMORY_WRITE REQUIRED:\n"
                             f"   After confirming, you MUST write in section 12:\n"
@@ -2398,7 +2427,7 @@ Your intro message:"""
                 elif name_type == "rival":
                     # Fallback: Type a funny name if keyboard mode was accidentally entered
                     if not name_planner.rival_name:
-                        name_planner.rival_name = name_planner.get_random_rival_name()
+                        name_planner.rival_name = "BUTT"
 
                     target_name = name_planner.rival_name
 
@@ -2416,21 +2445,16 @@ Your intro message:"""
                         total_steps = len(name_planner.typing_sequence)
 
                         name_entry_context = (
-                            f"⚠️ KEYBOARD MODE - EMERGENCY FALLBACK\n"
+                            f"⌨️ KEYBOARD MODE - TYPING '{target_name}'\n"
                             f"══════════════════════════════════════\n"
-                            f"You accidentally entered keyboard mode!\n"
-                            f"Typing '{target_name}' to complete rival naming.\n"
+                            f"Auto-executing keyboard input for rival name.\n"
                             f"\n"
                             f"📝 Progress: {progress} (Step {step_num}/{total_steps})\n"
                             f"\n"
                             f"🎯 Next character: '{next_step['char']}'\n"
-                            f"▶️ Pre-computed action: {next_step['path']}\n"
-                            f"\n"
-                            f"⚠️ JUST EXECUTE THIS ACTION EXACTLY!\n"
+                            f"▶️ Action: {next_step['path']} (AUTO-EXECUTED)\n"
                             f"\n"
                             f"📍 Current cursor: '{selected_char}' (Row {row}, Col {col})\n"
-                            f"\n"
-                            f"💡 Next time: Press D;A; on preset menu to avoid keyboard!\n"
                         )
                     elif name_planner.is_done_typing():
                         name_entry_context = (
@@ -2438,7 +2462,7 @@ Your intro message:"""
                             f"══════════════════════════════════════\n"
                             f"All letters typed successfully!\n"
                             f"\n"
-                            f"▶️ ACTION: START; (Press START to confirm)\n"
+                            f"▶️ ACTION: START; (AUTO-EXECUTED)\n"
                             f"\n"
                             f"🔴 CRITICAL - MEMORY_WRITE REQUIRED:\n"
                             f"   After confirming, you MUST write in section 12:\n"
@@ -2493,6 +2517,12 @@ Your intro message:"""
                     f"cursor=({menu_state.get('cursor_x')},{menu_state.get('cursor_y')}), "
                     f"selected={menu_state.get('selected_item')}"
                 )
+
+        # Stop context timing
+        cycle_metrics["context"] += (time.time() - t_context_start) * 1000
+
+        # Start Image Prep timing
+        t_img_start = time.time()
 
         # Default: Analysis uses the clean snapshot unless combined
         ANALYSIS_IMAGE_PATH = SCREENSHOT_PATH
@@ -2616,6 +2646,8 @@ Your intro message:"""
             else:
                 llm_input_state["minimap"] = None
 
+        cycle_metrics["img_prep"] = (time.time() - t_img_start) * 1000
+
         log.info(
             f"Pre-LLM state update & image prep took {time.time() - state_update_start:.2f}s. SS:{bool(b64_ss)}, MM:{bool(b64_mm)}"
         )
@@ -2680,73 +2712,44 @@ Your intro message:"""
         )
 
         try:
-            # Run the main LLM call via Controller
-            (
-                action,
-                game_analysis,
-                summary_json,
-                vision_analysis_for_ui,
-            ) = await controller.call_with_timeout(
-                llm_input_state,
-                STREAM_TIMEOUT,
-                LLM_TOTAL_TIMEOUT,
-                benchmark,
-                cycle_metrics,
-            )
+            # Check for forced random action (stuck bypass)
+            if "nav_state" in locals() and nav_state and nav_state.force_random_action:
+                log.warning("⚠️ STUCK DETECTED: Forcing unstick action (bypassing LLM)")
+                action = random.choice(["UP;", "DOWN;", "LEFT;", "RIGHT;", "A;"])
+                game_analysis = "Forced unstick action."
+                summary_json = {}
+                vision_analysis_for_ui = None
+            else:
+                # Run the main LLM call via Controller
+                (
+                    action,
+                    game_analysis,
+                    summary_json,
+                    vision_analysis_for_ui,
+                ) = await controller.call_with_timeout(
+                    llm_input_state,
+                    STREAM_TIMEOUT,
+                    LLM_TOTAL_TIMEOUT,
+                    benchmark,
+                    cycle_metrics,
+                )
             tokens_used_session = controller.tokens_used_session
 
             # ═══════════════════════════════════════════════════════════════
-            # AUTO-EXECUTE NAME ENTRY ACTIONS (Bypass LLM hallucinations)
+            # FRESH STATE CHECK & SCENARIO OVERRIDE (Fix Race Conditions)
             # ═══════════════════════════════════════════════════════════════
-            # If we're in name entry mode, override the LLM's action with pre-computed sequence
-            name_entry_state = current_mGBA_state.get("name_entry_state")
+            fresh_state = get_fast_game_state(sock)
+            override_action = scenario_manager.check_for_override(
+                fresh_state, cycle_count
+            )
 
-            if name_entry_state:
-                is_preset_menu = name_entry_state.get("is_preset_menu", False)
-                is_keyboard = name_entry_state.get("is_keyboard", False)
-
-                if is_preset_menu or is_keyboard:
-                    log.info(
-                        f"🎮 NAME ENTRY DETECTED - Auto-executing pre-computed action (bypass LLM)"
-                    )
-
-                    if is_preset_menu:
-                        # Always execute D;A; to select preset (RED or BLUE)
-                        action = "D;A;"
-                        log.info(
-                            f"📋 Preset menu: Auto-executing D;A; to select preset"
-                        )
-
-                    elif is_keyboard:
-                        # Get pre-computed sequence from name planner
-                        name_planner = get_name_planner()
-
-                        # Check if planner is initialized for current name
-                        next_step = name_planner.get_current_step()
-
-                        if next_step:
-                            # Execute next step in pre-computed sequence
-                            action = next_step["path"]
-                            char_to_type = next_step["char"]
-                            progress = name_planner.get_progress_string()
-                            step_num = name_planner.current_char_index + 1
-                            total_steps = len(name_planner.typing_sequence)
-
-                            log.info(
-                                f"⌨️  Keyboard mode: Auto-executing step {step_num}/{total_steps}: "
-                                f"'{char_to_type}' → {action} (Progress: {progress})"
-                            )
-                        elif name_planner.is_done_typing():
-                            # All characters typed, confirm with START
-                            action = "START;"
-                            log.info(
-                                f"✅ Name complete - Auto-executing START; to confirm"
-                            )
-                        else:
-                            # Planner not initialized - this shouldn't happen but fallback to LLM
-                            log.warning(
-                                f"⚠️ Name planner not initialized in keyboard mode - using LLM action"
-                            )
+            if override_action:
+                log.info(
+                    f"⚠️ SCENARIO OVERRIDE: {override_action} (based on fresh state)"
+                )
+                action = override_action
+                # Clear analysis to avoid confusion in UI
+                game_analysis = "Scenario Override (Auto-Executed)"
 
         finally:
             # Signal chat task to stop and cancel if still running
@@ -3126,6 +3129,7 @@ Your intro message:"""
                         )
 
                     # Synthesize and play TTS - WAIT for it to complete
+                    t_tts_start = time.time()
                     try:
                         await tts_service.synthesize_and_play(
                             commentary_text,
@@ -3135,11 +3139,13 @@ Your intro message:"""
                         log.info(f"✅ TTS playback complete")
                     except Exception as tts_err:
                         log.warning(f"🔊 TTS error: {tts_err}")
+                    finally:
+                        cycle_metrics["tts"] = (time.time() - t_tts_start) * 1000
 
         # ═══════════════════════════════════════════════════════════════════════════
         # ACTION EXECUTION (now happens AFTER TTS completes)
         # ═══════════════════════════════════════════════════════════════════════════
-
+        t_action_start = time.time()
         if action:
             action_to_send = action
             log_action_text = f"Action: {action}"
@@ -3193,6 +3199,9 @@ Your intro message:"""
                 log.info(
                     "Post-action delay complete (6s), ready for next cycle screenshot."
                 )
+
+                # Track action execution time (includes 1s pre-wait + send + 6s post-wait)
+                cycle_metrics["action"] = (time.time() - t_action_start) * 1000
 
                 # Track for failure replay
                 last_action = action_to_send
@@ -3569,6 +3578,10 @@ Your intro message:"""
 
         # Detailed timing breakdown
         mgba_s = cycle_metrics.get("mGBA", 0) / 1000
+        snapshot_s = cycle_metrics.get("snapshot", 0) / 1000
+        context_s = cycle_metrics.get("context", 0) / 1000
+        nav_s = cycle_metrics.get("nav", 0) / 1000
+        img_prep_s = cycle_metrics.get("img_prep", 0) / 1000
         vision_s = cycle_metrics.get("vision", 0) / 1000
         llm_s = cycle_metrics.get("llm", 0) / 1000
         diff_s = cycle_metrics.get("diff", 0) / 1000
@@ -3576,8 +3589,24 @@ Your intro message:"""
         action_s = (
             cycle_metrics.get("action", 0) / 1000 if "action" in cycle_metrics else 0
         )
+
+        # Calculate accounted vs unaccounted time
+        accounted_s = (
+            mgba_s
+            + snapshot_s
+            + context_s
+            + nav_s
+            + img_prep_s
+            + vision_s
+            + llm_s
+            + diff_s
+            + tts_s
+            + action_s
+        )
+        other_s = max(0, true_cycle_duration_s - accounted_s)
+
         log.info(
-            f"⏱️ Breakdown: mGBA={mgba_s:.1f}s | Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s"
+            f"⏱️ Breakdown: mGBA={mgba_s:.1f}s | Snap={snapshot_s:.1f}s | Context={context_s:.1f}s | Nav={nav_s:.1f}s | Img={img_prep_s:.1f}s | Vision={vision_s:.1f}s | LLM={llm_s:.1f}s | TTS={tts_s:.1f}s | Action={action_s:.1f}s | Unaccounted={other_s:.1f}s"
         )
 
         log.info(
@@ -3628,9 +3657,15 @@ Your intro message:"""
                         "mGBA": round(
                             cycle_metrics.get("mGBA", 0) / 1000, 1
                         ),  # Convert ms to s
+                        "snapshot": round(cycle_metrics.get("snapshot", 0) / 1000, 1),
+                        "context": round(cycle_metrics.get("context", 0) / 1000, 1),
+                        "nav": round(cycle_metrics.get("nav", 0) / 1000, 1),
+                        "img_prep": round(cycle_metrics.get("img_prep", 0) / 1000, 1),
                         "vision": round(cycle_metrics.get("vision", 0) / 1000, 1),
                         "diff": round(cycle_metrics.get("diff", 0) / 1000, 1),
                         "llm": round(cycle_metrics.get("llm", 0) / 1000, 1),
+                        "tts": round(cycle_metrics.get("tts", 0) / 1000, 1),
+                        "action": round(cycle_metrics.get("action", 0) / 1000, 1),
                         "total": round(true_cycle_duration_s, 1),
                     },
                 }

@@ -13,7 +13,8 @@ import threading
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
-log = logging.getLogger('zai_mcp_client')
+log = logging.getLogger("zai_mcp_client")
+
 
 class ZAIMCPClient:
     """Client for interacting with Z.AI's MCP Vision Server"""
@@ -34,24 +35,30 @@ class ZAIMCPClient:
         # CRITICAL: Thread lock to prevent concurrent MCP access
         self._mcp_lock = threading.Lock()
         self._request_cancelled = False  # Flag to cancel pending requests
-        
+
         # SIMPLIFIED RETRY SYSTEM: 2 attempts → restart MCP → repeat forever (never give up)
-        self.max_attempts_before_restart = 1  # Immediately restart MCP after first failure
+        self.max_attempts_before_restart = (
+            1  # Immediately restart MCP after first failure
+        )
         self._attempt_count = 0
         self._restart_count = 0
-        
+
         # Status tracking for UI updates
         self.current_status = "INITIALIZING"
-        
+
         # Request ID counter - reset on each MCP restart
         self._request_id_counter = 0
-        
+
         # Cache tools list - only fetch once per MCP session
         self._tools_cached = False
         self._available_tools = None
 
-        log.info("Z.AI MCP Client initialized with SIMPLIFIED retry system + thread lock")
-        log.info("Retry strategy: 3 attempts → restart MCP → repeat forever (never give up)")
+        log.info(
+            "Z.AI MCP Client initialized with SIMPLIFIED retry system + thread lock"
+        )
+        log.info(
+            "Retry strategy: 3 attempts → restart MCP → repeat forever (never give up)"
+        )
 
         # Start the MCP server synchronously
         self._start_mcp_server_sync()
@@ -66,15 +73,13 @@ class ZAIMCPClient:
         try:
             # Set up environment variables for MCP server
             env = os.environ.copy()
-            env['Z_AI_API_KEY'] = self.api_key
-            env['Z_AI_MODE'] = self.mode
+            env["Z_AI_API_KEY"] = self.api_key
+            env["Z_AI_MODE"] = self.mode
 
             # Start MCP server using npx
             # Windows requires .cmd extension for subprocess.Popen without shell=True
-            npx_cmd = 'npx.cmd' if os.name == 'nt' else 'npx'
-            cmd = [
-                npx_cmd, '-y', '@z_ai/mcp-server@latest'
-            ]
+            npx_cmd = "npx.cmd" if os.name == "nt" else "npx"
+            cmd = [npx_cmd, "-y", "@z_ai/mcp-server@latest"]
 
             log.info("Starting Z.AI MCP vision server...")
 
@@ -84,9 +89,9 @@ class ZAIMCPClient:
                 env=env,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
-            
+
             # Start background reader thread
             # Convert asyncio stream reader to thread-based queue for consistent handling
             self._start_output_reader()
@@ -115,19 +120,19 @@ class ZAIMCPClient:
 
             # Set up environment variables for MCP server
             env = os.environ.copy()
-            env['Z_AI_API_KEY'] = self.api_key
-            env['Z_AI_MODE'] = self.mode
+            env["Z_AI_API_KEY"] = self.api_key
+            env["Z_AI_MODE"] = self.mode
 
             # Start MCP server using npx
             # Windows requires .cmd extension or shell=True
-            npx_cmd = 'npx.cmd' if os.name == 'nt' else 'npx'
-            cmd = [
-                npx_cmd, '-y', '@z_ai/mcp-server@latest'
-            ]
+            npx_cmd = "npx.cmd" if os.name == "nt" else "npx"
+            cmd = [npx_cmd, "-y", "@z_ai/mcp-server@latest"]
 
             log.info("Starting Z.AI MCP vision server...")
             log.info(f"Command: {' '.join(cmd)}")
-            log.info(f"Environment variables: Z_AI_API_KEY={'*' * len(self.api_key)}, Z_AI_MODE={self.mode}")
+            log.info(
+                f"Environment variables: Z_AI_API_KEY={'*' * len(self.api_key)}, Z_AI_MODE={self.mode}"
+            )
 
             # Start the subprocess
             # Note: Use default buffering - our reader thread handles buffering manually
@@ -137,7 +142,7 @@ class ZAIMCPClient:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=env,
-                text=False  # Use bytes mode for proper MCP communication
+                text=False,  # Use bytes mode for proper MCP communication
             )
 
             # Start background reader thread for Windows compatibility
@@ -160,13 +165,15 @@ class ZAIMCPClient:
                     log.error(f"MCP server stderr during startup: {stderr_output}")
 
         except Exception as e:
-            log.error(f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True)
+            log.error(
+                f"Failed to start Z.AI MCP server synchronously: {e}", exc_info=True
+            )
 
     def restart_mcp_server(self):
         """Kill and restart MCP server to clear any hung state and reset ID counters"""
         self._restart_count += 1
         log.warning(f"🔄 Restarting MCP server (restart #{self._restart_count})...")
-        
+
         # Kill existing process
         if self.mcp_process:
             try:
@@ -174,6 +181,7 @@ class ZAIMCPClient:
                 # Drain the queue instead of direct stdout read
                 try:
                     import queue
+
                     while True:
                         try:
                             self._output_queue.get_nowait()
@@ -182,7 +190,7 @@ class ZAIMCPClient:
                     log.debug(f"Drained output queue before restart")
                 except Exception as e:
                     log.debug(f"Error draining queue: {e}")
-                
+
                 self.mcp_process.terminate()
                 try:
                     self.mcp_process.wait(timeout=3)
@@ -192,14 +200,14 @@ class ZAIMCPClient:
                     self.mcp_process.wait(timeout=2)
             except Exception as e:
                 log.error(f"Error killing MCP process: {e}")
-        
+
         # Reset state
         self._request_id_counter = 0
         self._tools_cached = False
         self._available_tools = None
         self._attempt_count = 0
         self.is_connected = False
-        
+
         # Restart
         log.info("🔄 Starting fresh MCP server subprocess...")
         self._start_mcp_server_sync()
@@ -211,17 +219,23 @@ class ZAIMCPClient:
         Returns True if we should restart MCP server.
         """
         self._attempt_count += 1
-        log.error(f"VISION FAILURE (Attempt {self._attempt_count}/{self.max_attempts_before_restart}): {error_message}")
-        
+        log.error(
+            f"VISION FAILURE (Attempt {self._attempt_count}/{self.max_attempts_before_restart}): {error_message}"
+        )
+
         if self._attempt_count >= self.max_attempts_before_restart:
-            log.warning(f"🔄 {self._attempt_count} consecutive failures - will restart MCP server")
+            log.warning(
+                f"🔄 {self._attempt_count} consecutive failures - will restart MCP server"
+            )
             return True  # Signal to restart
         return False
 
     def handle_vision_success(self) -> None:
         """Reset failure counters after successful vision analysis"""
         if self._attempt_count > 0:
-            log.info(f"✅ VISION SUCCESS after {self._attempt_count} attempts (restart #{self._restart_count})")
+            log.info(
+                f"✅ VISION SUCCESS after {self._attempt_count} attempts (restart #{self._restart_count})"
+            )
         self._attempt_count = 0
 
     def _get_next_request_id(self) -> int:
@@ -232,9 +246,12 @@ class ZAIMCPClient:
     def _start_output_reader(self):
         """Start a thread to read stdout into a queue for non-blocking access"""
         import queue
+
         self._output_queue = queue.Queue()
-        self._reader_thread = threading.Thread(target=self._enqueue_output, 
-                                             args=(self.mcp_process.stdout, self._output_queue))
+        self._reader_thread = threading.Thread(
+            target=self._enqueue_output,
+            args=(self.mcp_process.stdout, self._output_queue),
+        )
         self._reader_thread.daemon = True
         self._reader_thread.start()
 
@@ -242,7 +259,7 @@ class ZAIMCPClient:
         """Thread target to read lines from stdout and put them in queue.
         Uses raw byte reading with manual line parsing for Windows compatibility."""
         log.info("MCP output reader thread started")
-        buffer = b''
+        buffer = b""
         try:
             while True:
                 # Read chunks of data (blocks until data available or EOF)
@@ -251,15 +268,15 @@ class ZAIMCPClient:
                     # EOF - process exited
                     log.info("MCP output reader: EOF (process exited)")
                     break
-                
+
                 buffer += chunk
-                
+
                 # Extract complete lines from buffer
-                while b'\n' in buffer:
-                    line, buffer = buffer.split(b'\n', 1)
+                while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
                     if line:  # Skip empty lines
-                        queue.put(line + b'\n')
-                        
+                        queue.put(line + b"\n")
+
         except Exception as e:
             log.error(f"Output reader thread CRASHED: {e}")
         finally:
@@ -269,46 +286,53 @@ class ZAIMCPClient:
             log.info("Output reader thread closed")
             try:
                 out.close()
-            except: pass
+            except:
+                pass
 
-    def _read_response_with_id_match(self, expected_id: int, timeout: float = 30.0) -> Optional[dict]:
+    def _read_response_with_id_match(
+        self, expected_id: int, timeout: float = 30.0
+    ) -> Optional[dict]:
         """
         Read responses from MCP server until we get one with the matching ID.
         Uses Queue for Windows compatibility (select() doesn't work on pipes in Windows).
         """
         import time as time_module
         import queue
-        
+
         start_time = time_module.time()
         stale_count = 0
-        
+
         while True:
             elapsed = time_module.time() - start_time
             remaining_timeout = timeout - elapsed
-            
+
             if remaining_timeout <= 0:
-                log.error(f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses")
+                log.error(
+                    f"Timeout waiting for response with id={expected_id} after draining {stale_count} stale responses"
+                )
                 return None
-            
+
             try:
                 # Use queue.get with timeout instead of select
                 response_line = self._output_queue.get(timeout=remaining_timeout)
                 if not response_line:
                     continue
-                    
+
                 response_data = json.loads(response_line.decode())
-                response_id = response_data.get('id')
-                
+                response_id = response_data.get("id")
+
                 if response_id == expected_id:
                     if stale_count > 0:
-                        log.info(f"✅ Found matching response id={expected_id} after draining {stale_count} stale responses")
+                        log.info(
+                            f"✅ Found matching response id={expected_id} after draining {stale_count} stale responses"
+                        )
                     return response_data
                 else:
                     stale_count += 1
                     # Debug log only occasionally to avoid spam
                     if stale_count % 10 == 0:
                         log.debug(f"⏭️ Draining stale response id={response_id}")
-            
+
             except queue.Empty:
                 log.error(f"Timeout waiting for response id={expected_id}")
                 return None
@@ -318,11 +342,13 @@ class ZAIMCPClient:
                 log.error(f"Error reading response: {e}")
                 return None
 
-    def analyze_image_sync(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
+    def analyze_image_sync(
+        self, image_path: str, prompt: str = "What does this image show?"
+    ) -> Optional[str]:
         """
         SIMPLIFIED RETRY SYSTEM: 3 attempts → restart MCP → repeat forever (never give up)
         Uses thread lock to prevent concurrent access to MCP.
-        
+
         Args:
             image_path: Path to the image file
             prompt: Text prompt to accompany the image
@@ -333,15 +359,18 @@ class ZAIMCPClient:
         import time as time_module
         import queue
 
-        
         # CRITICAL: Cancel any pending request from previous call
         self._request_cancelled = True
-        
+
         # Try to acquire lock with timeout to prevent deadlock
         log.info("🔒 Acquiring MCP lock...")
-        lock_acquired = self._mcp_lock.acquire(timeout=10.0)  # 10s timeout for lock (reduced from 30s)
+        lock_acquired = self._mcp_lock.acquire(
+            timeout=10.0
+        )  # 10s timeout for lock (reduced from 30s)
         if not lock_acquired:
-            log.error("❌ Failed to acquire MCP lock within 30s timeout - Breaking STALE LOCK and restarting MCP")
+            log.error(
+                "❌ Failed to acquire MCP lock within 30s timeout - Breaking STALE LOCK and restarting MCP"
+            )
             # Force break lock logic
             try:
                 # Force kill process if exists
@@ -349,20 +378,20 @@ class ZAIMCPClient:
                     self.mcp_process.kill()
             except Exception as e:
                 log.error(f"Error killing stuck MCP process: {e}")
-            
+
             # Reset lock and restart
             self._mcp_lock = threading.Lock()
             self.restart_mcp_server()
-            
+
             # Try to acquire new lock with short timeout
             if not self._mcp_lock.acquire(timeout=5.0):
                 log.error("❌ Failed to acquire NEW MCP lock after reset")
                 return None
-        
+
         try:
             log.info("🔓 MCP lock acquired")
             self._request_cancelled = False  # Reset for this request
-            
+
             # Drain any stale responses before starting fresh
             # Drain any stale responses from the queue before starting fresh
             try:
@@ -373,35 +402,41 @@ class ZAIMCPClient:
                         drained += 1
                     except queue.Empty:
                         break
-                
+
                 if drained > 0:
-                    log.debug(f"🗑️ Pre-drained {drained} stale items from queue before new request")
+                    log.debug(
+                        f"🗑️ Pre-drained {drained} stale items from queue before new request"
+                    )
             except Exception as e:
                 log.warning(f"Error draining queue: {e}")
-            
+
             log.info("🔍 Starting vision analysis (will retry forever until success)")
-            
+
             # Track overall time to prevent infinite blocking
             overall_start = time_module.time()
             max_overall_time = 20.0  # Max time before releasing lock (reduced from 55s for faster cycles)
-            
+
             # Track if we've tried Flash fallback
             tried_flash = False
-            
+
             while True:
                 # Check overall timeout to prevent infinite blocking
                 elapsed = time_module.time() - overall_start
                 if elapsed > max_overall_time:
-                    log.warning(f"⏱️ Vision analysis exceeded {max_overall_time}s overall timeout, releasing lock")
+                    log.warning(
+                        f"⏱️ Vision analysis exceeded {max_overall_time}s overall timeout, releasing lock"
+                    )
                     return None
-                
+
                 # Check if this request was cancelled by a newer one
                 if self._request_cancelled:
                     log.warning("⏹️ Request cancelled by newer call, exiting")
                     return None
-                
+
                 try:
-                    log.info(f"🚀 Vision attempt {self._attempt_count + 1}/{self.max_attempts_before_restart} (MCP restart #{self._restart_count})")
+                    log.info(
+                        f"🚀 Vision attempt {self._attempt_count + 1}/{self.max_attempts_before_restart} (MCP restart #{self._restart_count})"
+                    )
                     result = asyncio.run(self.analyze_image(image_path, prompt))
 
                     if result is not None:
@@ -411,7 +446,9 @@ class ZAIMCPClient:
                     else:
                         # MCP failed - try Flash fallback BEFORE restarting MCP
                         if not tried_flash:
-                            log.info("⚡ MCP timeout - trying GLM-4.6V-Flash fallback via direct API...")
+                            log.info(
+                                "⚡ MCP timeout - trying GLM-4.6V-Flash fallback via direct API..."
+                            )
                             flash_result = self._try_flash_fallback(image_path, prompt)
                             tried_flash = True
                             if flash_result:
@@ -419,9 +456,13 @@ class ZAIMCPClient:
                                 self.handle_vision_success()
                                 return flash_result
                             else:
-                                log.warning("⚠️ Flash fallback also failed, will restart MCP")
-                        
-                        should_restart = self.handle_vision_failure("Vision analysis returned None/empty result")
+                                log.warning(
+                                    "⚠️ Flash fallback also failed, will restart MCP"
+                                )
+
+                        should_restart = self.handle_vision_failure(
+                            "Vision analysis returned None/empty result"
+                        )
                         if should_restart:
                             tried_flash = False  # Reset Flash flag after MCP restart
                             self.restart_mcp_server()
@@ -437,132 +478,141 @@ class ZAIMCPClient:
                             log.info("✅ Flash fallback succeeded after exception!")
                             self.handle_vision_success()
                             return flash_result
-                    
+
                     should_restart = self.handle_vision_failure(error_msg)
                     log.error(f"❌ {error_msg}", exc_info=True)
                     if should_restart:
                         tried_flash = False
                         self.restart_mcp_server()
-                
+
                 # Brief delay between attempts to prevent hammering
                 time_module.sleep(2.0)
         finally:
             # CRITICAL: Always release the lock, even on exceptions
             self._mcp_lock.release()
             log.debug("🔓 MCP lock released")
-    
+
     def _try_flash_fallback(self, image_path: str, prompt: str) -> Optional[str]:
         """
         Try GLM-4.6V-Flash via direct API call as fallback when MCP is slow/failing.
         Uses the general paas endpoint (not coding) for Flash model access.
-        
+
         Args:
             image_path: Path to the image file
             prompt: Text prompt for analysis
-            
+
         Returns:
             Analysis result or None if failed
         """
         import base64
         import httpx
-        
+
         try:
             api_key = os.getenv("ZAI_API_KEY") or self.api_key
             if not api_key:
                 log.warning("No API key for Flash fallback")
                 return None
-            
+
             # Read and encode image
             if not os.path.exists(image_path):
                 log.warning(f"Image not found for Flash fallback: {image_path}")
                 return None
-                
-            with open(image_path, 'rb') as f:
-                image_data = base64.b64encode(f.read()).decode('utf-8')
-            
+
+            with open(image_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode("utf-8")
+
             # Build request for GLM-4.6V-Flash
-            messages = [{
-                "role": "user", 
-                "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}},
-                    {"type": "text", "text": prompt}
-                ]
-            }]
-            
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{image_data}"},
+                        },
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
+
             api_data = {
                 "model": "glm-4.6v-flash",  # Flash model for faster response
                 "messages": messages,
                 "max_tokens": 1000,
-                "temperature": 0.7
+                "temperature": 0.7,
             }
-            
+
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-            
+
             # Use general endpoint for Flash (not coding endpoint)
             endpoint = "https://api.z.ai/api/paas/v4/chat/completions"
             log.info(f"⚡ Flash API call to: {endpoint}")
-            
+
             with httpx.Client(timeout=15.0) as http_client:  # Shorter timeout for Flash
                 response = http_client.post(endpoint, json=api_data, headers=headers)
-                
+
                 if response.status_code == 200:
                     response_data = response.json()
-                    if 'choices' in response_data and response_data['choices']:
-                        result = response_data['choices'][0]['message']['content']
+                    if "choices" in response_data and response_data["choices"]:
+                        result = response_data["choices"][0]["message"]["content"]
                         log.info(f"⚡ Flash returned {len(result)} chars")
                         return result
                 else:
-                    log.warning(f"Flash API error: {response.status_code} - {response.text[:200]}")
+                    log.warning(
+                        f"Flash API error: {response.status_code} - {response.text[:200]}"
+                    )
                     return None
-                    
+
         except Exception as e:
             log.warning(f"Flash fallback exception: {e}")
             return None
 
-    async def ui_diff_check(self, prev_image_path: str, curr_image_path: str) -> Optional[str]:
+    async def ui_diff_check(
+        self, prev_image_path: str, curr_image_path: str
+    ) -> Optional[str]:
         """
         Compare two screenshots using ui_diff_check MCP tool to detect UI changes.
-        
+
         This tool is designed to flag visual or implementation drift between
         two UI screenshots - perfect for detecting what changed between cycles.
-        
+
         Args:
             prev_image_path: Path to the previous cycle's screenshot
             curr_image_path: Path to the current cycle's screenshot
-            
+
         Returns:
             Description of changes between the two images, or None if failed
         """
         if not self.is_connected:
             log.error("MCP server not connected for ui_diff_check")
             return None
-        
+
         if not os.path.exists(prev_image_path):
             log.error(f"Previous image not found for diff: {prev_image_path}")
             return None
-            
+
         if not os.path.exists(curr_image_path):
             log.error(f"Current image not found for diff: {curr_image_path}")
             return None
-        
+
         # CRITICAL: Convert to absolute paths - MCP server requires absolute paths
         prev_abs_path = os.path.abspath(prev_image_path)
         curr_abs_path = os.path.abspath(curr_image_path)
-        
+
         try:
             # CRITICAL: Acquire lock to prevent concurrent access with analyze_image
             # Use shorter timeout for diff check since it's lower priority
             if not self._mcp_lock.acquire(timeout=5.0):
                 log.warning("Skipping ui_diff_check - could not acquire MCP lock")
                 return None
-            
+
             try:
                 tool_name = "ui_diff_check"
                 request_id = self._get_next_request_id()
-                
+
                 # Create MCP request for UI diff check
                 # MCP requires: expected_image_source, actual_image_source, prompt
                 mcp_request = {
@@ -574,40 +624,46 @@ class ZAIMCPClient:
                         "arguments": {
                             "expected_image_source": prev_abs_path,
                             "actual_image_source": curr_abs_path,
-                            "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements."
-                        }
-                    }
+                            "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements.",
+                        },
+                    },
                 }
-                
-                log.info(f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}")
-                
+
+                log.info(
+                    f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}"
+                )
+
                 # Send request
-                request_json = json.dumps(mcp_request) + '\n'
+                request_json = json.dumps(mcp_request) + "\n"
                 self.mcp_process.stdin.write(request_json.encode())
                 self.mcp_process.stdin.flush()
-                
+
                 # Wait for response with short timeout to prevent blocking
                 # Use slightly longer timeout since we have the lock
-                response_data = self._read_response_with_id_match(request_id, timeout=20.0)
-                
+                response_data = self._read_response_with_id_match(
+                    request_id, timeout=20.0
+                )
+
                 if response_data is None:
                     log.error(f"Failed to get {tool_name} response (timeout)")
                     return None
-                
-                if 'result' in response_data:
-                    result = response_data['result']
-                    if isinstance(result, dict) and 'content' in result:
-                        content = result['content']
+
+                if "result" in response_data:
+                    result = response_data["result"]
+                    if isinstance(result, dict) and "content" in result:
+                        content = result["content"]
                         if isinstance(content, list) and len(content) > 0:
-                            if isinstance(content[0], dict) and 'text' in content[0]:
-                                diff_analysis = content[0]['text']
-                                log.info(f"✅ ui_diff_check completed: {len(diff_analysis)} chars")
+                            if isinstance(content[0], dict) and "text" in content[0]:
+                                diff_analysis = content[0]["text"]
+                                log.info(
+                                    f"✅ ui_diff_check completed: {len(diff_analysis)} chars"
+                                )
                                 return diff_analysis
                     # Fallback parsing
                     if isinstance(result, str):
                         return result
                     return str(result)
-                elif 'error' in response_data:
+                elif "error" in response_data:
                     log.error(f"MCP error for {tool_name}: {response_data['error']}")
                     return None
                 else:
@@ -615,45 +671,55 @@ class ZAIMCPClient:
                     return None
             finally:
                 self._mcp_lock.release()
-                
+
         except Exception as e:
             log.error(f"ui_diff_check failed: {e}", exc_info=True)
             return None
-    
-    def ui_diff_check_sync(self, prev_image_path: str, curr_image_path: str, max_attempts: int = 2, timeout: int = 10) -> Optional[str]:
+
+    def ui_diff_check_sync(
+        self,
+        prev_image_path: str,
+        curr_image_path: str,
+        max_attempts: int = 2,
+        timeout: int = 10,
+    ) -> Optional[str]:
         """
         Synchronous wrapper for ui_diff_check with limited retries.
-        
+
         Unlike analyze_image_sync which retries forever, this has limited retries
         since diff analysis is optional/supplementary context.
-        
+
         Args:
             prev_image_path: Path to previous screenshot
             curr_image_path: Path to current screenshot
             max_attempts: Maximum retry attempts (default 2)
             timeout: Maximum time in seconds for each diff attempt (default 10)
-            
+
         Returns:
             Diff analysis or None if failed after retries
         """
         import time as time_module
-        
+
         log.info(f"🔍 Starting ui_diff_check (max {max_attempts} attempts)")
-        
+
         for attempt in range(max_attempts):
             try:
-                result = asyncio.run(self.ui_diff_check(prev_image_path, curr_image_path))
+                result = asyncio.run(
+                    self.ui_diff_check(prev_image_path, curr_image_path)
+                )
                 if result:
                     log.info(f"✅ ui_diff_check succeeded on attempt {attempt + 1}")
                     return result
                 else:
-                    log.warning(f"ui_diff_check returned empty on attempt {attempt + 1}")
+                    log.warning(
+                        f"ui_diff_check returned empty on attempt {attempt + 1}"
+                    )
             except Exception as e:
                 log.error(f"ui_diff_check attempt {attempt + 1} failed: {e}")
-            
+
             if attempt < max_attempts - 1:
                 time_module.sleep(1.0)
-        
+
         log.warning(f"ui_diff_check failed after {max_attempts} attempts")
         return None
 
@@ -670,7 +736,9 @@ class ZAIMCPClient:
                 self.mcp_process = None
                 self.is_connected = False
 
-    async def analyze_image(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
+    async def analyze_image(
+        self, image_path: str, prompt: str = "What does this image show?"
+    ) -> Optional[str]:
         """
         Analyze an image using the Z.AI MCP vision server
 
@@ -692,7 +760,9 @@ class ZAIMCPClient:
         try:
             # SKIP tools/list request - we know we're using analyze_image, no need to waste time
             if not self._tools_cached:
-                log.info("Skipping tools/list request - directly using analyze_image tool")
+                log.info(
+                    "Skipping tools/list request - directly using analyze_image tool"
+                )
                 self._tools_cached = True
 
             # Use the correct tool name and parameters from the schema
@@ -700,7 +770,7 @@ class ZAIMCPClient:
 
             # CRITICAL FIX: Use unique request ID for analysis request
             analyze_request_id = self._get_next_request_id()
-            
+
             # Create MCP request for image analysis with correct schema
             mcp_request = {
                 "jsonrpc": "2.0",
@@ -710,61 +780,81 @@ class ZAIMCPClient:
                     "name": tool_name,
                     "arguments": {
                         "image_source": image_path,  # Use correct parameter name from schema
-                        "prompt": prompt
-                    }
-                }
+                        "prompt": prompt,
+                    },
+                },
             }
 
             log.info(f"Sending MCP request: {json.dumps(mcp_request, indent=2)}")
 
             # Send request to MCP server
-            request_json = json.dumps(mcp_request) + '\n'
+            request_json = json.dumps(mcp_request) + "\n"
             self.mcp_process.stdin.write(request_json.encode())
             self.mcp_process.stdin.flush()
 
             # Read response with short timeout - 10s for vision to keep cycles fast
             log.info(f"Waiting for MCP server response for {tool_name}...")
             # Windows needs longer timeout for MCP vision
-            response_data = self._read_response_with_id_match(analyze_request_id, timeout=20.0)
-            
+            response_data = self._read_response_with_id_match(
+                analyze_request_id, timeout=20.0
+            )
+
             if response_data is None:
-                log.error(f"Failed to get {tool_name} response (timeout or stale response mismatch)")
+                log.error(
+                    f"Failed to get {tool_name} response (timeout or stale response mismatch)"
+                )
                 # Check if server is still running
                 if self.mcp_process.poll() is not None:
-                    log.error(f"MCP server process has terminated with code: {self.mcp_process.returncode}")
+                    log.error(
+                        f"MCP server process has terminated with code: {self.mcp_process.returncode}"
+                    )
                 # Try to read stderr for any error messages (non-blocking)
                 # Try to read stderr for any error messages (non-blocking)
-                # Note: On Windows we can't easily peek stderr without blocking or threads, 
+                # Note: On Windows we can't easily peek stderr without blocking or threads,
                 # so we skip complex stderr reading here to avoid more WinError 10038 issues.
                 if self.mcp_process.stderr:
-                     # Just log that we failed
-                     pass
+                    # Just log that we failed
+                    pass
                 # Return None to trigger retry in analyze_image_sync
                 return None
-                
+
             log.info(f"Got MCP response for {tool_name}: id={response_data.get('id')}")
 
-            if 'result' in response_data:
-                result = response_data['result']
+            if "result" in response_data:
+                result = response_data["result"]
                 # Handle different response formats
                 if isinstance(result, dict):
                     # Check for MCP content format first
-                    if 'content' in result and isinstance(result['content'], list) and len(result['content']) > 0:
-                        content = result['content'][0]
-                        if isinstance(content, dict) and 'text' in content:
-                            analysis = content['text']
-                            log.info(f"Successfully parsed MCP content format: {len(analysis)} chars")
+                    if (
+                        "content" in result
+                        and isinstance(result["content"], list)
+                        and len(result["content"]) > 0
+                    ):
+                        content = result["content"][0]
+                        if isinstance(content, dict) and "text" in content:
+                            analysis = content["text"]
+                            log.info(
+                                f"Successfully parsed MCP content format: {len(analysis)} chars"
+                            )
                         else:
                             analysis = str(content)
-                            log.warning(f"MCP content format unexpected, got: {type(content)}")
-                    elif 'tools' in result:
+                            log.warning(
+                                f"MCP content format unexpected, got: {type(content)}"
+                            )
+                    elif "tools" in result:
                         # This is an INVALID response - MCP server returned tools list instead of analysis
-                        log.error(f"MCP server returned tools list instead of analysis. This indicates a server error. Response: {result}")
+                        log.error(
+                            f"MCP server returned tools list instead of analysis. This indicates a server error. Response: {result}"
+                        )
                         return None
                     else:
                         # Fallback to other possible formats
-                        analysis = result.get('description', result.get('analysis', str(result)))
-                        log.info(f"Using fallback format for MCP response: {len(str(analysis))} chars")
+                        analysis = result.get(
+                            "description", result.get("analysis", str(result))
+                        )
+                        log.info(
+                            f"Using fallback format for MCP response: {len(str(analysis))} chars"
+                        )
                 elif isinstance(result, str):
                     analysis = result
                 else:
@@ -773,14 +863,24 @@ class ZAIMCPClient:
                 # Additional validation: ensure analysis is not just tool descriptions
                 if analysis and isinstance(analysis, str):
                     # Check if the analysis contains tool-like content instead of actual image analysis
-                    tool_keywords = ['analyze_image', 'analyze_video', 'inputSchema', 'maximum file size', 'supports both local files and remote URL']
-                    if any(keyword.lower() in analysis.lower() for keyword in tool_keywords):
-                        log.error(f"Analysis appears to contain tool descriptions instead of actual image analysis. Treating as invalid. Analysis preview: {analysis[:200]}...")
+                    tool_keywords = [
+                        "analyze_image",
+                        "analyze_video",
+                        "inputSchema",
+                        "maximum file size",
+                        "supports both local files and remote URL",
+                    ]
+                    if any(
+                        keyword.lower() in analysis.lower() for keyword in tool_keywords
+                    ):
+                        log.error(
+                            f"Analysis appears to contain tool descriptions instead of actual image analysis. Treating as invalid. Analysis preview: {analysis[:200]}..."
+                        )
                         return None
 
                 log.info(f"Successfully got analysis from {tool_name}")
                 return analysis
-            elif 'error' in response_data:
+            elif "error" in response_data:
                 log.error(f"MCP server error for {tool_name}: {response_data['error']}")
                 return None
             else:
@@ -800,6 +900,7 @@ class ZAIMCPClient:
         """Async context manager exit"""
         await self.stop_mcp_server()
 
+
 class ZAIVisionFallback:
     """
     Fallback vision handler that uses Z.AI's direct API when MCP is not available
@@ -816,18 +917,23 @@ class ZAIVisionFallback:
         """
         # Use the same coding plan endpoint for vision to avoid rate limits
         from openai import OpenAI
+
         api_key = os.getenv("ZAI_API_KEY")
         if api_key:
             self.client = OpenAI(
-                base_url="https://api.z.ai/api/coding/paas/v4",  # Coding plan endpoint for vision
+                base_url="https://api.z.ai/api/paas/v4",  # Standard endpoint for Flash vision fallback
                 api_key=api_key,
-                timeout=30
+                timeout=30,
             )
-            log.info("Z.AI Vision fallback handler initialized with coding plan endpoint")
+            log.info(
+                "Z.AI Vision fallback handler initialized with standard endpoint (for Flash model)"
+            )
         else:
             # Fallback to provided client if no API key
             self.client = client
-            log.warning("No ZAI_API_KEY found, using provided client for vision fallback")
+            log.warning(
+                "No ZAI_API_KEY found, using provided client for vision fallback"
+            )
         self.model = model
 
         # CRITICAL: Add retry state for fallback client
@@ -848,15 +954,24 @@ class ZAIVisionFallback:
 
         # If fallback is temporarily disabled, check if backoff period has elapsed
         if self.fallback_temporarily_disabled:
-            if current_time - self.last_fallback_failure_time >= self.fallback_backoff_seconds:
+            if (
+                current_time - self.last_fallback_failure_time
+                >= self.fallback_backoff_seconds
+            ):
                 # Backoff period elapsed, re-enable fallback with caution
-                log.info(f"Fallback vision backoff period elapsed ({self.fallback_backoff_seconds}s). Re-enabling fallback vision analysis.")
+                log.info(
+                    f"Fallback vision backoff period elapsed ({self.fallback_backoff_seconds}s). Re-enabling fallback vision analysis."
+                )
                 self.fallback_temporarily_disabled = False
                 return True
             else:
                 # Still in backoff period
-                remaining_time = self.fallback_backoff_seconds - (current_time - self.last_fallback_failure_time)
-                log.info(f"Fallback vision analysis temporarily disabled. {remaining_time:.0f}s remaining in backoff period.")
+                remaining_time = self.fallback_backoff_seconds - (
+                    current_time - self.last_fallback_failure_time
+                )
+                log.info(
+                    f"Fallback vision analysis temporarily disabled. {remaining_time:.0f}s remaining in backoff period."
+                )
                 return False
 
         # If not disabled, allow attempt
@@ -878,28 +993,54 @@ class ZAIVisionFallback:
         else:
             # Double the backoff time, but cap at max
             self.fallback_backoff_seconds = min(
-                self.fallback_backoff_seconds * 2,
-                self.max_fallback_backoff_seconds
+                self.fallback_backoff_seconds * 2, self.max_fallback_backoff_seconds
             )
 
         # Disable fallback temporarily
         self.fallback_temporarily_disabled = True
 
-        log.error(f"FALLBACK VISION FAILURE #{self.fallback_failure_count}: {error_message}")
-        log.error(f"Fallback vision analysis temporarily disabled for {self.fallback_backoff_seconds} seconds (exponential backoff)")
+        log.error(
+            f"FALLBACK VISION FAILURE #{self.fallback_failure_count}: {error_message}"
+        )
+        log.error(
+            f"Fallback vision analysis temporarily disabled for {self.fallback_backoff_seconds} seconds (exponential backoff)"
+        )
 
     def handle_fallback_success(self) -> None:
         """
         Reset failure counters after successful fallback vision analysis
         """
         if self.fallback_failure_count > 0:
-            log.info(f"Fallback vision analysis succeeded after {self.fallback_failure_count} previous failures. Resetting failure counters.")
+            log.info(
+                f"Fallback vision analysis succeeded after {self.fallback_failure_count} previous failures. Resetting failure counters."
+            )
             self.fallback_failure_count = 0
             self.fallback_backoff_seconds = 60  # Reset to initial backoff
             self.fallback_temporarily_disabled = False
             self.last_fallback_failure_time = 0
 
-    def analyze_image(self, image_path: str, prompt: str = "What does this image show?") -> Optional[str]:
+    def analyze_image_sync(
+        self, image_path: str, prompt: str = "What does this image show?"
+    ) -> Optional[str]:
+        """
+        Synchronous wrapper for analyze_image - required by VisionManager.
+        ZAIVisionFallback.analyze_image is already synchronous, so this just delegates.
+
+        Args:
+            image_path: Path to image file
+            prompt: Text prompt
+
+        Returns:
+            Analysis result or None if failed
+        """
+        log.info(
+            "ZAIVisionFallback.analyze_image_sync called (GLM-4.6V-Flash direct API)"
+        )
+        return self.analyze_image(image_path, prompt)
+
+    def analyze_image(
+        self, image_path: str, prompt: str = "What does this image show?"
+    ) -> Optional[str]:
         """
         Analyze image using direct API calls with robust retry logic
 
@@ -913,34 +1054,36 @@ class ZAIVisionFallback:
         # CRITICAL: Check if we should attempt fallback vision analysis based on failure history
         if not self.should_attempt_fallback_analysis():
             # We're in a backoff period - return None to indicate vision unavailable
-            remaining_time = self.fallback_backoff_seconds - (time.time() - self.last_fallback_failure_time)
-            log.warning(f"Fallback vision analysis skipped - in backoff period ({remaining_time:.0f}s remaining)")
+            remaining_time = self.fallback_backoff_seconds - (
+                time.time() - self.last_fallback_failure_time
+            )
+            log.warning(
+                f"Fallback vision analysis skipped - in backoff period ({remaining_time:.0f}s remaining)"
+            )
             return None
 
         # Attempt fallback vision analysis with try/catch for robust error handling
         try:
             # Read and encode image
             import base64
-            with open(image_path, 'rb') as f:
-                image_data = base64.b64encode(f.read()).decode('utf-8')
+
+            with open(image_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode("utf-8")
 
             # Create message with image
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
+                        {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/png;base64,{image_data}",
-                                "detail": "low"
-                            }
-                        }
-                    ]
+                                "detail": "low",
+                            },
+                        },
+                    ],
                 }
             ]
 
@@ -951,32 +1094,34 @@ class ZAIVisionFallback:
                 "model": self.model,
                 "messages": messages,
                 "max_tokens": 1000,
-                "temperature": 0.7
+                "temperature": 0.7,
             }
 
             headers = {
                 "Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             with httpx.Client(timeout=30.0) as http_client:
                 response = http_client.post(
-                    "https://api.z.ai/api/coding/paas/v4/chat/completions",
+                    "https://api.z.ai/api/paas/v4/chat/completions",
                     json=api_data,
-                    headers=headers
+                    headers=headers,
                 )
 
                 if response.status_code == 200:
                     response_data = response.json()
-                    if 'choices' in response_data and response_data['choices']:
-                        result = response_data['choices'][0]['message']['content']
+                    if "choices" in response_data and response_data["choices"]:
+                        result = response_data["choices"][0]["message"]["content"]
 
                         # SUCCESS: Fallback vision analysis completed successfully
                         self.handle_fallback_success()
                         return result
                     else:
                         # FAILURE: Invalid response format
-                        error_msg = f"Vision API response missing choices: {response_data}"
+                        error_msg = (
+                            f"Vision API response missing choices: {response_data}"
+                        )
                         self.handle_fallback_failure(error_msg)
                         log.error(error_msg)
                         return None
@@ -994,6 +1139,7 @@ class ZAIVisionFallback:
             log.error(f"Fallback image analysis failed: {e}", exc_info=True)
             return None
 
+
 def create_zai_vision_client(client, model: str, use_mcp: bool = True) -> Any:
     """
     Create appropriate Z.AI vision client
@@ -1006,6 +1152,22 @@ def create_zai_vision_client(client, model: str, use_mcp: bool = True) -> Any:
     Returns:
         Vision client instance
     """
+    # Check for MCP disable toggle - allows easy switching to Flash fallback
+    # Set ZAI_MCP_DISABLED=true to bypass MCP and use GLM-4.6V-Flash directly
+    mcp_disabled = os.getenv("ZAI_MCP_DISABLED", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+
+    if mcp_disabled:
+        # Use specific flash model for direct fallback if available
+        flash_model = os.getenv("ZAI_DIRECT_MODEL", "glm-4.6v-flash")
+        log.info(
+            f"ZAI_MCP_DISABLED=true - Bypassing MCP, using {flash_model} fallback directly"
+        )
+        return ZAIVisionFallback(client, flash_model)
+
     if use_mcp:
         api_key = os.getenv("ZAI_API_KEY")
         if api_key:
@@ -1015,4 +1177,5 @@ def create_zai_vision_client(client, model: str, use_mcp: bool = True) -> Any:
             log.warning("ZAI_API_KEY not found, falling back to direct API")
 
     log.info("Creating Z.AI direct API vision client")
-    return ZAIVisionFallback(client, model)
+    flash_model = os.getenv("ZAI_DIRECT_MODEL", "glm-4.6v-flash")
+    return ZAIVisionFallback(client, flash_model)

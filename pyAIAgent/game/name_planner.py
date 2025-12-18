@@ -46,11 +46,11 @@ class NamePlanner:
     """
 
     def __init__(self):
-        # Player name - defaults to LASS (keyboard fallback if preset not selected)
+        # Player name - always LASS
         self.player_name = "LASS"
 
-        # Rival name - random funny name (keyboard fallback if preset not selected)
-        self.rival_name: Optional[str] = None
+        # Rival name - always BUTT (consistent and funny)
+        self.rival_name: Optional[str] = "BUTT"
         self.rival_name_pending = False  # True when we need to pick a name
 
         # Pokemon nicknames - keyed by species name

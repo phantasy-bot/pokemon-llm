@@ -548,34 +548,32 @@ export function PokemonStreamOverlay({
 
 
   // View Mode State: 'detailed' (3-col) or 'normal' (minimal 2-col)
-  // AUTO-SWITCHING based on cycle number:
-  // Even cycles = Detailed view
-  // Odd cycles = Normal view
+  // Currently hardcoded to 'detailed' - auto-switching disabled for now
   const [viewMode, setViewMode] = useState<'detailed' | 'normal'>('detailed');
   
   // Track manual override to prevent fighting the auto-switcher if user clicked something
   const [manualOverride, setManualOverride] = useState(false);
 
-  // Sync view mode with cycle number (auto-director)
-  useEffect(() => {
-    if (manualOverride) return;
-
-    // cycle 0 (intro) -> detailed
-    // cycle 1 -> normal
-    // cycle 2 -> detailed
-    // etc.
-    const targetMode = (gameState.cycle % 2 === 0) ? 'detailed' : 'normal';
-    if (viewMode !== targetMode) {
-      setViewMode(targetMode);
-    }
-  }, [gameState.cycle, manualOverride, viewMode]);
+  // Auto-switching disabled - keep detailed view at all times
+  // To re-enable, uncomment the useEffect below
+  // useEffect(() => {
+  //   if (manualOverride) return;
+  //   const targetMode = (gameState.cycle % 2 === 0) ? 'detailed' : 'normal';
+  //   if (viewMode !== targetMode) {
+  //     setViewMode(targetMode);
+  //   }
+  // }, [gameState.cycle, manualOverride, viewMode]);
 
   const toggleViewMode = () => {
     setManualOverride(true); // Disable auto-switcher if user interacts
     setViewMode(prev => prev === 'detailed' ? 'normal' : 'detailed');
   };
 
-
+  const isProcessing = !!gameState.processingStatus ||
+    gameState.gameStatus === "Thinking..." || 
+    gameState.gameStatus === "Processing..." ||
+    gameState.gameStatus === "Running..." ||
+    gameState.gameStatus.includes("Auto");
 
   return (
     <div className={`pokemon-stream-overlay mode-${viewMode}`}>
@@ -758,7 +756,7 @@ export function PokemonStreamOverlay({
                           <HighlightedCommentary text={lingerText} />
                         ) : (
                           <AnimatedEllipsis interval={600} />
-                        )}\n                      </p>
+                        )}                      </p>
                     </div>
 
                     {/* Recent Actions in Normal/Minimal Mode */}
@@ -766,10 +764,10 @@ export function PokemonStreamOverlay({
                       <div className="character-container__recent-actions">
                         <RecentActions 
                           logs={logs} 
-                          totalActions={totalActions} 
-                          animateTrigger={animateActions} 
-                          isWaitingForAction={gamePhase === 'idle'}
-                          isActive={gamePhase === 'executing'}
+                          totalActions={gameState.actions} 
+                          animateTrigger={gameState.animateActions} 
+                          isWaitingForAction={!isProcessing}
+                          isActive={isProcessing}
                           delayMs={1000}
                         />
                       </div>
@@ -852,13 +850,7 @@ export function PokemonStreamOverlay({
                 logs={logs}
                 totalActions={gameState.actions}
                 animateActions={gameState.animateActions}
-                isProcessing={
-                  !!gameState.processingStatus ||
-                  gameState.gameStatus === "Thinking..." || 
-                  gameState.gameStatus === "Processing..." ||
-                  gameState.gameStatus === "Running..." ||
-                  gameState.gameStatus.includes("Auto")
-                }
+                isProcessing={isProcessing}
                 processingStatus={gameState.processingStatus}
                 memoryWrite={memoryWrite}
                 onMemoryWriteClear={onMemoryWriteClear}
