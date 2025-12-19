@@ -176,17 +176,6 @@ export function Collection() {
                   </div>
                 </div>
                 
-                {/* Condition Note */}
-                <div style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                  fontStyle: 'italic',
-                  marginTop: '8px',
-                  textAlign: 'center'
-                }}>
-                  * We are only looking for near-mints+ and graded cards.
-                </div>
               </div>
             </div>
 
@@ -232,6 +221,19 @@ export function Collection() {
                    </div>
                  </div>
                ))}
+            </div>
+
+            {/* Condition Note */}
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              fontStyle: 'italic',
+              marginTop: '8px',
+              textAlign: 'center',
+              paddingBottom: '40px'
+            }}>
+              * We are only looking for near-mints+ and graded cards.
             </div>
           </div>
         </div>
