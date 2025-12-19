@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelBrain, PixelEye, PixelSpeaker, PixelGenderFemale, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -76,8 +76,8 @@ export function Tokenomics() {
          <div style={{ fontSize: '16px' }}>December 20, 2025</div>
       </div>
 
-      {/* Trade Buttons */}
-      <div style={{
+      {/* Trade Buttons - Hidden */}
+      {/* <div style={{
         fontFamily: 'var(--font-mono)',
         fontSize: '11px',
         fontWeight: 'bold',
@@ -178,7 +178,7 @@ export function Tokenomics() {
           DEXSCREENER
         </a>
       </div>
-
+      
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -265,7 +265,7 @@ export function Tokenomics() {
         >
           DEXSCREENER
         </a>
-      </div>
+      </div> */}
     
     </div>
   )
@@ -400,45 +400,58 @@ export function Tokenomics() {
               padding: '10px 12px',
               background: 'var(--cream)',
               border: '2px solid var(--text-primary)',
-              borderRadius: '12px',
+              borderRadius: '10px',
+              fontFamily: 'var(--font-display)',
+              fontSize: '12px',
+              letterSpacing: '1px',
               cursor: 'pointer',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
               position: 'relative',
-              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+              overflow: 'visible'
             }}
           >
-            <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              color: 'var(--text-primary)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              CA: {TOKEN_ADDRESS}
-            </div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '24px',
-              height: '24px'
-            }}>
-              <PixelExternalLink size={16} />
-            </div>
-            
-            {/* Floating +1s for click feedback */}
-            {floatingTexts.map(float => (
-              <div
-                key={float.id}
-                className="pixel-float-text"
+            {floatingTexts.map(ft => (
+              <span
+                key={ft.id}
                 style={{
-                  left: `calc(50% + ${float.x}px)`
+                  position: 'absolute',
+                  top: '-20px',
+                  left: `calc(50% + ${ft.x}px)`,
+                  transform: 'translateX(-50%)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  color: 'var(--accent-primary)',
+                  pointerEvents: 'none',
+                  animation: 'floatUp 1s ease-out forwards'
                 }}
               >
-                COPIED!
-              </div>
+                copied
+              </span>
             ))}
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              color: 'var(--text-primary)',
+              userSelect: 'none',
+              whiteSpace: 'nowrap'
+            }}>
+              {`CA: ${TOKEN_ADDRESS.slice(0, 5)}...${TOKEN_ADDRESS.slice(-3)}`}
+            </span>
+            <a 
+              href={`https://pump.fun/${TOKEN_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-primary)'
+              }}
+              title="View on Pump.fun"
+            >
+              <PixelExternalLink size={14} />
+            </a>
           </div>
 
           <div style={{

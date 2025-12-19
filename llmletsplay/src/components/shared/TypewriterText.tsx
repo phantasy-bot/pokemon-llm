@@ -18,20 +18,16 @@ export function TypewriterText({
   style
 }: TypewriterTextProps) {
   const [displayedText, setDisplayedText] = useState('')
-  const [started, setStarted] = useState(false)
   const indexRef = useRef(0)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     // Reset state when text input changes
     setDisplayedText('')
-    setStarted(false)
     indexRef.current = 0
     if (timerRef.current) clearTimeout(timerRef.current)
 
     const startTimeout = setTimeout(() => {
-      setStarted(true)
-      
       timerRef.current = setInterval(() => {
         if (indexRef.current < text.length) {
           setDisplayedText(text.slice(0, indexRef.current + 1))

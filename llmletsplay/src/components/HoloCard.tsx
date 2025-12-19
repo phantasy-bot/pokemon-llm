@@ -4,7 +4,7 @@ import './CardGallery.css';
 interface CardType {
   name: string;
   rarity: string;
-  description: string;
+  description: React.ReactNode;
   image: string;
   dataAttributes?: Record<string, string>;
 }
