@@ -4,6 +4,7 @@ import { About } from './sections/About'
 import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Tokenomics } from './sections/Tokenomics'
+import { Collection } from './sections/Collection'
 // import { Battle } from './sections/Battle'  // TODO: Re-enable when battle screen is ready
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Icon } from '@iconify/react'
@@ -15,7 +16,8 @@ import {
   PixelLoadingCircle, 
   PixelTerminal,
   PixelTV,
-  PixelCoin
+  PixelCoin,
+  PixelSparkle
 } from './icons/PixelIcons'
 
 const navItems = [
@@ -28,6 +30,7 @@ const navItems = [
   { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
   { id: 'tokenomics', label: 'Tokenomics', icon: <PixelCoin size={18} />, isSubItem: true },
+  { id: 'collection', label: 'Card Collection', icon: <PixelSparkle size={18} />, isSubItem: true },
   { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
@@ -40,6 +43,7 @@ const sectionTitles: Record<string, string> = {
   stream: 'Stream Cycle',
   prompts: 'Prompts',
   tokenomics: 'Tokenomics',
+  collection: 'Card Collection',
 }
 
 export function LassLayout() {
@@ -83,6 +87,7 @@ export function LassLayout() {
             <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
             <Route path="prompts" element={<ComingSoon title="LLM Prompts" />} />
             <Route path="tokenomics" element={<Tokenomics />} />
+            <Route path="collection" element={<Collection />} />
           </Routes>
         </FolderContainer>
       </main>
