@@ -54,22 +54,15 @@ export function About() {
               fontSize: '14px',
               lineHeight: '1.6',
               color: 'var(--text-primary)',
-              textAlign: 'center',
+              textAlign: 'left',
               marginBottom: '16px'
             }}>
               <p style={{ marginBottom: '16px' }}>
-                Lass is our AI trainer persona — a friendly, determined character who provides 
-                live commentary during the stream.
+                Lass is a friendly, determined Pokemon trainer who provides live commentary during the stream.
               </p>
               <p>
-                She's learning as she goes, making mistakes, celebrating victories, and slowly 
-                mastering the world of Pokemon through trial and error (and a lot of patience)!
+                She's learning as she goes, celebrating victories, and mastering the world of Pokemon through trial and error!
               </p>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
-              <div className="badge" style={{ backgroundColor: 'var(--accent-primary)' }}>AI PERSONALITY</div>
-              <div className="badge" style={{ backgroundColor: '#9146FF' }}>LIVE ON TWITCH</div>
             </div>
           </div>
 
@@ -84,11 +77,9 @@ export function About() {
               fontSize: '14px',
               lineHeight: '1.6',
               marginBottom: '24px',
-              textAlign: 'center'
+              textAlign: 'left'
             }}>
-              <strong>LLM Lets Play</strong> is an experimental project that uses large language models 
-              to play Pokemon Red completely autonomously. No human input required — just 
-              pure AI decision-making.
+              <strong>LLM Lets Play</strong> is a project getting LLMs to play all sorts of strategy games like Pokemon Red. Lass will go through all of the Pokemon games.
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
