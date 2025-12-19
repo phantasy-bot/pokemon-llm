@@ -83,7 +83,7 @@ export function Collection() {
         <div className="persona-cards-column">
           <div className="persona-cards-desktop">
             {/* Collection Goal Card - List Style */}
-            <div className="info-card info-card--dotted">
+            <div className="info-card info-card--dotted" style={{ position: 'sticky', top: '20px', zIndex: 10 }}>
               {/* Header removed as requested */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Base Set 1: 1st Edition */}
