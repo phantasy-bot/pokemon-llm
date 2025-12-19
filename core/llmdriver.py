@@ -2435,7 +2435,15 @@ Your intro message:"""
             # Detect what type of name we're entering
             dialog_text = text_state.get("text", "") if text_state else ""
             readable_text = current_mGBA_state.get("readable_text", "")
-            name_type = name_planner.detect_name_type(dialog_text, readable_text)
+
+            # Prioritize detection from tile map if available (from state.py)
+            detected_type = name_entry_state.get("name_type")
+            if detected_type and detected_type != "unknown":
+                name_type = detected_type
+                name_planner.name_type = name_type  # Sync planner
+                log.info(f"Name Entry: Trusting state-detected type '{name_type}'")
+            else:
+                name_type = name_planner.detect_name_type(dialog_text, readable_text)
 
             # Check if this is PRESET MENU or KEYBOARD
             is_preset_menu = name_entry_state.get("is_preset_menu", False)

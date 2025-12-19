@@ -67,6 +67,15 @@ class KeyboardCursorTracker:
             self.active = False
             log.info("🎹 KeyboardTracker: Deactivated")
 
+    def sync(self, row: int, col: int):
+        """Force synchronize tracker position with trusted memory state"""
+        if (self.row, self.col) != (row, col):
+            log.info(
+                f"🎹 KeyboardTracker: Syncing ({self.row},{self.col}) -> ({row},{col})"
+            )
+            self.row = row
+            self.col = col
+
     def apply_action(self, action: str) -> None:
         """
         Parse action string and update cursor position.

@@ -413,11 +413,44 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         else:
             _flush_socket(sock)
             # BATCHED: Read CC24-CC28 (5 bytes) for cursor and menu count
-            menu_bytes = readrange(sock, "0xCC24", "5")
-            cursor_y = menu_bytes[0] if len(menu_bytes) > 0 else 0
-            cursor_x = menu_bytes[1] if len(menu_bytes) > 1 else 0
-            selected = menu_bytes[2] if len(menu_bytes) > 2 else 0
-            last_item = menu_bytes[4] if len(menu_bytes) > 4 else 0
+            # AND Read CC30-CC31 (2 bytes) for cursor pointer
+            # Total read: CC24-CC31 (14 bytes range, but let's just read two chunks or one bigger chunk)
+            # CC24 is start. CC31 is end. Length = 31 - 24 + 1 = 8 + 6 = 14 bytes?
+            # 0xCC31 - 0xCC24 = 13. +1 = 14 bytes.
+
+            raw_data = readrange(sock, "0xCC24", "14")
+            if raw_data and len(raw_data) >= 14:
+                menu_bytes = raw_data[0:5]  # CC24-CC28
+                # CC29, CC2A, CC2B, CC2C, CC2D, CC2E, CC2F, CC30, CC31
+                # CC30 is at offset 12 (0xC = 12)
+                cursor_ptr_bytes = raw_data[12:14]
+
+                cursor_y = menu_bytes[0]
+                cursor_x = menu_bytes[1]
+                selected = menu_bytes[2]
+                last_item = menu_bytes[4]
+
+                cursor_ptr = struct.unpack("<H", cursor_ptr_bytes)[0]
+
+                # Check if pointer is valid screen coordinate (C3A0 - C507)
+                if 0xC3A0 <= cursor_ptr <= 0xC507:
+                    offset = cursor_ptr - 0xC3A0
+                    calc_y = offset // 20
+                    calc_x = offset % 20
+                    # If on keyboard (last_item=7), trust calculated values
+                    if last_item == 7:
+                        log.info(
+                            f"Cursor override: Mem({cursor_x},{cursor_y}) -> Calc({calc_x},{calc_y}) from Ptr {hex(cursor_ptr)}"
+                        )
+                        cursor_x = calc_x
+                        cursor_y = calc_y
+            else:
+                # Fallback to safe defaults if read failed
+                cursor_y = 0
+                cursor_x = 0
+                selected = 0
+                last_item = 0
+
             log.info(
                 f"name_entry check (direct read): last_item={last_item}, cursor=({cursor_x},{cursor_y}), selected={selected}"
             )
@@ -432,8 +465,7 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         is_preset_menu = (3 <= last_item <= 5) and cursor_y < 12
 
         if is_preset_menu:
-            # Preset name selection menu detected
-            # Options: NEW NAME (0), RED/BLUE (1), ASH/GARY (2), JACK/JOHN (3)
+            # ... (Preset logic remains same) ...
             preset_options_player = ["NEW NAME", "RED", "ASH", "JACK"]
             preset_options_rival = ["NEW NAME", "BLUE", "GARY", "JOHN"]
 
@@ -461,7 +493,7 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
             }
 
         # Check for KEYBOARD (menu_item_count == 7, cursor in keyboard range)
-        is_keyboard_likely = last_item == 7 and 1 <= cursor_x <= 17 and cursor_y >= 3
+        is_keyboard_likely = last_item == 7 and 1 <= cursor_x <= 19 and cursor_y >= 3
 
         if not is_keyboard_likely:
             log.info(
@@ -470,14 +502,48 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
             return None
 
         # ADDITIONAL CHECK: Read tile buffer to verify keyboard letters exist
-        # The name entry keyboard has specific tile patterns at rows 6-10 of the screen
-        # (20 tiles per row, 18 rows total = 0xC3A0-C507)
-        # Row 6 starts at offset 6*20=120, contains "A B C D E F G H I"
-        # We check for the 'A' tile (0x80) and 'I' tile (0x88) at expected positions
+        # Also detect Screen Type (Player vs Rival vs Pokemon)
+        name_type = "unknown"
         try:
             _flush_socket(sock)
-            # Read row 6 of tile screen (offsets 120-139): should contain keyboard row 1
-            keyboard_area = readrange(sock, hex(0xC3A0 + 120), "20")  # Row 6
+            # Read Row 1 (Title) and Row 6 (Keyboard start)
+            # Row 1: C3A0 + 20 = C3B4 (len 20)
+            # Row 6: C3A0 + 120 = C418 (len 20)
+
+            # Read enough to cover both? C3B4 to C42C.
+            # Delta = 120 - 20 + 20 = 120 bytes.
+            buffer_data = readrange(sock, "0xC3B4", "120")
+
+            # Row 1 (Title) is at offset 0 of this buffer
+            row1 = buffer_data[0:20]
+
+            # Check Signatures
+            # RIVAL: 91 88 95 80 8B (R I V A L)
+            # YOUR NAME: 98 8E 94 91 (Y O U R)
+            # NICKNAME: 8D 88 82 8A (N I C K)
+
+            # Helper to check sequence
+            def check_seq(seq, data):
+                for i in range(len(data) - len(seq) + 1):
+                    if list(data[i : i + len(seq)]) == seq:
+                        return True
+                return False
+
+            if check_seq([0x91, 0x88, 0x95, 0x80, 0x8B], row1):
+                name_type = "rival"
+            elif check_seq([0x98, 0x8E, 0x94, 0x91], row1):
+                name_type = "player"
+            elif check_seq([0x8D, 0x88, 0x82, 0x8A], row1):
+                name_type = "pokemon"
+
+            log.info(f"name_entry: Screen Type Detection -> {name_type}")
+
+            # Keyboard check (Row 6) is at offset 100 in our buffer (120 - 20 = 100)
+            # But wait, 0xC3B4 is Row 1 start.
+            # Row 6 start is 0xC3A0 + 120 = 0xC418.
+            # 0xC418 - 0xC3B4 = 100.
+            # So offset 100 is start of Row 6.
+            keyboard_area = buffer_data[100:120]
 
             # In Pokemon Red, uppercase letters A-Z are tiles 0x80-0x99
             # 'A' = 0x80, 'B' = 0x81, ... 'I' = 0x88
@@ -505,22 +571,54 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         # KEYBOARD MODE DETECTED
         # Instead of trying to read unreliable memory addresses, we use KeyboardTracker
         # which simulates cursor position based on action history
+        # BUT NOW we have reliable cursor tracking from memory!
+
+        # We should still use KeyboardTracker for "blind typing" (pathfinding),
+        # but we can UPDATE it with true position.
 
         from pyAIAgent.game.keyboard_tracker import get_keyboard_tracker
 
         kb_tracker = get_keyboard_tracker()
 
+        # Sync tracker with truth
+        # Note: cursor_x is visual column (1, 3, 5...).
+        # Tracker uses logical column (0, 1, 2...).
+        # Map visual X to logical col?
+        # Visual: 1->0, 3->1, 5->2.
+        # Formula: (x - 1) // 2
+
+        logical_col = max(0, (cursor_x - 1) // 2)
+        logical_row = max(0, cursor_y - 4)  # Assuming Row 0 starts at Y=4?
+        # Wait, Cursor Y=3 for Row 0?
+        # 0xCC24 said 3.
+        # Screen dump said Row 03: 7F ...
+        # Row 04: A B C ...
+        # So Row 0 is at visual Y=4.
+        # If cursor is on Row 0, Y should be 4.
+        # But my memory dump said Y=3 for A?
+        # User log: Cursor Y: 3.
+        # Screen dump: Row 04 starts A.
+        # Maybe Y=3 is the "top" of the selection box?
+        # Let's trust cursor_y - 3 for now if it aligns.
+        # If Y=3 -> Row 0.
+        logical_row = max(0, cursor_y - 3)  # Adjusted based on observation
+
+        # We only sync if we are SURE.
+        if name_type != "unknown":
+            kb_tracker.sync(logical_row, logical_col)
+
         # Get state from keyboard tracker (which tracks based on actions)
         tracker_state = kb_tracker.get_state_dict()
 
         log.info(
-            f"📝 Name entry KEYBOARD detected: Using tracker state: row={tracker_state.get('row', 0)}, col={tracker_state.get('col', 0)}, char='{tracker_state.get('selected_char', '?')}'"
+            f"📝 Name entry KEYBOARD detected ({name_type}): Using tracker state: row={tracker_state.get('row', 0)}, col={tracker_state.get('col', 0)}, char='{tracker_state.get('selected_char', '?')}'"
         )
 
         # Return keyboard state with tracker data
         return {
             "is_preset_menu": False,
             "is_keyboard": True,
+            "name_type": name_type,  # NEW FIELD
             "cursor_index": tracker_state.get("cursor_index", 0),
             "cursor_x": cursor_x,  # Keep original for debugging
             "cursor_y": cursor_y,  # Keep original for debugging

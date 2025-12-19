@@ -1,7 +1,15 @@
 import os
 import sys
 import shutil
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    # Fallback if tqdm is missing
+    def tqdm(iterable, desc=""):
+        print(f"{desc}...")
+        return iterable
+
 
 def find_mgba():
     # os.name == "nt" for window
@@ -13,12 +21,12 @@ def find_mgba():
 
     # fallback for search common install locations
     search_paths = []
-    
+
     if sys.platform.startswith("win"):
         search_paths = [
             "C:\\Program Files\\mGBA",
             "C:\\Program Files (x86)\\mGBA",
-            os.path.expanduser("~\\Downloads\\mGBA")
+            os.path.expanduser("~\\Downloads\\mGBA"),
         ]
     elif sys.platform == "darwin":  # macOS
         search_paths = [
@@ -38,12 +46,12 @@ def find_mgba():
         full_path = os.path.join(folder, exe_name)
         if os.path.exists(full_path):
             return full_path
-    
-    print_dot_interval = 2000 # print dot every 2000 dirs
+
+    print_dot_interval = 2000  # print dot every 2000 dirs
     print("Finding mgba file path...", end="", flush=True)
-    
+
     # Count total directories first (for accurate progress)
-    
+
     dirs = []
     count = 0
 
@@ -52,9 +60,8 @@ def find_mgba():
         count += 1
         if count % print_dot_interval == 0:
             print(".", end="", flush=True)
-        
+
     print()
-    
 
     for root in tqdm(dirs, desc="Scanning directories"):
         try:

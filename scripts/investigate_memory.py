@@ -32,13 +32,27 @@ log = logging.getLogger("mem_inspector")
 
 # Constants
 HOST = "127.0.0.1"
-PORT = 2061
+PORT = 8888
 
 
 def start_mgba():
     """Start mGBA process with Lua script."""
-    # Force string type to satisfy linter
-    rom_path = str(get_rom_path() or "roms/red.gb")
+    # Prioritize red-patched.gb if it exists
+    patched_rom = "roms/red-patched.gb"
+    original_rom = "roms/red.gb"
+
+    # Try to get ROM from environment via get_rom_path
+    env_rom = str(get_rom_path() or "")
+
+    if os.path.exists(patched_rom):
+        rom_path = patched_rom
+    elif os.path.exists(original_rom):
+        rom_path = original_rom
+    elif env_rom and os.path.exists(env_rom):
+        rom_path = env_rom
+    else:
+        # Final fallback to patched (will fail exists check next)
+        rom_path = patched_rom
 
     if not os.path.exists(rom_path):
         log.error(f"ROM file not found: {rom_path}")
@@ -127,11 +141,26 @@ def print_cursor_state(sock):
         log.error(f"Error reading memory: {e}")
 
 
+def print_screen_tiles(sock):
+    """Dump the screen tile map (0xC3A0 - 0xC507)."""
+    _flush_socket(sock)
+    try:
+        data = readrange(sock, "0xC3A0", "360")
+        print("\n🖥️ SCREEN TILES (0xC3A0 - 0xC507)")
+        print("-----------------------------------")
+        for row in range(18):
+            line = data[row * 20 : (row + 1) * 20]
+            hex_str = " ".join(f"{b:02X}" for b in line)
+            print(f"Row {row:02d}: {hex_str}")
+        print("-----------------------------------")
+    except Exception as e:
+        log.error(f"Error reading screen tiles: {e}")
+
+
 def main():
     print("\n🔍 mGBA Memory Investigator 🔍")
     print("==============================")
 
-    # Try connecting first
     sock = connect_to_mgba(retries=1)
 
     proc = None
@@ -152,19 +181,77 @@ def main():
         sys.exit(1)
 
     print("\n✅ Connected to mGBA!")
-    print("\nINSTRUCTIONS:")
-    print("1. Navigate the game manually to the screen you want to inspect.")
-    print("   (e.g., The Rival Name selection menu)")
-    print("2. Press ENTER in this terminal to capture the current state.")
-    print("3. Type 'q' and ENTER to quit.")
+    print("\nCOMMANDS:")
+    print("  [ENTER]      : Dump basic cursor/menu state (0xCC24)")
+    print("  screen       : Dump screen tile map (0xC3A0)")
+    print("  scan <addr> <len> : Capture baseline memory for diffing (hex addr)")
+    print("  diff         : Compare current memory with baseline")
+    print("  q            : Quit")
+
+    baseline_data = None
+    baseline_addr = 0
+    baseline_len = 0
 
     try:
         while True:
-            cmd = input("\n[Press ENTER to read state, 'q' to quit] > ").strip().lower()
-            if cmd == "q":
+            cmd_raw = input("\n> ").strip().lower()
+            if cmd_raw == "q":
                 break
 
-            print_cursor_state(sock)
+            if cmd_raw == "":
+                print_cursor_state(sock)
+                continue
+
+            parts = cmd_raw.split()
+            cmd = parts[0]
+
+            if cmd == "screen":
+                print_screen_tiles(sock)
+
+            elif cmd == "scan":
+                if len(parts) < 3:
+                    print("Usage: scan <addr_hex> <len_dec>")
+                    continue
+                try:
+                    addr_str = parts[1]
+                    length = int(parts[2])
+                    # Ensure addr has 0x prefix for our readrange function if it doesn't already
+                    if not addr_str.startswith("0x"):
+                        addr_str = "0x" + addr_str
+
+                    print(f"Reading baseline from {addr_str} ({length} bytes)...")
+                    baseline_data = readrange(sock, addr_str, str(length))
+                    baseline_addr = addr_str
+                    baseline_len = length
+                    print(
+                        f"✅ Baseline captured ({len(baseline_data)} bytes). Move cursor then type 'diff'."
+                    )
+                except Exception as e:
+                    print(f"Error: {e}")
+
+            elif cmd == "diff":
+                if not baseline_data:
+                    print("No baseline! Run 'scan' first.")
+                    continue
+                try:
+                    current_data = readrange(sock, baseline_addr, str(baseline_len))
+                    print(f"\n🔍 Differences in {baseline_addr} (+{baseline_len}):")
+                    found = False
+                    start_offset = int(baseline_addr, 16)
+                    for i in range(len(baseline_data)):
+                        if baseline_data[i] != current_data[i]:
+                            found = True
+                            offset_hex = f"{start_offset + i:X}"
+                            print(
+                                f"  Offset +{i:02X} (Addr 0x{offset_hex}): {baseline_data[i]:02X} -> {current_data[i]:02X}"
+                            )
+                    if not found:
+                        print("  No changes detected.")
+                except Exception as e:
+                    print(f"Error diffing: {e}")
+
+            else:
+                print("Unknown command.")
 
     except KeyboardInterrupt:
         pass
