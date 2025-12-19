@@ -559,10 +559,9 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
 
             if not has_keyboard_tiles:
                 log.warning(
-                    f"name_entry: Keyboard tiles NOT found in buffer, but menu structure matches (items={last_item + 1}). Assuming KEYBOARD active."
+                    f"name_entry: Keyboard tiles NOT found in buffer (items={last_item + 1}). Aborting detection to avoid false positive."
                 )
-                # Proceed anyway - menu heuristics are strong enough
-                # return None
+                return None
         except Exception as e:
             log.warning(
                 f"name_entry: Tile buffer check failed: {e} - proceeding with detection"
@@ -1035,12 +1034,24 @@ def prep_llm(sock) -> dict:
             )
             if minimap_img:
                 minimap_img.save("minimap.png")
+                # Also save to UI public folder for Windows support
+                try:
+                    ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                    minimap_img.save(ui_public_path)
+                except Exception as e:
+                    # Don't crash if UI path not found
+                    pass
             else:
                 # Fallback if minimap generation failed (e.g., unknown tileset)
                 from PIL import Image
 
                 default_minimap = Image.new("RGB", (160, 160), color="gray")
                 default_minimap.save("minimap.png")
+                try:
+                    ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                    default_minimap.save(ui_public_path)
+                except Exception:
+                    pass
             map2D = dump_minimap_map_array(rom_path, mid, (x, y), crop=MINI_MAP_SIZE)
             log.info(f"prep_llm: minimap generation took {time.time() - t_map:.2f}s")
             position = (x, y)
@@ -1052,6 +1063,11 @@ def prep_llm(sock) -> dict:
             # Create a white square with same dimensions as typical minimap
             default_minimap = Image.new("RGB", (160, 160), color="white")
             default_minimap.save("minimap.png")
+            try:
+                ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                default_minimap.save(ui_public_path)
+            except Exception:
+                pass
             position = None
             facing = None
 

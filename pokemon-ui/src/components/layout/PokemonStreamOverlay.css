@@ -9,7 +9,8 @@
 
 /* Column Header Styles - replaces unified header */
 .column-header {
-  padding: var(--space-xl) 0 var(--space-lg) 0; /* More padding top */
+  padding: var(--space-xl) 0 var(--space-lg) 0;
+  /* More padding top */
   margin-bottom: var(--space-md);
   flex-shrink: 0;
 }
@@ -17,27 +18,35 @@
 .column-header--center {
   display: flex;
   justify-content: center;
-  padding-top: var(--space-md); /* Reduced top padding override */
-  margin-bottom: 0; /* Reduced margin override as requested */
+  padding-top: var(--space-md);
+  /* Reduced top padding override */
+  margin-bottom: 0;
+  /* Reduced margin override as requested */
 }
 
 /* T3 Folder Container Styles */
 .folder-container {
-  flex: 1; /* RESTORED: Fill available height */
+  flex: 1;
+  /* RESTORED: Fill available height */
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--accent-primary-bright); /* Bright red accent */
-  border: none; /* Removed border as requested */
-  border-top-right-radius: 0; /* Cutout corner */
+  background: var(--accent-primary-bright);
+  /* Bright red accent */
+  border: none;
+  /* Removed border as requested */
+  border-top-right-radius: 0;
+  /* Cutout corner */
   border-top-left-radius: 12px;
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
   overflow: visible;
-  
+
   /* Hide scrollbar for clean presentation */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
@@ -58,16 +67,21 @@
 /* Folder Title in the top bar */
 .folder-title {
   position: absolute;
-  top: 4.5px; /* Lifted up 2px more (6.5 -> 4.5) */
-  left: 20px; /* Push right from left edge */
-  width: calc(100% - 280px); /* Center in available space (minus cutout and left padding) */
+  top: 4.5px;
+  /* Lifted up 2px more (6.5 -> 4.5) */
+  left: 20px;
+  /* Push right from left edge */
+  width: calc(100% - 280px);
+  /* Center in available space (minus cutout and left padding) */
   text-align: center;
   display: flex;
   justify-content: center;
   font-family: var(--font-display);
-  font-style: normal; /* Regular font as requested */
+  font-style: normal;
+  /* Regular font as requested */
   font-size: 36px;
-  font-weight: 700; /* Bold to match "UltraHyper" weight usually needed */
+  font-weight: 700;
+  /* Bold to match "UltraHyper" weight usually needed */
   color: rgba(0, 0, 0, 0.9);
   z-index: 20;
   line-height: 1;
@@ -126,17 +140,20 @@
 
 /* Folder Content - the actual content inside the folder */
 .folder-content {
-  flex: 0 0 auto; /* Only take height needed for content (goals + reply section) */
+  flex: 0 0 auto;
+  /* Only take height needed for content (goals + reply section) */
   display: flex;
   flex-direction: column;
   padding: var(--space-lg);
   padding-top: calc(var(--space-xl) + 10px);
   gap: var(--space-md);
-  overflow: visible; /* Allow absolute labels to show */
+  overflow: visible;
+  /* Allow absolute labels to show */
   background: transparent;
   border-radius: 10px;
   margin: var(--space-sm);
-  margin-top: calc(var(--space-sm) + 36px); /* Clear the cutout area */
+  margin-top: calc(var(--space-sm) + 36px);
+  /* Clear the cutout area */
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
@@ -148,11 +165,13 @@
 .folder-sponsor {
   position: absolute;
   bottom: var(--space-md);
-  left: calc(var(--space-md) - 2px); /* Moved 2px left total */
+  left: calc(var(--space-md) - 2px);
+  /* Moved 2px left total */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px; /* Increased gap */
+  gap: 8px;
+  /* Increased gap */
   z-index: 50;
   pointer-events: auto;
 }
@@ -166,11 +185,13 @@
   color: rgba(0, 0, 0, 0.5);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  order: 2; /* Move below URL */
+  order: 2;
+  /* Move below URL */
 }
 
 .folder-sponsor__image {
-  width: 64px; /* Increased from 48px */
+  width: 64px;
+  /* Increased from 48px */
   height: 64px;
   object-fit: contain;
   image-rendering: pixelated;
@@ -206,7 +227,8 @@
 
 /* Pokemon Header Section - DEPRECATED, kept for reference */
 .pokemon-header {
-  display: none; /* Hidden - using column headers now */
+  display: none;
+  /* Hidden - using column headers now */
 }
 
 .pokemon-header__left {
@@ -243,11 +265,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  background: transparent; /* Remove card background */
-  border: none; /* Remove borders for flat appearance */
+  background: transparent;
+  /* Remove card background */
+  border: none;
+  /* Remove borders for flat appearance */
   border-radius: 0;
   padding: 0;
-  min-width: auto; /* Remove fixed width */
+  min-width: auto;
+  /* Remove fixed width */
 }
 
 /* Title section with model badge */
@@ -354,8 +379,10 @@
 .badges-widget {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center content horizontally */
-  justify-content: flex-end; /* Align content to bottom */
+  align-items: center;
+  /* Center content horizontally */
+  justify-content: flex-end;
+  /* Align content to bottom */
   gap: var(--space-xs);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
@@ -400,14 +427,17 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: 27px; /* Reduced from 28px */
-  font-style: normal; /* Normal as requested */
+  font-size: 27px;
+  /* Reduced from 28px */
+  font-style: normal;
+  /* Normal as requested */
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: center;
-  line-height: 1; /* Improved line-height for larger text */
+  line-height: 1;
+  /* Improved line-height for larger text */
 }
 
 .title-accent {
@@ -428,12 +458,14 @@
 .pokemon-left-col {
   display: flex;
   flex-direction: column;
-  flex: 29; /* 29% */
+  flex: 29;
+  /* 29% */
   padding: var(--space-md);
   padding-top: var(--space-md);
   background: var(--bg-panel);
   overflow: visible;
-  position: relative; /* Required for character-container__right absolute positioning */
+  position: relative;
+  /* Required for character-container__right absolute positioning */
 }
 
 .status {
@@ -446,8 +478,10 @@
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: 4px;
-  margin-bottom: 0; /* Reduced to close gap */
-  margin-top: var(--space-md); /* Added separation from game feed */
+  margin-bottom: 0;
+  /* Reduced to close gap */
+  margin-top: var(--space-md);
+  /* Added separation from game feed */
 }
 
 .ws-status {
@@ -469,7 +503,8 @@
 
 /* Cycle timing display - small, light text on the right */
 .cycle-timing {
-  margin-left: auto; /* Push to the right when visible */
+  margin-left: auto;
+  /* Push to the right when visible */
   font-size: 10px;
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -494,6 +529,7 @@
     transform: scale(1.2);
     opacity: 1;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -505,6 +541,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -534,10 +571,12 @@
   flex: 1;
   overflow-y: auto;
   padding: 0;
-  
+
   /* Hide scrollbar for clean presentation */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
@@ -548,21 +587,28 @@
 .pokemon-right-col {
   display: flex;
   flex-direction: column;
-  flex: 29; /* 29% */
-  padding: 0 var(--space-md); /* Horizontal padding only */
+  flex: 29;
+  /* 29% */
+  padding: 0 var(--space-md);
+  /* Horizontal padding only */
   background: var(--bg-panel);
-  border-left: none; /* No border - middle column has right border */
-  overflow-y: hidden; /* Let child handle scroll */
+  border-left: none;
+  /* No border - middle column has right border */
+  overflow-y: hidden;
+  /* Let child handle scroll */
 }
 
 /* Top section - Actions and Goals - STATIC HEIGHT */
 .pokemon-goals__top {
-  flex: 0 0 auto; /* Let content determine size, but goals-log has fixed height */
+  flex: 0 0 auto;
+  /* Let content determine size, but goals-log has fixed height */
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  overflow: visible; /* Allow sheared labels to show */
-  min-height: 0; /* Required for flex overflow to work */
+  overflow: visible;
+  /* Allow sheared labels to show */
+  min-height: 0;
+  /* Required for flex overflow to work */
   /* Reduced static height */
   height: 180px;
   max-height: 180px;
@@ -571,21 +617,26 @@
 /* Character Container - 2 column layout (60%) */
 /* Scoped to .pokemon-stream-overlay to prevent conflicts with other overlays */
 .pokemon-stream-overlay .character-container {
-  flex: 1; /* Take remaining 60% */
+  flex: 1;
+  /* Take remaining 60% */
   display: flex;
   flex-direction: row;
-  gap: 0; /* No gap - will use negative margin for overlap */
-  overflow: visible; /* Allow character to overflow */
+  gap: 0;
+  /* No gap - will use negative margin for overlap */
+  overflow: visible;
+  /* Allow character to overflow */
   position: relative;
 }
 
 /* Left column - Commentary (wider) */
 .pokemon-stream-overlay .character-container__left {
-  flex: 3; /* 60% of container */
+  flex: 3;
+  /* 60% of container */
   display: flex;
   flex-direction: column;
   min-width: 0;
-  z-index: 1; /* Below character */
+  z-index: 1;
+  /* Below character */
 }
 
 /* Commentary text box in left column */
@@ -593,48 +644,60 @@
   /* Fluid height: starts at ~4 rows (140px) and grows up to double (280px) */
   min-height: 140px;
   max-height: 280px;
-  flex: 0 0 auto; /* Don't stretch purely by flex ratio, allow auto-sizing */
-  
+  flex: 0 0 auto;
+  /* Don't stretch purely by flex ratio, allow auto-sizing */
+
   /* TUI Box Style - less rounded than 12px */
   border: 1px dashed rgba(0, 0, 0, 0.5);
-  border-radius: 8px; /* Less rounded than 12px */
+  border-radius: 8px;
+  /* Less rounded than 12px */
   background: white;
   position: relative;
   /* Keep visible for label positioned outside, text element handles its own overflow */
   overflow: visible;
-  padding: var(--space-sm); /* Add internal padding to commentary box */
-  margin-bottom: var(--space-xs); /* Reduce gap between commentary and reply section */
+  padding: var(--space-sm);
+  /* Add internal padding to commentary box */
+  margin-bottom: var(--space-xs);
+  /* Reduce gap between commentary and reply section */
 }
 
 /* Detailed Mode: Commentary with horizontal margins and less top spacing */
 .pokemon-stream-overlay.mode-detailed .character-container__commentary {
-  margin-left: 24px; /* More horizontal padding from column edges (increased +8px) */
+  margin-left: 24px;
+  /* More horizontal padding from column edges (increased +8px) */
   margin-right: 24px;
-  margin-top: 8px; /* Positive gap to separate from replying-to section (reduced from 16px to 8px) */
+  margin-top: 8px;
+  /* Positive gap to separate from replying-to section (reduced from 16px to 8px) */
 }
 
 /* Minimal Mode: Commentary with horizontal margins for consistent padding */
 .pokemon-stream-overlay.mode-normal .character-container__commentary {
-  margin-left: var(--space-md); /* Horizontal padding from column edges */
+  margin-left: var(--space-md);
+  /* Horizontal padding from column edges */
   margin-right: var(--space-md);
 }
 
 .pokemon-stream-overlay .character-container__commentary-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 12px; /* Increased from 10px */
+  font-size: 12px;
+  /* Increased from 10px */
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  
+
   /* Sheared position on top border */
   position: absolute;
-  top: -9px; /* Adjusted for border */
+  top: -9px;
+  /* Adjusted for border */
   left: var(--space-md);
-  background: black; /* Black bg */
-  color: white; /* White text */
-  border: 1px solid rgba(0, 0, 0, 0.5); /* Solid border */
+  background: black;
+  /* Black bg */
+  color: white;
+  /* White text */
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  /* Solid border */
   padding: 0 6px;
   border-radius: 4px;
   z-index: 2;
@@ -644,23 +707,35 @@
 
 .pokemon-stream-overlay .character-container__commentary-text {
   font-family: var(--font-mono);
-  font-size: 18px; /* Increased from 16px */
+  font-size: 18px;
+  /* Increased from 16px */
   line-height: 1.6;
-  color: rgba(0, 0, 0, 0.85); /* Dark text for contrast on bright accent */
-  font-weight: 600; /* Bolder */
+  color: rgba(0, 0, 0, 0.85);
+  /* Dark text for contrast on bright accent */
+  font-weight: 600;
+  /* Bolder */
   margin: 0;
-  padding-left: 14px; /* Increased padding-x again */
+  padding-left: 14px;
+  /* Increased padding-x again */
   padding-right: 14px;
-  padding-top: 14px; /* Increased from 10px */
-  padding-bottom: 10px; /* Added bottom padding for expanded content */
-  
+  padding-top: 14px;
+  /* Increased from 10px */
+  padding-bottom: 10px;
+  /* Added bottom padding for expanded content */
+
   /* CRITICAL: Prevent long unbroken text from breaking layout */
-  word-break: break-word; /* Break words at any character when needed */
-  overflow-wrap: anywhere; /* Modern alternative, more aggressive breaking */
-  hyphens: auto; /* Enable hyphenation for better readability */
-  white-space: pre-wrap; /* Allow wrapping while preserving whitespace */
-  overflow: hidden; /* Prevent overflow from escaping container */
-  max-width: 100%; /* Ensure text doesn't exceed container width */
+  word-break: break-word;
+  /* Break words at any character when needed */
+  overflow-wrap: anywhere;
+  /* Modern alternative, more aggressive breaking */
+  hyphens: auto;
+  /* Enable hyphenation for better readability */
+  white-space: pre-wrap;
+  /* Allow wrapping while preserving whitespace */
+  overflow: hidden;
+  /* Prevent overflow from escaping container */
+  max-width: 100%;
+  /* Ensure text doesn't exceed container width */
 }
 
 /* Platform mention highlighting in commentary */
@@ -672,20 +747,23 @@
 
 /* Twitch mentions - Purple */
 .pokemon-stream-overlay .platform-mention--twitch {
-  color: #9146FF; /* Twitch purple */
+  color: #9146FF;
+  /* Twitch purple */
   background: rgba(145, 70, 255, 0.15);
 }
 
 /* Pump.fun mentions - Green */
 .pokemon-stream-overlay .platform-mention--pumpfun {
-  color: #00C853; /* Pump.fun green */
+  color: #00C853;
+  /* Pump.fun green */
   background: rgba(0, 200, 83, 0.15);
 }
 
 /* Recent Actions in Character Container (Normal/Minimal Mode) */
 .pokemon-stream-overlay .character-container__recent-actions {
   margin-top: var(--space-md);
-  margin-left: var(--space-md); /* Added horizontal margin */
+  margin-left: var(--space-md);
+  /* Added horizontal margin */
   margin-right: var(--space-md);
   padding: 0;
 }
@@ -698,7 +776,8 @@
 
 /* Empty spacer at bottom of left column */
 .pokemon-stream-overlay .character-container__spacer {
-  flex: 1; /* Smaller than commentary */
+  flex: 1;
+  /* Smaller than commentary */
 }
 
 /* Right column - Character image - fixed to bottom of viewport */
@@ -709,17 +788,21 @@
   left: 40px;
   width: auto;
   height: auto;
-  z-index: 100; /* High z-index to be above other content */
-  pointer-events: none; /* Allow clicks to pass through */
+  z-index: 100;
+  /* High z-index to be above other content */
+  pointer-events: none;
+  /* Allow clicks to pass through */
 }
 
 /* Lass character image - massive and anchored to bottom edge */
 .pokemon-stream-overlay .lass-character {
   width: auto;
-  height: 50vh; /* Reduced from 55vh */
+  height: 50vh;
+  /* Reduced from 55vh */
   max-width: none;
   object-fit: contain;
-  object-position: bottom left; /* Anchor to bottom-left for flipped layout */
+  object-position: bottom left;
+  /* Anchor to bottom-left for flipped layout */
   /* Flip the character horizontally so she faces right (toward content) */
   transform: scaleX(-1);
 }
@@ -733,15 +816,16 @@
   padding-top: var(--space-md);
   /* FIXED: Remove excessive margin - align with other columns */
   margin-top: 0;
-  margin-bottom: var(--space-md); /* Added gap between Goals and Commentary */
-  
+  margin-bottom: var(--space-md);
+  /* Added gap between Goals and Commentary */
+
   /* Fixed height for consistency - reduced by 40px for more compact layout */
   height: 210px;
   min-height: 210px;
   max-height: 210px;
   /* Use overflow: visible so the label positioned above isn't clipped */
   overflow: visible;
-  
+
   /* TUI Box Style - dotted border like other sections */
   border: 1px dotted rgba(0, 0, 0, 0.5);
   position: relative;
@@ -749,10 +833,12 @@
 
 /* Minimal Mode Override for Goals */
 .goals-log--minimal {
-  height: 140px; /* Reduced height */
+  height: 140px;
+  /* Reduced height */
   min-height: 140px;
   max-height: 140px;
-  margin-left: var(--space-md); /* Match Reply/Commentary width */
+  margin-left: var(--space-md);
+  /* Match Reply/Commentary width */
   margin-right: var(--space-md);
 }
 
@@ -762,10 +848,11 @@
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.9); /* Dark text for contrast */
+  color: rgba(0, 0, 0, 0.9);
+  /* Dark text for contrast */
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  
+
   /* Sheared position on top border - NO border-radius for ASCII look */
   position: absolute;
   top: -9px;
@@ -778,7 +865,8 @@
 
 /* Removed old h3 styling - using __label now */
 .goals-log h3 {
-  display: none; /* Hide any h3 elements */
+  display: none;
+  /* Hide any h3 elements */
 }
 
 /* Inner content wrapper with overflow handling and fade effect */
@@ -786,8 +874,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start; /* Normal vertical stacking (was space-between) */
-  gap: var(--space-xs); /* Add small gap between items */
+  justify-content: flex-start;
+  /* Normal vertical stacking (was space-between) */
+  gap: var(--space-xs);
+  /* Add small gap between items */
   overflow: hidden;
   position: relative;
   /* CSS mask for fade effect at bottom when content overflows */
@@ -798,9 +888,11 @@
 .goals-log p {
   font-family: var(--font-mono);
   font-size: 13px;
-  line-height: 1.3; /* Reduced from 1.4 */
+  line-height: 1.3;
+  /* Reduced from 1.4 */
   color: rgba(0, 0, 0, 0.75);
-  margin: 0 0 2px; /* Reduced from var(--space-xs) */
+  margin: 0 0 2px;
+  /* Reduced from var(--space-xs) */
 }
 
 .goals-log p strong {
@@ -810,7 +902,8 @@
 
 
 .goals-log ul {
-  margin: 0 0 var(--space-sm); /* Reduced from var(--space-md) */
+  margin: 0 0 var(--space-sm);
+  /* Reduced from var(--space-md) */
   padding-left: var(--space-md);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -819,7 +912,8 @@
 }
 
 .goals-log li {
-  padding: 1px 0; /* Reduced from var(--space-xs) */
+  padding: 1px 0;
+  /* Reduced from var(--space-xs) */
   position: relative;
   padding-left: 16px;
 }
@@ -834,12 +928,15 @@
 .pokemon-center-col {
   display: flex;
   flex-direction: column;
-  flex: 42; /* 42% */
+  flex: 42;
+  /* 42% */
   padding: var(--space-md);
   background: var(--bg-panel);
-  border-left: none; /* Removed - using pseudo-elements for partial borders */
+  border-left: none;
+  /* Removed - using pseudo-elements for partial borders */
   border-right: none;
-  overflow: hidden; /* Force content to shrink/fit instead of scroll */
+  overflow: hidden;
+  /* Force content to shrink/fit instead of scroll */
   position: relative;
 }
 
@@ -849,9 +946,11 @@
   content: '';
   position: absolute;
   top: var(--space-md);
-  bottom: var(--space-xl); /* Gap at bottom */
+  bottom: var(--space-xl);
+  /* Gap at bottom */
   width: 1px;
-  background: rgba(208, 202, 200, 0.5); /* Lighter, blends with --bg-panel */
+  background: rgba(208, 202, 200, 0.5);
+  /* Lighter, blends with --bg-panel */
 }
 
 .pokemon-center-col::before {
@@ -866,11 +965,13 @@
   position: relative;
   /* Flex 1 to take all available space, pushing team bar down */
   flex: 1;
-  min-height: 380px; /* Game feed height */
+  min-height: 0;
+  /* Allow shrinking if needed, but flex 1 makes it grow */
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  margin-bottom: 0; /* Remove spacing below feed as requested */
+  margin-bottom: 0;
+  /* Remove spacing below feed as requested */
 }
 
 .game-placeholder {
@@ -878,7 +979,8 @@
   border: 1px dashed var(--border-subtle);
   border-radius: 0;
   width: 100%;
-  height: 100%; /* Fill container */
+  height: 100%;
+  /* Fill container */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -892,15 +994,18 @@
 /* ... minimap overlay ... */
 
 .pokemon-team-section {
-  margin-top: var(--space-sm); /* Reduced gap above pokemon team section */
+  margin-top: var(--space-sm);
+  /* Reduced gap above pokemon team section */
   padding-top: 0;
   /* Constrain height to make room for larger game feed */
   flex: 0 0 auto;
-  max-height: 220px; /* Team section height */
+  max-height: 220px;
+  /* Team section height */
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Ensure content is clipped if it somehow overflows */
+  overflow: hidden;
+  /* Ensure content is clipped if it somehow overflows */
 }
 
 /* Pokemon-specific styling */
@@ -922,7 +1027,7 @@
     grid-template-columns: 1.5fr 1fr 2fr;
   }
 
-  
+
   .model-badge {
     font-size: 9px;
     padding: 3px 6px;
@@ -944,7 +1049,8 @@
 @media (max-width: 768px) {
   .pokemon-stream-overlay {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr 1fr; /* Header | Battle Log | Team */
+    grid-template-rows: auto 1fr 1fr;
+    /* Header | Battle Log | Team */
   }
 
   .pokemon-content {
@@ -953,7 +1059,8 @@
   }
 
   .pokemon-goals {
-    display: none; /* Hide goals column on mobile */
+    display: none;
+    /* Hide goals column on mobile */
   }
 
   .pokemon-left-col {
@@ -965,7 +1072,7 @@
     border-bottom: 1px solid var(--border-subtle);
   }
 
-  }
+}
 
 @media (max-width: 480px) {
   .pokemon-header {
@@ -1010,13 +1117,14 @@
     font-size: 20px;
   }
 
-  }
+}
 
 /* Pokemon type color gradients */
 .pokemon-card {
   --type-color: var(--type-normal);
   --type-bg: var(--type-normal-bg);
-  max-height: 64px; /* Card height */
+  max-height: 64px;
+  /* Card height */
 }
 
 .pokemon-card[data-type="Fire"] {
@@ -1178,13 +1286,17 @@
   border-radius: 3px;
   font-size: 9px;
   font-weight: 600;
-}/* GameStatusDisplay specific styles */
+}
+
+/* GameStatusDisplay specific styles */
 .game-status-display {
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: var(--space-md);
+  gap: var(--space-xs);
+  /* Reduced from space-md to close gap */
 }
+
 /* ... (Existing styles remain, but we add new mode-specific styles) */
 
 /* Mode Transition Styles */
@@ -1194,7 +1306,8 @@
 
 /* Detailed Mode (Default - 3 columns) */
 .pokemon-stream-overlay.mode-detailed .pokemon-left-col {
-  flex: 29; /* 29% width */
+  flex: 29;
+  /* 29% width */
   transition: flex 0.5s ease-in-out;
 }
 
@@ -1210,8 +1323,10 @@
 
 /* Normal Mode (Minimal - 2 pane folder) */
 .pokemon-stream-overlay.mode-normal .pokemon-left-col {
-  flex: 100; /* Expand to full width */
-  padding: 0; /* Remove padding for full-bleed look */
+  flex: 100;
+  /* Expand to full width */
+  padding: 0;
+  /* Remove padding for full-bleed look */
   transition: flex 0.5s ease-in-out;
 }
 
@@ -1233,52 +1348,69 @@
 
 /* Left Pane (Character) */
 .folder-pane--left {
-  flex: 1;
+  flex: 55;
+  /* 55% width */
   min-width: 0;
   position: relative;
 }
 
 /* Right Pane (Game - Hidden in detailed, Visible in normal) */
 .folder-pane--right {
-  flex: 1; 
+  flex: 45;
+  /* 45% width */
   min-width: 0;
   /* Add left border separator similar to stats separators */
   border-left: 1px dashed rgba(0, 0, 0, 0.3);
   padding-left: var(--space-xl);
   /* Animation for appearing */
   animation: fadeIn 0.5s ease-in-out;
-  
+
   /* Minimal Mode: Move game view up significantly */
-  margin-top: -60px; 
+  margin-top: -60px;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Adjustments for Normal Mode Elements */
 .mode-normal .folder-title {
   /* Make title larger or centered differently if needed */
   width: 100%;
-  padding-right: 260px; /* Account for cutout */
+  padding-right: 260px;
+  /* Account for cutout */
 }
 
 /* Game Status Display adjustments for Folder Pane */
 .folder-pane--right .column-header {
-  padding-top: 0; /* Remove extra padding since we are inside folder */
+  padding-top: 0;
+  /* Remove extra padding since we are inside folder */
   margin-top: -10px;
 }
 
 .folder-pane--right .status {
-  background: rgba(255, 255, 255, 0.5); /* Lighter bg inside folder */
+  background: rgba(255, 255, 255, 0.5);
+  /* Lighter bg inside folder */
 }
 
 .folder-pane--right .badges-widget {
   background: rgba(255, 255, 255, 0.5);
 }
+
 .pokemon-stream-overlay.mode-normal .pokemon-game-feed {
-  min-height: 500px; /* Taller game feed in minimal mode */
+  /* Use flex-grow to fill available space instead of fixed height */
+  flex: 1;
+  min-height: 50vh;
+  /* Minimum viable height, but will grow to fill */
+  height: auto;
 }
 
 /* Minimal Mode: Remove gray background from Pokemon Team Bar */
@@ -1290,27 +1422,32 @@
 .pokemon-stream-overlay.mode-normal {
   padding: 0;
   margin: 0;
-  background: var(--accent-primary-bright); /* Red base */
+  background: var(--accent-primary-bright);
+  /* Red base */
 }
 
 .pokemon-stream-overlay.mode-normal .pokemon-content {
   height: 100vh;
   gap: 0;
-  background: var(--accent-primary-bright); /* Red fill */
+  background: var(--accent-primary-bright);
+  /* Red fill */
 }
 
 .pokemon-stream-overlay.mode-normal .pokemon-left-col {
   padding: 0;
   flex: 100%;
-  background: var(--accent-primary-bright); /* Red fill */
+  background: var(--accent-primary-bright);
+  /* Red fill */
 }
 
 .pokemon-stream-overlay.mode-normal .folder-container {
-  border-radius: 0; /* Full screen - squared off */
+  border-radius: 0;
+  /* Full screen - squared off */
   border: none;
   box-shadow: none;
   height: 100vh;
-  background: var(--accent-primary-bright); /* Red fill */
+  background: var(--accent-primary-bright);
+  /* Red fill */
 }
 
 /* Folder Header Row - Title + Badges side by side - positioned at top of left pane only */
@@ -1326,19 +1463,25 @@
   left: 0;
   /* Width of left pane - approximately 50% minus right pane gap */
   width: calc(50% - var(--space-md));
-  height: 60px; /* Increased from 44px to fit larger 36px title */
-  background: var(--accent-primary-bright); /* Red to match folder */
+  height: 60px;
+  /* Increased from 44px to fit larger 36px title */
+  background: var(--accent-primary-bright);
+  /* Red to match folder */
   border-bottom: none;
-  z-index: 15; /* Above folder content but below cutout */
+  z-index: 15;
+  /* Above folder content but below cutout */
 }
 
 /* Title in minimal mode - positioned to left edge */
 .pokemon-stream-overlay.mode-normal .folder-title {
-  position: static; /* Remove absolute positioning */
+  position: static;
+  /* Remove absolute positioning */
   background: none;
   padding: 0;
-  padding-left: 18px; /* Pushed right 18px */
-  font-size: 36px; /* Increased from 18px to match detailed mode */
+  padding-left: 18px;
+  /* Pushed right 18px */
+  font-size: 36px;
+  /* Increased from 18px to match detailed mode */
   text-align: left;
   width: auto;
 }
@@ -1363,16 +1506,20 @@
 /* Show stats in minimal mode - allow default colors (red/gray) since they sit on the gray cutout */
 .pokemon-stream-overlay.mode-normal .folder-stats {
   display: flex;
-  top: 10px; /* Moved down by 6px (from 4px) */
-  right: 14px; /* Moved left by 6px (from 8px) */
+  top: 10px;
+  /* Moved down by 6px (from 4px) */
+  right: 14px;
+  /* Moved left by 6px (from 8px) */
 }
 
 /* Extend the red accent to folder content */
 .pokemon-stream-overlay.mode-normal .folder-content-wrapper {
-  background-color: var(--accent-primary-bright); /* Red background */
+  background-color: var(--accent-primary-bright);
+  /* Red background */
   /* Increased top padding to move content down from header */
   padding: 72px var(--space-xl) var(--space-xl) var(--space-xl);
-  height: calc(100vh - 60px); /* Full height minus header row */
+  height: calc(100vh - 60px);
+  /* Full height minus header row */
 }
 
 /* Reply Context Box Styling */
@@ -1382,13 +1529,20 @@
   padding: 12px 16px;
   margin-bottom: 16px;
   border-left: 4px solid var(--accent-primary);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .reply-context-label {
@@ -1401,7 +1555,8 @@
 
 .reply-platform {
   font-weight: bold;
-  color: #9146FF; /* Twitch Purple default */
+  color: #9146FF;
+  /* Twitch Purple default */
 }
 
 .reply-user {
@@ -1421,12 +1576,16 @@
 
 /* Minimal Mode Replying To Section - Dark Theme to match Detailed */
 .minimal-reply-section {
-  background: rgba(0, 0, 0, 0.95); /* Black background */
+  background: rgba(0, 0, 0, 0.95);
+  /* Black background */
   border-radius: 12px;
   padding: var(--space-lg);
-  margin-bottom: 32px; /* Increased gap above commentary */
-  box-shadow: none; /* Remove shadow as requested */
-  height: 140px; /* Fixed larger height to prevent layout shift */
+  margin-bottom: 32px;
+  /* Increased gap above commentary */
+  box-shadow: none;
+  /* Remove shadow as requested */
+  height: 140px;
+  /* Fixed larger height to prevent layout shift */
   min-height: 140px;
   margin-left: var(--space-md);
   margin-right: var(--space-md);
@@ -1439,7 +1598,8 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.7); /* Light text */
+  color: rgba(255, 255, 255, 0.7);
+  /* Light text */
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: var(--space-sm);
@@ -1471,13 +1631,15 @@
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
-  color: white; /* White text */
+  color: white;
+  /* White text */
 }
 
 .minimal-reply-section__message {
   font-family: var(--font-ui);
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9); /* Bright light text */
+  color: rgba(255, 255, 255, 0.9);
+  /* Bright light text */
   font-style: italic;
   line-height: 1.5;
   max-height: 60px;
@@ -1487,7 +1649,8 @@
 .minimal-reply-section__empty {
   font-family: var(--font-ui);
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5); /* Muted light text */
+  color: rgba(255, 255, 255, 0.5);
+  /* Muted light text */
   font-style: italic;
   text-align: center;
   padding: var(--space-md);
@@ -1504,7 +1667,8 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 28px; /* Large text */
+  font-size: 28px;
+  /* Large text */
   font-weight: 700;
   text-align: center;
   line-height: 1.1;
@@ -1516,16 +1680,22 @@
 
 /* Holographic text effect for $LASS */
 @keyframes holographic-shimmer {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .text-holographic {
-  background: linear-gradient(
-    270deg, 
-    #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000
-  );
+  background: linear-gradient(270deg,
+      #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000);
   background-size: 400% 400%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -1538,13 +1708,17 @@
 /* Detailed Mode Replying To Section - Redesigned to match Minimal style */
 .detailed-reply-section {
   display: flex;
-  flex-direction: column; /* Stack label and content */
+  flex-direction: column;
+  /* Stack label and content */
   gap: 4px;
-  padding: 12px; /* Increased padding */
+  padding: 12px;
+  /* Increased padding */
   margin-top: 0;
-  background: rgba(0, 0, 0, 0.95); /* Match minimal bg */
+  background: rgba(0, 0, 0, 0.95);
+  /* Match minimal bg */
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px; /* Rounded corners */
+  border-radius: 12px;
+  /* Rounded corners */
   position: relative;
   min-height: 70px;
 }
@@ -1571,11 +1745,13 @@
   gap: var(--space-sm);
   flex: 1;
   overflow: hidden;
-  padding: 0; /* Reset padding */
+  padding: 0;
+  /* Reset padding */
 }
 
 .detailed-reply-section__platform {
-  font-family: var(--font-mono); /* Changed to monospace as requested */
+  font-family: var(--font-mono);
+  /* Changed to monospace as requested */
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1598,14 +1774,16 @@
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.95); /* White text for dark bg */
+  color: rgba(255, 255, 255, 0.95);
+  /* White text for dark bg */
   flex-shrink: 0;
 }
 
 .detailed-reply-section__message {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7); /* Light text for dark bg */
+  color: rgba(255, 255, 255, 0.7);
+  /* Light text for dark bg */
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;
@@ -1616,6 +1794,7 @@
 .detailed-reply-section__empty {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5); /* Light muted text for dark bg */
+  color: rgba(255, 255, 255, 0.5);
+  /* Light muted text for dark bg */
   font-style: italic;
 }

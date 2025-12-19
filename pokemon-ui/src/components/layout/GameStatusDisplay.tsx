@@ -52,10 +52,10 @@ function LiveCycleTimer({ cycleNumber }: { cycleNumber: number }) {
   const [elapsed, setElapsed] = React.useState(0);
   const startRef = React.useRef(Date.now());
   const lastCycleRef = React.useRef(cycleNumber);
-  
+
   React.useEffect(() => {
     const timer = setInterval(() => {
-       setElapsed((Date.now() - startRef.current) / 1000);
+      setElapsed((Date.now() - startRef.current) / 1000);
     }, 100);
     return () => clearInterval(timer);
   }, []);
@@ -105,13 +105,6 @@ export function GameStatusDisplay({ gameState, wsConnected, currentPokemon, hide
         </div>
       )}
 
-      {/* Game Feed Placeholder */}
-      <div className="pokemon-game-feed">
-        <div className="game-placeholder">
-          Pokemon Game Feed Placeholder
-        </div>
-      </div>
-
       {/* Status Bar */}
       <div className="status">
         <span>
@@ -137,9 +130,16 @@ export function GameStatusDisplay({ gameState, wsConnected, currentPokemon, hide
         )}
       </div>
 
+      {/* Game Feed Placeholder */}
+      <div className="pokemon-game-feed">
+        <div className="game-placeholder">
+          Pokemon Game Feed Placeholder
+        </div>
+      </div>
+
       {/* Pokemon Team Bar */}
       <div className="pokemon-team-section">
-        <PokemonTeamBar 
+        <PokemonTeamBar
           pokemon={currentPokemon}
           minimapLocation={location}
           minimapTimestamp={gameState.minimapTimestamp ? gameState.minimapTimestamp.toString() : undefined}
