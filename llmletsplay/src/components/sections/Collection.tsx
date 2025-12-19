@@ -39,16 +39,39 @@ export function Collection() {
 
   const cards = [
     {
-      name: 'Lass (Base Set)',
+      name: 'LASS (BASE SET)',
       rarity: 'common',
-      description: 'The original Lass from Base Set.',
+      description: (
+        <>
+          <p>The original and most well-known version (75/102).</p>
+          <p style={{ marginTop: '8px' }}><strong>1st Edition:</strong> From the very first print run, featuring a specific "1st Edition" stamp.</p>
+          <p style={{ marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
+        </>
+      ),
       image: '/cards/lass-base-set-bs-75.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
     },
     {
-      name: 'Lass (Base Set 2)',
+      name: 'LASS (BASE SET - UNLIMITED)',
       rarity: 'common',
-      description: 'Lass from Base Set 2.',
+      description: (
+        <>
+          <p>The most common version of the original card.</p>
+          <p style={{ marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
+        </>
+      ),
+      image: '/cards/lass-base-set-bs-unlimited-75.jpg',
+      dataAttributes: { 'data-supertype': 'trainer' }
+    },
+    {
+      name: 'LASS (BASE SET 2)',
+      rarity: 'common',
+      description: (
+        <>
+          <p>A later reprint compiling cards from Base Set and Jungle (104/130).</p>
+          <p style={{ marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
+        </>
+      ),
       image: '/cards/lass-base-set-2-b2-104.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
     }
@@ -65,30 +88,7 @@ export function Collection() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Spec Item: Shadowless */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '16px',
-                  borderBottom: '1px solid rgba(0,0,0,0.05)',
-                  paddingBottom: '16px'
-                }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>SHADOWLESS</div>
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 'bold'
-                  }}>
-                    0 / 1
-                  </div>
-                </div>
-
-                {/* Spec Item: First Edition */}
+                {/* Base Set 1: 1st Edition */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -98,7 +98,7 @@ export function Collection() {
                 }}>
                   <div style={{ color: 'var(--text-primary)' }}><PixelStar size={40} /></div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>1ST EDITION</div>
                   </div>
                   <div style={{
@@ -111,7 +111,53 @@ export function Collection() {
                   </div>
                 </div>
 
-                {/* Spec Item: Unlimited */}
+                {/* Base Set 1: Shadowless */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px',
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                  paddingBottom: '16px'
+                }}>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>SHADOWLESS</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontWeight: 'bold'
+                  }}>
+                    0 / 1
+                  </div>
+                </div>
+
+                {/* Base Set 1: Unlimited */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px',
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                  paddingBottom: '16px'
+                }}>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>UNLIMITED</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontWeight: 'bold'
+                  }}>
+                    0 / 1
+                  </div>
+                </div>
+
+                {/* Base Set 2 */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -119,8 +165,8 @@ export function Collection() {
                 }}>
                   <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>UNLIMITED</div>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 2</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>NORMAL</div>
                   </div>
                   <div style={{
                     fontFamily: 'var(--font-mono)',
@@ -138,42 +184,43 @@ export function Collection() {
             <div style={{ 
               display: 'flex', 
               flexDirection: 'column',
-              gap: '24px', 
+              gap: '32px', 
               marginBottom: '40px'
             }}>
                {cards.map((card, idx) => (
                  <div key={idx} style={{ 
                    display: 'flex', 
-                   alignItems: 'center', 
+                   alignItems: 'flex-start', /* Aligned top as requested */
                    gap: '24px',
-                   background: 'rgba(255,255,255,0.05)',
-                   padding: '16px',
-                   borderRadius: '16px'
+                   /* Removed background as requested */
+                   /* padding: '16px', */
+                   /* borderRadius: '16px' */
                  }}>
                    {/* Card container - preserve exact dimensions for holo effect */}
                    <div style={{ flexShrink: 0 }}>
                      <HoloCard cardType={card} isActive={true} />
                    </div>
                    
-                   {/* Text content */}
-                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                   {/* Text content - adjusted top via flex-start */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '12px' }}>
                      <span style={{ 
-                       fontFamily: 'var(--font-display)', 
-                       fontSize: '24px',
+                       fontFamily: 'var(--font-mono)', /* Bold monospace as requested */
+                       fontWeight: 'bold',
+                       fontSize: '20px',
                        color: 'var(--text-primary)',
-                       letterSpacing: '1px'
+                       letterSpacing: '0px'
                      }}>
                        {card.name}
                      </span>
-                     <span style={{
+                     <div style={{
                        fontFamily: 'var(--font-mono)',
                        fontSize: '14px',
                        color: 'var(--text-secondary)',
-                       maxWidth: '200px',
+                       maxWidth: '220px',
                        lineHeight: '1.5'
                      }}>
                        {card.description}
-                     </span>
+                     </div>
                    </div>
                  </div>
                ))}
