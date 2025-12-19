@@ -48,7 +48,7 @@ export function Collection() {
           <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
         </div>
       ),
-      image: '/cards/lass-base-set-bs-75.jpg',
+      image: 'https://llmletsplay.com/tcg/base-set/lass-base-set-bs-75.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
     },
     {
@@ -60,7 +60,7 @@ export function Collection() {
           <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
         </div>
       ),
-      image: '/cards/lass-base-set-bs-unlimited-75.jpg',
+      image: 'https://llmletsplay.com/tcg/base-set-unlimited/lass-base-set-bs-unlimited-75.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
     },
     {
@@ -72,7 +72,7 @@ export function Collection() {
           <p style={{ fontSize: '11px', marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
         </div>
       ),
-      image: '/cards/lass-base-set-2-b2-104.jpg',
+      image: 'https://llmletsplay.com/tcg/base-set-2/lass-base-set-2-b2-104.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
     }
   ]

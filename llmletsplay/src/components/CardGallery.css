@@ -79,7 +79,7 @@ button.card__rotator {
 }
 
 .card.interacting .card__rotator {
-  box-shadow: 0 5px 20px -5px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   transition: box-shadow 0.4s ease, outline 0.2s ease;
 }
 
