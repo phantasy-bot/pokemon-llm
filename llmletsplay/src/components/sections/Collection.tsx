@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { HoloCard } from '../HoloCard'
-import { PixelExternalLink } from '../icons/PixelIcons'
+import { PixelExternalLink, PixelStar, PixelCard } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -58,49 +58,123 @@ export function Collection() {
     <div className="persona-layout">
         <div className="persona-cards-column">
           <div className="persona-cards-desktop">
-            {/* Info Card */}
-            <div className="info-card">
+            {/* Collection Goal Card - List Style */}
+            <div className="info-card info-card--dotted">
               <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
                 <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>COLLECTION GOAL</h4>
               </div>
-              
-              <div style={{ 
-                marginBottom: '32px',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '14px',
-                textAlign: 'center',
-                lineHeight: '1.6',
-                padding: '0 16px'
-              }}>
-                 <p>
-                   Our goal is to collect all variations of the Lass card from the original Pokemon TCG Base Set.
-                   This includes <strong>Shadowless</strong>, <strong>First Edition</strong>, and <strong>Unlimited</strong> prints.
-                 </p>
-                 <p style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>
-                   Help us complete the ultimate Lass shrine!
-                 </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Spec Item: Shadowless */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px',
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                  paddingBottom: '16px'
+                }}>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>SHADOWLESS</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontWeight: 'bold'
+                  }}>
+                    0 / 1
+                  </div>
+                </div>
+
+                {/* Spec Item: First Edition */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px',
+                  borderBottom: '1px solid rgba(0,0,0,0.05)',
+                  paddingBottom: '16px'
+                }}>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelStar size={40} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>1ST EDITION</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontWeight: 'bold'
+                  }}>
+                    0 / 1
+                  </div>
+                </div>
+
+                {/* Spec Item: Unlimited */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '16px'
+                }}>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>VARIANT</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>UNLIMITED</div>
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontWeight: 'bold'
+                  }}>
+                    0 / 1
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Cards Grid */}
+            {/* Cards Grid - Horizontal Layout */}
             <div style={{ 
               display: 'flex', 
-              gap: '20px', 
-              flexWrap: 'wrap', 
-              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: '24px', 
               marginBottom: '40px'
             }}>
                {cards.map((card, idx) => (
-                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                   <HoloCard cardType={card} isActive={true} />
-                   <span style={{ 
-                     fontFamily: 'var(--font-display)', 
-                     fontSize: '18px',
-                     color: 'var(--text-primary)',
-                     letterSpacing: '1px'
-                   }}>
-                     {card.name}
-                   </span>
+                 <div key={idx} style={{ 
+                   display: 'flex', 
+                   alignItems: 'center', 
+                   gap: '24px',
+                   background: 'rgba(255,255,255,0.05)',
+                   padding: '16px',
+                   borderRadius: '16px'
+                 }}>
+                   {/* Card container - preserve exact dimensions for holo effect */}
+                   <div style={{ flexShrink: 0 }}>
+                     <HoloCard cardType={card} isActive={true} />
+                   </div>
+                   
+                   {/* Text content */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                     <span style={{ 
+                       fontFamily: 'var(--font-display)', 
+                       fontSize: '24px',
+                       color: 'var(--text-primary)',
+                       letterSpacing: '1px'
+                     }}>
+                       {card.name}
+                     </span>
+                     <span style={{
+                       fontFamily: 'var(--font-mono)',
+                       fontSize: '14px',
+                       color: 'var(--text-secondary)',
+                       maxWidth: '200px',
+                       lineHeight: '1.5'
+                     }}>
+                       {card.description}
+                     </span>
+                   </div>
                  </div>
                ))}
             </div>
