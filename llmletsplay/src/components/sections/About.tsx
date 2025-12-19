@@ -1,92 +1,299 @@
-import { PixelLightning, PixelHeart, PixelSettings, PixelStar, PixelEye, PixelTarget } from '../icons/PixelIcons'
-import { LassSubpageLayout } from '../LassSubpageLayout'
+import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { PixelHeart, PixelLightning, PixelSettings, PixelStar, PixelExternalLink } from '../icons/PixelIcons'
+
+const TOKEN_ADDRESS = '0x000...000'
+const COPY_RATE_LIMIT_MS = 500
+
+interface FloatingText {
+  id: number
+  x: number
+}
 
 export function About() {
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const lastCopyTime = useRef(0)
+  const nextId = useRef(0)
+
+  const handleCopy = () => {
+    const now = Date.now()
+    if (now - lastCopyTime.current < COPY_RATE_LIMIT_MS) {
+      return // Rate limited
+    }
+    lastCopyTime.current = now
+
+    navigator.clipboard.writeText(TOKEN_ADDRESS)
+    
+    // Add a new floating text with random x offset
+    const newFloat: FloatingText = {
+      id: nextId.current++,
+      x: Math.random() * 60 - 30 // Random offset between -30px and 30px
+    }
+    setFloatingTexts(prev => [...prev, newFloat])
+    
+    // Remove after animation completes (1s)
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(f => f.id !== newFloat.id))
+    }, 1000)
+  }
+
   return (
-    <LassSubpageLayout>
-      <div className="section">
-        <div className="about-text-content">
-          <p>
-            <strong>LLM Lets Play</strong> is an experimental project that uses large language models 
-            to play Pokemon Red completely autonomously. No human input required — just 
-            pure AI decision-making, one button press at a time.
-          </p>
+    <div className="persona-layout">
+      {/* LEFT COLUMN - About Cards */}
+      <div className="persona-cards-column">
+        <div className="persona-cards-desktop">
           
+          {/* Card 1: Meet Lass */}
           <div className="info-card">
-            <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <PixelLightning size={20} color="var(--accent-primary)" />
-              <span className="badge">LIVE</span>
-              <h4>The Harness</h4>
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>MEET LASS</h4>
             </div>
-            <p>
-              Our harness connects an LLM brain directly to the mGBA emulator via Lua scripting. 
-              The AI "sees" the game through screenshots, reads game state from RAM, and 
-              sends button presses back to play the game.
-            </p>
+            
+            <div style={{ 
+              fontFamily: 'var(--font-mono)',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: 'var(--text-primary)',
+              textAlign: 'center',
+              marginBottom: '16px'
+            }}>
+              <p style={{ marginBottom: '16px' }}>
+                Lass is our AI trainer persona — a friendly, determined character who provides 
+                live commentary during the stream.
+              </p>
+              <p>
+                She's learning as she goes, making mistakes, celebrating victories, and slowly 
+                mastering the world of Pokemon through trial and error (and a lot of patience)!
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
+              <div className="badge" style={{ backgroundColor: 'var(--accent-primary)' }}>AI PERSONALITY</div>
+              <div className="badge" style={{ backgroundColor: '#9146FF' }}>LIVE ON TWITCH</div>
+            </div>
           </div>
-        </div>
 
-        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <PixelSettings size={20} color="var(--accent-primary)" />
-          How It Works
-        </h3>
-        
-        <ol>
-          <li><PixelEye size={14} style={{ marginRight: '6px' }} /><span className="highlight">Screenshot</span> — Capture the current game frame</li>
-          <li><PixelEye size={14} style={{ marginRight: '6px' }} /><span className="highlight">Vision Analysis</span> — AI describes what it sees</li>
-          <li><PixelStar size={14} style={{ marginRight: '6px' }} /><span className="highlight">LLM Decision</span> — Model analyzes state and chooses action</li>
-          <li><PixelTarget size={14} style={{ marginRight: '6px' }} /><span className="highlight">Button Press</span> — Send input to emulator</li>
-          <li><PixelLightning size={14} style={{ marginRight: '6px' }} /><span className="highlight">Repeat</span> — Every 25-75 seconds</li>
-        </ol>
+          {/* Card 2: The Project */}
+          <div className="info-card info-card--dotted">
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>THE PROJECT</h4>
+            </div>
 
-        <div className="info-card">
-          <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <PixelHeart size={20} color="var(--accent-primary)" />
-            <h4>Meet Lass</h4>
+            <div style={{ 
+              fontFamily: 'var(--font-mono)',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>
+              <strong>LLM Lets Play</strong> is an experimental project that uses large language models 
+              to play Pokemon Red completely autonomously. No human input required — just 
+              pure AI decision-making.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelLightning size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>The Harness</strong> connects LLM brain to mGBA emulator via Lua scripting.
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSettings size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelStar size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Memory System</strong> tracks navigation, goals, and story events.
+                </div>
+              </div>
+            </div>
           </div>
-          <p>
-            Lass is our AI trainer persona — a friendly, determined character who provides 
-            commentary during the stream. She's learning as she goes, making mistakes, 
-            celebrating victories, and slowly mastering the world of Pokemon!
-          </p>
-        </div>
 
-        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <PixelStar size={20} color="var(--accent-primary)" />
-          Key Features
-        </h3>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Vision Understanding</td>
-              <td>AI interprets game visuals in real-time</td>
-            </tr>
-            <tr>
-              <td>Memory System</td>
-              <td>Persistent memory for navigation and story events</td>
-            </tr>
-            <tr>
-              <td>Text-to-Speech</td>
-              <td>Live commentary with character personality</td>
-            </tr>
-            <tr>
-              <td>Minimap Navigation</td>
-              <td>Tile-based pathfinding from RAM data</td>
-            </tr>
-            <tr>
-              <td>Battle Strategy</td>
-              <td>Type effectiveness and move selection logic</td>
-            </tr>
-          </tbody>
-        </table>
+        </div>
       </div>
-    </LassSubpageLayout>
+
+      {/* MIDDLE COLUMN - Character with Holographic Effect */}
+      <div className="holographic-afterimage persona-holographic">
+        {/* Trail ghosts */}
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        
+        {/* Stationary ghosts */}
+        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        
+        {/* Main character */}
+        <img src="/lass/lass-hello.png" alt="Lass" className="main-character" />
+      </div>
+
+      {/* RIGHT COLUMN - Sponsor Image + Buttons */}
+      <div className="persona-right-column">
+        {/* Phantasy Agent Framework - links to phantasy.bot */}
+        <a 
+          href="https://phantasy.bot" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="persona-sponsor-link"
+          style={{ textDecoration: 'none' }}
+        >
+          <img 
+            src="/sponsors/phantasy.png" 
+            alt="Phantasy" 
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              borderRadius: '8px'
+            }}
+          />
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'rgba(0,0,0,0.4)',
+            textAlign: 'center',
+            marginTop: '6px'
+          }}>
+            agent framework
+          </div>
+        </a>
+        
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flex: 1 }} />
+        
+        {/* Button stack at bottom */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          overflow: 'visible'
+        }}>
+          {/* CA Widget */}
+          <div 
+            onClick={handleCopy}
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              padding: '10px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--text-primary)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              position: 'relative',
+              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+            }}
+          >
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              CA: {TOKEN_ADDRESS}
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px'
+            }}>
+              <PixelExternalLink size={16} />
+            </div>
+            
+            {/* Floating +1s for click feedback */}
+            {floatingTexts.map(float => (
+              <div
+                key={float.id}
+                className="pixel-float-text"
+                style={{
+                  left: `calc(50% + ${float.x}px)`
+                }}
+              >
+                COPIED!
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            width: '95%',
+            height: '2px', // Height of the dots
+            margin: '4px auto', // Centered with margin
+            background: 'radial-gradient(circle, var(--text-primary) 1px, transparent 1px)',
+            backgroundSize: '6px 2px', // Spacing of dots
+            opacity: 0.3
+          }} />
+
+          <Link 
+            to="/lass" 
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--accent-primary)',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'var(--text-primary)',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            READ DOCS
+          </Link>
+          
+          <a
+            href="https://twitch.tv/lassplayspokemon"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: '#9146FF',
+              border: '2px solid #9146FF',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'white',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            WATCH STREAM
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -26,11 +26,11 @@ const navItems = [
   // { id: 'battle', label: 'Battle Mode', icon: <Icon icon="streamline-pixel:lightning-bolt-pixel" width={18} height={18} />, isSubItem: true },  // TODO: Re-enable
   { id: 'about', label: 'About', icon: <PixelInfo size={18} />, isSubItem: true },
   { id: 'architecture', label: 'Architecture', icon: <PixelChip size={18} />, isSubItem: true },
+  { id: 'collection', label: 'Card Collection', icon: <PixelCard size={18} />, isSubItem: true },
+  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
   { id: 'memory', label: 'Memory Map', icon: <PixelHierarchy size={18} />, isSubItem: true },
   { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
-  { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
   { id: 'tokenomics', label: 'Tokenomics', icon: <PixelCoin size={18} />, isSubItem: true },
-  { id: 'collection', label: 'Card Collection', icon: <PixelCard size={18} />, isSubItem: true },
   { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 
@@ -81,7 +81,7 @@ export function LassLayout() {
           <Routes>
             <Route index element={<Persona />} />
             {/* <Route path="battle" element={<Battle />} /> */}  {/* TODO: Re-enable */}
-            <Route path="about" element={<ComingSoon title="About" />} />
+            <Route path="about" element={<About />} />
             <Route path="architecture" element={<ComingSoon title="Architecture" />} />
             <Route path="memory" element={<ComingSoon title="Memory Map" />} />
             <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
