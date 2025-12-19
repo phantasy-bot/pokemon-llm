@@ -677,7 +677,7 @@ export function PokemonStreamOverlay({
                 {viewMode === 'normal' && (
                   <>
                     {/* Goals Section (Added to Minimal Mode) */}
-                    <div className="goals-log" style={{ marginBottom: '16px' }}>
+                    <div className="goals-log goals-log--minimal" style={{ marginBottom: '16px' }}>
                       <span className="goals-log__label">LONG-TERM GOALS</span>
                       {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.7 }}>

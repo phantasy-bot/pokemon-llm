@@ -2468,7 +2468,10 @@ Your intro message:"""
                 elif name_type == "rival":
                     # Use preplanned rival name
                     target_name = name_planner.rival_name or "BUTT"
-                    name_explanation = f"rival's name '{target_name}'"
+                    name_explanation = (
+                        f"rival's name '{target_name}'\n"
+                        f"   📢 COMMENTARY INSTRUCTION: Explicitly tell the chat you plan to name him '{target_name}'!"
+                    )
                 elif name_type == "pokemon":
                     # Check for starter nickname
                     if (
@@ -2610,9 +2613,12 @@ Your intro message:"""
                         total_steps = len(name_planner.typing_sequence)
 
                         name_entry_context = (
-                            f"⌨️ KEYBOARD MODE - TYPING '{target_name}'\n"
+                            f"⌨️ KEYBOARD MODE - TYPING RIVAL NAME '{target_name}'\n"
                             f"══════════════════════════════════════\n"
-                            f"Auto-executing keyboard input for rival name.\n"
+                            f"📢 COMMENTARY ACTION: Tell the chat you've decided to name him '{target_name}'!\n"
+                            f"   e.g. 'I know exactly what to call him... {target_name}!'\n"
+                            f"\n"
+                            f"Auto-executing keyboard input...\n"
                             f"\n"
                             f"📝 Progress: {progress} (Step {step_num}/{total_steps})\n"
                             f"\n"

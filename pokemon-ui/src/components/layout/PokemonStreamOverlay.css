@@ -685,6 +685,8 @@
 /* Recent Actions in Character Container (Normal/Minimal Mode) */
 .pokemon-stream-overlay .character-container__recent-actions {
   margin-top: var(--space-md);
+  margin-left: var(--space-md); /* Added horizontal margin */
+  margin-right: var(--space-md);
   padding: 0;
 }
 
@@ -743,6 +745,15 @@
   /* TUI Box Style - dotted border like other sections */
   border: 1px dotted rgba(0, 0, 0, 0.5);
   position: relative;
+}
+
+/* Minimal Mode Override for Goals */
+.goals-log--minimal {
+  height: 140px; /* Reduced height */
+  min-height: 140px;
+  max-height: 140px;
+  margin-left: var(--space-md); /* Match Reply/Commentary width */
+  margin-right: var(--space-md);
 }
 
 /* TUI label for Goals section - sheared ASCII style matching other labels */
