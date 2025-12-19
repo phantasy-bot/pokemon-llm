@@ -673,32 +673,51 @@ export function PokemonStreamOverlay({
               
               {/* PANE 1: Character & Goals (Always Visible) */}
               <div className="folder-pane folder-pane--left">
-                {/* Normal Mode: "Replying To" Section (replaces Goals) */}
+                {/* Normal Mode: Goals + "Replying To" Section */}
                 {viewMode === 'normal' && (
-                  <div className="minimal-reply-section">
-                    <div className="minimal-reply-section__label">REPLYING TO</div>
-                    {(ttsCommentary?.reply_to || lingerContext) ? (
-                      <div className="minimal-reply-section__content">
-                        <span className={`minimal-reply-section__platform minimal-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
-                          {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
-                        </span>
-                        <span className="minimal-reply-section__user">
-                          @{ttsCommentary?.reply_to?.username || lingerContext?.username}
-                        </span>
-                        <p className="minimal-reply-section__message">
-                          "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
-                        </p>
-                      </div>
-                    ) : (ttsCommentary?.playing || lingerText) ? (
-                      <div className="minimal-reply-section__game-response">
-                        RESPONDING TO GAME
-                      </div>
-                    ) : (
-                      <div className="minimal-reply-section__empty">
-                        <span>Waiting for chat messages<AnimatedDots /></span>
-                      </div>
-                    )}
-                  </div>
+                  <>
+                    {/* Goals Section (Added to Minimal Mode) */}
+                    <div className="goals-log" style={{ marginBottom: '16px' }}>
+                      <span className="goals-log__label">LONG-TERM GOALS</span>
+                      {(gameState.goals.primary === "Initializing..." || gameState.goals.primary === "Loading...") ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.7 }}>
+                          <p style={{ textAlign: 'center' }}>Initializing goals<AnimatedDots /></p>
+                        </div>
+                      ) : (
+                        <div className="goals-log__content">
+                          <p><strong>1. </strong> {gameState.goals.primary}</p>
+                          <p><strong>2. </strong> {gameState.goals.secondary}</p>
+                          <p><strong>3. </strong> {gameState.goals.tertiary}</p>
+                          <p><strong>NOTES: </strong> {gameState.otherGoals}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="minimal-reply-section">
+                      <div className="minimal-reply-section__label">REPLYING TO</div>
+                      {(ttsCommentary?.reply_to || lingerContext) ? (
+                        <div className="minimal-reply-section__content">
+                          <span className={`minimal-reply-section__platform minimal-reply-section__platform--${(ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'twitch').toLowerCase().includes('pump') ? 'pumpfun' : 'twitch'}`}>
+                            {ttsCommentary?.reply_to?.platform || lingerContext?.platform || 'Twitch'}
+                          </span>
+                          <span className="minimal-reply-section__user">
+                            @{ttsCommentary?.reply_to?.username || lingerContext?.username}
+                          </span>
+                          <p className="minimal-reply-section__message">
+                            "{ttsCommentary?.reply_to?.message || lingerContext?.message}"
+                          </p>
+                        </div>
+                      ) : (ttsCommentary?.playing || lingerText) ? (
+                        <div className="minimal-reply-section__game-response">
+                          RESPONDING TO GAME
+                        </div>
+                      ) : (
+                        <div className="minimal-reply-section__empty">
+                          <span>Waiting for chat messages<AnimatedDots /></span>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
 
                   {/* Detailed Mode: Goals Section */}

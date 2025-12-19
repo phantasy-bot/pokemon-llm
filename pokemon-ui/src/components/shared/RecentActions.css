@@ -193,9 +193,9 @@
   font-family: var(--font-mono);
   font-size: 12px; /* Increased from 10px for larger arrows */
   font-weight: 900; /* Increased from 800 for thicker arrows */
-  color: #fff;
-  background: var(--accent-primary-bright);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+  color: var(--text-primary); /* Dark text for contrast on gray */
+  background: var(--bg-panel); /* Gray background (#ded8d6) */
+  box-shadow: 0 2px 0 rgba(0,0,0,0.1);
 }
 
 .recent-actions__square--empty {
@@ -208,18 +208,21 @@
 @keyframes flash-action {
   0% {
     background-color: #000000; /* Black flash */
+    color: #fff;
     transform: scale(1.1);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
   }
   30% {
-    background-color: var(--accent-primary-bright);
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
     transform: scale(1);
-    box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.1);
   }
   100% {
-    background-color: var(--accent-primary-bright);
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
     transform: scale(1);
-    box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.1);
   }
 }
 
