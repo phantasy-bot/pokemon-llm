@@ -17,11 +17,14 @@ import os
 import time
 import socket
 import logging
+import subprocess
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import config
 from pyAIAgent.utils.socket_utils import _flush_socket, readrange
+from pyAIAgent.game.state import get_rom_path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -32,20 +35,53 @@ HOST = "127.0.0.1"
 PORT = 2061
 
 
-def connect_to_mgba():
-    """Attempt to connect to mGBA socket."""
-    log.info(f"Connecting to mGBA at {HOST}:{PORT}...")
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((HOST, PORT))
-        sock.settimeout(2.0)
-        return sock
-    except ConnectionRefusedError:
-        log.error("❌ Could not connect to mGBA!")
-        log.info("\nPlease ensure mGBA is running and the scripting socket is enabled.")
-        log.info("If you haven't started mGBA yet, please run:")
-        log.info("  ./start_agent.sh (and stop the agent script if it's running)")
+def start_mgba():
+    """Start mGBA process with Lua script."""
+    # Force string type to satisfy linter
+    rom_path = str(get_rom_path() or "roms/red.gb")
+
+    if not os.path.exists(rom_path):
+        log.error(f"ROM file not found: {rom_path}")
         return None
+
+    if not os.path.exists(config.MGBA_EXE):
+        log.error(f"mGBA executable not found: {config.MGBA_EXE}")
+        return None
+
+    if not os.path.exists(config.LUA_SCRIPT):
+        log.error(f"Lua script not found: {config.LUA_SCRIPT}")
+        return None
+
+    cmd = [config.MGBA_EXE, "--script", config.LUA_SCRIPT, rom_path]
+    log.info(f"🚀 Launching mGBA: {' '.join(cmd)}")
+
+    try:
+        # Redirect stdout/stderr to devnull to keep terminal clean
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        return proc
+    except Exception as e:
+        log.error(f"Error starting mGBA: {e}")
+        return None
+
+
+def connect_to_mgba(retries=5):
+    """Attempt to connect to mGBA socket with retries."""
+    log.info(f"Connecting to mGBA at {HOST}:{PORT}...")
+
+    for i in range(retries):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((HOST, PORT))
+            sock.settimeout(2.0)
+            return sock
+        except ConnectionRefusedError:
+            if i < retries - 1:
+                time.sleep(1)
+                continue
+            return None
+    return None
 
 
 def print_cursor_state(sock):
@@ -95,8 +131,24 @@ def main():
     print("\n🔍 mGBA Memory Investigator 🔍")
     print("==============================")
 
-    sock = connect_to_mgba()
+    # Try connecting first
+    sock = connect_to_mgba(retries=1)
+
+    proc = None
     if not sock:
+        print("\n❌ Could not connect to existing mGBA instance.")
+        choice = input("👉 Launch mGBA automatically? (y/n) > ").strip().lower()
+        if choice == "y":
+            proc = start_mgba()
+            if proc:
+                print("⏳ Waiting for mGBA to start...")
+                time.sleep(3)
+                sock = connect_to_mgba(retries=10)
+
+    if not sock:
+        print("❌ Failed to connect. Exiting.")
+        if proc:
+            proc.terminate()
         sys.exit(1)
 
     print("\n✅ Connected to mGBA!")
@@ -106,26 +158,24 @@ def main():
     print("2. Press ENTER in this terminal to capture the current state.")
     print("3. Type 'q' and ENTER to quit.")
 
-    while True:
-        try:
+    try:
+        while True:
             cmd = input("\n[Press ENTER to read state, 'q' to quit] > ").strip().lower()
             if cmd == "q":
                 break
 
             print_cursor_state(sock)
 
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            log.error(f"Error: {e}")
-            # Try to reconnect
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        log.error(f"Error: {e}")
+    finally:
+        if sock:
             sock.close()
-            sock = connect_to_mgba()
-            if not sock:
-                break
-
-    if sock:
-        sock.close()
+        if proc:
+            print("🛑 Shutting down mGBA...")
+            proc.terminate()
     print("\nGoodbye!")
 
 
