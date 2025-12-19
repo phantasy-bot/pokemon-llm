@@ -93,7 +93,6 @@ export function StreamCycle() {
                   <strong>Action:</strong> Executing precise button inputs
                 </div>
               </div>
-              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
