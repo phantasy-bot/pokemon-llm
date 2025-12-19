@@ -100,6 +100,7 @@ export function StreamCycle() {
                   <strong>Reaction:</strong> Generating speech & commentary
                 </div>
               </div>
+              </div>
             </div>
           </div>
 
@@ -115,6 +116,7 @@ export function StreamCycle() {
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Cycle Commentary:</strong> Reacts to game events in real-time (Priority 100)
                 </div>
+              </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
