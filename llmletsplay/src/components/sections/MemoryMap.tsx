@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelHeart, PixelLightning, PixelSettings, PixelStar, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelHierarchy, PixelGrid, PixelChip, PixelSearch, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -10,7 +10,7 @@ interface FloatingText {
   x: number
 }
 
-export function About() {
+export function MemoryMap() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
@@ -39,14 +39,14 @@ export function About() {
 
   return (
     <div className="persona-layout">
-      {/* LEFT COLUMN - About Cards */}
+      {/* LEFT COLUMN - Memory Info */}
       <div className="persona-cards-column">
         <div className="persona-cards-desktop">
           
-          {/* Card 1: Meet Lass */}
+          {/* Card 1: Vector Store */}
           <div className="info-card">
             <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>MEET LASS</h4>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>VECTOR STORE</h4>
             </div>
             
             <div style={{ 
@@ -58,49 +58,39 @@ export function About() {
               marginBottom: '16px'
             }}>
               <p style={{ marginBottom: '16px' }}>
-                Lass is a bubbly, determined Pokemon trainer who loves sharing her journey! ♡
+                Semantic database tracking game events, NPCs, and quest logs. Lass uses this long-term memory to recall hints and past interactions.
               </p>
               <p>
-                She's doing her very best to learn as she goes, celebrating every victory and mastering the world of Pokemon through trial and error!
+                Every significant dialogue and event is embedded and stored, allowing for contextual recall even hours later in the playthrough.
               </p>
             </div>
           </div>
 
-          {/* Card 2: The Project */}
+          {/* Card 2: Spatial Memory */}
           <div className="info-card info-card--dotted">
             <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>THE PROJECT</h4>
-            </div>
-
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              marginBottom: '24px',
-              textAlign: 'left'
-            }}>
-              <strong>LLM Lets Play</strong> is a project getting LLMs to play all sorts of strategy games like Pokemon Red. Lass will go through all of the Pokemon games.
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SPATIAL MEMORY</h4>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelLightning size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelGrid size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>The Harness</strong> connects LLM brain to mGBA emulator via Lua scripting.
+                  <strong>Dynamic Mapping:</strong> Tile-based map built in real-time
                 </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSettings size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
+                  <strong>Object Permanence:</strong> Remembering item locations
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelStar size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearch size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Memory System</strong> tracks navigation, goals, and story events.
+                  <strong>Pathfinding:</strong> A* navigation graph
                 </div>
               </div>
             </div>
@@ -112,22 +102,22 @@ export function About() {
       {/* MIDDLE COLUMN - Character with Holographic Effect */}
       <div className="holographic-afterimage persona-holographic">
         {/* Trail ghosts */}
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
         
         {/* Stationary ghosts */}
-        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
-        <img src="/lass/lass-hello.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-glasses.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
         
         {/* Main character */}
-        <img src="/lass/lass-hello.png" alt="Lass" className="main-character" />
+        <img src="/lass/lass-glasses.png" alt="Lass Glasses" className="main-character" />
       </div>
 
       {/* RIGHT COLUMN - Sponsor Image + Buttons */}

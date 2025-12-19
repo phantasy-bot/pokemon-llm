@@ -45,10 +45,6 @@ export function Architecture() {
           
           {/* Card 1: System Overview */}
           <div className="info-card">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SYSTEM ARCHITECTURE</h4>
-            </div>
-            
             <div style={{ 
               fontFamily: 'var(--font-mono)',
               fontSize: '14px',
