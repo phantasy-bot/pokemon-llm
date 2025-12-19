@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelTerminal, PixelEye, PixelGrid, PixelSearch, PixelMessage, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelTerminal, PixelEye, PixelLayer, PixelPinLocation, PixelTextFormat, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -74,21 +74,21 @@ export function LLMPrompts() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelGrid size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelLayer size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Grid Overlay:</strong> 9x9 grid for precise spatial awareness
                 </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearch size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelPinLocation size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Object Detection:</strong> Identifying NPCs, items, and obstacles
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMessage size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTextFormat size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Text Reading:</strong> OCR for game dialogue and menus
                 </div>

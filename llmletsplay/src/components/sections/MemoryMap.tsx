@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelMap, PixelTarget, PixelChip, PixelTerminal, PixelPerson, PixelExternalLink, PixelCheck } from '../icons/PixelIcons'
+import { PixelMap, PixelTarget, PixelChip, PixelTerminal, PixelPerson, PixelExternalLink, PixelCheck, PixelQuestion } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -65,7 +65,7 @@ export function MemoryMap() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTarget size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelQuestion size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Quest Logs:</strong> Tracking current objectives and progress
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelAttack, PixelExternalLink, PixelMessage, PixelTerminal } from '../icons/PixelIcons'
+import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelAttack, PixelExternalLink, PixelMessage, PixelTerminal, PixelChatEmail } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -118,7 +118,7 @@ export function StreamCycle() {
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMessage size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChatEmail size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Chat Interaction:</strong> Responds to Twitch chat asynchronously (Priority 50)
                 </div>

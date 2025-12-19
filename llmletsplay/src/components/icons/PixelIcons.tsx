@@ -133,7 +133,35 @@ export const PixelMessage = ({ size = 24, color = 'currentColor', style }: IconP
 )
 
 export const PixelMap = ({ size = 24, color = 'currentColor', style }: IconProps) => (
-  <Icon icon="streamline-pixel:maps-pin-1" width={size} height={size} color={color} style={style} />
+  <Icon icon="streamline-pixel:interface-essential-map" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelMemory = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:computers-devices-electronics-memory" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelPlugin = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:coding-apps-websites-plugin" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelLayer = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:design-layer" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelPinLocation = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:map-navigation-pin-location-2" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelTextFormat = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:interface-essential-text-format-2" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelQuestion = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:interface-essential-question-help-square" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelChatEmail = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:chat-email" width={size} height={size} color={color} style={style} />
 )
 
 export const PixelTarget = ({ size = 24, color = 'currentColor', style }: IconProps) => (
