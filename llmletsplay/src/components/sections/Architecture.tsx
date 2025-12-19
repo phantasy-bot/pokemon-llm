@@ -10,10 +10,88 @@ interface FloatingText {
   x: number
 }
 
+// Card 1: System Overview
+function SystemArchitectureCard() {
+  return (
+    <div className="info-card">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SYSTEM ARCHITECTURE</h4>
+      </div>
+      
+      <div style={{ 
+        fontFamily: 'var(--font-mono)',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        color: 'var(--text-primary)',
+        textAlign: 'left',
+        marginBottom: '16px'
+      }}>
+        <p style={{ marginBottom: '16px' }}>
+          The agent operates on a continuous perception-action loop. It observes the game state through visual and memory inputs, reasons about the best next move, and executes precise controller inputs.
+        </p>
+        <p>
+          This closed-loop system allows Lass to navigate complex environments, battle trainers, and progress through the story autonomously.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Card 2: Core Stack
+function CoreStackCard() {
+  return (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>CORE STACK</h4>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Cognition:</strong> GLM-4 (Strategy & Reasoning)
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Vision:</strong> GLM-4V (Visual Analysis)
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Environment:</strong> mGBA + Lua Interface
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelHierarchy size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Memory:</strong> Semantic Vector Store
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Voice:</strong> Chatterbox TTS
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Architecture() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [activeCardIndex, setActiveCardIndex] = useState(0)
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
+
+  const totalCards = 2
 
   const handleCopy = () => {
     const now = Date.now()
@@ -41,75 +119,43 @@ export function Architecture() {
     <div className="persona-layout">
       {/* LEFT COLUMN - Architecture Info */}
       <div className="persona-cards-column">
+        {/* Desktop: Show all cards */}
         <div className="persona-cards-desktop">
+          <SystemArchitectureCard />
+          <CoreStackCard />
+        </div>
+
+        {/* Mobile: Carousel */}
+        <div className="persona-cards-mobile">
+          <div className="persona-card-carousel">
+            {activeCardIndex === 0 && <SystemArchitectureCard />}
+            {activeCardIndex === 1 && <CoreStackCard />}
+          </div>
           
-          {/* Card 1: System Overview */}
-          <div className="info-card">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SYSTEM ARCHITECTURE</h4>
+          {/* Navigation */}
+          <div className="persona-card-nav">
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === 0 ? totalCards - 1 : prev - 1)}
+            >
+              &#9664;
+            </button>
+            <div className="mobile-dots">
+              {Array.from({ length: totalCards }).map((_, i) => (
+                <span 
+                  key={i} 
+                  className={`mobile-dot ${i === activeCardIndex ? 'active' : ''}`}
+                  onClick={() => setActiveCardIndex(i)}
+                />
+              ))}
             </div>
-            
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              color: 'var(--text-primary)',
-              textAlign: 'left',
-              marginBottom: '16px'
-            }}>
-              <p style={{ marginBottom: '16px' }}>
-                The agent operates on a continuous perception-action loop. It observes the game state through visual and memory inputs, reasons about the best next move, and executes precise controller inputs.
-              </p>
-              <p>
-                This closed-loop system allows Lass to navigate complex environments, battle trainers, and progress through the story autonomously.
-              </p>
-            </div>
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === totalCards - 1 ? 0 : prev + 1)}
+            >
+              &#9654;
+            </button>
           </div>
-
-          {/* Card 2: Core Stack */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>CORE STACK</h4>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Cognition:</strong> GLM-4 (Strategy & Reasoning)
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Vision:</strong> GLM-4V (Visual Analysis)
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Environment:</strong> mGBA + Lua Interface
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelHierarchy size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Memory:</strong> Semantic Vector Store
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Voice:</strong> Chatterbox TTS
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 

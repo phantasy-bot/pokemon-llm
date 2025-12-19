@@ -10,10 +10,108 @@ interface FloatingText {
   x: number
 }
 
+// Card 1: Game Loop
+function GameLoopCard() {
+  return (
+    <div className="info-card">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>GAME LOOP</h4>
+      </div>
+      
+      <div style={{ 
+        fontFamily: 'var(--font-mono)',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        color: 'var(--text-primary)',
+        textAlign: 'left',
+        marginBottom: '16px'
+      }}>
+        <p style={{ marginBottom: '16px' }}>
+          The heartbeat of the agent. The cycle runs every <strong>25-75 seconds</strong>, balancing game progress with entertaining commentary.
+        </p>
+        <p>
+          Each loop is a discrete step where Lass perceives the world, thinks about her goals, and acts accordingly.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Card 2: Process Stages
+function ProcessStagesCard() {
+  return (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>PROCESS STAGES</h4>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Observation:</strong> Analyzing screenshots & RAM state
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Reasoning:</strong> LLM decides next best move
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelAttack size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Action:</strong> Executing precise button inputs
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelThinkChat size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Reaction:</strong> Generating speech & commentary
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Card 3: Commentary Types
+function CommentaryTypesCard() {
+  return (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>COMMENTARY TYPES</h4>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelThinkChat size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Cycle Commentary:</strong> Reacts to game events in real-time (Priority 100)
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChatEmail size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Chat Interaction:</strong> Responds to Twitch chat asynchronously (Priority 50)
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function StreamCycle() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [activeCardIndex, setActiveCardIndex] = useState(0)
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
+
+  const totalCards = 3
 
   const handleCopy = () => {
     const now = Date.now()
@@ -41,91 +139,45 @@ export function StreamCycle() {
     <div className="persona-layout">
       {/* LEFT COLUMN - Stream Cycle Info */}
       <div className="persona-cards-column">
+        {/* Desktop: Show all cards */}
         <div className="persona-cards-desktop">
+          <GameLoopCard />
+          <ProcessStagesCard />
+          <CommentaryTypesCard />
+        </div>
+
+        {/* Mobile: Carousel */}
+        <div className="persona-cards-mobile">
+          <div className="persona-card-carousel">
+            {activeCardIndex === 0 && <GameLoopCard />}
+            {activeCardIndex === 1 && <ProcessStagesCard />}
+            {activeCardIndex === 2 && <CommentaryTypesCard />}
+          </div>
           
-          {/* Card 1: Game Loop */}
-          <div className="info-card">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>GAME LOOP</h4>
+          {/* Navigation */}
+          <div className="persona-card-nav">
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === 0 ? totalCards - 1 : prev - 1)}
+            >
+              &#9664;
+            </button>
+            <div className="mobile-dots">
+              {Array.from({ length: totalCards }).map((_, i) => (
+                <span 
+                  key={i} 
+                  className={`mobile-dot ${i === activeCardIndex ? 'active' : ''}`}
+                  onClick={() => setActiveCardIndex(i)}
+                />
+              ))}
             </div>
-            
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              color: 'var(--text-primary)',
-              textAlign: 'left',
-              marginBottom: '16px'
-            }}>
-              <p style={{ marginBottom: '16px' }}>
-                The heartbeat of the agent. The cycle runs every <strong>25-75 seconds</strong>, balancing game progress with entertaining commentary.
-              </p>
-              <p>
-                Each loop is a discrete step where Lass perceives the world, thinks about her goals, and acts accordingly.
-              </p>
-            </div>
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === totalCards - 1 ? 0 : prev + 1)}
+            >
+              &#9654;
+            </button>
           </div>
-
-          {/* Card 2: Process Stages */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>PROCESS STAGES</h4>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Observation:</strong> Analyzing screenshots & RAM state
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Reasoning:</strong> LLM decides next best move
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelAttack size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Action:</strong> Executing precise button inputs
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelThinkChat size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Reaction:</strong> Generating speech & commentary
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Commentary Types */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>COMMENTARY TYPES</h4>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelThinkChat size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Cycle Commentary:</strong> Reacts to game events in real-time (Priority 100)
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChatEmail size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Chat Interaction:</strong> Responds to Twitch chat asynchronously (Priority 50)
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 

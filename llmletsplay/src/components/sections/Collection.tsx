@@ -10,10 +10,191 @@ interface FloatingText {
   x: number
 }
 
+const cards = [
+  {
+    name: 'LASS (BASE SET)',
+    rarity: 'common',
+    description: (
+      <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+        <p style={{ fontSize: '11px', margin: 0 }}>The original and most well-known version (75/102).</p>
+        <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>1st Edition:</strong> From the very first print run, featuring a specific "1st Edition" stamp.</p>
+        <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
+      </div>
+    ),
+    image: 'https://llmletsplay.com/tcg/base-set/lass-base-set-bs-75.jpg',
+    dataAttributes: { 'data-supertype': 'trainer' }
+  },
+  {
+    name: 'LASS (BASE SET - UNLIMITED)',
+    rarity: 'common',
+    description: (
+      <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+        <p style={{ fontSize: '11px', margin: 0 }}>The most common version of the original card.</p>
+        <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
+      </div>
+    ),
+    image: 'https://llmletsplay.com/tcg/base-set-unlimited/lass-base-set-bs-unlimited-75.jpg',
+    dataAttributes: { 'data-supertype': 'trainer' }
+  },
+  {
+    name: 'LASS (BASE SET 2)',
+    rarity: 'common',
+    description: (
+      <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+        <p style={{ fontSize: '11px', margin: 0 }}>A later reprint compiling cards from Base Set and Jungle (104/130).</p>
+        <p style={{ fontSize: '11px', marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
+      </div>
+    ),
+    image: 'https://llmletsplay.com/tcg/base-set-2/lass-base-set-2-b2-104.jpg',
+    dataAttributes: { 'data-supertype': 'trainer' }
+  }
+]
+
+// Card 1: Collection Goal
+function CollectionGoalCard() {
+  return (
+    <div className="info-card info-card--dotted" style={{ position: 'sticky', top: '-2px', zIndex: 10, marginTop: 0 }}>
+      {/* Header removed as requested */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Base Set 1: 1st Edition */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '16px',
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
+          paddingBottom: '16px'
+        }}>
+          <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>1ST EDITION</div>
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 'bold'
+          }}>
+            ? / ????
+          </div>
+        </div>
+
+        {/* Base Set 1: Shadowless */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '16px',
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
+          paddingBottom: '16px'
+        }}>
+          <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>SHADOWLESS</div>
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 'bold'
+          }}>
+            ? / ????
+          </div>
+        </div>
+
+        {/* Base Set 1: Unlimited */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '16px',
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
+          paddingBottom: '16px'
+        }}>
+          <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>UNLIMITED</div>
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 'bold'
+          }}>
+            ? / ????
+          </div>
+        </div>
+
+        {/* Base Set 2 */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '16px'
+        }}>
+          <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 2</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>NORMAL</div>
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '14px',
+            color: 'rgba(255,255,255,0.7)',
+            fontWeight: 'bold'
+          }}>
+            ? / ????
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  )
+}
+
+// HoloCard wrapper component for mobile carousel
+function HoloCardDisplay({ cardIndex }: { cardIndex: number }) {
+  const card = cards[cardIndex]
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '16px',
+      padding: '20px'
+    }}>
+      <HoloCard cardType={card} isActive={true} />
+      <div style={{ textAlign: 'center', maxWidth: '280px' }}>
+        <span style={{ 
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 'bold',
+          fontSize: '14px',
+          color: 'var(--text-primary)',
+          letterSpacing: '0px'
+        }}>
+          {card.name}
+        </span>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px',
+          color: 'var(--text-secondary)',
+          lineHeight: '1.5',
+          marginTop: '8px'
+        }}>
+          {card.description}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Collection() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [activeCardIndex, setActiveCardIndex] = useState(0)
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
+
+  // Total cards: 1 (Collection Goal) + 3 (HoloCards)
+  const totalCards = 4
 
   const handleCopy = () => {
     const now = Date.now()
@@ -37,147 +218,13 @@ export function Collection() {
     }, 1000)
   }
 
-  const cards = [
-    {
-      name: 'LASS (BASE SET)',
-      rarity: 'common',
-      description: (
-        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
-          <p style={{ fontSize: '11px', margin: 0 }}>The original and most well-known version (75/102).</p>
-          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>1st Edition:</strong> From the very first print run, featuring a specific "1st Edition" stamp.</p>
-          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
-        </div>
-      ),
-      image: 'https://llmletsplay.com/tcg/base-set/lass-base-set-bs-75.jpg',
-      dataAttributes: { 'data-supertype': 'trainer' }
-    },
-    {
-      name: 'LASS (BASE SET - UNLIMITED)',
-      rarity: 'common',
-      description: (
-        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
-          <p style={{ fontSize: '11px', margin: 0 }}>The most common version of the original card.</p>
-          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
-        </div>
-      ),
-      image: 'https://llmletsplay.com/tcg/base-set-unlimited/lass-base-set-bs-unlimited-75.jpg',
-      dataAttributes: { 'data-supertype': 'trainer' }
-    },
-    {
-      name: 'LASS (BASE SET 2)',
-      rarity: 'common',
-      description: (
-        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
-          <p style={{ fontSize: '11px', margin: 0 }}>A later reprint compiling cards from Base Set and Jungle (104/130).</p>
-          <p style={{ fontSize: '11px', marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
-        </div>
-      ),
-      image: 'https://llmletsplay.com/tcg/base-set-2/lass-base-set-2-b2-104.jpg',
-      dataAttributes: { 'data-supertype': 'trainer' }
-    }
-  ]
-
   return (
     <div className="persona-layout">
         {/* LEFT COLUMN: Collection Goal + Cards */}
         <div className="persona-cards-column">
+          {/* Desktop: Show all cards */}
           <div className="persona-cards-desktop">
-            {/* Collection Goal Card - List Style */}
-            <div className="info-card info-card--dotted" style={{ position: 'sticky', top: '-2px', zIndex: 10, marginTop: 0 }}>
-              {/* Header removed as requested */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Base Set 1: 1st Edition */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '16px',
-                  borderBottom: '1px solid rgba(0,0,0,0.05)',
-                  paddingBottom: '16px'
-                }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>1ST EDITION</div>
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 'bold'
-                  }}>
-                    ? / ????
-                  </div>
-                </div>
-
-                {/* Base Set 1: Shadowless */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '16px',
-                  borderBottom: '1px solid rgba(0,0,0,0.05)',
-                  paddingBottom: '16px'
-                }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>SHADOWLESS</div>
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 'bold'
-                  }}>
-                    ? / ????
-                  </div>
-                </div>
-
-                {/* Base Set 1: Unlimited */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '16px',
-                  borderBottom: '1px solid rgba(0,0,0,0.05)',
-                  paddingBottom: '16px'
-                }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>UNLIMITED</div>
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 'bold'
-                  }}>
-                    ? / ????
-                  </div>
-                </div>
-
-                {/* Base Set 2 */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '16px'
-                }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 2</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>NORMAL</div>
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 'bold'
-                  }}>
-                    ? / ????
-                  </div>
-                </div>
-                
-              </div>
-            </div>
+            <CollectionGoalCard />
 
             {/* Cards Grid - Horizontal Layout */}
             <div style={{ 
@@ -232,6 +279,53 @@ export function Collection() {
               marginTop: '8px',
               textAlign: 'center',
               paddingBottom: '40px'
+            }}>
+              * We are only looking for near-mints+ and graded cards.
+            </div>
+          </div>
+
+          {/* Mobile: Carousel */}
+          <div className="persona-cards-mobile">
+            <div className="persona-card-carousel">
+              {activeCardIndex === 0 && <CollectionGoalCard />}
+              {activeCardIndex === 1 && <HoloCardDisplay cardIndex={0} />}
+              {activeCardIndex === 2 && <HoloCardDisplay cardIndex={1} />}
+              {activeCardIndex === 3 && <HoloCardDisplay cardIndex={2} />}
+            </div>
+            
+            {/* Navigation */}
+            <div className="persona-card-nav">
+              <button 
+                className="persona-card-nav-btn"
+                onClick={() => setActiveCardIndex(prev => prev === 0 ? totalCards - 1 : prev - 1)}
+              >
+                &#9664;
+              </button>
+              <div className="mobile-dots">
+                {Array.from({ length: totalCards }).map((_, i) => (
+                  <span 
+                    key={i} 
+                    className={`mobile-dot ${i === activeCardIndex ? 'active' : ''}`}
+                    onClick={() => setActiveCardIndex(i)}
+                  />
+                ))}
+              </div>
+              <button 
+                className="persona-card-nav-btn"
+                onClick={() => setActiveCardIndex(prev => prev === totalCards - 1 ? 0 : prev + 1)}
+              >
+                &#9654;
+              </button>
+            </div>
+
+            {/* Condition Note - Mobile */}
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              fontStyle: 'italic',
+              marginTop: '16px',
+              textAlign: 'center'
             }}>
               * We are only looking for near-mints+ and graded cards.
             </div>

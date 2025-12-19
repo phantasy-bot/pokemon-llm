@@ -10,10 +10,81 @@ interface FloatingText {
   x: number
 }
 
+// Card 1: Vector Store
+function VectorStoreCard() {
+  return (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>VECTOR STORE</h4>
+      </div>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelNotepad size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Event Logging:</strong> Recording significant dialogue and story beats
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearchUser size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>NPC Tracking:</strong> Remembering characters and their locations
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelQuestion size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Quest Logs:</strong> Tracking current objectives and progress
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Card 2: Spatial Memory
+function SpatialMemoryCard() {
+  return (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SPATIAL MEMORY</h4>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMap size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Dynamic Mapping:</strong> Tile-based map built in real-time
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Object Permanence:</strong> Remembering item locations
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)' }}><PixelRatingStar size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Pathfinding:</strong> A* navigation graph
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MemoryMap() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [activeCardIndex, setActiveCardIndex] = useState(0)
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
+
+  const totalCards = 2
 
   const handleCopy = () => {
     const now = Date.now()
@@ -41,68 +112,43 @@ export function MemoryMap() {
     <div className="persona-layout">
       {/* LEFT COLUMN - Memory Info */}
       <div className="persona-cards-column">
+        {/* Desktop: Show all cards */}
         <div className="persona-cards-desktop">
+          <VectorStoreCard />
+          <SpatialMemoryCard />
+        </div>
+
+        {/* Mobile: Carousel */}
+        <div className="persona-cards-mobile">
+          <div className="persona-card-carousel">
+            {activeCardIndex === 0 && <VectorStoreCard />}
+            {activeCardIndex === 1 && <SpatialMemoryCard />}
+          </div>
           
-          {/* Card 1: Vector Store */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>VECTOR STORE</h4>
+          {/* Navigation */}
+          <div className="persona-card-nav">
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === 0 ? totalCards - 1 : prev - 1)}
+            >
+              &#9664;
+            </button>
+            <div className="mobile-dots">
+              {Array.from({ length: totalCards }).map((_, i) => (
+                <span 
+                  key={i} 
+                  className={`mobile-dot ${i === activeCardIndex ? 'active' : ''}`}
+                  onClick={() => setActiveCardIndex(i)}
+                />
+              ))}
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelNotepad size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Event Logging:</strong> Recording significant dialogue and story beats
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearchUser size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>NPC Tracking:</strong> Remembering characters and their locations
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelQuestion size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Quest Logs:</strong> Tracking current objectives and progress
-                </div>
-              </div>
-            </div>
+            <button 
+              className="persona-card-nav-btn"
+              onClick={() => setActiveCardIndex(prev => prev === totalCards - 1 ? 0 : prev + 1)}
+            >
+              &#9654;
+            </button>
           </div>
-
-          {/* Card 2: Spatial Memory */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SPATIAL MEMORY</h4>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMap size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Dynamic Mapping:</strong> Tile-based map built in real-time
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Object Permanence:</strong> Remembering item locations
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelRatingStar size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Pathfinding:</strong> A* navigation graph
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 

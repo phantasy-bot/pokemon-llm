@@ -12,6 +12,7 @@ interface FloatingText {
 
 export function About() {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [activeCardIndex, setActiveCardIndex] = useState(0) // 0 = Meet Lass, 1 = The Project
   const lastCopyTime = useRef(0)
   const nextId = useRef(0)
 
@@ -37,75 +38,120 @@ export function About() {
     }, 1000)
   }
 
+  // Card navigation for mobile
+  const goToPrevCard = () => setActiveCardIndex(prev => prev === 0 ? 1 : 0)
+  const goToNextCard = () => setActiveCardIndex(prev => prev === 0 ? 1 : 0)
+
+  // Card Components
+  const MeetLassCard = () => (
+    <div className="info-card">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>MEET LASS</h4>
+      </div>
+      
+      <div style={{ 
+        fontFamily: 'var(--font-mono)',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        color: 'var(--text-primary)',
+        textAlign: 'left',
+        marginBottom: '16px'
+      }}>
+        <p style={{ marginBottom: '16px' }}>
+          Lass is a bubbly, determined Pokemon trainer who loves sharing her journey! ♡
+        </p>
+        <p>
+          She's doing her very best to learn as she goes, celebrating every victory and mastering the world of Pokemon through trial and error!
+        </p>
+      </div>
+    </div>
+  )
+
+  const ProjectCard = () => (
+    <div className="info-card info-card--dotted">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>THE PROJECT</h4>
+      </div>
+
+      <div style={{ 
+        fontFamily: 'var(--font-mono)',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        marginBottom: '24px',
+        textAlign: 'left'
+      }}>
+        <strong>LLM Lets Play</strong> is a project getting LLMs to play all sorts of strategy games like Pokemon Red. Lass will go through all of the Pokemon games.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelPlugin size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>The Harness</strong> connects LLM brain to mGBA emulator via Lua scripting.
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+          <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelEye size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelMemory size={24} /></div>
+          <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+            <strong>Memory System</strong> tracks navigation, goals, and story events.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="persona-layout">
       {/* LEFT COLUMN - About Cards */}
       <div className="persona-cards-column">
+        {/* Desktop: Stacked */}
         <div className="persona-cards-desktop">
+          <MeetLassCard />
+          <ProjectCard />
+        </div>
+
+        {/* Mobile: Carousel */}
+        <div className="persona-cards-mobile">
+          <div className="persona-card-carousel">
+            {activeCardIndex === 0 ? <MeetLassCard /> : <ProjectCard />}
+          </div>
           
-          {/* Card 1: Meet Lass */}
-          <div className="info-card">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>MEET LASS</h4>
-            </div>
-            
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              color: 'var(--text-primary)',
-              textAlign: 'left',
-              marginBottom: '16px'
-            }}>
-              <p style={{ marginBottom: '16px' }}>
-                Lass is a bubbly, determined Pokemon trainer who loves sharing her journey! ♡
-              </p>
-              <p>
-                She's doing her very best to learn as she goes, celebrating every victory and mastering the world of Pokemon through trial and error!
-              </p>
-            </div>
+          <div className="persona-card-nav">
+            <button 
+              onClick={goToPrevCard}
+              className="persona-card-nav-btn"
+              aria-label="Previous card"
+            >
+              ◀
+            </button>
+            <button 
+              onClick={goToNextCard}
+              className="persona-card-nav-btn"
+              aria-label="Next card"
+            >
+              ▶
+            </button>
           </div>
 
-          {/* Card 2: The Project */}
-          <div className="info-card info-card--dotted">
-            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>THE PROJECT</h4>
-            </div>
-
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              marginBottom: '24px',
-              textAlign: 'left'
-            }}>
-              <strong>LLM Lets Play</strong> is a project getting LLMs to play all sorts of strategy games like Pokemon Red. Lass will go through all of the Pokemon games.
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelPlugin size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>The Harness</strong> connects LLM brain to mGBA emulator via Lua scripting.
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelEye size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelMemory size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Memory System</strong> tracks navigation, goals, and story events.
-                </div>
-              </div>
-            </div>
+          {/* Pagination dots */}
+          <div className="mobile-dots">
+            <div 
+              className={`mobile-dot ${activeCardIndex === 0 ? 'active' : ''}`}
+              onClick={() => setActiveCardIndex(0)}
+            />
+            <div 
+              className={`mobile-dot ${activeCardIndex === 1 ? 'active' : ''}`}
+              onClick={() => setActiveCardIndex(1)}
+            />
           </div>
-
         </div>
       </div>
 
