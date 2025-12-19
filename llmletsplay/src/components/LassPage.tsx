@@ -2,6 +2,7 @@ import { Sidebar } from './Sidebar'
 import { FolderContainer } from './FolderContainer'
 import { About } from './sections/About'
 import { Architecture } from './sections/Architecture'
+import { LLMPrompts } from './sections/LLMPrompts'
 import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Tokenomics } from './sections/Tokenomics'
@@ -86,7 +87,7 @@ export function LassLayout() {
             <Route path="architecture" element={<Architecture />} />
             <Route path="memory" element={<ComingSoon title="Memory Map" />} />
             <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
-            <Route path="prompts" element={<ComingSoon title="LLM Prompts" />} />
+            <Route path="prompts" element={<LLMPrompts />} />
             <Route path="tokenomics" element={<Tokenomics />} />
             <Route path="collection" element={<Collection />} />
           </Routes>
