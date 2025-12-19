@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelMap, PixelTarget, PixelChip, PixelTerminal, PixelPerson, PixelExternalLink, PixelCheck, PixelQuestion } from '../icons/PixelIcons'
+import { PixelMap, PixelChip, PixelCheck, PixelNotepad, PixelSearchUser, PixelRatingStar, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -51,21 +51,21 @@ export function MemoryMap() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTerminal size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelNotepad size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Event Logging:</strong> Recording significant dialogue and story beats
                 </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelPerson size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearchUser size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>NPC Tracking:</strong> Remembering characters and their locations
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelQuestion size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelCheck size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Quest Logs:</strong> Tracking current objectives and progress
                 </div>
@@ -95,7 +95,7 @@ export function MemoryMap() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelExternalLink size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelRatingStar size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Pathfinding:</strong> A* navigation graph
                 </div>

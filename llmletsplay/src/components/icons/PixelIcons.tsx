@@ -188,6 +188,22 @@ export const PixelAttack = ({ size = 24, color = 'currentColor', style }: IconPr
   <Icon icon="streamline-pixel:weather-meteor" width={size} height={size} color={color} style={style} />
 )
 
+export const PixelThinkChat = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:email-chat-think" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelRatingStar = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:social-rewards-rating-star-1" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelSearchUser = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:search-user" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelNotepad = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:content-files-notepad" width={size} height={size} color={color} style={style} />
+)
+
 export const PixelCard = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <Icon icon="streamline-pixel:entertainment-events-hobbies-card-game-card-club" width={size} height={size} color={color} style={style} />
 )
