@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PixelBrain, PixelEye, PixelSpeaker, PixelGenderFemale, PixelExternalLink } from '../icons/PixelIcons'
@@ -49,7 +48,7 @@ export function Tokenomics() {
     <div className="info-card">
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'min-content 1fr', 
+        gridTemplateColumns: '140px 1fr', 
         columnGap: '24px', 
         rowGap: '16px', 
         marginBottom: '32px',
@@ -57,17 +56,102 @@ export function Tokenomics() {
         fontSize: '14px',
         alignItems: 'center'
       }}>
-         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>TOKEN</div>
+         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>NAME</div>
+         <div style={{ fontWeight: 'bold', fontSize: '16px' }}>Lass</div>
+
+         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>TICKER</div>
          <div style={{ fontWeight: 'bold', fontSize: '16px' }}>$LASS</div>
          
          <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>MAX SUPPLY</div>
          <div style={{ fontSize: '16px' }}>1,000,000,000</div>
          
-         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>LAUNCH</div>
+         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>LAUNCH TYPE</div>
          <div style={{ fontSize: '16px' }}>FAIR LAUNCH (PUMP.FUN)</div>
 
          <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>LAUNCH DATE</div>
          <div style={{ fontSize: '16px' }}>December 20, 2025</div>
+      </div>
+
+      {/* Trade Buttons */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '8px', 
+        borderTop: '1px dashed rgba(255,255,255,0.1)',
+        paddingTop: '20px'
+      }}>
+        <a 
+          href="#" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button"
+          style={{
+            padding: '8px',
+            background: 'var(--cream)',
+            border: '2px solid var(--accent-primary)',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: 'var(--text-primary)',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+          }}
+        >
+          RAYDIUM
+        </a>
+        <a 
+          href={`https://pump.fun/${TOKEN_ADDRESS}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button"
+          style={{
+            padding: '8px',
+            background: '#9146FF',
+            border: '2px solid #9146FF',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: 'white',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+          }}
+        >
+          PUMP.FUN
+        </a>
+        <a 
+          href="#" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button"
+          style={{
+            padding: '8px',
+            background: 'var(--dark)',
+            border: '2px solid var(--text-secondary)',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: 'white',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+          }}
+        >
+          DEXSCREENER
+        </a>
       </div>
     
     </div>
