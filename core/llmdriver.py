@@ -37,6 +37,9 @@ from pyAIAgent.utils.socket_utils import send_command
 from pyAIAgent.game.keyboard_tracker import get_keyboard_tracker
 from pyAIAgent.game.name_planner import get_name_planner, RIVAL_NAME_SUGGESTIONS
 
+from core.name_generator import generate_rival_name_sync, generate_starter_choice_sync
+from core.starter_planner import get_starter_planner, OAKS_LAB_MAP_ID
+
 from core.prompts import (
     build_system_prompt,
     get_summary_prompt,
@@ -434,7 +437,61 @@ async def run_auto_loop(
 
     # Initialize scenario manager for scripted overrides and goals
     scenario_manager = ScenarioManager(navigation_controller)
-    log.info("🎬 Scenario manager initialized")
+    log.info("Scenario manager initialized")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PREPLANNED NAMES - Generate rival name at run start for unique each run
+    # ═══════════════════════════════════════════════════════════════════════════
+    name_planner = get_name_planner()
+    starter_planner = get_starter_planner()
+
+    if not is_continuing_run:
+        # Fresh run - generate new rival name via LLM
+        log.info("Generating preplanned rival name for new run...")
+        try:
+            rival_name = generate_rival_name_sync(client, MODEL, temperature=0.9)
+            name_planner.set_preplanned_rival_name(rival_name, source="llm")
+            log.info(f"Preplanned rival name: '{rival_name}' (LLM-generated)")
+        except Exception as e:
+            log.warning(f"Failed to generate rival name via LLM: {e}")
+            # Fallback to random from suggestions
+            import random
+
+            fallback_name = random.choice(RIVAL_NAME_SUGGESTIONS)
+            name_planner.set_preplanned_rival_name(fallback_name, source="fallback")
+            log.info(f"Using fallback rival name: '{fallback_name}'")
+    else:
+        # Continuing run - restore preplanned names from persistence
+        if run_state and run_state.preplanned_names:
+            rival_name = run_state.preplanned_names.get("rival_name")
+            if rival_name:
+                name_planner.set_preplanned_rival_name(rival_name, source="persisted")
+                log.info(f"Restored rival name from persistence: '{rival_name}'")
+
+        # Restore starter choice if available
+        if run_state and run_state.starter_choice:
+            species = run_state.starter_choice.get("species")
+            nickname = run_state.starter_choice.get("nickname")
+            if species and nickname:
+                starter_planner.set_choice(species, nickname)
+                # Restore state flags
+                starter_planner._starter_obtained = run_state.starter_choice.get(
+                    "obtained", False
+                )
+                starter_planner._nickname_entered = run_state.starter_choice.get(
+                    "nicknamed", False
+                )
+                log.info(
+                    f"Restored starter choice from persistence: {species} '{nickname}'"
+                )
+
+        # Ensure a name exists even if not persisted
+        if not name_planner.rival_name:
+            import random
+
+            fallback_name = random.choice(RIVAL_NAME_SUGGESTIONS)
+            name_planner.set_preplanned_rival_name(fallback_name, source="continued")
+            log.info(f"Continuing run with fallback rival name: '{fallback_name}'")
 
     # Capture the main event loop for thread-safe callbacks
     # This MUST be done before defining callbacks that will run in executor threads
@@ -1607,17 +1664,71 @@ Your intro message:"""
 
                     # Special handling for starter Pokémon choice
                     starters = dev_marker_registry.get_starter_pokemon_choices(map_name)
-                    if starters and len(starters) > 0:
+                    party_size = len(current_mGBA_state.get("pokemon", []))
+
+                    if starters and len(starters) > 0 and party_size == 0:
+                        # We're in Oak's Lab with 0 Pokemon - starter selection time!
                         log.info(
-                            f"🎮 STARTER POKEMON AVAILABLE: {len(starters)} choices"
+                            f"STARTER POKEMON AVAILABLE: {len(starters)} choices, party size: {party_size}"
                         )
-                        # Add starter choice context
-                        starter_names = [s.label for s in starters]
-                        llm_input_state["starter_choice_available"] = (
-                            f"⭐ CHOOSE YOUR STARTER POKEMON! Available: {', '.join(starter_names)}\n"
-                            f"To choose, navigate to adjacent tile and face the Pokéball, then press A.\n"
-                            f"Set a navigation target to the starter you want!"
-                        )
+
+                        # Check if we've already made a choice
+                        if not starter_planner.has_plan:
+                            # Generate starter choice via LLM
+                            log.info("Generating starter choice via LLM...")
+                            try:
+                                from core.name_generator import (
+                                    generate_starter_choice_sync,
+                                )
+
+                                choice = generate_starter_choice_sync(
+                                    client, MODEL, temperature=0.9
+                                )
+                                starter_planner.set_choice(
+                                    choice.species, choice.nickname
+                                )
+                                log.info(
+                                    f"Starter choice made: {choice.species} nicknamed '{choice.nickname}'"
+                                )
+
+                                # Set navigation goal to the starter
+                                scenario_manager.set_starter_navigation_goal(
+                                    {
+                                        "map_name": map_name,
+                                        "map_id": map_id,
+                                        "world_x": pos[0],
+                                        "world_y": pos[1],
+                                    },
+                                    cycle_count,
+                                )
+                            except Exception as e:
+                                log.error(f"Failed to generate starter choice: {e}")
+                                # Fallback - let LLM choose manually
+                                starter_names = [s.label for s in starters]
+                                llm_input_state["starter_choice_available"] = (
+                                    f"CHOOSE YOUR STARTER POKEMON! Available: {', '.join(starter_names)}\n"
+                                    f"Navigate to the Pokeball and press A."
+                                )
+
+                        # Add context about the preplanned choice for AI commentary
+                        if starter_planner.has_plan:
+                            nav_context = starter_planner.get_nav_context(
+                                pos[0], pos[1]
+                            )
+                            llm_input_state["starter_choice_context"] = (
+                                f"STARTER POKEMON SELECTION (PREPLANNED)\n"
+                                f"You chose: {starter_planner.species} nicknamed '{starter_planner.nickname}'!\n"
+                                f"{nav_context}\n"
+                                f"Express your excitement about this choice in your commentary!"
+                            )
+                    elif starters and len(starters) > 0 and party_size > 0:
+                        # Already have a starter - mark as obtained if not already
+                        if (
+                            starter_planner.has_plan
+                            and not starter_planner._starter_obtained
+                        ):
+                            starter_planner.mark_starter_obtained()
+                            log.info(f"Starter {starter_planner.species} obtained!")
 
             except Exception as e:
                 log.warning(f"Dev markers context failed: {e}")
@@ -2347,8 +2458,22 @@ Your intro message:"""
                     target_name = "LASS"
                     name_explanation = "your name 'LASS'"
                 elif name_type == "rival":
-                    target_name = "BUTT"
-                    name_explanation = "rival's name 'BUTT'"
+                    # Use preplanned rival name
+                    target_name = name_planner.rival_name or "BUTT"
+                    name_explanation = f"rival's name '{target_name}'"
+                elif name_type == "pokemon":
+                    # Check for starter nickname
+                    if (
+                        starter_planner.waiting_for_nickname
+                        and starter_planner.nickname
+                    ):
+                        target_name = starter_planner.nickname
+                        name_explanation = (
+                            f"your {starter_planner.species}'s nickname '{target_name}'"
+                        )
+                    else:
+                        target_name = "SKIP"
+                        name_explanation = "press START to skip nickname"
                 else:
                     target_name = "custom name"
                     name_explanation = "a custom name"
@@ -2450,9 +2575,16 @@ Your intro message:"""
                         forced_auto_action = None
 
                 elif name_type == "rival":
-                    # Fallback: Type a funny name if keyboard mode was accidentally entered
+                    # Use preplanned rival name (set at run start)
                     if not name_planner.rival_name:
-                        name_planner.rival_name = "BUTT"
+                        # Fallback if somehow not set
+                        import random
+
+                        fallback = random.choice(RIVAL_NAME_SUGGESTIONS)
+                        name_planner.set_preplanned_rival_name(
+                            fallback, source="fallback"
+                        )
+                        log.warning(f"Rival name not set, using fallback: {fallback}")
 
                     target_name = name_planner.rival_name
 
@@ -2508,21 +2640,83 @@ Your intro message:"""
                         )
                         forced_auto_action = None
 
+                elif name_type == "pokemon":
+                    # Pokemon nickname entry
+                    # Check if this is a starter nickname (preplanned)
+                    if (
+                        starter_planner.waiting_for_nickname
+                        and starter_planner.nickname
+                    ):
+                        target_name = starter_planner.nickname
+
+                        if (
+                            not name_planner.current_name
+                            or name_planner.current_name != target_name
+                        ):
+                            name_planner.set_current_starter_nickname(target_name)
+                            name_planner.start_typing(target_name)
+
+                        next_step = name_planner.get_current_step()
+                        progress = name_planner.get_progress_string()
+
+                        if next_step:
+                            step_num = name_planner.current_char_index + 1
+                            total_steps = len(name_planner.typing_sequence)
+
+                            name_entry_context = (
+                                f"KEYBOARD MODE - TYPING '{target_name}'\n"
+                                f"==================================\n"
+                                f"Auto-executing keyboard input for starter nickname.\n"
+                                f"\n"
+                                f"Progress: {progress} (Step {step_num}/{total_steps})\n"
+                                f"\n"
+                                f"Next character: '{next_step['char']}'\n"
+                                f"Action: {next_step['path']} (AUTO-EXECUTED)\n"
+                            )
+                            forced_auto_action = next_step["path"]
+                        elif (
+                            name_planner.is_done_typing()
+                            and not name_planner.confirmation_sent
+                        ):
+                            forced_auto_action = "START;"
+                            name_entry_context = (
+                                f"TYPING COMPLETE: '{target_name}'\n"
+                                f"==================================\n"
+                                f"Confirming nickname for your {starter_planner.species}!\n"
+                                f"\n"
+                                f"ACTION: START; (AUTO-EXECUTED)\n"
+                            )
+                            name_planner.set_confirmation_sent(True)
+                            starter_planner.mark_nickname_entered()
+                        elif name_planner.confirmation_sent:
+                            name_entry_context = (
+                                "Nickname confirmed. Waiting for transition..."
+                            )
+                            forced_auto_action = None
+                    else:
+                        # No preplanned nickname - skip
+                        name_entry_context = (
+                            f"POKEMON NICKNAME (SKIPPING)\n"
+                            f"==================================\n"
+                            f"Cursor: '{selected_char}' (Row {row}, Col {col})\n"
+                            f"\n"
+                            f"Skipping nickname to continue faster.\n"
+                            f"\n"
+                            f"ACTION: START; (Skip nickname)\n"
+                        )
+                        forced_auto_action = "START;"
+
                 else:
-                    # Generic name entry (pokemon nickname - optional)
+                    # UNKNOWN NAME TYPE - Do NOT auto-execute
+                    # This happens during confirmation screens or ambiguous states
                     name_entry_context = (
-                        f"🐾 POKEMON NICKNAME (OPTIONAL)\n"
+                        f"❓ UNKNOWN NAME ENTRY STATE\n"
                         f"══════════════════════════════════════\n"
-                        f"📍 Cursor: '{selected_char}' (Row {row}, Col {col})\n"
-                        f"\n"
-                        f"💡 You can skip nicknaming by pressing START!\n"
-                        f"\n"
-                        f"▶️ RECOMMENDED ACTION: S; (Skip nickname)\n"
-                        f"\n"
-                        f"If you want to nickname:\n"
-                        f"   - Pick a cute/silly name\n"
-                        f"   - Pre-computed sequences will be provided\n"
+                        f"Could not determine if Player, Rival, or Pokemon.\n"
+                        f"Auto-execution DISABLED. Manual control active.\n"
                     )
+                    forced_auto_action = None
+                    log.info("Name Entry: Unknown type - yielding control to agent.")
 
             else:
                 # Unknown state - shouldn't happen
@@ -2776,6 +2970,25 @@ Your intro message:"""
                     benchmark,
                     cycle_metrics,
                 )
+
+                # ------------------------------------------------------------------
+                # INTRO PACING CONTROL (User Request)
+                # ------------------------------------------------------------------
+                # Prevent 'A' spam during intro to allow name entry detection to catch up
+                # and prevent accidental skipping of the name entry screen.
+                # Heuristic: Party 0 AND not in Players House 2F (0x26 = 38).
+                if action and not forced_auto_action:
+                    _map_id = current_mGBA_state.get("map_id", 0)
+                    _party_size = current_mGBA_state.get("party_size", 0)
+
+                    if _party_size == 0 and _map_id != 38:  # 38 is PLAYERS_HOUSE_2F
+                        # Check if action is purely 'A' presses (e.g. "A;", "A;A;", "A;A;A;")
+                        _commands = [cmd for cmd in action.split(";") if cmd.strip()]
+                        if all(cmd == "A" for cmd in _commands) and len(_commands) > 1:
+                            log.info(
+                                f"Intro Pacing: Throttling '{action}' to single 'A;' to prevent skipping"
+                            )
+                            action = "A;"
 
                 # OVERRIDE ACTION IF AUTO-EXECUTION IS PENDING
                 if forced_auto_action:
@@ -3570,10 +3783,14 @@ Your intro message:"""
             if latest_memory:
                 run_state.latest_memory = latest_memory.description
 
+            # Save preplanned names for persistence across restarts
+            run_state.preplanned_names = name_planner.to_dict()
+            run_state.starter_choice = starter_planner.to_dict()
+
             persistence.save_run_state(run_state)
             cycles_since_persist = 0
             log.info(
-                f"💾 Persisted run state: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}"
+                f"Persisted run state: cycle={cycle_count}, actions={action_count}, tokens={tokens_used_session}"
             )
 
         # Log action to database

@@ -7,7 +7,7 @@ Provides SQLite-backed persistence for run state including:
 - Chat history for LLM context
 - Per-action logging with screenshots and analysis
 
-Run detection: Uses save state file hash to determine if continuing 
+Run detection: Uses save state file hash to determine if continuing
 an existing run or starting fresh.
 """
 
@@ -29,6 +29,7 @@ DB_PATH = "pokemon_runs.db"
 @dataclass
 class RunState:
     """Represents the persisted state of a run."""
+
     run_id: int
     created_at: str
     last_active: str
@@ -37,29 +38,57 @@ class RunState:
     action_count: int = 0
     tokens_used: int = 0
     elapsed_seconds: float = 0.0
-    goals: Dict[str, str] = field(default_factory=lambda: {
-        "primary": "Initializing...",
-        "secondary": "Initializing...",
-        "tertiary": "Initializing..."
-    })
+    goals: Dict[str, str] = field(
+        default_factory=lambda: {
+            "primary": "Initializing...",
+            "secondary": "Initializing...",
+            "tertiary": "Initializing...",
+        }
+    )
     other_goals: str = "Initializing..."
     chat_history: List[Dict[str, Any]] = field(default_factory=list)
     latest_memory: str = ""
     recent_actions: List[str] = field(default_factory=list)
-    
+    # Preplanned names (LLM-generated at run start)
+    preplanned_names: Dict[str, Any] = field(default_factory=dict)
+    # Starter Pokemon choice (LLM-generated in Oak's lab)
+    starter_choice: Dict[str, Any] = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return asdict(self)
-    
+
     @classmethod
-    def from_row(cls, row: dict, chat_history: List = None, recent_actions: List = None) -> 'RunState':
+    def from_row(
+        cls, row: dict, chat_history: List = None, recent_actions: List = None
+    ) -> "RunState":
         """Create RunState from database row."""
-        goals = {"primary": "Initializing...", "secondary": "Initializing...", "tertiary": "Initializing..."}
+        goals = {
+            "primary": "Initializing...",
+            "secondary": "Initializing...",
+            "tertiary": "Initializing...",
+        }
         if row.get("goals_json"):
             try:
                 goals = json.loads(row["goals_json"])
             except:
                 pass
-        
+
+        # Parse preplanned names
+        preplanned_names = {}
+        if row.get("preplanned_names_json"):
+            try:
+                preplanned_names = json.loads(row["preplanned_names_json"])
+            except:
+                pass
+
+        # Parse starter choice
+        starter_choice = {}
+        if row.get("starter_choice_json"):
+            try:
+                starter_choice = json.loads(row["starter_choice_json"])
+            except:
+                pass
+
         return cls(
             run_id=row["run_id"],
             created_at=row.get("created_at", ""),
@@ -73,39 +102,41 @@ class RunState:
             other_goals=row.get("other_goals", "") or "",
             chat_history=chat_history or [],
             latest_memory=row.get("latest_memory", "") or "",
-            recent_actions=recent_actions or []
+            recent_actions=recent_actions or [],
+            preplanned_names=preplanned_names,
+            starter_choice=starter_choice,
         )
 
 
 class RunPersistence:
     """
     Manages SQLite-based persistence for Pokemon LLM runs.
-    
+
     Usage:
         persistence = RunPersistence()
         run_state = persistence.get_or_create_run(save_state_exists=True, save_state_path="roms/red.ss1")
-        
+
         # During gameplay:
         persistence.save_run_state(run_state)
         persistence.log_action(run_state.run_id, "U;U;A", screenshot_b64, llm_analysis, vision_analysis)
     """
-    
+
     def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
         self._init_db()
-    
+
     def _get_conn(self) -> sqlite3.Connection:
         """Get database connection with row factory."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
-    
+
     def _init_db(self):
         """Initialize database schema."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
-            
+
             # Runs table - one row per unique run
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS runs (
@@ -115,7 +146,7 @@ class RunPersistence:
                     save_state_hash TEXT
                 )
             """)
-            
+
             # Run state table - cumulative state for each run
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS run_state (
@@ -134,14 +165,40 @@ class RunPersistence:
 
             # Migration: Add cycle_count if missing
             try:
-                cursor.execute("ALTER TABLE run_state ADD COLUMN cycle_count INTEGER DEFAULT 0")
-                log.info("ℹ️ Migrated database: Added cycle_count column to run_state")
+                cursor.execute(
+                    "ALTER TABLE run_state ADD COLUMN cycle_count INTEGER DEFAULT 0"
+                )
+                log.info("Migrated database: Added cycle_count column to run_state")
             except sqlite3.OperationalError:
                 # Column likely already exists
                 pass
-            
+
+            # Migration: Add preplanned_names_json for storing LLM-generated names
+            try:
+                cursor.execute(
+                    "ALTER TABLE run_state ADD COLUMN preplanned_names_json TEXT"
+                )
+                log.info(
+                    "Migrated database: Added preplanned_names_json column to run_state"
+                )
+            except sqlite3.OperationalError:
+                # Column likely already exists
+                pass
+
+            # Migration: Add starter_choice_json for storing starter Pokemon choice
+            try:
+                cursor.execute(
+                    "ALTER TABLE run_state ADD COLUMN starter_choice_json TEXT"
+                )
+                log.info(
+                    "Migrated database: Added starter_choice_json column to run_state"
+                )
+            except sqlite3.OperationalError:
+                # Column likely already exists
+                pass
+
             # Action log table - per-action logging
-            
+
             # Action log table - per-action logging
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS action_log (
@@ -161,11 +218,15 @@ class RunPersistence:
                     FOREIGN KEY (run_id) REFERENCES runs(id)
                 )
             """)
-            
+
             # Create indexes for common queries
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_action_log_run ON action_log(run_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_runs_hash ON runs(save_state_hash)")
-            
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_action_log_run ON action_log(run_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_runs_hash ON runs(save_state_hash)"
+            )
+
             # Migrations for action_log table columns (for existing databases)
             action_log_columns = [
                 ("screenshot_b64", "TEXT"),
@@ -176,45 +237,47 @@ class RunPersistence:
                 ("vision_duration_ms", "REAL"),
                 ("diff_duration_ms", "REAL"),
                 ("llm_duration_ms", "REAL"),
-                ("cycle_duration_ms", "REAL")
+                ("cycle_duration_ms", "REAL"),
             ]
             for col_name, col_type in action_log_columns:
                 try:
-                    cursor.execute(f"ALTER TABLE action_log ADD COLUMN {col_name} {col_type}")
-                    log.info(f"ℹ️ Migrated database: Added {col_name} column to action_log")
+                    cursor.execute(
+                        f"ALTER TABLE action_log ADD COLUMN {col_name} {col_type}"
+                    )
+                    log.info(
+                        f"ℹ️ Migrated database: Added {col_name} column to action_log"
+                    )
                 except sqlite3.OperationalError:
                     # Column already exists
                     pass
-            
+
             conn.commit()
             log.info(f"📁 Database initialized: {self.db_path}")
         finally:
             conn.close()
-    
+
     def _hash_save_state(self, save_state_path: str) -> Optional[str]:
         """Generate hash of save state file for run identification."""
         if not save_state_path or not os.path.exists(save_state_path):
             return None
-        
+
         try:
-            with open(save_state_path, 'rb') as f:
+            with open(save_state_path, "rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()[:16]
         except Exception as e:
             log.warning(f"Could not hash save state: {e}")
             return None
-    
+
     def get_or_create_run(
-        self, 
-        save_state_exists: bool, 
-        save_state_path: Optional[str] = None
+        self, save_state_exists: bool, save_state_path: Optional[str] = None
     ) -> RunState:
         """
         Get existing run or create new one based on save state.
-        
+
         Logic:
         1. If save state exists, continue the most recent run (save state = resuming progress)
         2. If no save state, create new run (fresh start)
-        
+
         Note: We don't match by save state hash because the hash changes every time
         the game saves. Instead, the presence of a save state indicates we should
         continue the most recent run.
@@ -223,11 +286,11 @@ class RunPersistence:
         try:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
-            
+
             save_hash = None
             if save_state_exists and save_state_path:
                 save_hash = self._hash_save_state(save_state_path)
-                
+
                 # Save state exists = we're resuming, find the most recent run
                 cursor.execute("""
                     SELECT r.id as run_id, r.created_at, r.last_active, r.save_state_hash,
@@ -239,12 +302,12 @@ class RunPersistence:
                     ORDER BY r.last_active DESC
                     LIMIT 1
                 """)
-                
+
                 row = cursor.fetchone()
                 if row:
                     # Found existing run - restore it
                     row_dict = dict(row)
-                    
+
                     # Parse chat history
                     chat_history = []
                     if row_dict.get("chat_history_json"):
@@ -252,7 +315,7 @@ class RunPersistence:
                             chat_history = json.loads(row_dict["chat_history_json"])
                         except:
                             pass
-                    
+
                     # Parse recent actions
                     recent_actions = []
                     if row_dict.get("recent_actions_json"):
@@ -260,61 +323,63 @@ class RunPersistence:
                             recent_actions = json.loads(row_dict["recent_actions_json"])
                         except:
                             pass
-                    
+
                     # Update last_active and save state hash
                     cursor.execute(
                         "UPDATE runs SET last_active = ?, save_state_hash = ? WHERE id = ?",
-                        (now, save_hash, row_dict["run_id"])
+                        (now, save_hash, row_dict["run_id"]),
                     )
                     conn.commit()
-                    
-                    run_state = RunState.from_row(row_dict, chat_history, recent_actions)
+
+                    run_state = RunState.from_row(
+                        row_dict, chat_history, recent_actions
+                    )
                     run_state.save_state_hash = save_hash  # Update with current hash
-                    log.info(f"🔄 Continuing run #{run_state.run_id} (cycle: {run_state.cycle_count}, actions: {run_state.action_count})")
+                    log.info(
+                        f"🔄 Continuing run #{run_state.run_id} (cycle: {run_state.cycle_count}, actions: {run_state.action_count})"
+                    )
                     return run_state
-            
+
             # Create new run
             cursor.execute(
                 "INSERT INTO runs (created_at, last_active, save_state_hash) VALUES (?, ?, ?)",
-                (now, now, save_hash)
+                (now, now, save_hash),
             )
             run_id = cursor.lastrowid
-            
+
             # Initialize run_state row
-            cursor.execute(
-                "INSERT INTO run_state (run_id) VALUES (?)",
-                (run_id,)
-            )
-            
+            cursor.execute("INSERT INTO run_state (run_id) VALUES (?)", (run_id,))
+
             conn.commit()
-            
+
             run_state = RunState(
                 run_id=run_id,
                 created_at=now,
                 last_active=now,
-                save_state_hash=save_hash
+                save_state_hash=save_hash,
             )
             log.info(f"🆕 Created new run #{run_id}")
             return run_state
-            
+
         finally:
             conn.close()
-    
+
     def save_run_state(self, run_state: RunState):
         """Save current run state to database."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
-            
+
             # Update runs table
             cursor.execute(
                 "UPDATE runs SET last_active = ?, save_state_hash = ? WHERE id = ?",
-                (now, run_state.save_state_hash, run_state.run_id)
+                (now, run_state.save_state_hash, run_state.run_id),
             )
-            
+
             # Update run_state table
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE run_state SET
                     cycle_count = ?,
                     action_count = ?,
@@ -324,27 +389,39 @@ class RunPersistence:
                     other_goals = ?,
                     chat_history_json = ?,
                     latest_memory = ?,
-                    recent_actions_json = ?
+                    recent_actions_json = ?,
+                    preplanned_names_json = ?,
+                    starter_choice_json = ?
                 WHERE run_id = ?
-            """, (
-                run_state.cycle_count,
-                run_state.action_count,
-                run_state.tokens_used,
-                run_state.elapsed_seconds,
-                json.dumps(run_state.goals),
-                run_state.other_goals,
-                json.dumps(run_state.chat_history[-20:]),  # Keep last 20 messages
-                run_state.latest_memory,
-                json.dumps(run_state.recent_actions[-50:]),  # Keep last 50 actions
-                run_state.run_id
-            ))
-            
+            """,
+                (
+                    run_state.cycle_count,
+                    run_state.action_count,
+                    run_state.tokens_used,
+                    run_state.elapsed_seconds,
+                    json.dumps(run_state.goals),
+                    run_state.other_goals,
+                    json.dumps(run_state.chat_history[-20:]),  # Keep last 20 messages
+                    run_state.latest_memory,
+                    json.dumps(run_state.recent_actions[-50:]),  # Keep last 50 actions
+                    json.dumps(run_state.preplanned_names)
+                    if run_state.preplanned_names
+                    else None,
+                    json.dumps(run_state.starter_choice)
+                    if run_state.starter_choice
+                    else None,
+                    run_state.run_id,
+                ),
+            )
+
             conn.commit()
-            log.debug(f"💾 Saved run state: actions={run_state.action_count}, tokens={run_state.tokens_used}")
-            
+            log.debug(
+                f"Saved run state: actions={run_state.action_count}, tokens={run_state.tokens_used}"
+            )
+
         finally:
             conn.close()
-    
+
     def log_action(
         self,
         run_id: int,
@@ -354,116 +431,131 @@ class RunPersistence:
         vision_analysis: Optional[str] = None,
         position: Optional[List[int]] = None,
         map_name: Optional[str] = None,
-        metrics: Optional[Dict[str, float]] = None
+        metrics: Optional[Dict[str, float]] = None,
     ):
         """Log a single action with associated data."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
-            
+
             # Extract metrics if provided
             v_dur = metrics.get("vision", 0) if metrics else 0
             d_dur = metrics.get("diff", 0) if metrics else 0
             l_dur = metrics.get("llm", 0) if metrics else 0
             c_dur = metrics.get("cycle", 0) if metrics else 0
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO action_log 
                 (run_id, timestamp, action, screenshot_b64, llm_analysis, vision_analysis, position_json, map_name,
                  vision_duration_ms, diff_duration_ms, llm_duration_ms, cycle_duration_ms)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                run_id,
-                datetime.now().isoformat(),
-                action,
-                screenshot_b64,
-                llm_analysis,
-                vision_analysis,
-                json.dumps(position) if position else None,
-                map_name,
-                v_dur, d_dur, l_dur, c_dur
-            ))
+            """,
+                (
+                    run_id,
+                    datetime.now().isoformat(),
+                    action,
+                    screenshot_b64,
+                    llm_analysis,
+                    vision_analysis,
+                    json.dumps(position) if position else None,
+                    map_name,
+                    v_dur,
+                    d_dur,
+                    l_dur,
+                    c_dur,
+                ),
+            )
             conn.commit()
         finally:
             conn.close()
-    
+
     def get_action_count(self, run_id: int) -> int:
         """Get total action count for a run."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT action_count FROM run_state WHERE run_id = ?",
-                (run_id,)
+                "SELECT action_count FROM run_state WHERE run_id = ?", (run_id,)
             )
             row = cursor.fetchone()
             return row["action_count"] if row else 0
         finally:
             conn.close()
-    
+
     def get_recent_actions(self, run_id: int, limit: int = 10) -> List[Dict]:
         """Get recent actions for a run."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT action, map_name, position_json, timestamp
                 FROM action_log
                 WHERE run_id = ?
                 ORDER BY id DESC
                 LIMIT ?
-            """, (run_id, limit))
-            
+            """,
+                (run_id, limit),
+            )
+
             rows = cursor.fetchall()
             return [dict(row) for row in reversed(rows)]
         finally:
             conn.close()
-    
+
     def get_ui_logs(self, run_id: int, limit: int = 10) -> List[Dict]:
         """Get recent log entries formatted for UI display (vision + response)."""
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, timestamp, llm_analysis, vision_analysis
                 FROM action_log
                 WHERE run_id = ?
                 ORDER BY id DESC
                 LIMIT ?
-            """, (run_id, limit))
-            
+            """,
+                (run_id, limit),
+            )
+
             rows = cursor.fetchall()
             logs = []
             for row in reversed(rows):
                 row_id = row["id"]
                 ts = row["timestamp"]
-                
+
                 # Add vision entry if present
                 if row["vision_analysis"]:
-                    logs.append({
-                        "id": f"vision-{row_id}",
-                        "timestamp": ts,
-                        "text": row["vision_analysis"],
-                        "is_vision": True,
-                        "is_response": False,
-                        "is_action": False
-                    })
-                
+                    logs.append(
+                        {
+                            "id": f"vision-{row_id}",
+                            "timestamp": ts,
+                            "text": row["vision_analysis"],
+                            "is_vision": True,
+                            "is_response": False,
+                            "is_action": False,
+                        }
+                    )
+
                 # Add response entry if present
                 if row["llm_analysis"]:
-                    logs.append({
-                        "id": f"response-{row_id}",
-                        "timestamp": ts,
-                        "text": row["llm_analysis"],
-                        "is_vision": False,
-                        "is_response": True,
-                        "is_action": False
-                    })
-            
+                    logs.append(
+                        {
+                            "id": f"response-{row_id}",
+                            "timestamp": ts,
+                            "text": row["llm_analysis"],
+                            "is_vision": False,
+                            "is_response": True,
+                            "is_action": False,
+                        }
+                    )
+
             return logs
         finally:
             conn.close()
-    
+
     def update_save_state_hash(self, run_id: int, save_state_path: str):
         """Update the save state hash after saving."""
         new_hash = self._hash_save_state(save_state_path)
@@ -473,7 +565,7 @@ class RunPersistence:
                 cursor = conn.cursor()
                 cursor.execute(
                     "UPDATE runs SET save_state_hash = ? WHERE id = ?",
-                    (new_hash, run_id)
+                    (new_hash, run_id),
                 )
                 conn.commit()
                 log.debug(f"Updated save state hash for run #{run_id}")
@@ -487,7 +579,7 @@ def get_run_summary(db_path: str = DB_PATH) -> str:
     """Get a summary of all runs in the database."""
     if not os.path.exists(db_path):
         return "No database found."
-    
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
@@ -499,11 +591,11 @@ def get_run_summary(db_path: str = DB_PATH) -> str:
             LEFT JOIN run_state s ON r.id = s.run_id
             ORDER BY r.last_active DESC
         """)
-        
+
         rows = cursor.fetchall()
         if not rows:
             return "No runs recorded."
-        
+
         lines = ["=== Pokemon LLM Runs ==="]
         for row in rows:
             elapsed_mins = (row["elapsed_seconds"] or 0) / 60
