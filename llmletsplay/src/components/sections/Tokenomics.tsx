@@ -46,6 +46,10 @@ export function Tokenomics() {
   // Tokenomics Card Component
   const TokenomicsCard = () => (
     <div className="info-card">
+      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TOKENOMICS</h4>
+      </div>
+      
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: '140px 1fr', 
