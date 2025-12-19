@@ -58,7 +58,7 @@ export function LLMPrompts() {
               marginBottom: '16px'
             }}>
               <p style={{ marginBottom: '16px' }}>
-                The core instructions that define Lass's persona and gameplay objectives. We use a structured 12-section format to ensure she stays in character while making optimal game decisions.
+                The core instructions that define Lass's persona and gameplay objectives. We use a <strong>structured 12-section format</strong> to ensure she stays in character while making optimal game decisions.
               </p>
               <p>
                 This prompt acts as her "subconscious," guiding her tone, memory usage, and strategic priorities in every turn.

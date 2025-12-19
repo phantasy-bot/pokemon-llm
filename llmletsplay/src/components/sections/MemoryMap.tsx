@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelHierarchy, PixelGrid, PixelChip, PixelSearch, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelHierarchy, PixelGrid, PixelChip, PixelSearch, PixelList, PixelUser, PixelCheck, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -44,25 +44,32 @@ export function MemoryMap() {
         <div className="persona-cards-desktop">
           
           {/* Card 1: Vector Store */}
-          <div className="info-card">
+          <div className="info-card info-card--dotted">
             <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
               <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>VECTOR STORE</h4>
             </div>
             
-            <div style={{ 
-              fontFamily: 'var(--font-mono)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              color: 'var(--text-primary)',
-              textAlign: 'left',
-              marginBottom: '16px'
-            }}>
-              <p style={{ marginBottom: '16px' }}>
-                Semantic database tracking game events, NPCs, and quest logs. Lass uses this long-term memory to recall hints and past interactions.
-              </p>
-              <p>
-                Every significant dialogue and event is embedded and stored, allowing for contextual recall even hours later in the playthrough.
-              </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelList size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Event Logging:</strong> Recording significant dialogue and story beats
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelUser size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>NPC Tracking:</strong> Remembering characters and their locations
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelCheck size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Quest Logs:</strong> Tracking current objectives and progress
+                </div>
+              </div>
             </div>
           </div>
 

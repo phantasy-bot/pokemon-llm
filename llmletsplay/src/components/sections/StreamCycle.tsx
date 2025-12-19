@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelGameController, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelTarget, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -58,7 +58,7 @@ export function StreamCycle() {
               marginBottom: '16px'
             }}>
               <p style={{ marginBottom: '16px' }}>
-                The heartbeat of the agent. The cycle runs every 25-75 seconds, balancing game progress with entertaining commentary.
+                The heartbeat of the agent. The cycle runs every <strong>25-75 seconds</strong>, balancing game progress with entertaining commentary.
               </p>
               <p>
                 Each loop is a discrete step where Lass perceives the world, thinks about her goals, and acts accordingly.
@@ -88,7 +88,7 @@ export function StreamCycle() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelGameController size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTarget size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Action:</strong> Executing precise button inputs
                 </div>

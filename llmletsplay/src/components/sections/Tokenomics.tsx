@@ -47,10 +47,6 @@ export function Tokenomics() {
   // Tokenomics Card Component
   const TokenomicsCard = () => (
     <div className="info-card">
-      <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-        <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>TOKENOMICS</h4>
-      </div>
-      
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'min-content 1fr', 
@@ -69,6 +65,9 @@ export function Tokenomics() {
          
          <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>LAUNCH</div>
          <div style={{ fontSize: '16px' }}>FAIR LAUNCH (PUMP.FUN)</div>
+
+         <div style={{ color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '2px', fontSize: '11px' }}>LAUNCH DATE</div>
+         <div style={{ fontSize: '16px' }}>December 20, 2025</div>
       </div>
     
     </div>
