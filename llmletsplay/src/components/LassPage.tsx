@@ -4,6 +4,7 @@ import { About } from './sections/About'
 import { Architecture } from './sections/Architecture'
 import { LLMPrompts } from './sections/LLMPrompts'
 import { MemoryMap } from './sections/MemoryMap'
+import { StreamCycle } from './sections/StreamCycle'
 import { ComingSoon } from './sections/ComingSoon'
 import { Persona } from './sections/Persona'
 import { Tokenomics } from './sections/Tokenomics'
@@ -87,7 +88,7 @@ export function LassLayout() {
             <Route path="about" element={<About />} />
             <Route path="architecture" element={<Architecture />} />
             <Route path="memory" element={<MemoryMap />} />
-            <Route path="stream" element={<ComingSoon title="Stream Cycle" />} />
+            <Route path="stream" element={<StreamCycle />} />
             <Route path="prompts" element={<LLMPrompts />} />
             <Route path="tokenomics" element={<Tokenomics />} />
             <Route path="collection" element={<Collection />} />

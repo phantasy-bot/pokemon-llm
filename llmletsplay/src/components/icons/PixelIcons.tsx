@@ -148,6 +148,14 @@ export const PixelList = ({ size = 24, color = 'currentColor', style }: IconProp
   <Icon icon="streamline-pixel:interface-essential-list-bullets" width={size} height={size} color={color} style={style} />
 )
 
+export const PixelGrid = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:interface-layout-grid-4" width={size} height={size} color={color} style={style} />
+)
+
+export const PixelSearch = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:interface-search-magnifying-glass" width={size} height={size} color={color} style={style} />
+)
+
 export const PixelCard = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <Icon icon="streamline-pixel:entertainment-events-hobbies-card-game-card-club" width={size} height={size} color={color} style={style} />
 )

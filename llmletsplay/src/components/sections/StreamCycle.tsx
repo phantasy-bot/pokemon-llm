@@ -1,226 +1,287 @@
+import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelGameController, PixelExternalLink } from '../icons/PixelIcons'
+
+const TOKEN_ADDRESS = '0x000...000'
+const COPY_RATE_LIMIT_MS = 500
+
+interface FloatingText {
+  id: number
+  x: number
+}
+
 export function StreamCycle() {
-  return (
-    <div className="section clearfix">
-      <div className="about-intro">
-        <div className="about-text-content">
-          <p>
-            Each cycle of the agent takes <strong>25-75 seconds</strong> depending on LLM speed 
-            and network conditions. Here's exactly what happens:
-          </p>
-          
-          <div className="info-card">
-            <div className="info-card-header">
-              <span className="badge">AUTO</span>
-              <h4>The Loop</h4>
-            </div>
-            <p>
-              Screenshot → Vision → LLM → Action → Repeat. A continuous cycle of observation and reaction.
-            </p>
-          </div>
-        </div>
-        <img 
-          src="/lass/lass-default.png" 
-          alt="Lass" 
-          className="lass-intro-image"
-        />
-      </div>
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const lastCopyTime = useRef(0)
+  const nextId = useRef(0)
 
-      <div className="diagram">
-        <pre>{`
-   ┌─────────────────┐
-   │  Data Gathering │ ~0.3-0.5s
-   │   (Game State)  │
-   └────────┬────────┘
-            ▼
-   ┌─────────────────┐
-   │ Vision Analysis │ ~5-15s
-   │   (Screenshot)  │
-   └────────┬────────┘
-            ▼
-   ┌─────────────────┐
-   │  LLM Analysis   │ ~5-25s
-   │  (12-Section)   │
-   └────────┬────────┘
-            ▼
-   ┌─────────────────┐
-   │ TTS Commentary  │ ~5-20s
-   │  (Audio Play)   │
-   └────────┬────────┘
-            ▼
-   ┌─────────────────┐
-   │    Execution    │ ~4s
-   │ (Button Press)  │
-   └────────┬────────┘
-            │
-            └──────────────▶ REPEAT
-        `}</pre>
-      </div>
+  const handleCopy = () => {
+    const now = Date.now()
+    if (now - lastCopyTime.current < COPY_RATE_LIMIT_MS) {
+      return // Rate limited
+    }
+    lastCopyTime.current = now
 
-      <h3 className="section-title">Detailed Timing Breakdown</h3>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Component</th>
-            <th>Operation</th>
-            <th>Time</th>
-            <th>Timeout</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>mGBA</td>
-            <td><code>prep_llm()</code> game state</td>
-            <td>0.3-0.5s</td>
-            <td>30s</td>
-          </tr>
-          <tr>
-            <td>Vision</td>
-            <td>MCP analyze_image</td>
-            <td>5-15s</td>
-            <td>Retries forever</td>
-          </tr>
-          <tr>
-            <td>LLM</td>
-            <td>Z.AI chat/completions</td>
-            <td>5-25s</td>
-            <td>40s (+3 retries)</td>
-          </tr>
-          <tr>
-            <td>TTS Synth</td>
-            <td>ComfyUI generation</td>
-            <td>5-15s</td>
-            <td>10s</td>
-          </tr>
-          <tr>
-            <td>TTS Play</td>
-            <td>Audio playback</td>
-            <td>4-20s</td>
-            <td>None</td>
-          </tr>
-          <tr>
-            <td>Action</td>
-            <td>Post-action delay</td>
-            <td>4s fixed</td>
-            <td>None</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3 className="section-title">TTS Queue System</h3>
-      
-      <div className="info-card">
-        <p><code>MAX_QUEUE_SIZE = 2</code> (1 commentary + 1 chat response max)</p>
-        <ul>
-          <li><strong>PRIORITY_COMMENTARY = 100</strong> — highest, plays immediately</li>
-          <li><strong>PRIORITY_CHAT_RESPONSE = 50</strong> — queued, non-blocking</li>
-        </ul>
-        <p style={{ marginTop: '8px' }}>
-          If queue is full, chat responses show in UI but skip TTS. 
-          Twitch chat always gets the text response.
-        </p>
-      </div>
-
-      <h3 className="section-title">Cycle Metrics Broadcast</h3>
-      
-      <p>Every cycle broadcasts timing metrics to the UI:</p>
-      
-      <pre style={{ background: 'var(--dark)', padding: '16px', borderRadius: '4px', marginTop: '8px' }}>{`{
-  "cycleTiming": "40.2s | wait 2.0s",
-  "currentCycleTime": 40.2,
-  "prevCycleTime": 35.1,
-  "avgCycleTime": 37.5,
-  "cycleMetrics": {
-    "mGBA": 0.4,
-    "vision": 8.3,
-    "diff": 0,
-    "llm": 15.2,
-    "total": 40.2
+    navigator.clipboard.writeText(TOKEN_ADDRESS)
+    
+    // Add a new floating text with random x offset
+    const newFloat: FloatingText = {
+      id: nextId.current++,
+      x: Math.random() * 60 - 30 // Random offset between -30px and 30px
+    }
+    setFloatingTexts(prev => [...prev, newFloat])
+    
+    // Remove after animation completes (1s)
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(f => f.id !== newFloat.id))
+    }, 1000)
   }
-}`}</pre>
 
-      <h3 className="section-title">Cycle Steps with UI Updates</h3>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Step</th>
-            <th>What Happens</th>
-            <th>UI Animation</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>1</td>
-            <td><code>prep_llm()</code> gathers state</td>
-            <td>None</td>
-          </tr>
-          <tr>
-            <td>2</td>
-            <td>Screenshot captured</td>
-            <td>Image appears</td>
-          </tr>
-          <tr>
-            <td>3</td>
-            <td>Vision API called</td>
-            <td>Waiting dots animate</td>
-          </tr>
-          <tr>
-            <td>4</td>
-            <td>Vision result received</td>
-            <td>Typewriter animation</td>
-          </tr>
-          <tr>
-            <td>5</td>
-            <td>Main LLM called</td>
-            <td>Status: THINKING</td>
-          </tr>
-          <tr>
-            <td>6</td>
-            <td>LLM result received</td>
-            <td>Typewriter animation</td>
-          </tr>
-          <tr>
-            <td>7</td>
-            <td>TTS synthesis + playback</td>
-            <td>Commentary synced to audio</td>
-          </tr>
-          <tr>
-            <td>8</td>
-            <td>Actions sent to mGBA</td>
-            <td>Button list updates + flash</td>
-          </tr>
-        </tbody>
-      </table>
+  return (
+    <div className="persona-layout">
+      {/* LEFT COLUMN - Stream Cycle Info */}
+      <div className="persona-cards-column">
+        <div className="persona-cards-desktop">
+          
+          {/* Card 1: Game Loop */}
+          <div className="info-card">
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>GAME LOOP</h4>
+            </div>
+            
+            <div style={{ 
+              fontFamily: 'var(--font-mono)',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: 'var(--text-primary)',
+              textAlign: 'left',
+              marginBottom: '16px'
+            }}>
+              <p style={{ marginBottom: '16px' }}>
+                The heartbeat of the agent. The cycle runs every 25-75 seconds, balancing game progress with entertaining commentary.
+              </p>
+              <p>
+                Each loop is a discrete step where Lass perceives the world, thinks about her goals, and acts accordingly.
+              </p>
+            </div>
+          </div>
 
-      <h3 className="section-title">Retry Logic</h3>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Service</th>
-            <th>Retries</th>
-            <th>Backoff</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Z.AI LLM</td>
-            <td>3</td>
-            <td>0.5s → 1s → 2s</td>
-          </tr>
-          <tr>
-            <td>Vision MCP</td>
-            <td>Infinite</td>
-            <td>Restarts server</td>
-          </tr>
-          <tr>
-            <td>mGBA Socket</td>
-            <td>N/A</td>
-            <td>35s timeout</td>
-          </tr>
-        </tbody>
-      </table>
+          {/* Card 2: Process Stages */}
+          <div className="info-card info-card--dotted">
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>PROCESS STAGES</h4>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Observation:</strong> Analyzing screenshots & RAM state
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Reasoning:</strong> LLM decides next best move
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelGameController size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Action:</strong> Executing precise button inputs
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Reaction:</strong> Generating speech & commentary
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* MIDDLE COLUMN - Character with Holographic Effect */}
+      <div className="holographic-afterimage persona-holographic">
+        {/* Trail ghosts */}
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        
+        {/* Stationary ghosts */}
+        <img src="/lass/lass-victory.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-victory.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        
+        {/* Main character */}
+        <img src="/lass/lass-victory.png" alt="Lass Victory" className="main-character" />
+      </div>
+
+      {/* RIGHT COLUMN - Sponsor Image + Buttons */}
+      <div className="persona-right-column">
+        {/* Phantasy Agent Framework - links to phantasy.bot */}
+        <a 
+          href="https://phantasy.bot" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="persona-sponsor-link"
+          style={{ textDecoration: 'none' }}
+        >
+          <img 
+            src="/sponsors/phantasy.png" 
+            alt="Phantasy" 
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              borderRadius: '8px'
+            }}
+          />
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'rgba(0,0,0,0.4)',
+            textAlign: 'center',
+            marginTop: '6px'
+          }}>
+            agent framework
+          </div>
+        </a>
+        
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flex: 1 }} />
+        
+        {/* Button stack at bottom */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          overflow: 'visible'
+        }}>
+          {/* CA Widget */}
+          <div 
+            onClick={handleCopy}
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              padding: '10px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--text-primary)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              position: 'relative',
+              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+            }}
+          >
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              CA: {TOKEN_ADDRESS}
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px'
+            }}>
+              <PixelExternalLink size={16} />
+            </div>
+            
+            {/* Floating +1s for click feedback */}
+            {floatingTexts.map(float => (
+              <div
+                key={float.id}
+                className="pixel-float-text"
+                style={{
+                  left: `calc(50% + ${float.x}px)`
+                }}
+              >
+                COPIED!
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            width: '95%',
+            height: '2px', // Height of the dots
+            margin: '4px auto', // Centered with margin
+            background: 'radial-gradient(circle, var(--text-primary) 1px, transparent 1px)',
+            backgroundSize: '6px 2px', // Spacing of dots
+            opacity: 0.3
+          }} />
+
+          <Link 
+            to="/lass" 
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--accent-primary)',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'var(--text-primary)',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            READ DOCS
+          </Link>
+          
+          <a
+            href="https://twitch.tv/lassplayspokemon"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: '#9146FF',
+              border: '2px solid #9146FF',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'white',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            WATCH STREAM
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
