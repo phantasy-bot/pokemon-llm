@@ -554,15 +554,18 @@ export function PokemonStreamOverlay({
   // Track manual override to prevent fighting the auto-switcher if user clicked something
   const [manualOverride, setManualOverride] = useState(false);
 
-  // Auto-switching disabled - keep detailed view at all times
-  // To re-enable, uncomment the useEffect below
-  // useEffect(() => {
-  //   if (manualOverride) return;
-  //   const targetMode = (gameState.cycle % 2 === 0) ? 'detailed' : 'normal';
-  //   if (viewMode !== targetMode) {
-  //     setViewMode(targetMode);
-  //   }
-  // }, [gameState.cycle, manualOverride, viewMode]);
+  // Auto-switching: Minimal view ('normal') during name entry, Detailed view otherwise
+  useEffect(() => {
+    if (manualOverride) return;
+    
+    // Check if we are in a naming screen (nameEntryState is populated)
+    const isNaming = !!gameState.nameEntryState;
+    const targetMode = isNaming ? 'normal' : 'detailed';
+    
+    if (viewMode !== targetMode) {
+      setViewMode(targetMode);
+    }
+  }, [gameState.nameEntryState, manualOverride, viewMode]);
 
   const toggleViewMode = () => {
     setManualOverride(true); // Disable auto-switcher if user interacts

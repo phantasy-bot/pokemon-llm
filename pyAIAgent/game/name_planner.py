@@ -96,7 +96,7 @@ class NamePlanner:
         if "YOUR NAME" in combined:
             self.name_type = "player"
             return "player"
-        elif "RIVAL" in combined:
+        elif "RIVAL" in combined or "HIS NAME" in combined or "NAME AGAIN" in combined:
             self.name_type = "rival"
             return "rival"
         elif "NICKNAME" in combined:

@@ -59,10 +59,20 @@ class ScenarioManager:
         is_keyboard = name_entry_state.get("is_keyboard", False)
 
         if is_preset:
-            log.info(
-                "Preset menu detected: Auto-executing 'A' to enter custom name mode"
-            )
-            return "A;"
+            # For preset menus, we ALWAYS want to select "NEW NAME" (Index 0)
+            # to enter the custom name entry screen.
+            cursor_index = name_entry_state.get("cursor_index", 0)
+
+            if cursor_index > 0:
+                log.info(
+                    f"Preset menu detected (index {cursor_index}): Auto-executing 'UP' to reach 'NEW NAME'"
+                )
+                return "UP;"
+            else:
+                log.info(
+                    "Preset menu detected (index 0): Auto-executing 'A' to enter custom name mode"
+                )
+                return "A;"
 
         if is_keyboard:
             planner = get_name_planner()

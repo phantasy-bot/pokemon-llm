@@ -417,7 +417,8 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         # Keyboard: menu_item_count is exactly 7 (representing keyboard rows)
 
         # Check for PRESET MENU first (4-5 items, cursor_y < 3)
-        is_preset_menu = (last_item == 4 or last_item == 5) and cursor_y < 3
+        # last_item=3 means 4 items (IDs 0-3), last_item=4 means 5 items (IDs 0-4)
+        is_preset_menu = (3 <= last_item <= 5) and cursor_y < 3
 
         if is_preset_menu:
             # Preset name selection menu detected
