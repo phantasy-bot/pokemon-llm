@@ -100,7 +100,7 @@ class NavigationController:
     navigation context for LLM injection.
     """
 
-    STUCK_THRESHOLD = 5  # Cycles without progress before considered stuck
+    STUCK_THRESHOLD = 10  # Cycles without progress before considered stuck (Increased from 5)
     MAX_GOAL_CYCLES = 50  # Max cycles before goal is considered stale
     PATH_RECOMPUTE_INTERVAL = 10  # Cycles between path recomputation
 

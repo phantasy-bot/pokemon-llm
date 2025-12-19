@@ -1998,7 +1998,7 @@ class MemoryManager:
         
         return "\n".join(context_parts) if context_parts else ""
 
-    def detect_stuck(self, position_history: List[tuple], threshold: int = 3) -> dict:
+    def detect_stuck(self, position_history: List[tuple], threshold: int = 10) -> dict:
         """
         Detect if agent is stuck based on position history.
         Returns dict with is_stuck bool, suggestion string, and stuck_position if stuck.
@@ -2018,7 +2018,7 @@ class MemoryManager:
             stuck_pos = recent[0]
             return {
                 "is_stuck": True,
-                "suggestion": f"Position unchanged for {threshold}+ cycles at {stuck_pos}. This might be a FALSE EXIT from a cutscene. Try: 1) Walk in different directions 2) Look for REAL doors 3) Explore unexplored areas",
+                "suggestion": f"Position unchanged for {threshold}+ cycles at {stuck_pos}. If you are in a dialog, ignore this. If you are trying to move, you might be stuck by an invisible barrier or NPC. Try walking around it.",
                 "stuck_position": stuck_pos
             }
         
@@ -2027,21 +2027,22 @@ class MemoryManager:
             positions = list(set(recent))
             return {
                 "is_stuck": True, 
-                "suggestion": f"Oscillating between {positions[0]} and {positions[1]}. Break the loop - explore a completely different area.",
+                "suggestion": f"Oscillating between {positions[0]} and {positions[1]}. Break the loop - explore a completely different direction.",
                 "stuck_position": positions[0]
             }
         
         # NEW: Check for repeated returns to same position (pattern detection)
-        # If we've been to the same spot 3+ times in last 8 moves, we're probably stuck on a false exit
-        extended = position_history[-8:] if len(position_history) >= 8 else position_history
+        # If we've been to the same spot 5+ times in last 15 moves, we're probably oscillating or looping
+        window_size = 15
+        extended = position_history[-window_size:] if len(position_history) >= window_size else position_history
         from collections import Counter
         pos_counts = Counter(extended)
         most_common = pos_counts.most_common(1)
-        if most_common and most_common[0][1] >= 3:
+        if most_common and most_common[0][1] >= 5:
             frequent_pos = most_common[0][0]
             return {
                 "is_stuck": True,
-                "suggestion": f"Repeatedly returning to {frequent_pos} ({most_common[0][1]} times in last 8 moves). This position may be a FALSE MEMORY created by a cutscene. IGNORE any 'verified exit' at this location and explore elsewhere!",
+                "suggestion": f"Repeatedly returning to {frequent_pos} ({most_common[0][1]} times in last {window_size} moves). Break the pattern and try a different route!",
                 "stuck_position": frequent_pos
             }
         

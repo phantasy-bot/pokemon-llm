@@ -2963,35 +2963,27 @@ Your intro message:"""
         )
 
         try:
-            # Check for forced random action (stuck bypass)
-            if "nav_state" in locals() and nav_state and nav_state.force_random_action:
-                log.warning("⚠️ STUCK DETECTED: Forcing unstick action (bypassing LLM)")
-                action = random.choice(["UP;", "DOWN;", "LEFT;", "RIGHT;", "A;"])
-                game_analysis = "Forced unstick action."
-                summary_json = {}
-                vision_analysis_for_ui = None
-            else:
-                # Run the main LLM call via Controller
-                (
-                    action,
-                    game_analysis,
-                    summary_json,
-                    vision_analysis_for_ui,
-                ) = await controller.call_with_timeout(
-                    llm_input_state,
-                    STREAM_TIMEOUT,
-                    LLM_TOTAL_TIMEOUT,
-                    benchmark,
-                    cycle_metrics,
-                )
+            # Run the main LLM call via Controller
+            (
+                action,
+                game_analysis,
+                summary_json,
+                vision_analysis_for_ui,
+            ) = await controller.call_with_timeout(
+                llm_input_state,
+                STREAM_TIMEOUT,
+                LLM_TOTAL_TIMEOUT,
+                benchmark,
+                cycle_metrics,
+            )
 
-                # ------------------------------------------------------------------
-                # INTRO PACING CONTROL (User Request)
-                # ------------------------------------------------------------------
-                # Prevent 'A' spam during intro to allow name entry detection to catch up
-                # and prevent accidental skipping of the name entry screen.
-                # Heuristic: Party 0 AND not in Players House 2F (0x26 = 38).
-                if action and not forced_auto_action:
+            # ------------------------------------------------------------------
+            # INTRO PACING CONTROL (User Request)
+            # ------------------------------------------------------------------
+            # Prevent 'A' spam during intro to allow name entry detection to catch up
+            # and prevent accidental skipping of the name entry screen.
+            # Heuristic: Party 0 AND not in Players House 2F (0x26 = 38).
+            if action and not forced_auto_action:
                     _map_id = current_mGBA_state.get("map_id", 0)
                     _party_size = current_mGBA_state.get("party_size", 0)
 
