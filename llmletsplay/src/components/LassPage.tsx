@@ -17,7 +17,7 @@ import {
   PixelTerminal,
   PixelTV,
   PixelCoin,
-  PixelSparkle
+  PixelCard
 } from './icons/PixelIcons'
 
 const navItems = [
@@ -30,7 +30,7 @@ const navItems = [
   { id: 'stream', label: 'Stream Cycle', icon: <PixelLoadingCircle size={18} />, isSubItem: true },
   { id: 'prompts', label: 'LLM Prompts', icon: <PixelTerminal size={18} />, isSubItem: true },
   { id: 'tokenomics', label: 'Tokenomics', icon: <PixelCoin size={18} />, isSubItem: true },
-  { id: 'collection', label: 'Card Collection', icon: <PixelSparkle size={18} />, isSubItem: true },
+  { id: 'collection', label: 'Card Collection', icon: <PixelCard size={18} />, isSubItem: true },
   { id: 'livestream', label: 'Watch Stream!', icon: <PixelTV size={18} />, isSubItem: true, isExternal: true, href: 'https://twitch.tv/lassplayspokemon' },
 ]
 

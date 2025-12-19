@@ -148,6 +148,10 @@ export const PixelList = ({ size = 24, color = 'currentColor', style }: IconProp
   <Icon icon="streamline-pixel:interface-essential-list-bullets" width={size} height={size} color={color} style={style} />
 )
 
+export const PixelCard = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:entertainment-events-hobbies-card-game-card-club" width={size} height={size} color={color} style={style} />
+)
+
 export const PixelCoin = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <Icon icon="streamline-pixel:business-money-coin-currency" width={size} height={size} color={color} style={style} />
 )
