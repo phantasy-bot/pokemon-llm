@@ -3,9 +3,19 @@ import sys
 import struct
 import time
 import logging
-from pyAIAgent.game.graphics import dump_minimal_map, dump_minimap_map_array
+
+try:
+    from pyAIAgent.game.graphics import dump_minimal_map, dump_minimap_map_array
+except ImportError:
+    dump_minimal_map = None
+    dump_minimap_map_array = None
+
+try:
+    from pyAIAgent.utils.image_utils import capture
+except ImportError:
+    capture = None
+
 from pyAIAgent.utils.socket_utils import readrange, send_command, _flush_socket
-from pyAIAgent.utils.image_utils import capture
 from pyAIAgent.game.data import (
     get_species_map,
     get_location_name,
@@ -416,9 +426,10 @@ def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
         # Preset menu: menu_item_count is 4 or 5 (NAME header + NEW NAME + presets)
         # Keyboard: menu_item_count is exactly 7 (representing keyboard rows)
 
-        # Check for PRESET MENU first (4-5 items, cursor_y < 3)
+        # Check for PRESET MENU first (4-5 items)
+        # Relaxed cursor_y check to catch menus positioned lower on screen
         # last_item=3 means 4 items (IDs 0-3), last_item=4 means 5 items (IDs 0-4)
-        is_preset_menu = (3 <= last_item <= 5) and cursor_y < 3
+        is_preset_menu = (3 <= last_item <= 5) and cursor_y < 12
 
         if is_preset_menu:
             # Preset name selection menu detected
