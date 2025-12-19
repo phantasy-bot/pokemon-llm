@@ -42,11 +42,11 @@ export function Collection() {
       name: 'LASS (BASE SET)',
       rarity: 'common',
       description: (
-        <>
-          <p>The original and most well-known version (75/102).</p>
-          <p style={{ marginTop: '8px' }}><strong>1st Edition:</strong> From the very first print run, featuring a specific "1st Edition" stamp.</p>
-          <p style={{ marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
-        </>
+        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+          <p style={{ fontSize: '11px', margin: 0 }}>The original and most well-known version (75/102).</p>
+          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>1st Edition:</strong> From the very first print run, featuring a specific "1st Edition" stamp.</p>
+          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Shadowless:</strong> Lacks the drop shadow on the right side of the illustration box. The copyright font is different from the unlimited version.</p>
+        </div>
       ),
       image: '/cards/lass-base-set-bs-75.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
@@ -55,10 +55,10 @@ export function Collection() {
       name: 'LASS (BASE SET - UNLIMITED)',
       rarity: 'common',
       description: (
-        <>
-          <p>The most common version of the original card.</p>
-          <p style={{ marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
-        </>
+        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+          <p style={{ fontSize: '11px', margin: 0 }}>The most common version of the original card.</p>
+          <p style={{ fontSize: '11px', marginTop: '8px' }}><strong>Unlimited:</strong> Features the standard drop shadow on the artwork box and is part of the widespread print runs.</p>
+        </div>
       ),
       image: '/cards/lass-base-set-bs-unlimited-75.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
@@ -67,10 +67,10 @@ export function Collection() {
       name: 'LASS (BASE SET 2)',
       rarity: 'common',
       description: (
-        <>
-          <p>A later reprint compiling cards from Base Set and Jungle (104/130).</p>
-          <p style={{ marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
-        </>
+        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+          <p style={{ fontSize: '11px', margin: 0 }}>A later reprint compiling cards from Base Set and Jungle (104/130).</p>
+          <p style={{ fontSize: '11px', marginTop: '8px' }}>Distinguished by the "2" Pokéball symbol on the right side.</p>
+        </div>
       ),
       image: '/cards/lass-base-set-2-b2-104.jpg',
       dataAttributes: { 'data-supertype': 'trainer' }
@@ -79,15 +79,12 @@ export function Collection() {
 
   return (
     <div className="persona-layout">
-        {/* LEFT COLUMN: Collection Goal (Sticky) */}
+        {/* LEFT COLUMN: Collection Goal + Cards */}
         <div className="persona-cards-column">
-          <div className="persona-cards-desktop" style={{ position: 'sticky', top: '20px' }}>
+          <div className="persona-cards-desktop">
             {/* Collection Goal Card - List Style */}
             <div className="info-card info-card--dotted">
-              <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
-                <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>COLLECTION GOAL</h4>
-              </div>
-
+              {/* Header removed as requested */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Base Set 1: 1st Edition */}
                 <div style={{ 
@@ -192,52 +189,51 @@ export function Collection() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* MIDDLE COLUMN: Cards List */}
-        <div style={{ 
-          flex: 1.5,
-          display: 'flex', 
-          flexDirection: 'column',
-          gap: '32px',
-          padding: '0 20px',
-          paddingBottom: '40px'
-        }}>
-            {cards.map((card, idx) => (
-              <div key={idx} style={{ 
-                display: 'flex', 
-                alignItems: 'flex-start',
-                gap: '24px'
-              }}>
-                {/* Card container */}
-                <div style={{ flexShrink: 0 }}>
-                  <HoloCard cardType={card} isActive={true} />
-                </div>
-                
-                {/* Text content */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px' }}>
-                  <span style={{ 
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 'bold',
-                    fontSize: '14px', /* Reduced size */
-                    color: 'var(--text-primary)',
-                    letterSpacing: '0px'
-                  }}>
-                    {card.name}
-                  </span>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px', /* Reduced size */
-                    color: 'var(--text-secondary)',
-                    maxWidth: '220px',
-                    lineHeight: '1.5'
-                  }}>
-                    {card.description}
-                  </div>
-                </div>
-              </div>
-            ))}
+            {/* Cards Grid - Horizontal Layout */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              gap: '32px', 
+              marginBottom: '40px',
+              marginTop: '12px'
+            }}>
+               {cards.map((card, idx) => (
+                 <div key={idx} style={{ 
+                   display: 'flex', 
+                   alignItems: 'flex-start',
+                   gap: '24px'
+                 }}>
+                   {/* Card container */}
+                   <div style={{ flexShrink: 0 }}>
+                     <HoloCard cardType={card} isActive={true} />
+                   </div>
+                   
+                   {/* Text content */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px' }}>
+                     <span style={{ 
+                       fontFamily: 'var(--font-mono)',
+                       fontWeight: 'bold',
+                       fontSize: '14px',
+                       color: 'var(--text-primary)',
+                       letterSpacing: '0px'
+                     }}>
+                       {card.name}
+                     </span>
+                     <div style={{
+                       fontFamily: 'var(--font-mono)',
+                       fontSize: '11px',
+                       color: 'var(--text-secondary)',
+                       maxWidth: '220px',
+                       lineHeight: '1.5'
+                     }}>
+                       {card.description}
+                     </div>
+                   </div>
+                 </div>
+               ))}
+            </div>
+          </div>
         </div>
 
         {/* RIGHT COLUMN: Buttons */}
@@ -395,6 +391,27 @@ export function Collection() {
           </a>
         </div>
       </div>
+
+       {/* MIDDLE COLUMN - Character with Holographic Effect (Fixed Bottom) */}
+       <div className="holographic-afterimage persona-holographic">
+        {/* Trail ghosts */}
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        
+        {/* Stationary ghosts */}
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        
+        {/* Main character */}
+        <img src="/lass/lass-tokenomics.png" alt="Lass" className="main-character" />
+       </div>
 
     </div>
   )
