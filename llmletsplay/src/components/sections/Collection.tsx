@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { HoloCard } from '../HoloCard'
-import { PixelExternalLink, PixelStar, PixelCard } from '../icons/PixelIcons'
+import { PixelExternalLink, PixelCard } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -79,8 +79,9 @@ export function Collection() {
 
   return (
     <div className="persona-layout">
+        {/* LEFT COLUMN: Collection Goal (Sticky) */}
         <div className="persona-cards-column">
-          <div className="persona-cards-desktop">
+          <div className="persona-cards-desktop" style={{ position: 'sticky', top: '20px' }}>
             {/* Collection Goal Card - List Style */}
             <div className="info-card info-card--dotted">
               <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
@@ -96,7 +97,7 @@ export function Collection() {
                   borderBottom: '1px solid rgba(0,0,0,0.05)',
                   paddingBottom: '16px'
                 }}>
-                  <div style={{ color: 'var(--text-primary)' }}><PixelStar size={40} /></div>
+                  <div style={{ color: 'var(--text-primary)' }}><PixelCard size={40} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', letterSpacing: '2px' }}>BASE SET 1</div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '3px' }}>1ST EDITION</div>
@@ -191,56 +192,55 @@ export function Collection() {
                 </div>
               </div>
             </div>
-
-            {/* Cards Grid - Horizontal Layout */}
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              gap: '32px', 
-              marginBottom: '40px'
-            }}>
-               {cards.map((card, idx) => (
-                 <div key={idx} style={{ 
-                   display: 'flex', 
-                   alignItems: 'flex-start', /* Aligned top as requested */
-                   gap: '24px',
-                   /* Removed background as requested */
-                   /* padding: '16px', */
-                   /* borderRadius: '16px' */
-                 }}>
-                   {/* Card container - preserve exact dimensions for holo effect */}
-                   <div style={{ flexShrink: 0 }}>
-                     <HoloCard cardType={card} isActive={true} />
-                   </div>
-                   
-                   {/* Text content - adjusted top via flex-start */}
-                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '12px' }}>
-                     <span style={{ 
-                       fontFamily: 'var(--font-mono)', /* Bold monospace as requested */
-                       fontWeight: 'bold',
-                       fontSize: '16px',
-                       color: 'var(--text-primary)',
-                       letterSpacing: '0px'
-                     }}>
-                       {card.name}
-                     </span>
-                     <div style={{
-                       fontFamily: 'var(--font-mono)',
-                       fontSize: '12px',
-                       color: 'var(--text-secondary)',
-                       maxWidth: '220px',
-                       lineHeight: '1.5'
-                     }}>
-                       {card.description}
-                     </div>
-                   </div>
-                 </div>
-               ))}
-            </div>
           </div>
         </div>
 
-        {/* Right Column Layout */}
+        {/* MIDDLE COLUMN: Cards List */}
+        <div style={{ 
+          flex: 1.5,
+          display: 'flex', 
+          flexDirection: 'column',
+          gap: '32px',
+          padding: '0 20px',
+          paddingBottom: '40px'
+        }}>
+            {cards.map((card, idx) => (
+              <div key={idx} style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start',
+                gap: '24px'
+              }}>
+                {/* Card container */}
+                <div style={{ flexShrink: 0 }}>
+                  <HoloCard cardType={card} isActive={true} />
+                </div>
+                
+                {/* Text content */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px' }}>
+                  <span style={{ 
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 'bold',
+                    fontSize: '14px', /* Reduced size */
+                    color: 'var(--text-primary)',
+                    letterSpacing: '0px'
+                  }}>
+                    {card.name}
+                  </span>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px', /* Reduced size */
+                    color: 'var(--text-secondary)',
+                    maxWidth: '220px',
+                    lineHeight: '1.5'
+                  }}>
+                    {card.description}
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* RIGHT COLUMN: Buttons */}
         <div className="persona-right-column">
         {/* Phantasy Agent Framework - links to phantasy.bot */}
         <a 
@@ -395,27 +395,6 @@ export function Collection() {
           </a>
         </div>
       </div>
-
-       {/* MIDDLE COLUMN - Character with Holographic Effect (Fixed Bottom) */}
-       <div className="holographic-afterimage persona-holographic">
-        {/* Trail ghosts */}
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
-        
-        {/* Stationary ghosts */}
-        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
-        <img src="/lass/lass-tokenomics.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
-        
-        {/* Main character */}
-        <img src="/lass/lass-tokenomics.png" alt="Lass" className="main-character" />
-       </div>
 
     </div>
   )
