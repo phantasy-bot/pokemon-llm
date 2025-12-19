@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelHeart, PixelLightning, PixelSettings, PixelStar, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelHeart, PixelLightning, PixelSettings, PixelStar, PixelExternalLink, PixelEye } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -91,39 +91,7 @@ export function About() {
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelSettings size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelStar size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Memory System</strong> tracks navigation, goals, and story events.
-                </div>
-              </div>
-            </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelSettings size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelStar size={24} /></div>
-                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
-                  <strong>Memory System</strong> tracks navigation, goals, and story events.
-                </div>
-              </div>
-            </div>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelSettings size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelEye size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
                 </div>
