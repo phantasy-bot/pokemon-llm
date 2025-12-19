@@ -107,7 +107,7 @@ export function Collection() {
                     color: 'rgba(255,255,255,0.7)',
                     fontWeight: 'bold'
                   }}>
-                    0 / 1
+                    ? / ????
                   </div>
                 </div>
 
@@ -130,7 +130,7 @@ export function Collection() {
                     color: 'rgba(255,255,255,0.7)',
                     fontWeight: 'bold'
                   }}>
-                    0 / 1
+                    ? / ????
                   </div>
                 </div>
 
@@ -153,7 +153,7 @@ export function Collection() {
                     color: 'rgba(255,255,255,0.7)',
                     fontWeight: 'bold'
                   }}>
-                    0 / 1
+                    ? / ????
                   </div>
                 </div>
 
@@ -174,8 +174,20 @@ export function Collection() {
                     color: 'rgba(255,255,255,0.7)',
                     fontWeight: 'bold'
                   }}>
-                    0 / 1
+                    ? / ????
                   </div>
+                </div>
+                
+                {/* Condition Note */}
+                <div style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  fontStyle: 'italic',
+                  marginTop: '8px',
+                  textAlign: 'center'
+                }}>
+                  * We are only looking for near-mints+ and graded cards.
                 </div>
               </div>
             </div>
@@ -206,7 +218,7 @@ export function Collection() {
                      <span style={{ 
                        fontFamily: 'var(--font-mono)', /* Bold monospace as requested */
                        fontWeight: 'bold',
-                       fontSize: '20px',
+                       fontSize: '16px',
                        color: 'var(--text-primary)',
                        letterSpacing: '0px'
                      }}>
@@ -214,7 +226,7 @@ export function Collection() {
                      </span>
                      <div style={{
                        fontFamily: 'var(--font-mono)',
-                       fontSize: '14px',
+                       fontSize: '12px',
                        color: 'var(--text-secondary)',
                        maxWidth: '220px',
                        lineHeight: '1.5'
