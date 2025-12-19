@@ -1,190 +1,294 @@
-import { PixelCode, PixelPlay, PixelChip } from '../icons/PixelIcons'
+import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import { PixelChip, PixelEye, PixelBrain, PixelHierarchy, PixelSpeaker, PixelExternalLink } from '../icons/PixelIcons'
+
+const TOKEN_ADDRESS = '0x000...000'
+const COPY_RATE_LIMIT_MS = 500
+
+interface FloatingText {
+  id: number
+  x: number
+}
 
 export function Architecture() {
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const lastCopyTime = useRef(0)
+  const nextId = useRef(0)
+
+  const handleCopy = () => {
+    const now = Date.now()
+    if (now - lastCopyTime.current < COPY_RATE_LIMIT_MS) {
+      return // Rate limited
+    }
+    lastCopyTime.current = now
+
+    navigator.clipboard.writeText(TOKEN_ADDRESS)
+    
+    // Add a new floating text with random x offset
+    const newFloat: FloatingText = {
+      id: nextId.current++,
+      x: Math.random() * 60 - 30 // Random offset between -30px and 30px
+    }
+    setFloatingTexts(prev => [...prev, newFloat])
+    
+    // Remove after animation completes (1s)
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(f => f.id !== newFloat.id))
+    }, 1000)
+  }
+
   return (
-    <div className="section clearfix">
-      <div className="about-intro">
-        <div className="about-text-content">
-          <p>
-            The Pokemon LLM harness is a multi-layered system connecting a Game Boy 
-            emulator to modern AI models. Here's how the pieces fit together:
-          </p>
+    <div className="persona-layout">
+      {/* LEFT COLUMN - Architecture Info */}
+      <div className="persona-cards-column">
+        <div className="persona-cards-desktop">
           
+          {/* Card 1: System Overview */}
           <div className="info-card">
-            <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <PixelChip size={20} color="var(--accent-primary)" />
-              <span className="badge">SYSTEM</span>
-              <h4>The Engine</h4>
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>SYSTEM ARCHITECTURE</h4>
             </div>
-            <p>
-              React frontend, Python backend, mGBA emulator, and Lua bridge working in unison 
-              to enable autonomous gameplay.
-            </p>
+            
+            <div style={{ 
+              fontFamily: 'var(--font-mono)',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: 'var(--text-primary)',
+              textAlign: 'left',
+              marginBottom: '16px'
+            }}>
+              <p style={{ marginBottom: '16px' }}>
+                The agent operates on a continuous perception-action loop. It observes the game state through visual and memory inputs, reasons about the best next move, and executes precise controller inputs.
+              </p>
+              <p>
+                This closed-loop system allows Lass to navigate complex environments, battle trainers, and progress through the story autonomously.
+              </p>
+            </div>
           </div>
+
+          {/* Card 2: Core Stack */}
+          <div className="info-card info-card--dotted">
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>CORE STACK</h4>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelBrain size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Cognition:</strong> GLM-4 (Strategy & Reasoning)
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelEye size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Vision:</strong> GLM-4V (Visual Analysis)
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelChip size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Environment:</strong> mGBA + Lua Interface
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelHierarchy size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Memory:</strong> Semantic Vector Store
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Voice:</strong> Chatterbox TTS
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <img 
-          src="/lass/lass-default.png" 
-          alt="Lass" 
-          className="lass-intro-image"
-        />
       </div>
 
-      <div className="diagram">
-        <pre>{`
-┌──────────────────────────────────────────────────────────────────┐
-│                        Pokemon LLM Agent                          │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌────────────┐
-│  │   mGBA      │───▶│  Lua Script │───▶│   Python    │───▶│  React UI  │
-│  │  Emulator   │◀───│  (Socket)   │◀───│   Agent     │◀───│   (WS)     │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └────────────┘
-│        │                  │                  │                  │
-│        ▼                  ▼                  ▼                  ▼
-│   ROM Execution      RAM Reading        LLM Analysis      Visualization
-│   Button Input       Screenshots        Memory Store       Game Feed
-│                      Minimap Gen         TTS Audio        Analysis Log
-│                                                                   │
-└──────────────────────────────────────────────────────────────────┘
-        `}</pre>
+      {/* MIDDLE COLUMN - Character with Holographic Effect */}
+      <div className="holographic-afterimage persona-holographic">
+        {/* Trail ghosts */}
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-1" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-2" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-3" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-4" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-5" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-6" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-7" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="trail-ghost trail-8" aria-hidden="true" />
+        
+        {/* Stationary ghosts */}
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="ghost-layer ghost-1" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="ghost-layer ghost-2" aria-hidden="true" />
+        <img src="/lass/lass-glasses-thinking.png" alt="" className="ghost-layer ghost-3" aria-hidden="true" />
+        
+        {/* Main character */}
+        <img src="/lass/lass-glasses-thinking.png" alt="Lass Thinking" className="main-character" />
       </div>
 
-      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <PixelPlay size={20} color="var(--accent-primary)" />
-        Data Flow
-      </h3>
+      {/* RIGHT COLUMN - Sponsor Image + Buttons */}
+      <div className="persona-right-column">
+        {/* Phantasy Agent Framework - links to phantasy.bot */}
+        <a 
+          href="https://phantasy.bot" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="persona-sponsor-link"
+          style={{ textDecoration: 'none' }}
+        >
+          <img 
+            src="/sponsors/phantasy.png" 
+            alt="Phantasy" 
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              borderRadius: '8px'
+            }}
+          />
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'rgba(0,0,0,0.4)',
+            textAlign: 'center',
+            marginTop: '6px'
+          }}>
+            agent framework
+          </div>
+        </a>
+        
+        {/* Spacer to push buttons to bottom */}
+        <div style={{ flex: 1 }} />
+        
+        {/* Button stack at bottom */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          overflow: 'visible'
+        }}>
+          {/* CA Widget */}
+          <div 
+            onClick={handleCopy}
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              padding: '10px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--text-primary)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              position: 'relative',
+              boxShadow: '4px 4px 0px rgba(0,0,0,0.2)'
+            }}
+          >
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: 'var(--text-primary)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              CA: {TOKEN_ADDRESS}
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px'
+            }}>
+              <PixelExternalLink size={16} />
+            </div>
+            
+            {/* Floating +1s for click feedback */}
+            {floatingTexts.map(float => (
+              <div
+                key={float.id}
+                className="pixel-float-text"
+                style={{
+                  left: `calc(50% + ${float.x}px)`
+                }}
+              >
+                COPIED!
+              </div>
+            ))}
+          </div>
 
-      <div className="info-card">
-        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="badge">1</span>
-          <h4>Game State Collection</h4>
+          <div style={{
+            width: '95%',
+            height: '2px', // Height of the dots
+            margin: '4px auto', // Centered with margin
+            background: 'radial-gradient(circle, var(--text-primary) 1px, transparent 1px)',
+            backgroundSize: '6px 2px', // Spacing of dots
+            opacity: 0.3
+          }} />
+
+          <Link 
+            to="/lass" 
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'var(--cream)',
+              border: '2px solid var(--accent-primary)',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'var(--text-primary)',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            READ DOCS
+          </Link>
+          
+          <a
+            href="https://twitch.tv/lassplayspokemon"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pushdown-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: '#9146FF',
+              border: '2px solid #9146FF',
+              borderRadius: '10px',
+              textDecoration: 'none',
+              color: 'white',
+              fontWeight: 'bold',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '1px',
+              boxShadow: '3px 3px 0 rgba(0,0,0,0.12)',
+              fontSize: '12px'
+            }}
+          >
+            WATCH STREAM
+          </a>
         </div>
-        <p>
-          <code>mGBA</code> → <code>socketserver.lua</code> → <code>socket_utils.py</code> → <code>state.py</code>
-        </p>
-        <p>The Lua script reads RAM addresses and captures screenshots, sending them to Python via socket.</p>
       </div>
-
-      <div className="info-card">
-        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="badge">2</span>
-          <h4>LLM Processing</h4>
-        </div>
-        <p>
-          <code>Game State</code> → <code>Vision Analysis</code> → <code>System Prompt</code> → <code>LLM API</code>
-        </p>
-        <p>Vision model describes the screen, then main LLM analyzes state and decides actions.</p>
-      </div>
-
-      <div className="info-card">
-        <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="badge">3</span>
-          <h4>Action Execution</h4>
-        </div>
-        <p>
-          <code>Action String</code> → <code>Button Commands</code> → <code>Lua Script</code> → <code>Game Input</code>
-        </p>
-        <p>Actions like <code>R;R;R;A;</code> are parsed and sent as individual button presses.</p>
-      </div>
-
-      <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <PixelCode size={20} color="var(--accent-primary)" />
-        Core Modules
-      </h3>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Module</th>
-            <th>Responsibility</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>run.py</code></td>
-            <td>Main entry point, async orchestration</td>
-          </tr>
-          <tr>
-            <td><code>core/llmdriver.py</code></td>
-            <td>LLM interaction loop, action execution</td>
-          </tr>
-          <tr>
-            <td><code>core/prompts.py</code></td>
-            <td>System prompts, 12-section format</td>
-          </tr>
-          <tr>
-            <td><code>core/battle_strategy.py</code></td>
-            <td>Battle decision logic, type effectiveness</td>
-          </tr>
-          <tr>
-            <td><code>pyAIAgent/game/state.py</code></td>
-            <td>RAM reading, game state parsing</td>
-          </tr>
-          <tr>
-            <td><code>trackers/memory_storage.py</code></td>
-            <td>Persistent memory, quest tracking</td>
-          </tr>
-          <tr>
-            <td><code>services/comfyui_tts_service.py</code></td>
-            <td>Text-to-speech generation</td>
-          </tr>
-          <tr>
-            <td><code>services/websocket_service.py</code></td>
-            <td>Real-time UI updates</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3 className="section-title">Communication Protocols</h3>
-
-      <h4 style={{ marginTop: '16px', marginBottom: '8px' }}>Socket Commands (Python ↔ mGBA)</h4>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Command</th>
-            <th>Direction</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>SCREENSHOT</code></td>
-            <td>Python → Lua</td>
-            <td>Capture current frame</td>
-          </tr>
-          <tr>
-            <td><code>MAP</code></td>
-            <td>Python → Lua</td>
-            <td>Get minimap data</td>
-          </tr>
-          <tr>
-            <td><code>LOCATION</code></td>
-            <td>Python → Lua</td>
-            <td>Get player position</td>
-          </tr>
-          <tr>
-            <td><code>PARTY</code></td>
-            <td>Python → Lua</td>
-            <td>Get party data</td>
-          </tr>
-          <tr>
-            <td><code>BUTTON:{`{key}`}</code></td>
-            <td>Python → Lua</td>
-            <td>Send button press</td>
-          </tr>
-          <tr>
-            <td><code>SAVESTATE</code></td>
-            <td>Python → Lua</td>
-            <td>Save game state</td>
-          </tr>
-          <tr>
-            <td><code>LOADSTATE</code></td>
-            <td>Python → Lua</td>
-            <td>Load game state</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   )
 }

@@ -58,10 +58,10 @@ export function About() {
               marginBottom: '16px'
             }}>
               <p style={{ marginBottom: '16px' }}>
-                Lass is a friendly, determined Pokemon trainer who provides live commentary during the stream.
+                Lass is a bubbly, determined Pokemon trainer who loves sharing her journey! ♡ She provides live commentary and reacts to every twist and turn.
               </p>
               <p>
-                She's learning as she goes, celebrating victories, and mastering the world of Pokemon through trial and error!
+                She's doing her very best to learn as she goes, celebrating every victory and mastering the world of Pokemon through trial and error!
               </p>
             </div>
           </div>
