@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelHierarchy, PixelGrid, PixelChip, PixelSearch, PixelList, PixelUser, PixelCheck, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelMap, PixelTarget, PixelChip, PixelTerminal, PixelPerson, PixelExternalLink, PixelCheck } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -51,14 +51,14 @@ export function MemoryMap() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelList size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTerminal size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Event Logging:</strong> Recording significant dialogue and story beats
                 </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelUser size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelPerson size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>NPC Tracking:</strong> Remembering characters and their locations
                 </div>
@@ -81,7 +81,7 @@ export function MemoryMap() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelGrid size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMap size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Dynamic Mapping:</strong> Tile-based map built in real-time
                 </div>
@@ -95,7 +95,7 @@ export function MemoryMap() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSearch size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelExternalLink size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Pathfinding:</strong> A* navigation graph
                 </div>

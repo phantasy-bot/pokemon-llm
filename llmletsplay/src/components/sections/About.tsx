@@ -83,22 +83,22 @@ export function About() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelLightning size={24} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelLightning size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>The Harness</strong> connects LLM brain to mGBA emulator via Lua scripting.
                 </div>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSettings size={24} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelSettings size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Vision Analysis</strong> allows the AI to "see" the game screen in real-time.
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelStar size={24} /></div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ color: 'var(--accent-primary-bright)', marginRight: '12px' }}><PixelStar size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Memory System</strong> tracks navigation, goals, and story events.
                 </div>

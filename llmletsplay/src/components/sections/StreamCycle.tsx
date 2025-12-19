@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelTarget, PixelExternalLink } from '../icons/PixelIcons'
+import { PixelLoadingCircle, PixelEye, PixelBrain, PixelSpeaker, PixelAttack, PixelExternalLink, PixelMessage, PixelTerminal } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
 const COPY_RATE_LIMIT_MS = 500
@@ -88,7 +88,7 @@ export function StreamCycle() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTarget size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelAttack size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Action:</strong> Executing precise button inputs
                 </div>
@@ -98,6 +98,29 @@ export function StreamCycle() {
                 <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Reaction:</strong> Generating speech & commentary
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Commentary Types */}
+          <div className="info-card info-card--dotted">
+            <div className="info-card-header" style={{ marginBottom: '24px', textAlign: 'center' }}>
+              <h4 style={{ fontSize: '28px', letterSpacing: '1px' }}>COMMENTARY TYPES</h4>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelSpeaker size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Cycle Commentary:</strong> Reacts to game events in real-time (Priority 100)
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelMessage size={24} /></div>
+                <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
+                  <strong>Chat Interaction:</strong> Responds to Twitch chat asynchronously (Priority 50)
                 </div>
               </div>
             </div>

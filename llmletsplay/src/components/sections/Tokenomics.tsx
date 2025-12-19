@@ -73,12 +73,24 @@ export function Tokenomics() {
       </div>
 
       {/* Trade Buttons */}
+      <div style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        color: 'var(--text-secondary)',
+        letterSpacing: '2px',
+        textAlign: 'center',
+        marginBottom: '12px',
+        borderTop: '1px dashed rgba(255,255,255,0.1)',
+        paddingTop: '20px'
+      }}>
+        SWAP ON
+      </div>
+
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(3, 1fr)', 
-        gap: '8px', 
-        borderTop: '1px dashed rgba(255,255,255,0.1)',
-        paddingTop: '20px'
+        gap: '8px'
       }}>
         <a 
           href="#" 
@@ -87,13 +99,13 @@ export function Tokenomics() {
           className="pushdown-button"
           style={{
             padding: '8px',
-            background: 'var(--cream)',
-            border: '2px solid var(--accent-primary)',
+            background: '#131825',
+            border: '2px solid #5F45FF',
             borderRadius: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
             fontFamily: 'var(--font-display)',
-            color: 'var(--text-primary)',
+            color: '#00C2FF',
             textAlign: 'center',
             textDecoration: 'none',
             display: 'flex',
@@ -111,8 +123,8 @@ export function Tokenomics() {
           className="pushdown-button"
           style={{
             padding: '8px',
-            background: '#9146FF',
-            border: '2px solid #9146FF',
+            background: '#10B981',
+            border: '2px solid #059669',
             borderRadius: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -135,8 +147,8 @@ export function Tokenomics() {
           className="pushdown-button"
           style={{
             padding: '8px',
-            background: 'var(--dark)',
-            border: '2px solid var(--text-secondary)',
+            background: '#282C34',
+            border: '2px solid #6E7381',
             borderRadius: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -359,7 +371,7 @@ export function Tokenomics() {
             }}
           >
             READ DOCS
-          </a>
+          </Link>
           
           <a
             href="https://twitch.tv/lassplayspokemon"

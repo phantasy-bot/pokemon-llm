@@ -156,6 +156,10 @@ export const PixelSearch = ({ size = 24, color = 'currentColor', style }: IconPr
   <Icon icon="streamline-pixel:interface-search-magnifying-glass" width={size} height={size} color={color} style={style} />
 )
 
+export const PixelAttack = ({ size = 24, color = 'currentColor', style }: IconProps) => (
+  <Icon icon="streamline-pixel:weather-meteor" width={size} height={size} color={color} style={style} />
+)
+
 export const PixelCard = ({ size = 24, color = 'currentColor', style }: IconProps) => (
   <Icon icon="streamline-pixel:entertainment-events-hobbies-card-game-card-club" width={size} height={size} color={color} style={style} />
 )
