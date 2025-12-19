@@ -96,7 +96,7 @@ export function Tokenomics() {
           href="#" 
           target="_blank"
           rel="noopener noreferrer"
-          className="pushdown-button"
+          className="pushdown-button disabled"
           style={{
             padding: '8px',
             background: '#131825',
@@ -111,7 +111,10 @@ export function Tokenomics() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
           }}
         >
           RAYDIUM
@@ -120,7 +123,7 @@ export function Tokenomics() {
           href={`https://pump.fun/${TOKEN_ADDRESS}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="pushdown-button"
+          className="pushdown-button disabled"
           style={{
             padding: '8px',
             background: '#10B981',
@@ -135,7 +138,10 @@ export function Tokenomics() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
           }}
         >
           PUMP.FUN
@@ -144,7 +150,7 @@ export function Tokenomics() {
           href="#" 
           target="_blank"
           rel="noopener noreferrer"
-          className="pushdown-button"
+          className="pushdown-button disabled"
           style={{
             padding: '8px',
             background: '#282C34',
@@ -159,7 +165,98 @@ export function Tokenomics() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '2px 2px 0 rgba(0,0,0,0.1)'
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
+          }}
+        >
+          DEXSCREENER
+        </a>
+      </div>
+
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '8px'
+      }}>
+        <a 
+          href="#" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button disabled"
+          style={{
+            padding: '8px',
+            background: '#131825',
+            border: '2px solid #5F45FF',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: '#00C2FF',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
+          }}
+        >
+          RAYDIUM
+        </a>
+        <a 
+          href={`https://pump.fun/${TOKEN_ADDRESS}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button disabled"
+          style={{
+            padding: '8px',
+            background: '#10B981',
+            border: '2px solid #059669',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: 'white',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
+          }}
+        >
+          PUMP.FUN
+        </a>
+        <a 
+          href="#" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pushdown-button disabled"
+          style={{
+            padding: '8px',
+            background: '#282C34',
+            border: '2px solid #6E7381',
+            borderRadius: '8px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'var(--font-display)',
+            color: 'white',
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'none',
+            opacity: 0.5,
+            cursor: 'not-allowed',
+            pointerEvents: 'none'
           }}
         >
           DEXSCREENER

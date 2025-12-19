@@ -65,7 +65,7 @@ export function MemoryMap() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelCheck size={24} /></div>
+                <div style={{ color: 'var(--accent-primary-bright)' }}><PixelTarget size={24} /></div>
                 <div style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                   <strong>Quest Logs:</strong> Tracking current objectives and progress
                 </div>
