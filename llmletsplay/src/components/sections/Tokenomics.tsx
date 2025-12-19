@@ -446,8 +446,8 @@ export function Tokenomics() {
             opacity: 0.3
           }} />
 
-          <a 
-            href="#" 
+          <Link 
+            to="/lass" 
             className="pushdown-button"
             style={{
               display: 'flex',
