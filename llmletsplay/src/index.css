@@ -2012,14 +2012,6 @@ li::marker {
     max-height: 450px;
     pointer-events: none; /* Ensure it doesn't block clicks */
   }
-}
-
-/* Mobile - smaller adjustments */
-@media (max-width: 768px) {
-  .persona-holographic {
-    height: 40vh;
-    max-height: 350px;
-  }
   
   /* Card navigation - fixed bottom left with gap between buttons */
   .persona-card-nav {
@@ -2027,7 +2019,7 @@ li::marker {
     bottom: 20px;
     left: 20px;
     z-index: 9999; /* Max z-index to ensure clickability */
-    background: transparent; /* Removed background */
+    background: transparent;
     border-radius: 8px;
     padding: 8px;
     display: flex;
@@ -2035,7 +2027,7 @@ li::marker {
   }
   
   .persona-card-nav-btn {
-    background: transparent; /* Removed background */
+    background: transparent;
     padding: 0;
     width: 48px;
     height: 48px;
@@ -2045,21 +2037,37 @@ li::marker {
     pointer-events: auto;
   }
   
-  /* Right column - visible on mobile, just buttons */
+  /* Right column - fixed bottom right with sponsor + buttons stacked */
   .persona-right-column {
     display: flex;
+    flex-direction: column;
     position: fixed;
     bottom: 0;
     top: auto;
     right: 0;
-    width: 200px;
+    width: 220px;
     height: auto;
     padding: 16px;
     z-index: 60;
   }
   
-  .persona-sponsor {
-    display: none; /* Hide sponsor on mobile */
+  /* Sponsor moves to bottom, stacked above CA widget */
+  .persona-sponsor-link {
+    order: 0;
+    margin-bottom: 10px;
+  }
+  
+  .persona-sponsor-link img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Mobile - smaller character */
+@media (max-width: 768px) {
+  .persona-holographic {
+    height: 40vh;
+    max-height: 350px;
   }
 }
 
