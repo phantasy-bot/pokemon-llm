@@ -308,18 +308,6 @@ export function Collection() {
                 &#9654;
               </button>
             </div>
-
-            {/* Condition Note - Mobile */}
-            <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              color: 'var(--text-secondary)',
-              fontStyle: 'italic',
-              marginTop: '16px',
-              textAlign: 'center'
-            }}>
-              * We are only looking for near-mints+ and graded cards.
-            </div>
           </div>
         </div>
 

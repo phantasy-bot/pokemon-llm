@@ -807,6 +807,21 @@ li::marker {
 }
 
 /* ============================================
+   FLOAT UP ANIMATION - "copied" text feedback
+   ============================================ */
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-40px);
+  }
+}
+
+/* ============================================
    CRT STATIC EFFECT (Optimized for memory)
    ============================================ */
 
@@ -1710,7 +1725,7 @@ li::marker {
 }
 
 .persona-sponsor-link img {
-  max-width: 120px !important;
+  max-width: 80px !important;
   width: 100%;
   height: auto;
 }
@@ -1913,6 +1928,7 @@ li::marker {
   /* Increase left padding significantly "even further" to narrow content area from left */
   padding: 0 16px 32px 40px;
   z-index: 50;
+  overflow: visible;
 }
 
 /* Sponsor image in right column */
