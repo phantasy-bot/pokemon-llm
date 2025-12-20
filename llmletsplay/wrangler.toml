@@ -1,0 +1,14 @@
+# Cloudflare Workers configuration for llmletsplay
+# Static site hosting with Workers Assets
+
+name = "llmletsplay"
+compatibility_date = "2024-12-19"
+
+# Enable workers.dev subdomain
+workers_dev = true
+
+# Static assets configuration
+[assets]
+directory = "./dist"
+# SPA mode: serve index.html for all 404s (client-side routing)
+not_found_handling = "single-page-application"
