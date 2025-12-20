@@ -1960,20 +1960,9 @@ li::marker {
   color: var(--accent-primary);
 }
 
-/* Tablet - adjust character position */
+/* Tablet & Mobile - Full carousel mode */
 @media (max-width: 1024px) {
-  .persona-holographic {
-    left: calc(50% + 30px);
-  }
-  
-  .persona-cards-column {
-    flex: 0 0 380px;
-  }
-}
-
-/* Mobile - Full carousel mode */
-@media (max-width: 768px) {
-  /* Remove folder content padding on mobile to allow full width without hacks */
+  /* Remove folder content padding to allow full width without hacks */
   .folder-content {
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -1994,7 +1983,7 @@ li::marker {
     margin-top: 0;
   }
   
-  /* Hide desktop cards, show mobile carousel */
+  /* Hide desktop cards, show carousel on tablet & mobile */
   .persona-cards-desktop {
     display: none;
   }
@@ -2019,9 +2008,17 @@ li::marker {
   
   .persona-holographic {
     left: 50%;
+    height: 45vh;
+    max-height: 450px;
+    pointer-events: none; /* Ensure it doesn't block clicks */
+  }
+}
+
+/* Mobile - smaller adjustments */
+@media (max-width: 768px) {
+  .persona-holographic {
     height: 40vh;
     max-height: 350px;
-    pointer-events: none; /* Ensure it doesn't block clicks */
   }
   
   /* Card navigation - fixed bottom left with gap between buttons */
