@@ -25,6 +25,7 @@ pokemon_memories.json
 latest.png
 minimap.png
 latest_with_minimap.png
+pokemon-ui/public/minimap.png
 
 # Runtime Data Directory
 data/*.json
