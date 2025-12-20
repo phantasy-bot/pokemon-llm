@@ -72,11 +72,8 @@ export function LassSubpageLayout({ children, characterImage = '/lass/lass-defau
           rel="noopener noreferrer"
           className="persona-sponsor-link"
           style={{ 
-            width: '100%', 
-            // padding removed, handled by class
             marginBottom: '16px',
-            textDecoration: 'none',
-            display: 'block'
+            textDecoration: 'none'
           }}
         >
           <img 
