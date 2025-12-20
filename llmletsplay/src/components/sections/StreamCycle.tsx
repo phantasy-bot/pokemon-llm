@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { PixelEye, PixelBrain, PixelAttack, PixelExternalLink, PixelChatEmail, PixelThinkChat } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
-const COPY_RATE_LIMIT_MS = 500
+const COPY_RATE_LIMIT_MS = 100
 
 interface FloatingText {
   id: number

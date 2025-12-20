@@ -6,8 +6,8 @@ import { PixelExternalLink } from './icons/PixelIcons'
 // Token address - same as landing page
 const TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
 
-// Rate limit: max 5 clicks per second (200ms minimum between animations)
-const COPY_RATE_LIMIT_MS = 200
+// Rate limit: max 10 clicks per second (100ms minimum between animations)
+const COPY_RATE_LIMIT_MS = 100
 
 interface FloatingText {
   id: number

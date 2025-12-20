@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { PixelBrain, PixelEye, PixelSpeaker, PixelGenderFemale, PixelExternalLink } from '../icons/PixelIcons'
 
 const TOKEN_ADDRESS = '0x000...000'
-const COPY_RATE_LIMIT_MS = 500
+const COPY_RATE_LIMIT_MS = 100
 
 interface FloatingText {
   id: number
