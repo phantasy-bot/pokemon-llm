@@ -32,16 +32,16 @@ fi
 
 # 1. Start Frontend (in background)
 echo "🎨 Starting Pokemon UI (npm run dev)..."
-cd pokemon-ui
+cd apps/livestream
 # Quick npm install if node_modules doesn't exist
 if [ ! -d "node_modules" ]; then
     echo "   Installing npm dependencies..."
     npm install --silent
 fi
 # Run npm in background, redirecting logs to a file to keep terminal clean
-npm run dev > ../ui.log 2>&1 &
+npm run dev > ../../ui.log 2>&1 &
 NPM_PID=$!
-cd ..
+cd ../..
 echo "   PID: $NPM_PID"
 echo "   Logs: ui.log"
 

@@ -10,13 +10,13 @@ node_modules/
 tmp/
 
 # Runtime Data - Generated/Ephemeral Files
-*.db
 *.ss1
 *.sav
 *.log
 logs/
 ui.log
 snapshots/
+tts_output/
 exploration_data.json
 game_goals.json
 pokemon_memories.json
@@ -25,10 +25,11 @@ pokemon_memories.json
 latest.png
 minimap.png
 latest_with_minimap.png
-pokemon-ui/public/minimap.png
+apps/livestream/public/minimap.png
 
 # Runtime Data Directory
 data/*.json
+data/*.db
 !data/README.md
 coordinate_history.json
 
@@ -39,5 +40,6 @@ web_ui/*.png
 
 
 tts_output/*.flac
+tts_output/
 output_audio/
 

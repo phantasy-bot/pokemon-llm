@@ -70,7 +70,7 @@ Game Input
 Game State + Analysis + TTS
     ↓ (services/websocket_service.py)
 WebSocket JSON Message
-    ↓ (pokemon-ui/src/App.tsx)
+    ↓ (apps/livestream/src/App.tsx)
 React State Update
     ↓
 Component Re-render

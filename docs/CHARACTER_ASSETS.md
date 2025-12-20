@@ -8,7 +8,7 @@ The main character "Lass" is a female Pokemon trainer who reacts dynamically to 
 
 ### Asset Location
 
-All Lass assets are located in: `pokemon-ui/public/lass/`
+All Lass assets are located in: `apps/livestream/public/lass/`
 
 ### Available Poses
 
@@ -69,12 +69,12 @@ useEffect(() => {
 To add a new pose:
 
 1. Create the image following the style/resolution guidelines above
-2. Save to `pokemon-ui/public/lass/lass-{state-name}.png`
+2. Save to `apps/livestream/public/lass/lass-{state-name}.png`
 3. Update the `getAvatarImage()` function in `PokemonStreamOverlay.tsx`
 4. Add condition check based on game state
 5. Update this documentation
 
 ### Related Files
 
-- **Avatar Logic**: [PokemonStreamOverlay.tsx](../pokemon-ui/src/components/layout/PokemonStreamOverlay.tsx) - `getAvatarImage()` function
-- **Game State Types**: [gameTypes.ts](../pokemon-ui/src/types/gameTypes.ts) - `PokemonGameState` interface
+- **Avatar Logic**: [PokemonStreamOverlay.tsx](../apps/livestream/src/components/layout/PokemonStreamOverlay.tsx) - `getAvatarImage()` function
+- **Game State Types**: [gameTypes.ts](../apps/livestream/src/types/gameTypes.ts) - `PokemonGameState` interface

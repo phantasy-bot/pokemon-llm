@@ -1036,7 +1036,9 @@ def prep_llm(sock) -> dict:
                 minimap_img.save("minimap.png")
                 # Also save to UI public folder for Windows support
                 try:
-                    ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                    ui_public_path = os.path.join(
+                        "apps", "livestream", "public", "minimap.png"
+                    )
                     minimap_img.save(ui_public_path)
                 except Exception as e:
                     # Don't crash if UI path not found
@@ -1048,7 +1050,9 @@ def prep_llm(sock) -> dict:
                 default_minimap = Image.new("RGB", (160, 160), color="gray")
                 default_minimap.save("minimap.png")
                 try:
-                    ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                    ui_public_path = os.path.join(
+                        "apps", "livestream", "public", "minimap.png"
+                    )
                     default_minimap.save(ui_public_path)
                 except Exception:
                     pass
@@ -1064,7 +1068,9 @@ def prep_llm(sock) -> dict:
             default_minimap = Image.new("RGB", (160, 160), color="white")
             default_minimap.save("minimap.png")
             try:
-                ui_public_path = os.path.join("pokemon-ui", "public", "minimap.png")
+                ui_public_path = os.path.join(
+                    "apps", "livestream", "public", "minimap.png"
+                )
                 default_minimap.save(ui_public_path)
             except Exception:
                 pass

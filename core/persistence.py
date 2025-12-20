@@ -23,7 +23,7 @@ from typing import Optional, List, Dict, Any
 log = logging.getLogger("run_persistence")
 
 # Database file location
-DB_PATH = "pokemon_runs.db"
+DB_PATH = "data/pokemon_runs.db"
 
 
 @dataclass

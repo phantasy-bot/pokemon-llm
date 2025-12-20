@@ -19,7 +19,7 @@ flowchart TD
 - **Backend**: Broadcasts `sessionStartTime` (Unix ms) after intro TTS completes
 - **UI**: `SessionTimer` component displays total game time in `h:m:s` format
 - **Ticks**: Every 1 second
-- **Location**: `pokemon-ui/src/components/layout/PokemonStreamOverlay.tsx`
+- **Location**: `apps/livestream/src/components/layout/PokemonStreamOverlay.tsx`
 
 ### Cycle Timer
 
@@ -167,5 +167,5 @@ ZAI connection failed after 3 attempts: ...
 - [core/llm_controller.py](../core/llm_controller.py) - LLM calls with retry logic
 - [services/websocket_service.py](../services/websocket_service.py) - State broadcasting
 - [services/comfyui_tts_service.py](../services/comfyui_tts_service.py) - TTS with queue system
-- [pokemon-ui/src/App.tsx](../pokemon-ui/src/App.tsx) - WebSocket consumer
-- [pokemon-ui/src/components/layout/PokemonStreamOverlay.tsx](../pokemon-ui/src/components/layout/PokemonStreamOverlay.tsx) - SessionTimer, LiveCycleTimer
+- [apps/livestream/src/App.tsx](../apps/livestream/src/App.tsx) - WebSocket consumer
+- [apps/livestream/src/components/layout/PokemonStreamOverlay.tsx](../apps/livestream/src/components/layout/PokemonStreamOverlay.tsx) - SessionTimer, LiveCycleTimer

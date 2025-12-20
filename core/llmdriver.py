@@ -2984,24 +2984,22 @@ Your intro message:"""
             # and prevent accidental skipping of the name entry screen.
             # Heuristic: Party 0 AND not in Players House 2F (0x26 = 38).
             if action and not forced_auto_action:
-                    _map_id = current_mGBA_state.get("map_id", 0)
-                    _party_size = current_mGBA_state.get("party_size", 0)
+                _map_id = current_mGBA_state.get("map_id", 0)
+                _party_size = current_mGBA_state.get("party_size", 0)
 
-                    if _party_size == 0 and _map_id != 38:  # 38 is PLAYERS_HOUSE_2F
-                        # Check if action is purely 'A' presses (e.g. "A;", "A;A;", "A;A;A;")
-                        _commands = [cmd for cmd in action.split(";") if cmd.strip()]
-                        if all(cmd == "A" for cmd in _commands) and len(_commands) > 1:
-                            log.info(
-                                f"Intro Pacing: Throttling '{action}' to single 'A;' to prevent skipping"
-                            )
-                            action = "A;"
+                if _party_size == 0 and _map_id != 38:  # 38 is PLAYERS_HOUSE_2F
+                    # Check if action is purely 'A' presses (e.g. "A;", "A;A;", "A;A;A;")
+                    _commands = [cmd for cmd in action.split(";") if cmd.strip()]
+                    if all(cmd == "A" for cmd in _commands) and len(_commands) > 1:
+                        log.info(
+                            f"Intro Pacing: Throttling '{action}' to single 'A;' to prevent skipping"
+                        )
+                        action = "A;"
 
-                # OVERRIDE ACTION IF AUTO-EXECUTION IS PENDING
-                if forced_auto_action:
-                    log.info(
-                        f"🤖 Auto-executing name entry action: {forced_auto_action}"
-                    )
-                    action = forced_auto_action
+            # OVERRIDE ACTION IF AUTO-EXECUTION IS PENDING
+            if forced_auto_action:
+                log.info(f"🤖 Auto-executing name entry action: {forced_auto_action}")
+                action = forced_auto_action
             tokens_used_session = controller.tokens_used_session
 
             # ═══════════════════════════════════════════════════════════════

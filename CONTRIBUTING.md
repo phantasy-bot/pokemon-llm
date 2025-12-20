@@ -26,9 +26,9 @@ conda activate pokemon-llm
 pip install -r requirements.txt
 
 # Install UI dependencies
-cd pokemon-ui
+cd apps/livestream
 npm install
-cd ..
+cd ../..
 
 # Copy environment template
 cp .env.example .env
@@ -43,7 +43,7 @@ cp .env.example .env
 
 # Or run components separately:
 # Terminal 1: UI
-cd pokemon-ui && npm run dev
+cd apps/livestream && npm run dev
 
 # Terminal 2: Agent
 python run.py --mode ZAI --auto
@@ -149,8 +149,9 @@ pokemon-llm/
 ├── pyAIAgent/         # mGBA communication
 │   ├── game/state.py  # RAM reading
 │   └── utils/socket_utils.py
-├── pokemon-ui/        # React frontend
-│   └── src/components/
+├── apps/              # Frontend applications
+│   ├── livestream/    # React stream overlay
+│   └── obs-widgets/   # OBS overlay widgets
 ├── docs/              # Documentation
 └── scripts/           # CLI utilities
 ```
@@ -165,13 +166,13 @@ pokemon-llm/
 
 ```bash
 # Run Python tests
-python -m pytest test/
+python -m pytest tests/
 
 # Test specific module
-python -m pytest test/test_compression.py
+python -m pytest tests/unit/test_compression.py
 
 # Run UI in dev mode
-cd pokemon-ui && npm run dev
+cd apps/livestream && npm run dev
 ```
 
 ## Common Tasks
