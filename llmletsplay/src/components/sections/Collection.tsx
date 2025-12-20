@@ -173,15 +173,6 @@ function HoloCardDisplay({ cardIndex }: { cardIndex: number }) {
         }}>
           {card.name}
         </span>
-        <div style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
-          color: 'var(--text-secondary)',
-          lineHeight: '1.5',
-          marginTop: '8px'
-        }}>
-          {card.description}
-        </div>
       </div>
     </div>
   )

@@ -390,7 +390,7 @@ body {
   background: transparent;  /* Transparent to blend with folder red */
   border-radius: 10px;
   margin: var(--space-sm);
-  margin-top: calc(var(--space-sm) + 40px);
+  margin-top: 50px;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 1; /* Below folder title (z-index: 20) to prevent scroll overlap */
@@ -1701,9 +1701,18 @@ li::marker {
   }
 }
 
-/* Default sponsor link padding */
+/* Default sponsor link padding and consistent sizing */
 .persona-sponsor-link {
-  padding: 32px !important;
+  padding: 8px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.persona-sponsor-link img {
+  max-width: 120px !important;
+  width: 100%;
+  height: auto;
 }
 
 @keyframes bubble-fade-in-homepage-desktop {
@@ -2055,11 +2064,6 @@ li::marker {
   .persona-sponsor-link {
     order: 0;
     margin-bottom: 10px;
-  }
-  
-  .persona-sponsor-link img {
-    max-width: 100%;
-    height: auto;
   }
 }
 
