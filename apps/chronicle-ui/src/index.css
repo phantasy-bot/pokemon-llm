@@ -4,6 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .animate-blink {
+    animation: blink 30s linear infinite;
+  }
+
+  @keyframes blink {
+    0%, 96%, 100% { opacity: 1; }
+    98% { opacity: 0; }
+  }
+}
+
 :root {
   --paper-bg: #FDFBF7;
   --folder-bg: #FFFEFA; 
@@ -15,7 +26,7 @@
 
 @layer base {
   body {
-    @apply bg-[#FDFBF7] text-zinc-900 min-h-screen antialiased overflow-y-auto relative transition-colors duration-500;
+    @apply bg-white text-zinc-900 min-h-screen antialiased overflow-y-auto relative transition-colors duration-500;
     font-family: 'Space Mono', monospace;
   }
 
@@ -34,6 +45,7 @@
     background-size: 60px 60px;
     z-index: -1;
     pointer-events: none;
+    opacity: 0.5;
   }
   
   body.menu-open::before {
@@ -212,6 +224,22 @@
     padding: 10px; 
     
     filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2));
+  }
+
+  /* Brutal Button Press Animation */
+  .btn-brutal {
+    @apply shadow-brutal-sm transition-all duration-100;
+  }
+  .btn-brutal:active {
+    @apply translate-y-0.5 shadow-none;
+  }
+  
+  /* Brutal Shadow utility */
+  .shadow-brutal {
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  }
+  .shadow-brutal-sm {
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
   }
 
   /* Notebook Styles */

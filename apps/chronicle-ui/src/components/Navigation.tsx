@@ -3,9 +3,10 @@ import { Menu, X, Twitch } from 'lucide-react'
 
 interface NavigationProps {
   children: React.ReactNode
+  walletConnect?: React.ReactNode
 }
 
-export function Navigation({ children }: NavigationProps) {
+export function Navigation({ children, walletConnect }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -19,15 +20,39 @@ export function Navigation({ children }: NavigationProps) {
 
   return (
     <>
-      {/* Hamburger Button (Fixed) - Hidden when menu is open */}
+      {/* Mobile Header Bar */}
       {!isOpen && (
-        <button 
-          onClick={() => setIsOpen(true)}
-          className="fixed top-6 left-4 md:left-8 z-40 p-3 bg-black text-white rounded-full shadow-brutal hover:scale-110 transition-transform"
-          title="Open Menu"
-        >
-          <Menu size={20} />
-        </button>
+        <div className="fixed top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-sm z-40 flex items-center justify-between px-4 border-b border-black/5 md:hidden">
+             <button 
+               onClick={() => setIsOpen(true)}
+               className="p-2 -ml-2"
+             >
+               <Menu size={24} />
+             </button>
+             
+             <span className="font-display font-bold text-2xl tracking-tight">CHRONICLE<span className="animate-blink">.</span></span>
+             
+             <div className="flex items-center">
+                {walletConnect}
+             </div>
+        </div>
+      )}
+
+      {/* Desktop Floating Controls */}
+      {!isOpen && (
+        <>
+          <button 
+            onClick={() => setIsOpen(true)}
+            className="hidden md:flex fixed top-6 left-8 z-40 p-3 bg-black text-white rounded-full hover:shadow-brutal hover:bg-[#FDFBF7] hover:text-black border border-transparent hover:border-black hover:scale-110 active:scale-95 active:shadow-none transition-all"
+            title="Open Menu"
+          >
+            <Menu size={20} />
+          </button>
+          
+          <div className="hidden md:block fixed top-6 right-8 z-50">
+            {walletConnect}
+          </div>
+        </>
       )}
 
       {/* Main Content Wrapper */}
@@ -58,7 +83,7 @@ export function Navigation({ children }: NavigationProps) {
 
           <a href="#" onClick={() => setIsOpen(false)} className="group cursor-pointer">
             <span className="text-5xl md:text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400 group-hover:from-blue-400 group-hover:to-blue-600 transition-all">
-              CHRONICLE
+              CHRONICLE.
             </span>
           </a>
 

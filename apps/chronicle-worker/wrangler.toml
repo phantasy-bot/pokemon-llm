@@ -1,0 +1,17 @@
+name = "chronicle-worker"
+main = "src/index.ts"
+compatibility_date = "2023-12-01"
+
+[vars]
+# Public variables (secrets should be set via wrangler secret put)
+CHAIN_ID = "8453"
+BASE_RPC_URL = "https://mainnet.base.org"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "chronicle-db"
+database_id = "a3d84f56-a205-421e-a889-120f433c9416"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "chronicle-assets"

@@ -21,9 +21,9 @@ export function WalletConnection() {
   if (isConnected) {
     return (
       <div className="group relative">
-        <button className="flex items-center gap-3 px-4 py-2 bg-white border border-black shadow-brutal-sm hover:shadow-brutal transition-all font-mono text-sm rounded-full">
+        <button className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 bg-white border border-black shadow-brutal-sm hover:shadow-brutal transition-all font-mono text-sm rounded-full">
           <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          <span>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+          <span className="hidden md:inline">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
         </button>
         
         <div className="absolute right-0 top-full mt-2 w-full opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -32,7 +32,7 @@ export function WalletConnection() {
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 border border-black shadow-brutal-sm hover:bg-red-600 text-black font-mono text-xs font-bold rounded-lg transition-colors"
           >
             <LogOut size={12} />
-            Disconnect
+            <span className="hidden md:inline">Disconnect</span>
           </button>
         </div>
       </div>
@@ -43,10 +43,10 @@ export function WalletConnection() {
     <div className="relative">
       <button 
         onClick={() => setShowConnectors(!showConnectors)}
-        className="flex items-center gap-2 px-6 py-2 bg-black text-white shadow-brutal-sm hover:shadow-brutal hover:-translate-y-0.5 transition-all font-mono text-sm uppercase tracking-wide rounded-full"
+        className="flex items-center gap-2 px-3 md:px-6 py-2 bg-black text-white shadow-brutal-sm hover:shadow-brutal hover:bg-[#FDFBF7] hover:text-black border border-transparent hover:border-black hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all font-mono text-sm uppercase tracking-wide rounded-full"
       >
         <Wallet size={14} />
-        Connect Wallet
+        <span className="hidden md:inline">Connect Wallet</span>
       </button>
 
       {showConnectors && (

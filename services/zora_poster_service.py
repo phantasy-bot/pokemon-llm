@@ -1,4 +1,3 @@
-# --- services/zora_poster_service.py ---
 """
 Zora Poster Service.
 
@@ -6,7 +5,7 @@ Orchestrates the creation of Zora posts (coins) for achievements.
 - Polls ZoraAchievementTracker for pending achievements
 - Generates images (ComfyUI) or retrieves screenshots
 - Creates collages for gallery posts
-- Calls Chronicle Server (Zora Sidecar) to mint coins
+- Calls Chronicle Server (Zora Sidecar) to create DRAFTS
 - Handles rate limiting and queues
 - Supports token-gated exclusive content
 """
@@ -53,7 +52,6 @@ ZORA_SIDECAR_URL = os.getenv("ZORA_SIDECAR_URL", "http://localhost:3001")
 ZORA_POSTING_ENABLED = os.getenv("ZORA_POSTING_ENABLED", "true").lower() == "true"
 ZORA_GATING_ENABLED = os.getenv("ZORA_GATING_ENABLED", "false").lower() == "true"
 MIN_POST_INTERVAL = int(os.getenv("ZORA_MIN_POST_INTERVAL", "300"))
-AUTO_POST = os.getenv("ZORA_AUTO_POST", "true").lower() == "true"
 
 
 class ZoraPosterService:
@@ -125,10 +123,6 @@ class ZoraPosterService:
                     await asyncio.sleep(5)
                     continue
 
-                if not AUTO_POST:
-                    # If auto-post is off, we might wait for approval (not implemented yet)
-                    pass
-
                 log.info(f"Processing Zora achievement: {achievement.get_title()}")
 
                 # 3. Prepare content (Image & Metadata)
@@ -141,14 +135,14 @@ class ZoraPosterService:
                     self.tracker.clear_pending_achievement()
                     continue
 
-                # 4. Send to Chronicle Server (Sidecar)
+                # 4. Send to Chronicle Server (Sidecar) as DRAFT
                 success = await self._send_to_sidecar(post_data)
 
                 if success:
                     # 5. Mark complete
                     self.tracker.mark_posted(
                         key=achievement.achievement_type.value,
-                        coin_address=post_data.get("coinAddress"),
+                        coin_address=post_data.get("coinAddress", "draft-id"),
                     )
 
                     # Update tracker with coin address and status by iterating keys
@@ -158,15 +152,15 @@ class ZoraPosterService:
                             key = k
                             break
                     if key:
-                        self.tracker.mark_posted(key, post_data.get("coinAddress"))
+                        self.tracker.mark_posted(key, post_data.get("coinAddress", "draft-id"))
 
                     self.tracker.clear_pending_achievement()
                     self._last_post_time = time.time()
                     log.info(
-                        f"✅ Successfully posted to Zora: {achievement.get_title()}"
+                        f"✅ Successfully sent draft to Chronicle: {achievement.get_title()}"
                     )
                 else:
-                    log.error("Failed to post to Zora. Will retry later.")
+                    log.error("Failed to send draft to Chronicle. Will retry later.")
                     await asyncio.sleep(60)  # Backoff
 
             except Exception as e:
@@ -227,6 +221,7 @@ class ZoraPosterService:
             "image_path": image_path,
             "exclusive_path": exclusive_path,
             "attributes": attributes,
+            "status": "draft", # FORCE DRAFT
         }
 
     def _generate_description(self, achievement: ZoraAchievement) -> str:
@@ -246,7 +241,7 @@ class ZoraPosterService:
 
         if achievement.should_include_footer():
             lines.append("Watch live: twitch.tv/lassplayspokemon")
-            lines.append("Token: $LASS on pump.fun")
+            lines.append("Token:  on pump.fun")
             if ZORA_GATING_ENABLED:
                 lines.append("🔒 Exclusive content available for holders.")
 
@@ -294,6 +289,12 @@ class ZoraPosterService:
         client = await self._get_client()
 
         try:
+            # Get API Key from environment
+            api_key = os.getenv("CHRONICLE_SECRET_KEY")
+            if not api_key:
+                log.error("CHRONICLE_SECRET_KEY not set. Cannot authenticate with Chronicle.")
+                return False
+
             # Prepare files list for multipart upload
             files_list = []
 
@@ -314,20 +315,79 @@ class ZoraPosterService:
                 "symbol": post_data["symbol"],
                 "description": post_data["description"],
                 "attributes": json.dumps(post_data["attributes"]),
+                "status": post_data.get("status", "draft"), # Default to draft if not specified
             }
 
             try:
-                response = await client.post(
-                    f"{self.sidecar_url}/api/drop",  # Updated endpoint
-                    data=data,
-                    files=files_list,
-                    timeout=120.0,
-                )
+                # Add retry logic for sidecar connection
+                response = None
+                max_retries = 3
+                
+                if not HTTPX_AVAILABLE:
+                    log.error("httpx not available, cannot post to sidecar")
+                    return False
 
-                if response.status_code == 200:
+                for attempt in range(max_retries):
+                    try:
+                        response = await client.post(
+                            f"{self.sidecar_url}/api/drop",
+                            data=data,
+                            files=files_list,
+                            timeout=120.0,
+                            headers={"x-api-key": api_key}, # Auth Header
+                        )
+                        break # Success
+                    except Exception as e:
+                        # Catch generic exception if httpx types aren't available to reference directly
+                        if attempt == max_retries - 1:
+                            raise # Re-raise on final failure
+                        log.warning(f"Sidecar connection failed (attempt {attempt+1}/{max_retries}): {e}. Retrying...")
+                        await asyncio.sleep(2 * (attempt + 1)) # Backoff
+
+                if response and response.status_code == 200:
                     result = response.json()
                     if result.get("success"):
-                        post_data["coinAddress"] = result.get("coinAddress")
+                        post_data["coinAddress"] = result.get("coinAddress") or result.get("id")
+                        return True
+                    else:
+                        log.error(f"Sidecar error: {result.get('error')}")
+                else:
+                    log.error(
+                        f"Sidecar HTTP error: {response.status_code if response else 'None'} {response.text if response else 'None'}"
+                    )
+            finally:
+                img_f.close()
+                if ex_f:
+                    ex_f.close()
+
+        except Exception as e:
+            log.error(f"Failed to call sidecar: {e}")
+
+        return False
+
+
+                for attempt in range(max_retries):
+                    try:
+                        response = await client.post(
+                            f"{self.sidecar_url}/api/drop",
+                            data=data,
+                            files=files_list,
+                            timeout=120.0,
+                        )
+                        break  # Success
+                    except Exception as e:
+                        # Catch generic exception if httpx types aren't available to reference directly
+                        if attempt == max_retries - 1:
+                            raise  # Re-raise on final failure
+                        log.warning(
+                            f"Sidecar connection failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
+                        )
+                        await asyncio.sleep(2 * (attempt + 1))  # Backoff
+
+                if response and response.status_code == 200:
+                    result = response.json()
+                    if result.get("success"):
+                        post_data["coinAddress"] = result.get("coinAddress") or result.get("id")
                         return True
                     else:
                         log.error(f"Sidecar error: {result.get('error')}")

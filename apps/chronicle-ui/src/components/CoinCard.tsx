@@ -11,6 +11,7 @@ export interface Coin {
   symbol?: string
   description?: string
   imageUrl?: string
+  images?: string[]
   marketCap?: string
   volume24h?: string
   priceChange24h?: number
@@ -34,6 +35,7 @@ export function CoinCard({ coin }: CoinCardProps) {
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [hash, setHash] = useState<`0x${string}` | undefined>()
+  const [selectedImage, setSelectedImage] = useState<string>(coin.imageUrl || '')
 
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash,
@@ -95,6 +97,16 @@ export function CoinCard({ coin }: CoinCardProps) {
 
   const isLoading = purchasing || isConfirming
 
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('ipfs')) return url;
+    const apiBase = import.meta.env.VITE_CHRONICLE_API_URL || 'http://localhost:3001';
+    return `${apiBase}${url}`;
+  };
+
+  const displayImages = coin.images && coin.images.length > 0 ? coin.images : [coin.imageUrl || ''];
+  const activeImage = selectedImage || (displayImages[0] || '');
+
   return (
     <div className="w-full px-4 py-2">
       {/* Content Card with Explicit Tape Elements */}
@@ -108,14 +120,29 @@ export function CoinCard({ coin }: CoinCardProps) {
 
         <div className="flex flex-col md:flex-row gap-8 relative z-10">
            {/* Image (Polaroid Style) */}
-           <div className="w-full md:w-64 flex-shrink-0">
+           <div className="w-full md:w-64 flex-shrink-0 flex flex-col gap-3">
              <Polaroid 
-                src={coin.imageUrl || ''} 
+                src={getImageUrl(activeImage)} 
                 alt={coin.name || 'Drop'} 
                 isStack={coin.hasExclusiveContent}
                 timestamp={coin.timestamp}
                 className="w-full"
              />
+             
+             {/* Thumbnail Gallery */}
+             {displayImages.length > 1 && (
+                 <div className="flex gap-2 overflow-x-auto pb-2 px-1">
+                     {displayImages.map((img, idx) => (
+                         <button 
+                            key={idx}
+                            onClick={() => setSelectedImage(img)}
+                            className={`h-12 w-12 flex-shrink-0 border-2 transition-all ${activeImage === img ? 'border-black opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                         >
+                             <img src={getImageUrl(img)} className="w-full h-full object-cover" />
+                         </button>
+                     ))}
+                 </div>
+             )}
            </div>
 
            {/* Info */}
@@ -132,27 +159,28 @@ export function CoinCard({ coin }: CoinCardProps) {
               </p>
               
               {/* Actions & Stats */}
-              <div className="mt-auto pt-6 border-t-2 border-black/5 flex flex-wrap items-end justify-between gap-4">
+              <div className="mt-auto pt-6 border-t-2 border-black/5 flex flex-col gap-4">
                  
-                 {/* Metadata Column */}
-                 <div className="flex flex-col gap-1 text-xs font-mono text-ink-light">
-                     <div className="flex gap-4">
-                       <span>MC: <b className="text-black">{formatNumber(coin.marketCap)}</b></span>
-                       <span>Vol: <b className="text-black">{formatNumber(coin.volume24h)}</b></span>
-                       {coin.priceChange24h !== undefined && (
-                         <span>24h: <b className={coin.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}>
-                           {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(2)}%
-                         </b></span>
-                       )}
-                     </div>
+                 {/* Row 1: Metadata */}
+                 <div className="flex flex-wrap gap-4 text-xs font-mono text-ink-light">
+                      <span>MC: <b className="text-black">{formatNumber(coin.marketCap)}</b></span>
+                      <span>Vol: <b className="text-black">{formatNumber(coin.volume24h)}</b></span>
+                      {coin.priceChange24h !== undefined && (
+                        <span>24h: <b className={coin.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(2)}%
+                        </b></span>
+                      )}
                  </div>
 
-                 {/* Action Column */}
-                 <div className="flex flex-col items-end gap-2">
+                 {/* Row 2: Action Column */}
+                 <div className="flex flex-col items-end gap-2 w-full">
                     {error && <span className="text-[10px] text-red-600 font-mono bg-red-50 px-1">{error}</span>}
                     {success && <span className="text-[10px] text-green-600 font-mono bg-green-50 px-1">{success}</span>}
                     
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center justify-between w-full gap-2">
+                       {/* Spacer to push actions to right, or if we want full width justification */}
+                       <div className="flex-1" />
+
                        {/* Modern pill-style input group */}
                        <div className="flex items-center bg-zinc-100 rounded-full overflow-hidden border border-zinc-200 hover:border-zinc-300 transition-colors">
                          <div className="flex items-center px-3 py-2">

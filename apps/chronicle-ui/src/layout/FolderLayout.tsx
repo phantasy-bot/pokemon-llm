@@ -48,10 +48,7 @@ export function FolderLayout() {
     setCurrentIndex(0);
     if (isContentPage) {
       setIsClosing(true);
-      setTimeout(() => {
-        setIsClosing(false);
-        navigate('/');
-      }, 600);
+      // Wait for animation end callback
     } else {
       navigate('/');
     }
@@ -63,14 +60,23 @@ export function FolderLayout() {
     }
     setCurrentIndex(index);
     if (isContentPage) {
-      // Trigger close animation, then navigate
       setIsClosing(true);
-      setTimeout(() => {
-        setIsClosing(false);
-        navigate('/');
-      }, 600);
     } else {
       navigate('/');
+    }
+  };
+
+  const handleBackToTimeline = () => {
+    setIsClosing(true);
+  };
+
+  const onAnimationComplete = () => {
+    if (isClosing) {
+      setIsClosing(false);
+      navigate('/');
+    }
+    if (isOpening) {
+      setIsOpening(false);
     }
   };
 
@@ -86,15 +92,6 @@ export function FolderLayout() {
       setSlideDirection(-1);  // Reversed: new folder comes from "front/below"
       setCurrentIndex(curr => curr + 1);
     }
-  };
-
-  const handleBackToTimeline = () => {
-    // Trigger close animation first, then navigate
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      navigate('/');
-    }, 600);
   };
 
   // Folder slide variants for pagination - diagonal movement
@@ -124,51 +121,20 @@ export function FolderLayout() {
     })
   };
 
-  // Content variants - "slapped down from above" effect with staggered top-then-bottom feel
-  // Uses transform-origin top to make it pivot from top edge, creating the "slap" effect
+  // Content variants - Simple fade to look "taped" to the folder
   const contentVariants = {
     enter: {
       opacity: 0,
-      y: -80,              // Start above
-      scale: 1.06,         // Start slightly larger (closer to viewer)
-      rotateX: -15,        // More pronounced tilt - top edge closer to viewer
-      transformPerspective: 1200,
     },
     center: {
       opacity: 1,
-      y: 0,
-      scale: 1,
-      rotateX: 0,
       transition: { 
-        duration: 0.5,
-        delay: 0.1,
-        // Stagger the properties: rotateX settles first (top lands), then y/scale (bottom settles)
-        rotateX: {
-          duration: 0.3,
-          delay: 0.1,
-          ease: [0.22, 1, 0.36, 1],  // Fast start, smooth end
-        },
-        y: {
-          duration: 0.45,
-          delay: 0.15,
-          ease: [0.34, 1.56, 0.64, 1],  // Bouncy overshoot for the settling
-        },
-        scale: {
-          duration: 0.4,
-          delay: 0.12,
-          ease: [0.34, 1.56, 0.64, 1],
-        },
-        opacity: {
-          duration: 0.25,
-          delay: 0.08,
-        }
+        duration: 0.3,
+        ease: "easeOut"
       }
     },
     exit: {
       opacity: 0,
-      y: 40,
-      scale: 0.96,
-      rotateX: 5,           // Slight tilt as it exits (bottom lifts first)
       transition: { duration: 0.2 }
     }
   };
@@ -177,14 +143,9 @@ export function FolderLayout() {
   const showRightArrow = !isContentPage && drops.length > 1 && currentIndex < drops.length - 1;
 
   return (
-    <Navigation>
-      <div className="min-h-screen p-4 lg:p-8 font-mono relative z-0">
+    <Navigation walletConnect={<WalletConnection />}>
+      <div className="min-h-screen p-4 lg:p-8 font-mono relative z-0 pt-20 md:pt-4">
         
-        {/* Fixed Wallet Connection (Top Right) */}
-        <div className="fixed top-6 right-6 lg:right-8 z-50">
-          <WalletConnection />
-        </div>
-
         {/* Fixed Post Count (Bottom Left) */}
         <div className="fixed bottom-6 left-6 lg:left-8 z-50 font-mono text-xs font-bold tracking-widest text-ink/40 pointer-events-none">
           {drops.length > 0 ? (
@@ -193,29 +154,27 @@ export function FolderLayout() {
             ) : (
               <span>{currentIndex + 1} / {drops.length}</span>
             )
-          ) : (
-            <span>LOADING...</span>
-          )}
+          ) : null}
         </div>
 
-        <div className="max-w-5xl mx-auto pt-4 pb-20">
+        <div className="max-w-7xl mx-auto pt-4 pb-20">
           
           {/* Header Section */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4 pl-12 lg:pl-0">
+          <div className="hidden md:flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4 pl-12 lg:pl-0">
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <button onClick={handleChronicleClick} className="block cursor-pointer hover:opacity-80 transition-opacity text-left">
-                <h1 className="text-6xl lg:text-8xl font-bold font-display tracking-tighter mb-2 text-ink leading-none">
-                  CHRONICLE
+                <h1 className="text-6xl lg:text-8xl font-bold font-display tracking-tighter mb-2 text-ink leading-none translate-y-4">
+                  CHRONICLE<span className="animate-blink">.</span>
                 </h1>
               </button>
             </motion.div>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6 md:pl-12 lg:pl-0">
             <NetworkChecker />
           </div>
 
@@ -227,7 +186,7 @@ export function FolderLayout() {
               <div className="hidden lg:flex absolute -left-16 xl:-left-20 top-1/2 -translate-y-1/2 z-20">
                 <button 
                   onClick={handleBackToTimeline}
-                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 transition-all text-black/30 hover:text-black"
+                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all text-black/30 hover:text-black"
                   title="Back to Timeline"
                 >
                   <ArrowLeft size={24} />
@@ -240,7 +199,7 @@ export function FolderLayout() {
               <div className="lg:hidden fixed bottom-5 left-4 z-50">
                 <button 
                   onClick={handleBackToTimeline}
-                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black"
+                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black active:translate-y-0.5 active:shadow-none transition-all"
                   title="Back to Timeline"
                 >
                   <ArrowLeft size={18} />
@@ -253,7 +212,7 @@ export function FolderLayout() {
               <div className="hidden lg:flex absolute -left-16 xl:-left-20 top-1/2 -translate-y-1/2 z-20">
                 <button 
                   onClick={handlePrev}
-                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 transition-all text-black/30 hover:text-black"
+                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all text-black/30 hover:text-black"
                   title="Older"
                 >
                   <ArrowLeft size={24} />
@@ -265,7 +224,7 @@ export function FolderLayout() {
               <div className="hidden lg:flex absolute -right-16 xl:-right-20 top-1/2 -translate-y-1/2 z-20">
                 <button 
                   onClick={handleNext}
-                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 transition-all text-black/30 hover:text-black"
+                  className="p-3 bg-white/60 border-2 border-black/20 rounded-full shadow-sm hover:bg-white hover:border-black hover:shadow-brutal-sm hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all text-black/30 hover:text-black"
                   title="Newer"
                 >
                   <ArrowRight size={24} />
@@ -279,7 +238,7 @@ export function FolderLayout() {
                 <button 
                   onClick={handlePrev}
                   disabled={currentIndex === 0}
-                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black disabled:opacity-30 disabled:shadow-none"
+                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black disabled:opacity-30 disabled:shadow-none active:translate-y-0.5 active:shadow-none transition-all"
                   title="Older"
                 >
                   <ArrowLeft size={18} />
@@ -287,7 +246,7 @@ export function FolderLayout() {
                 <button 
                   onClick={handleNext}
                   disabled={currentIndex === drops.length - 1}
-                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black disabled:opacity-30 disabled:shadow-none"
+                  className="p-2 bg-white border-2 border-black rounded-full shadow-brutal-sm text-black disabled:opacity-30 disabled:shadow-none active:translate-y-0.5 active:shadow-none transition-all"
                   title="Newer"
                 >
                   <ArrowRight size={18} />
@@ -329,7 +288,18 @@ export function FolderLayout() {
                   </div>
                   
                   {/* Folder Body */}
-                  <div className={`folder-container p-6 lg:p-12 relative flex flex-col overflow-hidden ${isOpening ? 'opening' : ''} ${isClosing ? 'closing' : ''} ${isContentPage && !isOpening && !isClosing ? 'opened' : ''} min-h-[600px]`}>
+                  <div 
+                    className={`folder-container p-6 lg:p-12 relative flex flex-col overflow-hidden ${isOpening ? 'opening' : ''} ${isClosing ? 'closing' : ''} ${isContentPage && !isOpening && !isClosing ? 'opened' : ''} min-h-[600px]`}
+                    onTransitionEnd={() => {
+                        // Check for CSS transition ends if we keep CSS classes for folder open/close
+                        // But for cleaner logic, we should probably rely on the motion component inside or just a simple timeout for the CSS part if it's purely CSS.
+                        // Actually, looking at the code, 'opening'/'closing' classes trigger CSS transitions.
+                        // Ideally we replace CSS transitions with motion, but that's a bigger refactor.
+                        // For now, let's keep the CSS classes but use a safer onTransitionEnd handler attached to the div.
+                        if (isClosing) onAnimationComplete();
+                        if (isOpening) setIsOpening(false);
+                    }}
+                  >
                     <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5 pointer-events-none rounded-lg" />
 
                     {/* Animated Content Switcher */}

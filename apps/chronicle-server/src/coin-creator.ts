@@ -1,6 +1,6 @@
 import { createCoin, CreateConstants } from "@zoralabs/coins-sdk";
 import { createWalletClient, createPublicClient, http, Address, Hex } from "viem";
-import { base } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 
 export async function createNewCoin(
@@ -9,25 +9,34 @@ export async function createNewCoin(
   name: string,
   symbol: string,
   metadataUri: string,
-  chainId: number = 8453
+  chainIdOverride?: number
 ) {
   const account = privateKeyToAccount(privateKey);
   
+  // Determine chain from env or override
+  const envChainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID) : 8453;
+  const chainId = chainIdOverride || envChainId;
+  
+  // Select chain object
+  const chain = chainId === 84532 ? baseSepolia : base;
+  
+  console.log(`Using chain: ${chain.name} (${chain.id})`);
+
   // Use RPC URL from env if available, otherwise default public
   const transport = process.env.BASE_RPC_URL ? http(process.env.BASE_RPC_URL) : http();
 
   const publicClient = createPublicClient({
-    chain: base,
+    chain,
     transport
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: base,
+    chain,
     transport
   });
 
-  console.log(`Creating coin: ${name} (${symbol}) for creator ${creatorAddress}`);
+  console.log(`Creating coin: ${name} (${symbol}) for creator ${creatorAddress} on ${chain.name}`);
 
   const result = await createCoin({
     publicClient,
@@ -41,7 +50,7 @@ export async function createNewCoin(
         uri: metadataUri
       },
       currency: CreateConstants.ContentCoinCurrencies.ZORA,
-      chainId: chainId,
+      chainId: chain.id,
       startingMarketCap: CreateConstants.StartingMarketCaps.LOW
     }
   });
