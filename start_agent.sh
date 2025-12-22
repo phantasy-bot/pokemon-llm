@@ -7,6 +7,10 @@ cleanup() {
         echo "Killing UI server (PID: $NPM_PID)..."
         kill $NPM_PID
     fi
+    if [ -n "$OPENCODE_PID" ]; then
+        echo "Killing OpenCode server (PID: $OPENCODE_PID)..."
+        kill $OPENCODE_PID
+    fi
     exit
 }
 
@@ -62,6 +66,49 @@ echo "✅ UI is ready!"
 # 3. Open Browser
 echo "🌍 Opening Browser..."
 open http://localhost:5173
+
+# 3.5 Check and Start OpenCode (if needed)
+LLM_PROVIDER=""
+if [ -f .env ]; then
+    # Safely extract variables by grepping
+    LLM_PROVIDER=$(grep "^LLM_PROVIDER=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+    MODE=$(grep "^MODE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+fi
+
+# Check either LLM_PROVIDER or MODE
+if [ "$LLM_PROVIDER" = "OPENCODE" ] || [ "$MODE" = "OPENCODE" ]; then
+    echo "🔍 Checking OpenCode Server (Port 4096)..."
+    echo "🔍 Checking OpenCode Server (Port 4096)..."
+    if ! nc -z localhost 4096; then
+        echo "⚠️  OpenCode server not found at port 4096."
+        echo "🚀 Starting OpenCode server..."
+        
+        # Try to find opencode executable
+        OPENCODE_BIN="opencode"
+        if [ -f "$CONDA_ENV/bin/opencode" ]; then
+            OPENCODE_BIN="$CONDA_ENV/bin/opencode"
+        fi
+        
+        $OPENCODE_BIN --port 4096 > opencode.log 2>&1 &
+        OPENCODE_PID=$!
+        echo "   PID: $OPENCODE_PID"
+        
+        # Wait for it to be ready
+        echo "⏳ Waiting for OpenCode..."
+        RETRY=0
+        while ! nc -z localhost 4096; do
+            sleep 1
+            RETRY=$((RETRY+1))
+            if [ $RETRY -ge 10 ]; then
+                echo "❌ Failed to start OpenCode. Check opencode.log."
+                cleanup
+            fi
+        done
+        echo "✅ OpenCode is ready!"
+    else
+        echo "✅ OpenCode is already running."
+    fi
+fi
 
 # 4. Start Backend
 echo "🤖 Starting Agent Backend..."

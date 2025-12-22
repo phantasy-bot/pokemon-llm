@@ -152,7 +152,9 @@ class ZoraPosterService:
                             key = k
                             break
                     if key:
-                        self.tracker.mark_posted(key, post_data.get("coinAddress", "draft-id"))
+                        self.tracker.mark_posted(
+                            key, post_data.get("coinAddress", "draft-id")
+                        )
 
                     self.tracker.clear_pending_achievement()
                     self._last_post_time = time.time()
@@ -221,7 +223,7 @@ class ZoraPosterService:
             "image_path": image_path,
             "exclusive_path": exclusive_path,
             "attributes": attributes,
-            "status": "draft", # FORCE DRAFT
+            "status": "draft",  # FORCE DRAFT
         }
 
     def _generate_description(self, achievement: ZoraAchievement) -> str:
@@ -292,7 +294,9 @@ class ZoraPosterService:
             # Get API Key from environment
             api_key = os.getenv("CHRONICLE_SECRET_KEY")
             if not api_key:
-                log.error("CHRONICLE_SECRET_KEY not set. Cannot authenticate with Chronicle.")
+                log.error(
+                    "CHRONICLE_SECRET_KEY not set. Cannot authenticate with Chronicle."
+                )
                 return False
 
             # Prepare files list for multipart upload
@@ -315,14 +319,16 @@ class ZoraPosterService:
                 "symbol": post_data["symbol"],
                 "description": post_data["description"],
                 "attributes": json.dumps(post_data["attributes"]),
-                "status": post_data.get("status", "draft"), # Default to draft if not specified
+                "status": post_data.get(
+                    "status", "draft"
+                ),  # Default to draft if not specified
             }
 
             try:
                 # Add retry logic for sidecar connection
                 response = None
                 max_retries = 3
-                
+
                 if not HTTPX_AVAILABLE:
                     log.error("httpx not available, cannot post to sidecar")
                     return False
@@ -334,45 +340,7 @@ class ZoraPosterService:
                             data=data,
                             files=files_list,
                             timeout=120.0,
-                            headers={"x-api-key": api_key}, # Auth Header
-                        )
-                        break # Success
-                    except Exception as e:
-                        # Catch generic exception if httpx types aren't available to reference directly
-                        if attempt == max_retries - 1:
-                            raise # Re-raise on final failure
-                        log.warning(f"Sidecar connection failed (attempt {attempt+1}/{max_retries}): {e}. Retrying...")
-                        await asyncio.sleep(2 * (attempt + 1)) # Backoff
-
-                if response and response.status_code == 200:
-                    result = response.json()
-                    if result.get("success"):
-                        post_data["coinAddress"] = result.get("coinAddress") or result.get("id")
-                        return True
-                    else:
-                        log.error(f"Sidecar error: {result.get('error')}")
-                else:
-                    log.error(
-                        f"Sidecar HTTP error: {response.status_code if response else 'None'} {response.text if response else 'None'}"
-                    )
-            finally:
-                img_f.close()
-                if ex_f:
-                    ex_f.close()
-
-        except Exception as e:
-            log.error(f"Failed to call sidecar: {e}")
-
-        return False
-
-
-                for attempt in range(max_retries):
-                    try:
-                        response = await client.post(
-                            f"{self.sidecar_url}/api/drop",
-                            data=data,
-                            files=files_list,
-                            timeout=120.0,
+                            headers={"x-api-key": api_key},  # Auth Header
                         )
                         break  # Success
                     except Exception as e:
@@ -387,13 +355,15 @@ class ZoraPosterService:
                 if response and response.status_code == 200:
                     result = response.json()
                     if result.get("success"):
-                        post_data["coinAddress"] = result.get("coinAddress") or result.get("id")
+                        post_data["coinAddress"] = result.get(
+                            "coinAddress"
+                        ) or result.get("id")
                         return True
                     else:
                         log.error(f"Sidecar error: {result.get('error')}")
                 else:
                     log.error(
-                        f"Sidecar HTTP error: {response.status_code} {response.text}"
+                        f"Sidecar HTTP error: {response.status_code if response else 'None'} {response.text if response else 'None'}"
                     )
             finally:
                 img_f.close()
