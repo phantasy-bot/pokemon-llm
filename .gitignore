@@ -16,7 +16,6 @@ tmp/
 logs/
 ui.log
 snapshots/
-tts_output/
 exploration_data.json
 game_goals.json
 pokemon_memories.json
@@ -36,10 +35,7 @@ coordinate_history.json
 # Web UI build artifacts (if not needed in repo)
 web_ui/*.png
 
-
-
-
-tts_output/*.flac
-tts_output/
-output_audio/
-
+# Generated Outputs (TTS audio, tweet images, etc.)
+# These are created at runtime and cleaned up after use
+outputs/
+!outputs/.gitkeep

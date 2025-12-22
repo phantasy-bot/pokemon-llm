@@ -1,0 +1,289 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Patrick+Hand&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper-bg: #FDFBF7;
+  --folder-bg: #FFFEFA; 
+  --paper-card: #FFFFFF;
+  --ink: #18181B;
+  --line: #E4E4E7;
+  --accent: #2563EB;
+}
+
+@layer base {
+  body {
+    @apply bg-[#FDFBF7] text-zinc-900 min-h-screen antialiased overflow-y-auto relative transition-colors duration-500;
+    font-family: 'Space Mono', monospace;
+  }
+
+  body.menu-open {
+    @apply bg-[#18181B];
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform-origin='20 20'%3E%3Cpath d='M20 10 L22 18 L30 20 L22 22 L20 30 L18 22 L10 20 L18 18 Z' fill='%23E5E7EB' fill-rule='evenodd'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 20 20' to='360 20 20' dur='120s' repeatCount='indefinite' /%3E%3C/path%3E%3C/g%3E%3C/svg%3E");
+    background-size: 60px 60px;
+    z-index: -1;
+    pointer-events: none;
+  }
+  
+  body.menu-open::before {
+    opacity: 0.1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  /* 3D Folder Wrapper */
+  .folder-wrapper {
+    perspective: 1500px;
+    transform-style: preserve-3d;
+    position: relative;
+  }
+
+  /* Stacked folders effect - appears during slide animation */
+  .folder-stack-effect {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .folder-stack-effect.active {
+    opacity: 1;
+  }
+
+  .folder-stack-effect::before,
+  .folder-stack-effect::after {
+    content: '';
+    position: absolute;
+    top: 42px; /* Below the tab */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #FFFEFA;
+    border: 2px solid black;
+    border-radius: 0 0.75rem 0.75rem 0.75rem;
+    z-index: -1;
+  }
+
+  .folder-stack-effect::before {
+    transform: translateX(-8px) translateY(-6px) scale(0.98);
+    opacity: 0.6;
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.25);
+  }
+
+  .folder-stack-effect::after {
+    transform: translateX(-16px) translateY(-12px) scale(0.96);
+    opacity: 0.3;
+    box-shadow: 2px 2px 0px 0px rgba(0,0,0,0.15);
+  }
+
+  /* Opening animation - folder cover flips forward (top toward viewer) */
+  @keyframes folder-open {
+    0% { 
+      transform: perspective(1500px) rotateX(0deg) translateY(0);
+      box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    }
+    35% { 
+      transform: perspective(1500px) rotateX(65deg) translateY(30px);
+      box-shadow: 0px -40px 60px -20px rgba(0,0,0,0.3);
+    }
+    70% { 
+      transform: perspective(1500px) rotateX(75deg) translateY(40px);
+      box-shadow: 0px -50px 80px -30px rgba(0,0,0,0.25);
+    }
+    100% { 
+      transform: perspective(1500px) rotateX(0deg) translateY(0);
+      box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    }
+  }
+
+  /* Closing animation - folder closes back (top away from viewer) */
+  @keyframes folder-close {
+    0% { 
+      transform: perspective(1500px) rotateX(0deg) translateY(0);
+      box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    }
+    40% { 
+      transform: perspective(1500px) rotateX(60deg) translateY(25px);
+      box-shadow: 0px -30px 50px -15px rgba(0,0,0,0.3);
+    }
+    100% { 
+      transform: perspective(1500px) rotateX(0deg) translateY(0);
+      box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    }
+  }
+
+  .folder-container.opening {
+    animation: folder-open 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .folder-container.closing {
+    animation: folder-close 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Opened state (on content page) - no color change, just stable */
+  .folder-container.opened {
+    /* Keep the same cream color, no changes */
+  }
+
+  /* Folder Tab */
+  .folder-tab {
+    @apply absolute -top-[34px] lg:-top-[42px] left-0 h-[36px] lg:h-[44px] px-4 lg:px-8 pr-16 lg:pr-48 flex items-center bg-[#FFFEFA] border-2 border-black border-b-0 rounded-t-lg lg:rounded-t-xl font-bold z-10;
+    transform-origin: bottom center;
+    /* Align with container's left edge by shifting left by border width */
+    margin-left: -0.75px;
+  }
+  
+  /* Cover the gap between tab bottom and container top - horizontal strip */
+  .folder-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 2px;
+    right: 2px;
+    height: 4px;
+    background: #FFFEFA;
+    z-index: 25;
+  }
+
+  /* Folder Container - adjust to connect with tab */
+  .folder-container {
+    @apply bg-[#FFFEFA] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-b-xl rounded-tr-xl relative;
+    /* Remove top-left radius so it connects cleanly with tab */
+    border-top-left-radius: 0;
+    transform-style: preserve-3d;
+    transform-origin: top center;
+    transform: rotateX(0deg) translateZ(0);
+    /* Shift container slightly left to align with tab's left border */
+    margin-left: -0.5px;
+  }
+
+  /* Cover the top-left corner of container */
+  .folder-container::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 4px;
+    height: 4px;
+    background: #FFFEFA;
+    z-index: 20;
+  }
+
+  /* Taped Paper (CoinCard) */
+  .taped-paper {
+    --w: 100%;
+    --r: 1; 
+    --l: 45px;
+    --s: 20px; 
+    --_d: calc(var(--s) + var(--l));
+    
+    @apply bg-white text-zinc-900 relative; 
+    
+    border: 20px solid transparent;
+    
+    background: 
+      linear-gradient(#fff 0 0) padding-box, 
+      repeating-conic-gradient(from 45deg, transparent 0% 25%, #000000 25% 50%) border-box;
+      
+    clip-path: polygon(
+      var(--l) 0, var(--_d) var(--s), calc(100% - var(--_d)) var(--s), calc(100% - var(--l)) 0, 
+      100% var(--l), calc(100% - var(--s)) var(--_d), calc(100% - var(--s)) calc(100% - var(--_d)), 100% calc(100% - var(--l)), 
+      calc(100% - var(--l)) 100%, calc(100% - var(--_d)) calc(100% - var(--s)), var(--_d) calc(100% - var(--s)), var(--l) 100%, 
+      0 calc(100% - var(--l)), var(--s) calc(100% - var(--_d)), var(--s) var(--_d), 0 var(--l)
+    );
+    
+    padding: 10px; 
+    
+    filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2));
+  }
+
+  /* Notebook Styles */
+  .notebook-font {
+    font-family: 'Patrick Hand', cursive;
+  }
+  
+  .notebook-paper {
+    background: linear-gradient(to bottom, transparent 29px, #E5E7EB 30px);
+    background-size: 100% 30px;
+    line-height: 30px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #18181B;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #52525B;
+}
+
+/* Polaroid Styles */
+.polaroid-stack {
+  position: relative;
+  transition: .25s ease;
+}
+
+.polaroid-stack:hover .polaroid-card::before {
+  transform: translatey(-2%) rotate(-4deg);
+}
+
+.polaroid-stack:hover .polaroid-card::after {
+  transform: translatey(2%) rotate(4deg);
+}
+
+.polaroid-card {
+  @apply bg-white border-[3px] border-black p-3 pb-8 relative transition-all duration-200 cursor-pointer shadow-sm;
+}
+
+.polaroid-card::before, .polaroid-card::after {
+  content: "";
+  display: block;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  border: 3px solid black;
+  background-color: white;
+  transform-origin: center center;
+  z-index: -1;
+  transition: .15s ease;
+  top: 0;
+  left: 0;
+}
+
+.polaroid-card::before {
+  transform: translatey(-1%) rotate(-3deg);
+}
+
+.polaroid-card::after {
+  transform: translatey(1%) rotate(3deg);
+}
+
+.polaroid-image {
+  @apply w-full aspect-square border border-black/10 bg-gray-100 object-cover;
+}

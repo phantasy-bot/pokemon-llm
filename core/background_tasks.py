@@ -5,34 +5,38 @@ from typing import Optional, Any
 
 log = logging.getLogger("background_tasks")
 
+
 async def run_chat_background_task(
-    stop_event: asyncio.Event, 
-    tts_service: Any, 
-    twitch_service: Any, 
+    stop_event: asyncio.Event,
+    tts_service: Any,
+    twitch_service: Any,
     cycle_id: int,
     pumpfun_service: Any = None,
-    chat_response_service: Any = None
+    zora_service: Any = None,
+    chat_response_service: Any = None,
 ):
     """
     Background task to generate and play chat responses while LLM is thinking.
     Runs until stop_event is set.
-    Supports both Twitch and Pump.fun chat sources.
+    Supports Twitch, Pump.fun, and Zora chat sources.
     Uses Featherless LLM when CHAT_TEST_LLM=true, otherwise mock responses.
     """
     from services.twitch_chat_service import CHAT_TEST_MODE, CHAT_TEST_LLM
-    
+
     # Check if test mode is enabled
     test_mode_enabled = CHAT_TEST_MODE
-    
+
     if not test_mode_enabled or not tts_service:
         return
 
-    use_llm = CHAT_TEST_LLM and chat_response_service and chat_response_service.is_available
+    use_llm = (
+        CHAT_TEST_LLM and chat_response_service and chat_response_service.is_available
+    )
     if use_llm:
         log.info("🚀 Starting background chat response task (Featherless LLM enabled)")
     else:
         log.info("🚀 Starting background chat response task (Mock responses)")
-    
+
     # Mock responses for Twitch (Pokemon themed) - includes "on Twitch" tag
     twitch_mock_responses = [
         "Omg hi @{user} on Twitch! I'm so happy you're here with me!",
@@ -43,7 +47,7 @@ async def run_chat_background_task(
         "I'm trying my best @{user} on Twitch, this game is harder than it looks!",
         "Haha @{user} on Twitch I saw that! wild!",
     ]
-    
+
     # Mock responses for Pump.fun (crypto themed) - includes "on pump" tag
     pumpfun_mock_responses = [
         "@{user} on pump LFG! Diamond hands all the way! 💎🙌",
@@ -54,94 +58,131 @@ async def run_chat_background_task(
         "Thanks @{user} on pump! We're building something special here!",
         "@{user} on pump love the energy in chat tonight!",
     ]
-    
+
+    # Mock responses for Zora (NFT/Onchain themed) - includes "on Zora" tag
+    zora_mock_responses = [
+        "@{user} on Zora welcome to the stream! This is going onchain!",
+        "Nice to see you @{user} on Zora! We're minting memories here!",
+        "@{user} on Zora thanks for watching! Base is based!",
+        "Haha @{user} on Zora true! Everything is better onchain!",
+        "@{user} on Zora glad you're here! Let's capture some rare moments!",
+        "Thanks @{user} on Zora! We're making history!",
+    ]
+
     while not stop_event.is_set():
         try:
             # Random chance to generate a new message (don't spam too fast)
             if random.random() < 0.3:  # 30% chance per loop iteration
-                # Randomly pick source if both are available
-                use_pumpfun = (
-                    pumpfun_service and 
-                    CHAT_TEST_MODE and 
-                    random.random() < 0.5  # 50/50 split between platforms
-                )
-                
-                if use_pumpfun and pumpfun_service:
-                    test_msg = pumpfun_service.generate_single_test_message()
-                    mock_responses = pumpfun_mock_responses
-                    platform_tag = "on pump"
-                elif twitch_service and CHAT_TEST_MODE:
-                    test_msg = twitch_service.generate_single_test_message()
-                    mock_responses = twitch_mock_responses
-                    platform_tag = "on Twitch"
-                else:
+                # Randomly pick source if multiple are available
+                # Logic: Even split between available services
+                available_services = []
+                if twitch_service and CHAT_TEST_MODE:
+                    available_services.append("twitch")
+                if pumpfun_service and CHAT_TEST_MODE:
+                    available_services.append("pumpfun")
+                if zora_service and CHAT_TEST_MODE:
+                    available_services.append("zora")
+
+                if not available_services:
                     test_msg = None
-                    
+                    platform_name = "Unknown"
+                    mock_responses = []
+                    platform_tag = ""
+                else:
+                    source = random.choice(available_services)
+
+                    if source == "pumpfun":
+                        test_msg = pumpfun_service.generate_single_test_message()
+                        mock_responses = pumpfun_mock_responses
+                        platform_tag = "on pump"
+                        platform_name = "Pump.fun"
+                    elif source == "zora":
+                        test_msg = zora_service.generate_single_test_message()
+                        mock_responses = zora_mock_responses
+                        platform_tag = "on Zora"
+                        platform_name = "Zora"
+                    else:  # twitch
+                        test_msg = twitch_service.generate_single_test_message()
+                        mock_responses = twitch_mock_responses
+                        platform_tag = "on Twitch"
+                        platform_name = "Twitch"
+
                 if test_msg:
-                    username = test_msg['display_name']
-                    message = test_msg.get('message', '')
-                    
+                    username = test_msg["display_name"]
+                    message = test_msg.get("message", "")
+
                     # Use Featherless LLM if enabled, otherwise mock
                     if use_llm:
                         try:
-                            response_text = await chat_response_service.generate_response(
-                                username, message, is_past=False
+                            response_text = (
+                                await chat_response_service.generate_response(
+                                    username, message, is_past=False
+                                )
                             )
                             if response_text:
                                 # Add platform tag if not already present
                                 if platform_tag not in response_text:
-                                    response_text = response_text.replace(f"@{username}", f"@{username} {platform_tag}")
-                                log.info(f"⚡ [BG+LLM] Generated response for @{username}: {response_text[:50]}...")
+                                    response_text = response_text.replace(
+                                        f"@{username}", f"@{username} {platform_tag}"
+                                    )
+                                log.info(
+                                    f"⚡ [BG+LLM] Generated response for @{username}: {response_text[:50]}..."
+                                )
                             else:
                                 # Fallback to mock if LLM returns empty
-                                response_text = random.choice(mock_responses).format(user=username)
+                                response_text = random.choice(mock_responses).format(
+                                    user=username
+                                )
                         except Exception as e:
                             log.warning(f"[BG] LLM error, falling back to mock: {e}")
-                            response_text = random.choice(mock_responses).format(user=username)
+                            response_text = random.choice(mock_responses).format(
+                                user=username
+                            )
                     else:
-                        response_text = random.choice(mock_responses).format(user=username)
-                    
+                        response_text = random.choice(mock_responses).format(
+                            user=username
+                        )
+
                     # Build reply metadata for UI display
                     reply_metadata = {
                         "reply_to": {
                             "username": username,
-                            "platform": "Pump.fun" if use_pumpfun else "Twitch",
-                            "message": message
+                            "platform": platform_name,
+                            "message": message,
                         }
                     }
-                    
+
                     # Queue it!
                     await tts_service.queue_and_start_synthesis(
-                        response_text, 
+                        response_text,
                         priority=tts_service.PRIORITY_CHAT_RESPONSE,
                         cycle_id=cycle_id,
-                        metadata=reply_metadata
+                        metadata=reply_metadata,
                     )
-            
+
             # 2. Check for ready audio to play
             ready_request = tts_service.get_next_ready_audio()
             if ready_request:
                 # Play it! This will block this task for the duration of playback
                 # which is exactly what we want (linear playback)
-                
+
                 # Check stop event before starting playback
                 if stop_event.is_set():
                     break
-                    
+
                 log.info(f"🎤 [BG] Playing chat response: {ready_request.text[:30]}...")
-                
+
                 completed = await tts_service.play_ready_audio(ready_request, wait=True)
-                
+
                 if not completed:
                     log.info("🎤 [BG] Playback interrupted or failed")
-            
+
             # Brief sleep to yield to event loop and avoid busy spin
             await asyncio.sleep(0.5)
-            
+
         except asyncio.CancelledError:
             log.info("🛑 Background chat task cancelled")
             break
         except Exception as e:
             log.error(f"Error in background chat task: {e}")
             await asyncio.sleep(1.0)  # Sleep on error to avoid log spam
-

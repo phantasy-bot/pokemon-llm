@@ -25,6 +25,7 @@ log = logging.getLogger("comfyui_tts")
 @dataclass
 class TTSRequest:
     """Represents a pending TTS request with async synthesis support."""
+
     text: str
     request_id: str
     priority: int  # Higher = more important (game commentary > chat response)
@@ -40,16 +41,16 @@ class TTSRequest:
 class ComfyUITTSService:
     """
     Text-to-Speech service using ComfyUI as the backend.
-    
+
     Triggers TTS workflows on ComfyUI and retrieves generated audio.
     Supports both localhost and hosted ComfyUI instances.
     """
-    
+
     # Priority levels
     PRIORITY_COMMENTARY = 100  # Game commentary (highest)
     PRIORITY_CHAT_RESPONSE = 50  # Chat responses
     PRIORITY_LOW = 10  # Low priority items
-    
+
     def __init__(
         self,
         base_url: str = None,
@@ -58,11 +59,11 @@ class ComfyUITTSService:
         timeout: float = 10.0,  # Reduced from 60s for faster fallback
         on_playback_start: callable = None,  # (text, duration, metadata) -> Awaitable
         audio_speed: float = None,
-        audio_pitch: float = None
+        audio_pitch: float = None,
     ):
         """
         Initialize the ComfyUI TTS service.
-        
+
         Args:
             base_url: ComfyUI server URL (e.g., "http://localhost:8188")
             workflow_path: Path to the TTS workflow JSON file
@@ -72,60 +73,74 @@ class ComfyUITTSService:
             audio_speed: Playback speed multiplier (e.g., 1.1 = 10% faster)
             audio_pitch: Pitch shift in semitones (e.g., 2 = 2 semitones higher)
         """
-        self.base_url = (base_url or os.getenv("COMFYUI_URL", "http://localhost:8188")).rstrip("/")
+        self.base_url = (
+            base_url or os.getenv("COMFYUI_URL", "http://localhost:8188")
+        ).rstrip("/")
         self.workflow_path = workflow_path or os.getenv("COMFYUI_TTS_WORKFLOW", "")
-        self.output_dir = output_dir or os.path.join(os.getcwd(), "output_audio")
+        self.output_dir = output_dir or os.path.join(os.getcwd(), "outputs", "audio")
         self.timeout = timeout
         self.on_playback_start = on_playback_start
-        
+
         # Basic auth credentials (optional - for hosted ComfyUI instances)
         self._auth_username = os.getenv("COMFYUI_USERNAME", "")
         self._auth_password = os.getenv("COMFYUI_PASSWORD", "")
         self._auth: Optional[httpx.BasicAuth] = None
         if self._auth_username and self._auth_password:
             self._auth = httpx.BasicAuth(self._auth_username, self._auth_password)
-            log.info(f"🔐 ComfyUI basic auth configured for user: {self._auth_username}")
-        
+            log.info(
+                f"🔐 ComfyUI basic auth configured for user: {self._auth_username}"
+            )
+
         # Audio post-processing settings (from env or args)
-        self.audio_speed = audio_speed if audio_speed is not None else float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
-        self.audio_pitch = audio_pitch if audio_pitch is not None else float(os.getenv("TTS_AUDIO_PITCH", "0"))  # In semitones
-        
+        self.audio_speed = (
+            audio_speed
+            if audio_speed is not None
+            else float(os.getenv("TTS_AUDIO_SPEED", "1.0"))
+        )
+        self.audio_pitch = (
+            audio_pitch
+            if audio_pitch is not None
+            else float(os.getenv("TTS_AUDIO_PITCH", "0"))
+        )  # In semitones
+
         # Request queue (priority queue simulation with sorting)
         self._queue: List[TTSRequest] = []
         self._processing = False
         self._client: Optional[httpx.AsyncClient] = None
-        
+
         # Request tracking
         self._current_request: Optional[TTSRequest] = None
-        self._current_audio_path: Optional[str] = None  # Track for post-playback cleanup
+        self._current_audio_path: Optional[str] = (
+            None  # Track for post-playback cleanup
+        )
         self._cancelled = False
-        
+
         # Lock to ensure TTS requests are serialized (no overlap)
         self._tts_lock = asyncio.Lock()
-        
+
         # Cached workflow template
         self._workflow_template: Optional[dict] = None
-        
+
         # Initialize audio components
         self.audio_player = AudioPlayer()
         self.audio_processor = AudioProcessor()
-        
+
         # Create output directory
         os.makedirs(self.output_dir, exist_ok=True)
-        
+
         # Cleanup stale audio files from previous runs
         self._cleanup_stale_audio()
-        
+
         # Check if configured and enabled
         # TTS_ENABLED defaults to true if not set, for backward compatibility
         tts_enabled = os.getenv("TTS_ENABLED", "true").lower() in ("true", "1", "yes")
         self._is_configured = bool(self.base_url) and tts_enabled
-        
+
         if not tts_enabled:
             log.info("🔇 TTS disabled via TTS_ENABLED=false in .env")
         elif not self._is_configured:
             log.warning("ComfyUI TTS not configured. Set COMFYUI_URL in .env")
-    
+
     def _cleanup_stale_audio(self) -> None:
         """
         Remove any leftover audio files from previous sessions.
@@ -133,19 +148,19 @@ class ComfyUITTSService:
         """
         if not os.path.exists(self.output_dir):
             return
-        
+
         cleaned = 0
         for f in os.listdir(self.output_dir):
-            if f.endswith(('.flac', '.mp3', '.wav')):
+            if f.endswith((".flac", ".mp3", ".wav")):
                 try:
                     os.remove(os.path.join(self.output_dir, f))
                     cleaned += 1
                 except Exception as e:
                     log.warning(f"Failed to cleanup {f}: {e}")
-        
+
         if cleaned > 0:
             log.info(f"♻️ Cleaned up {cleaned} stale audio files from {self.output_dir}")
-    
+
     def clear_queue(self) -> int:
         """
         Clear all pending TTS requests from the queue.
@@ -159,7 +174,7 @@ class ComfyUITTSService:
         if count > 0:
             log.info(f"🧹 Cleared {count} orphaned TTS requests from queue")
         return count
-    
+
     def _cleanup_audio_file(self, audio_path: str) -> None:
         """
         Remove an audio file after playback.
@@ -171,40 +186,39 @@ class ComfyUITTSService:
                 log.debug(f"♻️ Cleaned up: {os.path.basename(audio_path)}")
             except Exception as e:
                 log.warning(f"Failed to cleanup audio: {e}")
-    
+
     def _get_audio_duration_ms(self, audio_path: str) -> Optional[int]:
         """Get audio duration in milliseconds."""
         return self.audio_processor.get_duration_ms(audio_path)
-    
+
     def _process_audio_speed_pitch(self, audio_path: str) -> str:
         """Apply speed and pitch adjustments to audio."""
         return self.audio_processor.process_speed_pitch(
-            audio_path, 
-            speed=self.audio_speed, 
-            pitch=self.audio_pitch
+            audio_path, speed=self.audio_speed, pitch=self.audio_pitch
         )
-    
+
     @property
     def is_available(self) -> bool:
         """Check if TTS service is configured."""
         return self._is_configured
-    
+
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with optional basic auth."""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=self.timeout, auth=self._auth)
         return self._client
-    
+
     def cancel_current(self):
         """Cancel the currently playing audio and any pending ComfyUI workflow."""
         self._cancelled = True
-        
+
         # Stop audio player
         self.audio_player.stop_playback()
-        
+
         # Also cancel any pending ComfyUI workflow via /interrupt endpoint
         try:
             import httpx
+
             with httpx.Client(timeout=2.0, auth=self._auth) as client:
                 response = client.post(f"{self.base_url}/interrupt")
                 if response.status_code == 200:
@@ -213,57 +227,60 @@ class ComfyUITTSService:
                     log.debug(f"ComfyUI interrupt returned {response.status_code}")
         except Exception as e:
             log.debug(f"Could not interrupt ComfyUI workflow: {e}")
-    
+
     def cancel_all_and_interrupt(self) -> int:
         """
         Cancel EVERYTHING - current playback, queue, and ComfyUI workflows.
         Use this when new high-priority commentary arrives to ensure it plays immediately.
-        
+
         Returns:
             Number of queue items cleared
         """
         # 1. Stop any current playback immediately
         self._cancelled = True
         self.audio_player.stop_playback()
-        
+
         # 2. Cancel all pending synthesis tasks
         cancelled_tasks = 0
         for request in self._queue:
             if request.synthesis_task and not request.synthesis_task.done():
                 request.synthesis_task.cancel()
                 cancelled_tasks += 1
-        
+
         # 3. Clear the entire queue
         queue_count = len(self._queue)
         self._queue.clear()
         self._processing = False
-        
+
         # 4. Interrupt any pending ComfyUI workflow
         try:
             import httpx
+
             with httpx.Client(timeout=2.0, auth=self._auth) as client:
                 response = client.post(f"{self.base_url}/interrupt")
                 if response.status_code == 200:
                     log.info("🔇 Interrupted pending ComfyUI TTS workflow")
         except Exception as e:
             log.debug(f"Could not interrupt ComfyUI workflow: {e}")
-        
+
         if queue_count > 0 or cancelled_tasks > 0:
-            log.info(f"🧹 CANCEL ALL: cleared {queue_count} queue items, cancelled {cancelled_tasks} synthesis tasks")
-        
+            log.info(
+                f"🧹 CANCEL ALL: cleared {queue_count} queue items, cancelled {cancelled_tasks} synthesis tasks"
+            )
+
         return queue_count
-    
+
     def play_audio_ephemeral(self, audio_path: str) -> bool:
         """Play audio file ephemerally (no file retention)."""
         if self.audio_speed != 1.0 or self.audio_pitch != 0:
             audio_path = self._process_audio_speed_pitch(audio_path)
-            
+
         return self.audio_player.play_audio(audio_path)
-    
+
     async def wait_for_playback(self, timeout: float = 30.0) -> bool:
         """Wait for current audio playback to complete."""
         return await self.audio_player.wait_for_playback(timeout)
-    
+
     async def check_connection(self) -> bool:
         """
         Check if ComfyUI server is reachable.
@@ -276,7 +293,7 @@ class ComfyUITTSService:
         except Exception as e:
             log.warning(f"ComfyUI connection check failed: {e}")
             return False
-    
+
     def load_workflow(self) -> Optional[dict]:
         """
         Load the TTS workflow template from file.
@@ -284,64 +301,66 @@ class ComfyUITTSService:
         """
         if self._workflow_template:
             return self._workflow_template
-        
+
         if not self.workflow_path or not os.path.exists(self.workflow_path):
             log.warning(f"TTS workflow not found: {self.workflow_path}")
             return None
-        
+
         try:
-            with open(self.workflow_path, 'r') as f:
+            with open(self.workflow_path, "r") as f:
                 raw_workflow = json.load(f)
             log.info(f"Loaded TTS workflow from: {self.workflow_path}")
-            
+
             # Check if this is export format (has 'nodes' array) vs API format (has 'prompt' dict)
             if "nodes" in raw_workflow:
                 # Convert from export format to API format
                 api_format = self._convert_export_to_api_format(raw_workflow)
                 self._workflow_template = api_format
-                log.info(f"Converted workflow from export format to API format ({len(api_format)} nodes)")
+                log.info(
+                    f"Converted workflow from export format to API format ({len(api_format)} nodes)"
+                )
             else:
                 self._workflow_template = raw_workflow
-            
+
             return self._workflow_template
         except Exception as e:
             log.error(f"Failed to load TTS workflow: {e}")
             return None
-    
+
     def _convert_export_to_api_format(self, export_workflow: dict) -> dict:
         """
         Convert ComfyUI export format (nodes array) to API prompt format (dict of node dicts).
-        
+
         Export format has:
         - "nodes": [{"id": 1, "type": "NodeType", "widgets_values": [...], "inputs": [...]}]
         - "links": [[link_id, from_node, from_slot, to_node, to_slot, type]]
-        
+
         API format expects:
         - {"1": {"class_type": "NodeType", "inputs": {...}}}
         """
         nodes = export_workflow.get("nodes", [])
         links = export_workflow.get("links", [])
-        
+
         # Build link lookup: (to_node_id, to_slot_idx) -> (from_node_id, from_slot_idx)
         link_map = {}
         for link in links:
             if len(link) >= 5:
                 link_id, from_node, from_slot, to_node, to_slot, *_ = link
                 link_map[link_id] = (from_node, from_slot)
-        
+
         api_prompt = {}
-        
+
         for node in nodes:
             node_id = str(node.get("id"))
             node_type = node.get("type")
-            
+
             # Skip Note nodes - they're not part of the execution graph
             if node_type == "Note":
                 continue
-            
+
             # Build inputs dict from connected links and widget values
             inputs = {}
-            
+
             # Get connected inputs from links
             node_inputs = node.get("inputs", [])
             for input_def in node_inputs:
@@ -350,18 +369,18 @@ class ComfyUITTSService:
                 if link_id and link_id in link_map:
                     from_node, from_slot = link_map[link_id]
                     inputs[input_name] = [str(from_node), from_slot]
-            
+
             # Store widget values for later text injection
             # For ChatterboxTTS: widgets_values is [model, text, max_len, cfg_temp, temp, top_p, top_k, ...]
             widget_values = node.get("widgets_values", [])
-            
+
             # Map widget values to input names based on node type
             if node_type == "ChatterboxTTS":
                 # Server's current ChatterboxTTS required inputs (from /object_info):
-                # model_pack_name, text, max_new_tokens, flow_cfg_scale, exaggeration, 
+                # model_pack_name, text, max_new_tokens, flow_cfg_scale, exaggeration,
                 # temperature, cfg_weight, repetition_penalty, min_p, top_p, seed, use_watermark
                 # Optional: audio_prompt
-                
+
                 # Use server's default values to ensure compatibility
                 chatterbox_defaults = {
                     "model_pack_name": "resembleai_default_voice",
@@ -375,12 +394,12 @@ class ComfyUITTSService:
                     "min_p": 0.05,
                     "top_p": 1.0,
                     "seed": 0,
-                    "use_watermark": False
+                    "use_watermark": False,
                 }
-                
+
                 # Start with defaults
                 inputs.update(chatterbox_defaults)
-                
+
                 # Try to map old widget values if present
                 # Old format: [model, text, max_len, cfg_temp, temp, top_p, top_k, exaggeration, speed, seed, ...]
                 if len(widget_values) >= 2:
@@ -396,50 +415,53 @@ class ComfyUITTSService:
                 # SaveAudio: filename_prefix
                 if widget_values:
                     inputs["filename_prefix"] = widget_values[0]
-            
-            api_prompt[node_id] = {
-                "class_type": node_type,
-                "inputs": inputs
-            }
-        
+
+            api_prompt[node_id] = {"class_type": node_type, "inputs": inputs}
+
         return api_prompt
-    
+
     def _prepare_workflow(self, text: str, workflow: dict = None) -> dict:
         """
         Prepare the workflow with the given text input.
-        
+
         For ChatterboxTTS: injects text into the 'text' field of ChatterboxTTS nodes.
-        
+
         Args:
             text: Text to synthesize
             workflow: Workflow template (uses cached if not provided)
-        
+
         Returns:
             Modified workflow dict ready for execution (wrapped in {"prompt": ...})
         """
         if workflow is None:
             workflow = self.load_workflow()
-        
+
         if workflow is None:
             log.warning("No workflow template - TTS cannot proceed.")
             return None
-        
+
         # Deep copy to avoid modifying the template
         import copy
+
         prepared = copy.deepcopy(workflow)
-        
+
         # Text injection patterns for various TTS nodes
         text_input_keys = [
-            "text", "input_text", "prompt", "tts_text", 
-            "speech_text", "content", "message"
+            "text",
+            "input_text",
+            "prompt",
+            "tts_text",
+            "speech_text",
+            "content",
+            "message",
         ]
-        
+
         text_injected = False
         for node_id, node_data in prepared.items():
             if isinstance(node_data, dict):
                 class_type = node_data.get("class_type", "")
                 inputs = node_data.get("inputs", {})
-                
+
                 # Inject text into ChatterboxTTS or similar TTS nodes
                 if "TTS" in class_type or "Chatterbox" in class_type:
                     if "text" in inputs:
@@ -454,23 +476,25 @@ class ComfyUITTSService:
                             text_injected = True
                             log.debug(f"Injected text into node {node_id}, field {key}")
                             break
-        
+
         if not text_injected:
-            log.warning("Could not find text input field in workflow. TTS may not work correctly.")
-        
+            log.warning(
+                "Could not find text input field in workflow. TTS may not work correctly."
+            )
+
         # Return in API format
         return {"prompt": prepared}
-    
+
     async def queue_tts(
         self,
         text: str,
         priority: int = None,
         cycle_id: int = 0,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> TTSRequest:
         """
         Queue a TTS request.
-        
+
         Args:
             text: Text to synthesize
             priority: Request priority (higher = more important)
@@ -479,82 +503,88 @@ class ComfyUITTSService:
         """
         if priority is None:
             priority = self.PRIORITY_CHAT_RESPONSE
-        
+
         request = TTSRequest(
             text=text,
             request_id=str(uuid.uuid4())[:8],
             priority=priority,
             created_at=time.time(),
             cycle_id=cycle_id,
-            metadata=metadata
+            metadata=metadata,
         )
-        
+
         self._queue.append(request)
         # Sort by priority (highest first)
         self._queue.sort(key=lambda r: -r.priority)
-        
-        log.info(f"🔊 Queued TTS (priority={priority}, cycle={cycle_id}): {text[:50]}...")
-        
+
+        log.info(
+            f"🔊 Queued TTS (priority={priority}, cycle={cycle_id}): {text[:50]}..."
+        )
+
         return request
-    
+
     # Maximum queue size for chat responses (persists across cycles)
     MAX_QUEUE_SIZE = 4  # Up to 3 message responses + 1 commentary
-    
+
     async def queue_and_start_synthesis(
         self,
         text: str,
         priority: int = None,
         cycle_id: int = 0,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> Optional[TTSRequest]:
         """
         Queue a TTS request AND start background synthesis immediately.
         Does not wait for synthesis to complete - returns immediately.
-        
+
         Use get_next_ready_audio() to retrieve completed audio.
-        
+
         Args:
             text: Text to synthesize
             priority: Request priority
             cycle_id: The game cycle this request is from
-        
+
         Returns:
             TTSRequest with synthesis_task started, or None if queue full
         """
         # Prune old items first
         self.prune_old_items(current_cycle=cycle_id)
-        
+
         # Check queue size limit
         pending = [r for r in self._queue if not r.completed]
         if len(pending) >= self.MAX_QUEUE_SIZE:
-            log.info(f"⏳ TTS queue full ({len(pending)}/{self.MAX_QUEUE_SIZE}), skipping")
+            log.info(
+                f"⏳ TTS queue full ({len(pending)}/{self.MAX_QUEUE_SIZE}), skipping"
+            )
             return None
-        
+
         # Queue the request
         request = await self.queue_tts(text, priority, cycle_id, metadata)
-        
+
         # Start synthesis in background
         async def _synthesize():
             try:
                 audio_path = await self.synthesize_speech(request.text)
                 request.audio_path = audio_path
                 request.completed = True
-                log.info(f"✅ Background TTS ready: {request.request_id} -> {audio_path}")
+                log.info(
+                    f"✅ Background TTS ready: {request.request_id} -> {audio_path}"
+                )
             except Exception as e:
                 request.error = str(e)
                 request.completed = True
                 log.error(f"❌ Background TTS failed: {request.request_id}: {e}")
-        
+
         request.synthesis_task = asyncio.create_task(_synthesize())
         log.info(f"🚀 Started background synthesis: {request.request_id}")
-        
+
         return request
-    
+
     def get_next_ready_audio(self) -> Optional[TTSRequest]:
         """
         Get the next completed TTS request that has audio ready.
         Removes it from the queue.
-        
+
         Returns:
             TTSRequest with audio_path populated, or None if none ready
         """
@@ -564,43 +594,43 @@ class ComfyUITTSService:
                 log.info(f"🎵 Returning ready audio: {request.request_id}")
                 return request
         return None
-    
+
     def prune_old_items(self, current_cycle: int) -> int:
         """
         Remove old TTS items from previous cycles (keep max 1 prev cycle).
         Also enforces MAX_QUEUE_SIZE.
-        
+
         Args:
             current_cycle: The current game cycle number
-        
+
         Returns:
             Number of items pruned
         """
         original_count = len(self._queue)
-        
+
         # Keep items from current cycle and previous cycle only
         min_cycle = max(0, current_cycle - 1)
         self._queue = [r for r in self._queue if r.cycle_id >= min_cycle]
-        
+
         # Also enforce max size (keep newest)
         if len(self._queue) > self.MAX_QUEUE_SIZE:
             # Cancel synthesis tasks for items we're removing
-            for request in self._queue[self.MAX_QUEUE_SIZE:]:
+            for request in self._queue[self.MAX_QUEUE_SIZE :]:
                 if request.synthesis_task and not request.synthesis_task.done():
                     request.synthesis_task.cancel()
-            self._queue = self._queue[:self.MAX_QUEUE_SIZE]
-        
+            self._queue = self._queue[: self.MAX_QUEUE_SIZE]
+
         pruned = original_count - len(self._queue)
         if pruned > 0:
             log.info(f"♻️ Pruned {pruned} old TTS items (keeping cycle >= {min_cycle})")
-        
+
         return pruned
-    
+
     def cancel_pending_chat_responses(self) -> int:
         """
         Cancel all pending chat response synthesis (for game commentary priority).
         Keeps the queue but cancels in-progress synthesis tasks.
-        
+
         Returns:
             Number of tasks cancelled
         """
@@ -610,82 +640,86 @@ class ComfyUITTSService:
                 if request.synthesis_task and not request.synthesis_task.done():
                     request.synthesis_task.cancel()
                     cancelled += 1
-        
+
         if cancelled > 0:
             log.info(f"🔇 Cancelled {cancelled} pending chat TTS synthesis tasks")
-        
+
         return cancelled
-    
+
     def get_queue_status(self) -> dict:
         """Get queue status for debugging."""
         return {
             "total": len(self._queue),
             "pending": len([r for r in self._queue if not r.completed]),
             "ready": len([r for r in self._queue if r.completed and r.audio_path]),
-            "errors": len([r for r in self._queue if r.error])
+            "errors": len([r for r in self._queue if r.error]),
         }
-    
+
     async def play_ready_audio(self, request: TTSRequest, wait: bool = True) -> bool:
         """
         Play audio from a completed TTSRequest.
-        
+
         Args:
             request: TTSRequest with audio_path populated
             wait: If True, wait for playback to complete
-        
+
         Returns:
             True if playback completed successfully
         """
         if not request or not request.audio_path:
             log.warning("🔊 No audio path in request")
             return False
-        
+
         audio_path = request.audio_path
-        
+
         # Apply speed/pitch processing
         audio_path = self._process_audio_speed_pitch(audio_path)
-        
+
         # Get duration for UI sync
         duration_ms = self._get_audio_duration_ms(audio_path)
-        
+
         # Notify UI that playback is about to start
         if self.on_playback_start and duration_ms:
             try:
-                log.info(f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms, metadata={bool(request.metadata)}")
-                await self.on_playback_start(request.text, duration_ms, request.metadata)
+                log.info(
+                    f"🔊 Calling on_playback_start: text={request.text[:30]}..., duration={duration_ms}ms, metadata={bool(request.metadata)}"
+                )
+                await self.on_playback_start(
+                    request.text, duration_ms, request.metadata
+                )
             except Exception as cb_err:
                 log.warning(f"🔊 on_playback_start callback error: {cb_err}")
-        
+
         # Play the audio
         if not self.play_audio_ephemeral(audio_path):
             log.warning("🔊 play_audio_ephemeral returned False")
             return False
-        
+
         if wait:
             completed = await self.wait_for_playback()
             # Cleanup audio file after playback
             self._cleanup_audio_file(audio_path)
             return completed
-        
+
         return True
 
     async def process_queue(self) -> Optional[TTSRequest]:
         """
         Process the next item in the TTS queue.
-        
+
         Returns:
             Completed TTSRequest or None if queue is empty.
         """
         if not self._queue:
             return None
-        
+
         if self._processing:
             log.debug("TTS already processing, skipping")
             return None
-        
+
         self._processing = True
         request = self._queue.pop(0)
-        
+
         try:
             audio_path = await self.synthesize_speech(request.text)
             request.audio_path = audio_path
@@ -696,116 +730,116 @@ class ComfyUITTSService:
             log.error(f"❌ TTS failed for {request.request_id}: {e}")
         finally:
             self._processing = False
-        
+
         return request
-    
+
     async def synthesize_speech(self, text: str) -> Optional[str]:
         """
         Synthesize speech from text using ComfyUI.
-        
+
         Args:
             text: Text to convert to speech
-        
+
         Returns:
             Path to generated audio file, or None if failed.
         """
         if not self.is_available:
             log.warning("TTS service not available")
             return None
-        
+
         # Check connection
         if not await self.check_connection():
             log.error("ComfyUI server not reachable")
             return None
-        
+
         # Prepare workflow
         workflow = self._prepare_workflow(text)
-        
+
         if workflow is None:
             log.error("Failed to prepare TTS workflow")
             return None
-        
+
         try:
             client = await self._get_client()
-            
+
             # Queue the workflow - _prepare_workflow already returns {"prompt": ...} format
             prompt_response = await client.post(
-                f"{self.base_url}/prompt",
-                json=workflow
+                f"{self.base_url}/prompt", json=workflow
             )
-            
+
             if prompt_response.status_code != 200:
                 log.error(f"Failed to queue workflow: {prompt_response.text}")
                 return None
-            
+
             prompt_result = prompt_response.json()
             prompt_id = prompt_result.get("prompt_id")
-            
+
             if not prompt_id:
                 log.error("No prompt_id in response")
                 return None
-            
+
             log.info(f"Queued ComfyUI workflow: {prompt_id}")
-            
+
             # Poll for completion
             audio_path = await self._wait_for_completion(prompt_id)
             return audio_path
-            
+
         except Exception as e:
             log.error(f"TTS synthesis error: {e}")
             return None
-    
+
     async def _wait_for_completion(
-        self,
-        prompt_id: str,
-        poll_interval: float = 0.5,
-        max_wait: float = 60.0
+        self, prompt_id: str, poll_interval: float = 0.5, max_wait: float = 60.0
     ) -> Optional[str]:
         """
         Wait for a ComfyUI workflow to complete and download the output audio.
-        
+
         Args:
             prompt_id: The prompt ID to monitor
             poll_interval: Seconds between status checks
             max_wait: Maximum seconds to wait
-        
+
         Returns:
             Path to downloaded audio file, or None if failed/timeout.
         """
         client = await self._get_client()
         start_time = time.time()
-        
+
         while time.time() - start_time < max_wait:
             try:
                 # Check history for completion
                 history_response = await client.get(
                     f"{self.base_url}/history/{prompt_id}"
                 )
-                
+
                 if history_response.status_code == 200:
                     history = history_response.json()
-                    
+
                     if prompt_id in history:
                         prompt_history = history[prompt_id]
                         outputs = prompt_history.get("outputs", {})
-                        
+
                         # Check if we have outputs (indicates completion)
                         if outputs:
-                            log.debug(f"Workflow completed, outputs: {list(outputs.keys())}")
-                            
+                            log.debug(
+                                f"Workflow completed, outputs: {list(outputs.keys())}"
+                            )
+
                             # Look for audio output in any node
                             for node_id, node_output in outputs.items():
                                 # Handle both 'audio' and 'audios' keys
-                                audio_list = node_output.get("audio") or node_output.get("audios", [])
+                                audio_list = node_output.get(
+                                    "audio"
+                                ) or node_output.get("audios", [])
                                 if not isinstance(audio_list, list):
                                     audio_list = [audio_list]
-                                
+
                                 for audio_data in audio_list:
                                     if isinstance(audio_data, dict):
                                         filename = audio_data.get("filename")
                                         subfolder = audio_data.get("subfolder", "")
                                         audio_type = audio_data.get("type", "output")
-                                        
+
                                         if filename:
                                             # Download the audio file from ComfyUI server
                                             local_path = await self._download_audio(
@@ -813,202 +847,210 @@ class ComfyUITTSService:
                                             )
                                             if local_path:
                                                 return local_path
-                            
+
                             # No audio found in outputs
-                            log.warning(f"Workflow completed but no audio output found. Outputs: {outputs}")
+                            log.warning(
+                                f"Workflow completed but no audio output found. Outputs: {outputs}"
+                            )
                             return None
-                        
+
                         # Check for error status
                         status_info = prompt_history.get("status", {})
                         if status_info.get("status_str") == "error":
                             messages = status_info.get("messages", [])
                             log.error(f"Workflow error: {messages}")
                             return None
-                
+
                 await asyncio.sleep(poll_interval)
-                
+
             except Exception as e:
                 log.warning(f"Error checking workflow status: {e}")
                 await asyncio.sleep(poll_interval)
-        
+
         log.warning(f"Timeout waiting for workflow {prompt_id}")
         return None
-    
+
     async def _download_audio(
-        self,
-        filename: str,
-        subfolder: str = "",
-        file_type: str = "output"
+        self, filename: str, subfolder: str = "", file_type: str = "output"
     ) -> Optional[str]:
         """
         Download audio file from ComfyUI server.
-        
+
         Args:
             filename: Name of the audio file
             subfolder: Subfolder within output directory
             file_type: 'output' or 'input'
-        
+
         Returns:
             Local path to downloaded file, or None if failed.
         """
         try:
             client = await self._get_client()
-            
+
             # Build download URL
-            params = {
-                "filename": filename,
-                "type": file_type
-            }
+            params = {"filename": filename, "type": file_type}
             if subfolder:
                 params["subfolder"] = subfolder
-            
+
             download_url = f"{self.base_url}/view"
             log.info(f"Downloading audio from ComfyUI: {filename}")
-            
+
             response = await client.get(download_url, params=params)
-            
+
             if response.status_code == 200:
                 # Save to local output directory
                 local_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
                 local_path = os.path.join(self.output_dir, local_filename)
-                
-                with open(local_path, 'wb') as f:
+
+                with open(local_path, "wb") as f:
                     f.write(response.content)
-                
+
                 log.info(f"Downloaded audio to: {local_path}")
-                
+
                 # Apply speed/pitch adjustments if configured
                 local_path = self._process_audio_speed_pitch(local_path)
-                
+
                 return local_path
             else:
                 log.error(f"Failed to download audio: HTTP {response.status_code}")
                 return None
-                
+
         except Exception as e:
             log.error(f"Error downloading audio: {e}")
             return None
-    
+
     async def clear_queue(self):
         """Clear all pending TTS requests."""
         cleared = len(self._queue)
         self._queue.clear()
         log.info(f"Cleared {cleared} pending TTS requests")
-    
+
     async def synthesize_and_play(
         self,
         text: str,
         priority: int = None,
         wait: bool = True,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
     ) -> bool:
         """
         Synthesize speech and play it ephemerally (no file retention needed by caller).
-        
+
         This is the main method for TTS playback - handles synthesis, playback,
         and waiting for completion.
-        
+
         Args:
             text: Text to synthesize
             priority: Priority level (PRIORITY_COMMENTARY or PRIORITY_CHAT_RESPONSE)
             wait: If True, wait for playback to complete before returning
             metadata: Optional context data (e.g. reply_to info for UI display)
-        
+
         Returns:
             True if synthesis and playback started successfully
         """
         if not self.is_available:
             log.warning("TTS service not available")
             return False
-        
+
         if priority is None:
             priority = self.PRIORITY_CHAT_RESPONSE
-        
+
         # For high-priority commentary, cancel EVERYTHING first to ensure it plays immediately
         if priority >= self.PRIORITY_COMMENTARY:
             cleared = self.cancel_all_and_interrupt()
             if cleared > 0:
                 log.info(f"🔊 Cleared {cleared} queue items for priority commentary")
-        
+
         # Acquire lock to ensure TTS requests are serialized (no overlap)
         async with self._tts_lock:
             # Reset cancelled flag for new request
             self._cancelled = False
             total_start = time.time()
-            
+
             # Log the request
-            log.info(f"🔊 TTS START: synthesizing (priority={priority}): {text[:50]}...")
-            
+            log.info(
+                f"🔊 TTS START: synthesizing (priority={priority}): {text[:50]}..."
+            )
+
             try:
                 # Synthesize speech
                 synthesis_start = time.time()
                 audio_path = await self.synthesize_speech(text)
                 synthesis_time = time.time() - synthesis_start
-                
+
                 if not audio_path:
-                    log.warning(f"🔊 TTS FAILED: synthesis returned no audio path after {synthesis_time:.2f}s")
+                    log.warning(
+                        f"🔊 TTS FAILED: synthesis returned no audio path after {synthesis_time:.2f}s"
+                    )
                     return False
-                
-                log.info(f"🔊 TTS Synthesis complete: {synthesis_time:.2f}s -> {audio_path}")
-                
+
+                log.info(
+                    f"🔊 TTS Synthesis complete: {synthesis_time:.2f}s -> {audio_path}"
+                )
+
                 # Check if cancelled during synthesis
                 if self._cancelled:
                     log.info("🔇 TTS cancelled during synthesis")
                     return False
-                
+
                 # Get audio duration for UI sync
                 duration_ms = self._get_audio_duration_ms(audio_path)
-                
+
                 # Notify UI that playback is about to start (for typewriter sync)
                 if self.on_playback_start and duration_ms:
                     try:
-                        log.info(f"🔊 Calling on_playback_start callback: text={text[:30]}..., duration={duration_ms}ms, metadata={bool(metadata)}")
+                        log.info(
+                            f"🔊 Calling on_playback_start callback: text={text[:30]}..., duration={duration_ms}ms, metadata={bool(metadata)}"
+                        )
                         await self.on_playback_start(text, duration_ms, metadata)
                     except Exception as cb_err:
                         log.warning(f"🔊 on_playback_start callback error: {cb_err}")
-                
+
                 # Play the audio
                 playback_start = time.time()
                 if not self.play_audio_ephemeral(audio_path):
                     log.warning("🔊 TTS FAILED: play_audio_ephemeral returned False")
                     return False
-                
+
                 # Wait for playback if requested
                 if wait:
                     completed = await self.wait_for_playback()
                     playback_time = time.time() - playback_start
                     total_time = time.time() - total_start
-                    log.info(f"🔊 TTS COMPLETE: synthesis={synthesis_time:.2f}s, playback={playback_time:.2f}s, total={total_time:.2f}s")
+                    log.info(
+                        f"🔊 TTS COMPLETE: synthesis={synthesis_time:.2f}s, playback={playback_time:.2f}s, total={total_time:.2f}s"
+                    )
                     # Cleanup audio file after playback
                     self._cleanup_audio_file(audio_path)
                     return completed
-                
+
                 total_time = time.time() - total_start
-                log.info(f"🔊 TTS STARTED PLAYBACK: synthesis={synthesis_time:.2f}s, total_so_far={total_time:.2f}s (not waiting)")
+                log.info(
+                    f"🔊 TTS STARTED PLAYBACK: synthesis={synthesis_time:.2f}s, total_so_far={total_time:.2f}s (not waiting)"
+                )
                 return True
-                
+
             except Exception as e:
                 total_time = time.time() - total_start
                 log.error(f"🔊 TTS ERROR after {total_time:.2f}s: {e}")
                 return False
-    
+
     async def synthesize_only(self, text: str) -> Optional[str]:
         """
         Synthesize TTS audio without playing it.
         Used for preloading audio during countdown.
-        
+
         Args:
             text: Text to synthesize
-        
+
         Returns:
             Path to generated audio file, or None if failed.
         """
         if not self.is_available:
             log.warning("TTS service not available for preload")
             return None
-        
+
         log.info(f"🔊 TTS PRELOAD: synthesizing (no playback): {text[:50]}...")
-        
+
         try:
             audio_path = await self.synthesize_speech(text)
             if audio_path:
@@ -1017,72 +1059,78 @@ class ComfyUITTSService:
         except Exception as e:
             log.error(f"🔊 TTS PRELOAD failed: {e}")
             return None
-    
-    async def play_preloaded(self, audio_path: str, text: str, wait: bool = True) -> bool:
+
+    async def play_preloaded(
+        self, audio_path: str, text: str, wait: bool = True
+    ) -> bool:
         """
         Play a preloaded audio file with UI callbacks.
-        
+
         Args:
             audio_path: Path to the preloaded audio file
             text: Original text for callbacks
             wait: If True, wait for playback to complete
-        
+
         Returns:
             True if playback completed successfully
         """
         if not audio_path or not os.path.exists(audio_path):
             log.warning(f"🔊 Preloaded audio not found: {audio_path}")
             return False
-        
+
         total_start = time.time()
-        
+
         # Apply speed/pitch processing
         audio_path = self._process_audio_speed_pitch(audio_path)
-        
+
         # Get duration for UI sync
         duration_ms = self._get_audio_duration_ms(audio_path)
-        
+
         # Notify UI that playback is about to start
         if self.on_playback_start and duration_ms:
             try:
-                log.info(f"🔊 Calling on_playback_start: text={text[:30]}..., duration={duration_ms}ms")
+                log.info(
+                    f"🔊 Calling on_playback_start: text={text[:30]}..., duration={duration_ms}ms"
+                )
                 await self.on_playback_start(text, duration_ms)
             except Exception as cb_err:
                 log.warning(f"🔊 on_playback_start callback error: {cb_err}")
-        
+
         # Play the audio
         log.info(f"🔊 Playing preloaded audio: {os.path.basename(audio_path)}")
         if not self.play_audio_ephemeral(audio_path):
             log.warning("🔊 play_audio_ephemeral returned False")
             return False
-        
+
         if wait:
             playback_start = time.time()
             completed = await self.wait_for_playback()
             playback_time = time.time() - playback_start
             total_time = time.time() - total_start
-            
+
             # Cleanup audio file after playback
             self._cleanup_audio_file(audio_path)
-            
-            log.info(f"🔊 TTS PRELOADED PLAY COMPLETE: playback={playback_time:.2f}s, total={total_time:.2f}s")
+
+            log.info(
+                f"🔊 TTS PRELOADED PLAY COMPLETE: playback={playback_time:.2f}s, total={total_time:.2f}s"
+            )
             return completed
-        
+
         return True
-    
+
     async def close(self):
         """Close the HTTP client."""
         if self._client:
             await self._client.aclose()
             self._client = None
-    
+
     def get_stats(self) -> dict:
         """Get service statistics."""
         return {
             "available": self.is_available,
             "queue_size": len(self._queue),
             "processing": self._processing,
-            "base_url": self.base_url
+            "base_url": self.base_url,
         }
 
 
@@ -1091,13 +1139,13 @@ def create_tts_service(
     base_url: str = None,
     workflow_path: str = None,
     output_dir: str = None,
-    on_playback_start: callable = None
+    on_playback_start: callable = None,
 ) -> ComfyUITTSService:
     """
     Factory function to create a ComfyUITTSService instance.
-    
+
     Uses environment variables if parameters not provided.
-    
+
     Args:
         on_playback_start: Async callback(text, duration_ms) called when audio starts
     """
@@ -1105,5 +1153,5 @@ def create_tts_service(
         base_url=base_url,
         workflow_path=workflow_path,
         output_dir=output_dir,
-        on_playback_start=on_playback_start
+        on_playback_start=on_playback_start,
     )

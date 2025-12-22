@@ -8,3 +8,5 @@ tiktoken
 twitchio>=2.8.0
 mutagen
 soundfile
+tweepy>=4.14.0
+discord.py>=2.3.0

@@ -77,6 +77,11 @@ from trackers.goal_tracker import GoalTracker, GoalPriority, GoalStatus
 from trackers.exploration_tracker import ExplorationTracker
 from services.twitch_chat_service import TwitchChatService, create_twitch_service
 from services.pumpfun_chat_service import PumpFunChatService, create_pumpfun_service
+from services.zora_chat_service import ZoraChatService, create_zora_chat_service
+from services.base_token_service import get_base_token_service
+from services.screenshot_manager import get_screenshot_manager
+from services.zora_poster_service import get_zora_poster_service
+from trackers.zora_achievement_tracker import get_zora_achievement_tracker
 from services.solana_token_service import get_token_service, SolanaTokenService
 from services.comfyui_tts_service import ComfyUITTSService, create_tts_service
 from services.chat_response_service import (
@@ -87,6 +92,16 @@ from services.chat_response_service import (
 from trackers.history_tracker import ScreenshotHistoryTracker
 from trackers.coordinate_tracker import CoordinateTracker
 from core.background_tasks import run_chat_background_task
+from services.tweet_generator import (
+    TweetGenerator,
+    create_tweet_generator,
+    TweetGeneratorResult,
+)
+from trackers.achievement_tracker import (
+    AchievementTracker,
+    AchievementType,
+    create_achievement_tracker,
+)
 from core.game_state_manager import parse_minimap, grid_to_world
 from core.llm_controller import LLMController
 from core.navigation_controller import NavigationController, GoalType
@@ -398,6 +413,18 @@ async def run_auto_loop(
     else:
         log.info("🗺️ Exploration tracker: Fresh start")
 
+    # Initialize achievement tracker for tweet generation milestones
+    achievement_tracker = create_achievement_tracker(
+        storage_path="data/achievements.json",
+        reset_on_start=not is_continuing_run,
+    )
+    if is_continuing_run:
+        log.info(
+            f"🏆 Achievement tracker: Loaded {len(achievement_tracker.triggered)} achievements"
+        )
+    else:
+        log.info("🏆 Achievement tracker: Fresh start")
+
     # Initialize map visit tracker for loop detection
     map_visit_tracker = MapVisitTracker()
     last_map_name = None  # Track previous map for transition detection
@@ -437,7 +464,8 @@ async def run_auto_loop(
 
     # Initialize scenario manager for scripted overrides and goals
     scenario_manager = ScenarioManager(navigation_controller)
-    log.info("Scenario manager initialized")
+    scenario_manager.set_achievement_tracker(achievement_tracker)
+    log.info("Scenario manager initialized (with achievement tracking)")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # PREPLANNED NAMES - Generate rival name at run start for unique each run
@@ -600,6 +628,32 @@ async def run_auto_loop(
             "💎 Pump.fun chat not configured (set PUMPFUN_TOKEN_ADDRESS to enable)"
         )
 
+    # Initialize Zora chat service (optional - for onchain livestream integration)
+    zora_chat_service = create_zora_chat_service()
+    if zora_chat_service.is_available:
+        try:
+            await zora_chat_service.start()
+            log.info("🟣 Zora chat service started")
+        except Exception as e:
+            log.warning(f"Failed to start Zora chat service: {e}")
+    else:
+        log.info("🟣 Zora chat not configured (set ZORA_USERNAME to enable)")
+
+    # Initialize Zora Poster service (for minting achievement coins)
+    zora_poster_service = get_zora_poster_service()
+    try:
+        await zora_poster_service.start()
+        log.info("🖼️ Zora poster service started")
+    except Exception as e:
+        log.warning(f"Failed to start Zora poster service: {e}")
+
+    # Initialize specialized trackers
+    screenshot_manager = get_screenshot_manager()
+    zora_achievement_tracker = get_zora_achievement_tracker()
+
+    # Pre-fetch Zora post counter if needed (poster service does this internally or we can do it here)
+    # The tracker handles it on init/load.
+
     # Initialize ComfyUI TTS service (optional - gracefully disabled if not configured)
     # Create callback to notify UI when TTS starts playing (for synchronized typewriter)
     async def on_tts_playback_start(
@@ -646,6 +700,40 @@ async def run_auto_loop(
     else:
         log.info(
             "💬 Chat response service not configured (set FEATHERLESS_* env vars to enable)"
+        )
+
+    # Initialize Tweet Generator service (Discord approval + X posting during intro)
+    tweet_generator = create_tweet_generator(llm_client=client)
+    if tweet_generator.enabled:
+        log.info("🐦 Tweet generator enabled (Discord approval + X posting)")
+
+        # Set up photo callback for scripted photo moments
+        def on_photo_moment(achievement):
+            """Callback when a scripted photo moment is triggered."""
+
+            async def trigger_photo_tweet():
+                try:
+                    outcome = await tweet_generator.generate_and_post_achievement_tweet(
+                        achievement=achievement,
+                        run_state=run_state,
+                        game_state=state,
+                        screenshot_path=SAVED_SCREENSHOT_PATH,  # Include game screenshot
+                    )
+                    if outcome.result == TweetGeneratorResult.POSTED:
+                        achievement_tracker.mark_tweet_posted(
+                            achievement.achievement_type,
+                            outcome.tweet_url,
+                        )
+                        log.info(f"📸 Photo tweet posted: {outcome.tweet_url}")
+                except Exception as e:
+                    log.error(f"Photo tweet generation failed: {e}")
+
+            asyncio.create_task(trigger_photo_tweet())
+
+        scenario_manager.set_photo_callback(on_photo_moment)
+    else:
+        log.info(
+            "🐦 Tweet generator disabled (set TWITTER_ENABLED and DISCORD_ENABLED to enable)"
         )
 
     # Helper function to generate a chat response via the dedicated chat LLM
@@ -1019,6 +1107,37 @@ Your intro message:"""
     )
     log.info(f"⏱️ Stream countdown started: {countdown_seconds}s")
 
+    # --- TWEET GENERATION DURING COUNTDOWN ---
+    # Start tweet generation as a background task - runs Discord approval during countdown
+    tweet_task = None
+    tweet_outcome = None
+    if tweet_generator.enabled:
+        log.info("🐦 Starting tweet generation (runs during countdown)...")
+
+        async def run_tweet_generation():
+            """Run tweet generation and return outcome."""
+            try:
+                # Build minimal game state from current state
+                game_state = {}
+                if state:
+                    game_state = {
+                        "map_name": state.get("map_name", ""),
+                        "badges": state.get("badges", []),
+                        "party": state.get("party", []),
+                    }
+
+                return await tweet_generator.generate_and_post_tweet(
+                    is_continuing_run=is_continuing_run,
+                    run_state=run_state,
+                    game_state=game_state,
+                )
+            except Exception as e:
+                log.error(f"Tweet generation failed: {e}")
+                return None
+
+        # Start as background task - will complete during countdown
+        tweet_task = asyncio.create_task(run_tweet_generation())
+
     # Preload TTS audio DURING countdown (synthesize but don't play yet)
     # Run this in background while countdown is active
     preloaded_audio_path = None
@@ -1107,6 +1226,35 @@ Your intro message:"""
     # Countdown complete! Trigger color transition
     log.info("🎨 Countdown complete! Starting color transition...")
     await broadcast_func({"introPhase": "transitioning"})
+
+    # --- CHECK TWEET GENERATION RESULT ---
+    # If tweet task is still running, give it a few more seconds to complete
+    if tweet_task and not tweet_task.done():
+        log.info("🐦 Waiting for tweet generation to complete...")
+        try:
+            tweet_outcome = await asyncio.wait_for(tweet_task, timeout=30)
+        except asyncio.TimeoutError:
+            log.warning("🐦 Tweet generation timed out during transition")
+            tweet_task.cancel()
+    elif tweet_task:
+        # Task already completed
+        try:
+            tweet_outcome = tweet_task.result()
+        except Exception as e:
+            log.warning(f"🐦 Tweet task error: {e}")
+
+    # Log tweet outcome
+    if tweet_outcome:
+        if tweet_outcome.result == TweetGeneratorResult.POSTED:
+            log.info(f"🐦 Tweet posted successfully: {tweet_outcome.tweet_url}")
+        elif tweet_outcome.result == TweetGeneratorResult.DENIED:
+            log.info("🐦 Tweet was denied by Discord vote")
+        elif tweet_outcome.result == TweetGeneratorResult.TIMEOUT:
+            log.info("🐦 Tweet approval timed out")
+        elif tweet_outcome.result == TweetGeneratorResult.MAX_REGENERATIONS:
+            log.info("🐦 Tweet skipped: max regenerations reached")
+        elif tweet_outcome.result == TweetGeneratorResult.ERROR:
+            log.warning(f"🐦 Tweet error: {tweet_outcome.error}")
 
     # Wait for color transition animation (~3 seconds on frontend)
     await asyncio.sleep(3)
@@ -1375,6 +1523,15 @@ Your intro message:"""
 
                 # Register with history tracker - this keeps N and N-1, auto-cleans N-2+
                 screenshot_history.add_screenshot(current_cycle, snapshot_path)
+
+                # Capture for Zora gallery (keeps last 5 for progress posts)
+                if screenshot_manager:
+                    screenshot_manager.capture(
+                        source_path=snapshot_path,
+                        cycle_number=current_cycle,
+                        action_number=action_count,
+                        map_name=current_mGBA_state.get("map_name", ""),
+                    )
             except Exception as e:
                 log.error(
                     f"Failed to create atomic snapshot: {e}. Falling back to global path."
@@ -2147,6 +2304,79 @@ Your intro message:"""
             )
             state["badges"] = badge_data
             update_payload["badges"] = badge_data
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # ACHIEVEMENT DETECTION & TWEET TRIGGERING
+        # Check for new achievements and trigger tweet generation in background
+        # ═══════════════════════════════════════════════════════════════════════════
+
+        # Check Zora Minor Achievements
+        if zora_achievement_tracker:
+            try:
+                zora_ach = zora_achievement_tracker.check_for_achievements(
+                    current_party=new_team or [],
+                    current_map=map_name,
+                    pokedex_caught=current_mGBA_state.get("pokedex_owned", 0),
+                    game_state=current_mGBA_state,
+                )
+                if zora_ach:
+                    log.info(f"🟣 Zora Minor Achievement: {zora_ach.get_title()}")
+            except Exception as e:
+                log.warning(f"Zora achievement detection error: {e}")
+
+        if tweet_generator.enabled:
+            try:
+                # Check for new achievements based on current game state
+                new_achievement = achievement_tracker.check_for_achievements(
+                    current_party=new_team or [],
+                    current_badges=badge_data or [],
+                    current_map=map_name,
+                    game_state=current_mGBA_state,
+                )
+
+                if new_achievement:
+                    log.info(
+                        f"🏆 ACHIEVEMENT UNLOCKED: {new_achievement.achievement_type.value}"
+                    )
+
+                    # Also trigger for Zora major achievement
+                    if zora_achievement_tracker:
+                        zora_achievement_tracker.trigger_from_major_achievement(
+                            new_achievement.achievement_type.value,
+                            context=new_achievement.context,
+                        )
+
+                    # Trigger tweet generation as background task
+                    async def trigger_achievement_tweet(achievement):
+                        """Background task to generate and post achievement tweet."""
+                        try:
+                            outcome = await tweet_generator.generate_and_post_achievement_tweet(
+                                achievement=achievement,
+                                run_state=run_state,
+                                game_state=current_mGBA_state,
+                                screenshot_path=SAVED_SCREENSHOT_PATH,  # Include game screenshot
+                            )
+
+                            if outcome.result == TweetGeneratorResult.POSTED:
+                                achievement_tracker.mark_tweet_posted(
+                                    achievement.achievement_type,
+                                    outcome.tweet_url,
+                                )
+                                log.info(
+                                    f"🐦 Achievement tweet posted: {outcome.tweet_url}"
+                                )
+                            else:
+                                log.info(
+                                    f"🐦 Achievement tweet result: {outcome.result.value}"
+                                )
+                        except Exception as e:
+                            log.error(f"Achievement tweet generation failed: {e}")
+
+                    # Start as background task (non-blocking)
+                    asyncio.create_task(trigger_achievement_tweet(new_achievement))
+
+            except Exception as e:
+                log.warning(f"Achievement detection error: {e}")
 
         pos = current_mGBA_state.get("position")
         map_id = current_mGBA_state.get("map_id", "N/A")
@@ -2958,6 +3188,7 @@ Your intro message:"""
                 twitch_service,
                 cycle_count,
                 pumpfun_service,  # Pump.fun service for crypto chat
+                zora_chat_service,  # Zora service for onchain chat
                 chat_response_service,  # For Featherless LLM responses
             )
         )
@@ -4146,10 +4377,15 @@ Your intro message:"""
                 pumpfun_msgs = pumpfun_service.get_messages_for_cycle_or_test()
                 messages_for_cycle.extend(pumpfun_msgs)
 
+            # Get Zora messages
+            if zora_chat_service and zora_chat_service.is_available:
+                zora_msgs = zora_chat_service.get_messages_for_cycle_or_test()
+                messages_for_cycle.extend(zora_msgs)
+
             # ═══════════════════════════════════════════════════════════════════
-            # WHALE DETECTION - Query token balances for pump.fun users
+            # WHALE DETECTION - Query token balances
             # ═══════════════════════════════════════════════════════════════════
-            # Uses multi-provider RPC fallback with caching to minimize API calls
+            # Solana/Pump.fun Whales
             token_service = get_token_service()
             if token_service.is_available:
                 # Get unique pump.fun wallet addresses that need whale check
@@ -4174,26 +4410,50 @@ Your intro message:"""
                             if wallet and wallet in whale_status:
                                 msg["is_whale"] = whale_status[wallet]
 
+            # Base/Zora Whales
+            base_token_service = get_base_token_service()
+            if base_token_service.is_available:
+                zora_wallets = [
+                    msg.get("user_address")
+                    for msg in messages_for_cycle
+                    if msg.get("source") == "zora"
+                    and msg.get("user_address")
+                    and not msg.get("is_test", False)
+                ]
+
+                if zora_wallets:
+                    base_status = await base_token_service.check_holder_status_batch(
+                        zora_wallets
+                    )
+                    for msg in messages_for_cycle:
+                        if msg.get("source") == "zora":
+                            wallet = msg.get("user_address")
+                            if wallet and wallet in base_status:
+                                msg["is_whale"] = base_status[wallet]
+
             # ═══════════════════════════════════════════════════════════════════
             # PRIORITY SORTING - Higher priority messages get responded to first
             # ═══════════════════════════════════════════════════════════════════
             # Priority hierarchy (highest first):
-            # 1. 👑 Pump.fun WHALE holders (100k+ tokens) - Priority 4
-            # 2. 💎 Twitch subscribers                    - Priority 3
-            # 3. 🪙 Regular pump.fun chatters             - Priority 2
-            # 4. 👤 Regular Twitch chatters               - Priority 1
+            # 1. 👑 WHALE holders (100k+ tokens)          - Priority 5
+            # 2. 🟣 Zora subscribers/holders              - Priority 4
+            # 3. 💎 Twitch subscribers                    - Priority 3
+            # 4. 🪙 Regular pump.fun / Zora chatters      - Priority 2
+            # 5. 👤 Regular Twitch chatters               - Priority 1
 
             def get_priority(msg: dict) -> int:
                 source = msg.get("source", "twitch")
                 is_whale = msg.get("is_whale", False)
                 is_subscriber = msg.get("is_subscriber", False)
 
-                if source == "pumpfun" and is_whale:
-                    return 4  # Whale - highest priority
+                if is_whale:
+                    return 5  # Whale - highest priority (any chain)
+                elif source == "zora" and is_subscriber:
+                    return 4  # Zora subscriber
                 elif source == "twitch" and is_subscriber:
                     return 3  # Twitch subscriber
-                elif source == "pumpfun":
-                    return 2  # Regular pump.fun chatter
+                elif source in ("pumpfun", "zora"):
+                    return 2  # Regular crypto chatter
                 else:
                     return 1  # Regular Twitch chatter
 
@@ -4218,19 +4478,28 @@ Your intro message:"""
 
             # Process RESPOND messages oldest first
             for decided in decisions:
+                # Find original message object and metadata
+                msg_data = next(
+                    (
+                        m
+                        for m in messages_for_cycle
+                        if m["timestamp"] == decided.timestamp
+                    ),
+                    None,
+                )
+                original_msg = msg_data.get("_original") if msg_data else None
+                msg_source = msg_data.get("source", "twitch") if msg_data else "twitch"
+
                 if decided.decision == MessageDecision.SKIP:
-                    log.info(f"⏭️ Skipping message from @{decided.display_name}")
-                    # Mark as responded so we don't process again
-                    original_msg = next(
-                        (
-                            m["_original"]
-                            for m in messages_for_cycle
-                            if m["timestamp"] == decided.timestamp
-                        ),
-                        None,
+                    log.info(
+                        f"⏭️ Skipping message from @{decided.display_name} ({msg_source})"
                     )
+                    # Mark as responded so we don't process again
                     if original_msg:
-                        twitch_service.mark_responded(original_msg)
+                        if msg_source == "twitch" and twitch_service:
+                            twitch_service.mark_responded(original_msg)
+                        elif hasattr(original_msg, "responded"):
+                            original_msg.responded = True
                     continue
 
                 # Check if we should stop for new cycle
@@ -4251,27 +4520,22 @@ Your intro message:"""
                         response_text = f"@{decided.display_name} {response_text}"
 
                     # Mark original message as responded
-                    original_msg = next(
-                        (
-                            m["_original"]
-                            for m in messages_for_cycle
-                            if m["timestamp"] == decided.timestamp
-                        ),
-                        None,
-                    )
                     if original_msg:
-                        twitch_service.mark_responded(original_msg)
+                        if msg_source == "twitch" and twitch_service:
+                            twitch_service.mark_responded(original_msg)
+                        elif hasattr(original_msg, "responded"):
+                            original_msg.responded = True
 
                     chat_response_count += 1
 
-                    # Queue TTS for the response (non-blocking) - if full, text still goes to Twitch
+                    # Queue TTS for the response (non-blocking) - if full, text still goes to chat
                     tts_queued = False
                     if tts_service.is_available:
                         # Pass context about what we are replying to
                         reply_metadata = {
                             "reply_to": {
                                 "username": decided.display_name,
-                                "platform": "Twitch",  # TODO: dynamic if multiproviders
+                                "platform": msg_source.capitalize(),
                                 "message": decided.message,
                             }
                         }
@@ -4284,23 +4548,32 @@ Your intro message:"""
                         )
                         tts_queued = request is not None
 
-                    # Send response to Twitch chat
-                    await twitch_service.send_response(
-                        decided.display_name,
-                        response_text.replace(f"@{decided.display_name} ", ""),
-                    )
+                    # Send response to appropriate platform
+                    if msg_source == "twitch" and twitch_service:
+                        await twitch_service.send_response(
+                            decided.display_name,
+                            response_text.replace(f"@{decided.display_name} ", ""),
+                        )
+                    elif msg_source == "pumpfun" and pumpfun_service:
+                        await pumpfun_service.send_message(response_text)
+                    elif msg_source == "zora":
+                        # Zora is currently read-only (responses shown in OBS overlay/TTS only)
+                        pass
 
                     # Broadcast chat response to OBS widget
                     chat_response_payload = {
                         "chat_response": {
                             "username": decided.display_name,
                             "response": response_text,
+                            "source": msg_source,
                             "is_past_message": False,
                             "timestamp": int(time.time() * 1000),
                         }
                     }
                     await broadcast_func(chat_response_payload)
-                    log.info(f"✅ Chat response sent: {response_text[:50]}...")
+                    log.info(
+                        f"✅ Chat response sent ({msg_source}): {response_text[:50]}..."
+                    )
 
             # If we processed all messages, sleep briefly
             await asyncio.sleep(min(remaining_wait, 1.0))

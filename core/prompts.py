@@ -818,3 +818,613 @@ def get_summary_prompt():
 
         Respond only with VALID JSON.
         """
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TWEET GENERATION PROMPTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TWEET_PROMPT_FRESH_START = """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're about to start a brand new adventure and want to tweet about it!
+
+Generate a short, enthusiastic tweet announcing your new Pokemon Red run.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, excited and genuine
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #LLMLetsPlay #AIStreamer
+- Express excitement about the new journey ahead
+- Be specific about Pokemon Red (mention Kanto, becoming champion, catching Pokemon, etc.)
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else."""
+
+TWEET_PROMPT_CONTINUING = """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're resuming your adventure and want to tweet about it!
+
+Current Game State:
+- Location: {location}
+- Team: {team}
+- Badges: {badges}
+- Playtime: {playtime}
+- Current Goal: {primary_goal}
+- Recent Progress: {latest_memory}
+
+Generate a short tweet about resuming your Pokemon adventure.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, enthusiastic
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #LLMLetsPlay #AIStreamer
+- Reference where you are and what you're doing
+- Be specific! Mention your team, location, or current goal
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else."""
+
+
+def build_tweet_prompt(
+    is_continuing_run: bool,
+    run_state=None,
+    game_state: dict = None,
+) -> str:
+    """
+    Build a prompt for generating tweet text.
+
+    Args:
+        is_continuing_run: Whether this is continuing an existing run
+        run_state: RunState object with run context
+        game_state: Current game state dict
+
+    Returns:
+        Formatted prompt string
+    """
+    if not is_continuing_run:
+        return TWEET_PROMPT_FRESH_START
+
+    # Build context for continuing run
+    location = "Kanto"
+    team = "My Pokemon team"
+    badges = "0"
+    playtime = "a while"
+    primary_goal = "exploring"
+    latest_memory = "Making progress on my adventure"
+
+    if game_state:
+        map_name = game_state.get("map_name", "")
+        if map_name:
+            location = map_name.replace("_", " ").title()
+
+        badge_list = game_state.get("badges", [])
+        if isinstance(badge_list, list):
+            badges = str(len(badge_list))
+
+        party = game_state.get("party", [])
+        if party and isinstance(party, list):
+            team_strs = []
+            for p in party[:3]:
+                if isinstance(p, dict):
+                    name = p.get("nickname") or p.get("species", "???")
+                    level = p.get("level", "?")
+                    team_strs.append(f"{name} (Lv{level})")
+            if team_strs:
+                team = ", ".join(team_strs)
+
+    if run_state:
+        elapsed = getattr(run_state, "elapsed_seconds", 0)
+        if elapsed:
+            hours = elapsed / 3600
+            playtime = f"{hours:.1f} hours"
+
+        goals = getattr(run_state, "goals", {})
+        if goals and goals.get("primary"):
+            primary_goal = goals["primary"]
+
+        memory = getattr(run_state, "latest_memory", "")
+        if memory:
+            latest_memory = memory[:100]  # Truncate for prompt
+
+    return TWEET_PROMPT_CONTINUING.format(
+        location=location,
+        team=team,
+        badges=badges,
+        playtime=playtime,
+        primary_goal=primary_goal,
+        latest_memory=latest_memory,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACHIEVEMENT TWEET PROMPTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ACHIEVEMENT_TWEET_TEMPLATES = {
+    "stream_start": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're about to start a brand new adventure and want to tweet about it!
+
+Generate a short, enthusiastic tweet announcing your new Pokemon Red run.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, excited and genuine
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #LLMLetsPlay #AIStreamer
+- Express excitement about the new journey ahead
+- Be specific about Pokemon Red (mention Kanto, becoming champion, catching Pokemon, etc.)
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "first_pokemon": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just received your very first Pokemon from Professor Oak! This is a huge milestone!
+
+Pokemon Received: {pokemon}
+Nickname: {nickname}
+
+Generate an emotional, excited tweet about getting your first Pokemon.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, genuinely excited and emotional
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #LLMLetsPlay #FirstPokemon
+- Express how meaningful this moment is
+- Mention your new partner by name
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "route_1_flower": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're on Route 1 and stopped to admire the beautiful wildflowers. A peaceful moment in nature.
+
+Generate a calm, appreciative tweet about this serene moment.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, peaceful and appreciative
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Route1 #NaturePhoto
+- Express appreciation for the simple beauty around you
+- Mention the contrast between adventure and peaceful moments
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "first_catch": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just caught your first wild Pokemon! This is your first successful catch!
+
+Pokemon Caught: {pokemon}
+
+Generate a triumphant, excited tweet about your first catch.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, triumphant and excited
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #LLMLetsPlay #GottaCatchEmAll
+- Express the thrill of the first successful catch
+- Mention the Pokemon you caught
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "viridian_forest_break": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're taking a peaceful break in Viridian Forest. The dappled sunlight through the trees is beautiful.
+
+Generate a relaxed, peaceful tweet about resting in the forest.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, relaxed and at peace
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #ViridianForest #ForestBreak
+- Express the calm atmosphere of the forest
+- Maybe mention the bug Pokemon buzzing around
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "starter_evolution_1": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+Your starter Pokemon just evolved for the first time! You watched it transform in a brilliant glow!
+
+Original Starter: {evolved_from}
+Evolved Into: {pokemon}
+
+Generate an amazed, proud tweet about your starter's first evolution.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, amazed and proud
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Evolution #GrowingStronger
+- Express pride in your Pokemon's growth
+- Mention both the original and evolved forms
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "starter_evolution_2": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+Your starter Pokemon just reached its FINAL EVOLUTION! This is a huge achievement!
+
+Original Starter: {starter}
+Final Form: {pokemon}
+
+Generate an epic, emotional tweet about your starter reaching its final form.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, epic and emotional
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #FinalEvolution #PowerfulBond
+- Express how far you've come together
+- Celebrate reaching full potential
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "badge": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just earned a gym badge! You defeated the gym leader in battle!
+
+Badge Earned: {badge_name} Badge
+Total Badges: {total_badges}/8
+Gym Leader: {gym_leader}
+
+Generate a victorious tweet about earning this badge.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, victorious and proud
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #GymBadge #{badge_name}Badge
+- Express triumph over the gym leader
+- Mention progress toward 8 badges
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "legendary": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just captured a LEGENDARY Pokemon! This is incredibly rare and difficult!
+
+Legendary Captured: {pokemon}
+
+Generate an awe-struck, triumphant tweet about capturing a legendary.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, awe-struck and triumphant
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Legendary #{pokemon}
+- Express the magnitude of this achievement
+- Convey how rare and powerful this Pokemon is
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "pokemon_champion": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+YOU JUST BECAME THE POKEMON LEAGUE CHAMPION! You defeated the Elite Four and the Champion!
+This is the ultimate achievement - the culmination of your entire journey!
+
+Generate an EPIC, emotional tweet about becoming Champion.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, EPIC and emotional
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Champion #PokemonLeague
+- Express the overwhelming emotion of this moment
+- Reflect on the incredible journey
+- This is THE moment - make it memorable!
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "ss_anne_deck": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're standing at the bow of the SS Anne, looking out at the sparkling ocean. The sea breeze is amazing!
+
+Generate a dreamy, peaceful tweet about this scenic moment.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, dreamy and content
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #SSAnne #OceanView
+- Express the wonder of being on this luxury cruise ship
+- Contrast the adventure with this moment of peace
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "pokemon_tower_spooked": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're in Pokemon Tower in Lavender Town and it's SUPER CREEPY! Ghosts everywhere and spooky sounds!
+
+Generate a spooked but brave tweet about exploring the haunted tower.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, spooked but determined
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #PokemonTower #LavenderTown
+- Express being scared but pushing through
+- Mention the ghosts or creepy atmosphere
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "game_corner_slots": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're at the Celadon Game Corner playing the slot machines! Time to try your luck for some prizes!
+
+Generate a fun, playful tweet about gambling at the Game Corner.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, playful and hopeful
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #GameCorner #Celadon
+- Express excitement about trying to win
+- Maybe mention hoping for coins to buy prizes
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "fighting_dojo": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're training at the Fighting Dojo in Saffron City! The martial artists here are intense!
+
+Generate an energetic tweet about training at the dojo.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, energetic and focused
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #FightingDojo #Training
+- Express determination to get stronger
+- Mention the fighting-type Pokemon or trainers
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "safari_zone_explorer": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're exploring the Safari Zone! So many rare Pokemon to find! Time for a wild adventure!
+
+Generate an adventurous, excited tweet about Safari Zone exploration.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, adventurous and excited
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #SafariZone #RarePokemon
+- Express excitement about finding rare Pokemon
+- Mention the thrill of the safari hunt
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "team_rocket_first": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just had your first real encounter with Team Rocket! Those villains are up to no good!
+
+Generate a determined, heroic tweet about facing Team Rocket.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, determined and brave
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #TeamRocket #Hero
+- Express determination to stop their evil plans
+- Show courage in facing the villains
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    # Scenic/Nature photo moments
+    "cerulean_cape": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're standing at Cerulean Cape near Bill's cottage, looking out at the beautiful ocean. The sea breeze is refreshing!
+
+Generate a serene, appreciative tweet about this beautiful coastal view.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, peaceful and content
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #CeruleanCape #OceanView
+- Express appreciation for the beautiful scenery
+- Mention the peaceful moment away from battles
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "mt_moon_exit": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You just emerged from Mt. Moon into the bright daylight! After all that darkness, the sunlight feels amazing!
+
+Generate a relieved, happy tweet about finally escaping the cave.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, relieved and happy
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #MtMoon #Daylight
+- Express relief after the dark cave journey
+- Celebrate seeing the sky again
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "rock_tunnel_exit": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You finally made it through Rock Tunnel! That was the darkest, longest cave ever but you survived!
+
+Generate a triumphant, exhausted tweet about escaping Rock Tunnel.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, exhausted but triumphant
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #RockTunnel #Survivor
+- Express how challenging the dark tunnel was
+- Celebrate finally seeing light again
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "cycling_road": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're cruising down Cycling Road on your bike! The wind in your hair feels amazing as you coast downhill!
+
+Generate an exhilarated, free-spirited tweet about the bike ride.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, exhilarated and free
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #CyclingRoad #BikeLife
+- Express the thrill of speeding downhill
+- Capture the sense of freedom and fun
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "seafoam_islands": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're deep in the Seafoam Islands caves, surrounded by beautiful ice formations. It's freezing but stunning!
+
+Generate an awed, chilly tweet about the frozen underground caves.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, awed and a bit cold
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #SeafoamIslands #IceCave
+- Express wonder at the beautiful ice formations
+- Mention how cold it is but how worth it the view is
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "route_12_fishing": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're sitting peacefully on Route 12 with a fishing rod, waiting for a bite. The silence is so calming!
+
+Generate a relaxed, tranquil tweet about this peaceful fishing moment.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, relaxed and patient
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Fishing #Route12
+- Express the peacefulness of fishing
+- Capture the calm, patient waiting for a catch
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    # Milestone photo moments
+    "pewter_gym_entrance": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You're standing at the entrance to Pewter Gym - your very FIRST gym challenge! Brock awaits inside!
+
+Generate a nervous but determined tweet about entering your first gym.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, nervous but determined
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #PewterGym #FirstGym
+- Express the excitement and nerves of your first gym
+- Show determination to earn your first badge
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "indigo_plateau": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You've finally arrived at the Indigo Plateau - the Pokemon League! The Elite Four await inside!
+
+Generate an epic, emotional tweet about reaching the ultimate destination.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, awed and emotional
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #IndigoPlateau #PokemonLeague
+- Express how far you've come on this journey
+- Show determination to face the Elite Four
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+    "daycare_visit": """You are Lass, a bubbly female AI playing Pokemon Red on stream.
+You discovered the Pokemon Daycare on Route 5! The elderly couple here takes such good care of Pokemon!
+
+Generate a wholesome, curious tweet about visiting the daycare.
+
+Requirements:
+- Max 260 characters (leave room for hashtags)
+- First person, wholesome and curious
+- Include 1-2 hashtags from: #Pokemon #PokemonRed #Daycare #Route5
+- Express how sweet and cozy the daycare is
+- Maybe wonder about leaving a Pokemon here
+- Do NOT use emojis
+
+Return ONLY the tweet text, nothing else.""",
+}
+
+# Gym leader names for badge tweets
+BADGE_GYM_LEADERS = {
+    "Boulder": "Brock",
+    "Cascade": "Misty",
+    "Thunder": "Lt. Surge",
+    "Rainbow": "Erika",
+    "Soul": "Koga",
+    "Marsh": "Sabrina",
+    "Volcano": "Blaine",
+    "Earth": "Giovanni",
+}
+
+
+def build_achievement_tweet_prompt(
+    achievement,
+    run_state=None,
+    game_state: dict = None,
+) -> str:
+    """
+    Build a prompt for generating achievement-specific tweet text.
+
+    Args:
+        achievement: Achievement object with type and context
+        run_state: RunState object with run context
+        game_state: Current game state dict
+
+    Returns:
+        Formatted prompt string
+    """
+    from trackers.achievement_tracker import AchievementType
+
+    achievement_type = achievement.achievement_type
+    context = achievement.context or {}
+
+    # Map achievement types to template keys
+    type_to_template = {
+        AchievementType.STREAM_START: "stream_start",
+        AchievementType.FIRST_POKEMON: "first_pokemon",
+        AchievementType.ROUTE_1_FLOWER: "route_1_flower",
+        AchievementType.FIRST_CATCH: "first_catch",
+        AchievementType.VIRIDIAN_FOREST_BREAK: "viridian_forest_break",
+        AchievementType.STARTER_EVOLUTION_1: "starter_evolution_1",
+        AchievementType.STARTER_EVOLUTION_2: "starter_evolution_2",
+        AchievementType.BADGE_BOULDER: "badge",
+        AchievementType.BADGE_CASCADE: "badge",
+        AchievementType.BADGE_THUNDER: "badge",
+        AchievementType.BADGE_RAINBOW: "badge",
+        AchievementType.BADGE_SOUL: "badge",
+        AchievementType.BADGE_MARSH: "badge",
+        AchievementType.BADGE_VOLCANO: "badge",
+        AchievementType.BADGE_EARTH: "badge",
+        AchievementType.LEGENDARY_ARTICUNO: "legendary",
+        AchievementType.LEGENDARY_ZAPDOS: "legendary",
+        AchievementType.LEGENDARY_MOLTRES: "legendary",
+        AchievementType.LEGENDARY_MEWTWO: "legendary",
+        AchievementType.POKEMON_CHAMPION: "pokemon_champion",
+        # Scripted photo moments
+        AchievementType.SS_ANNE_DECK: "ss_anne_deck",
+        AchievementType.POKEMON_TOWER_SPOOKED: "pokemon_tower_spooked",
+        AchievementType.GAME_CORNER_SLOTS: "game_corner_slots",
+        AchievementType.FIGHTING_DOJO: "fighting_dojo",
+        AchievementType.SAFARI_ZONE_EXPLORER: "safari_zone_explorer",
+        AchievementType.TEAM_ROCKET_FIRST: "team_rocket_first",
+        # Scenic/Nature moments
+        AchievementType.CERULEAN_CAPE: "cerulean_cape",
+        AchievementType.MT_MOON_EXIT: "mt_moon_exit",
+        AchievementType.ROCK_TUNNEL_EXIT: "rock_tunnel_exit",
+        AchievementType.CYCLING_ROAD: "cycling_road",
+        AchievementType.SEAFOAM_ISLANDS: "seafoam_islands",
+        AchievementType.ROUTE_12_FISHING: "route_12_fishing",
+        # Milestone moments
+        AchievementType.PEWTER_GYM_ENTRANCE: "pewter_gym_entrance",
+        AchievementType.INDIGO_PLATEAU: "indigo_plateau",
+        AchievementType.DAYCARE_VISIT: "daycare_visit",
+    }
+
+    template_key = type_to_template.get(achievement_type, "stream_start")
+    template = ACHIEVEMENT_TWEET_TEMPLATES.get(
+        template_key, ACHIEVEMENT_TWEET_TEMPLATES["stream_start"]
+    )
+
+    # Build format kwargs based on achievement type
+    format_kwargs = {}
+
+    if template_key == "first_pokemon":
+        format_kwargs["pokemon"] = context.get("pokemon", "a new Pokemon")
+        format_kwargs["nickname"] = context.get("nickname", "my new friend")
+
+    elif template_key == "first_catch":
+        format_kwargs["pokemon"] = context.get("pokemon", "a wild Pokemon")
+
+    elif template_key == "starter_evolution_1":
+        format_kwargs["evolved_from"] = context.get("evolved_from", "my starter")
+        format_kwargs["pokemon"] = context.get("pokemon", "its evolved form")
+
+    elif template_key == "starter_evolution_2":
+        format_kwargs["starter"] = context.get("starter", "my starter")
+        format_kwargs["pokemon"] = context.get("pokemon", "its final form")
+
+    elif template_key == "badge":
+        badge_name = context.get("badge_name", "a new")
+        total_badges = context.get("total_badges", 1)
+        gym_leader = BADGE_GYM_LEADERS.get(badge_name, "the gym leader")
+        format_kwargs["badge_name"] = badge_name
+        format_kwargs["total_badges"] = total_badges
+        format_kwargs["gym_leader"] = gym_leader
+
+    elif template_key == "legendary":
+        format_kwargs["pokemon"] = context.get("pokemon", "a legendary Pokemon")
+
+    # Format template with context
+    try:
+        return template.format(**format_kwargs)
+    except KeyError:
+        # Return unformatted template if format fails
+        return template
