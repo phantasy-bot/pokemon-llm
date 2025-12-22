@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Optional, Any, Dict, List
 
 from services.comfyui_image_service import ComfyUIImageService, create_image_service
+from core.chronicle_client import get_chronicle_client
 
 # Discord and Twitter services removed/deprecated
 from trackers.achievement_tracker import (
@@ -78,29 +79,13 @@ class TweetGenerator:
     ):
         """
         Initialize the tweet generator.
-
-        Args:
-            image_service: ComfyUI image generation service
-            twitter_service: Deprecated
-            discord_service: Deprecated
-            llm_client: LLM client for generating tweet text
         """
         self.image_service = image_service or create_image_service()
         self.llm_client = llm_client
-        self.chronicle_url = os.getenv("ZORA_SIDECAR_URL", "http://localhost:3001")
+        self.chronicle_client = get_chronicle_client()
+        self.enabled = True  # Always enabled now, handled by client
 
-        # We consider it enabled if we can talk to Chronicle (httpx available)
-        self.enabled = HTTPX_AVAILABLE
-
-        # Max retries for internal logic if needed
-        self.max_regenerations = 1
-
-        if self.enabled:
-            log.info(
-                f"Tweet Generator initialized (Chronicle URL: {self.chronicle_url})"
-            )
-        else:
-            log.info("Tweet Generator disabled: httpx missing")
+        log.info("Tweet Generator initialized with Chronicle Client")
 
     async def generate_and_post_achievement_tweet(
         self,
@@ -245,84 +230,39 @@ class TweetGenerator:
         screenshot_path: str = None,
     ) -> bool:
         """Send tweet draft to Chronicle Server."""
-        try:
-            # Get API Key from environment
-            api_key = os.getenv("CHRONICLE_SECRET_KEY")
-            if not api_key:
-                log.error(
-                    "CHRONICLE_SECRET_KEY not set. Cannot authenticate with Chronicle."
+
+        # Prepare attributes from context
+        attributes = [
+            {"trait_type": "Type", "value": "Tweet Draft"},
+            {
+                "trait_type": "Achievement",
+                "value": achievement.achievement_type.value,
+            },
+        ]
+
+        # Add simple context fields
+        for k, v in run_context.items():
+            if isinstance(v, (str, int, float, bool)):
+                attributes.append(
+                    {"trait_type": k.replace("_", " ").title(), "value": v}
                 )
-                return False
 
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                files_list = []
+        gallery_paths = []
+        # We can also attach the screenshot as a gallery item if available
+        if screenshot_path and os.path.exists(screenshot_path):
+            gallery_paths.append(screenshot_path)
 
-                # Public Image (AI Generated)
-                if image_path and os.path.exists(image_path):
-                    img_f = open(image_path, "rb")
-                    files_list.append(("image", ("image.png", img_f, "image/png")))
+        success = await self.chronicle_client.create_draft(
+            name=f"Tweet: {achievement.get_title()}",
+            symbol="TWEET",
+            description=tweet_text,
+            attributes=attributes,
+            image_path=image_path,
+            gallery_paths=gallery_paths,
+            status="draft",
+        )
 
-                # We can also attach the screenshot as a gallery item if available
-                scr_f = None
-                if screenshot_path and os.path.exists(screenshot_path):
-                    scr_f = open(screenshot_path, "rb")
-                    files_list.append(
-                        ("gallery", ("screenshot.png", scr_f, "image/png"))
-                    )
-
-                # Prepare attributes from context
-                attributes = [
-                    {"trait_type": "Type", "value": "Tweet Draft"},
-                    {
-                        "trait_type": "Achievement",
-                        "value": achievement.achievement_type.value,
-                    },
-                ]
-
-                # Add simple context fields
-                for k, v in run_context.items():
-                    if isinstance(v, (str, int, float, bool)):
-                        attributes.append(
-                            {"trait_type": k.replace("_", " ").title(), "value": v}
-                        )
-
-                data = {
-                    "name": f"Tweet: {achievement.get_title()}",
-                    "symbol": "TWEET",
-                    "description": tweet_text,
-                    "attributes": json.dumps(attributes),
-                    "status": "draft",
-                }
-
-                try:
-                    response = await client.post(
-                        f"{self.chronicle_url}/api/drop",
-                        data=data,
-                        files=files_list,
-                        headers={"x-api-key": api_key},  # Auth Header
-                    )
-
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("success"):
-                            return True
-                        else:
-                            log.error(f"Chronicle error: {result.get('error')}")
-                    else:
-                        log.error(
-                            f"Chronicle HTTP error: {response.status_code} {response.text}"
-                        )
-
-                finally:
-                    if "img_f" in locals() and img_f:
-                        img_f.close()
-                    if scr_f:
-                        scr_f.close()
-
-        except Exception as e:
-            log.error(f"Failed to send to Chronicle: {e}")
-
-        return False
+        return success
 
     def _build_run_context(
         self,

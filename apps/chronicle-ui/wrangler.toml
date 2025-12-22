@@ -1,0 +1,24 @@
+name = "llmletsplay-chronicle-ui"
+main = "worker.ts"
+compatibility_date = "2024-09-23"
+
+# Asset Configuration
+# run_worker_first = false means: Check assets first. If found, serve. If not, run worker.
+assets = { directory = "./dist", binding = "ASSETS", run_worker_first = false }
+
+[observability]
+enabled = true
+
+# Production (Default)
+# Domain: llmletsplay-chronicle-ui.phantasybot.workers.dev
+routes = [
+	{ pattern = "chronicle.llmletsplay.com", custom_domain = true }
+]
+
+# Dev Environment
+[env.dev]
+name = "llmletsplay-chronicle-ui-dev"
+# Domain: llmletsplay-chronicle-ui-dev.phantasybot.workers.dev
+routes = [
+	{ pattern = "chronicle-dev.llmletsplay.com", custom_domain = true }
+]

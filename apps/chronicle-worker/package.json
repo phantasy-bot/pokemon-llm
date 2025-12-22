@@ -1,5 +1,5 @@
 {
-  "name": "chronicle-worker",
+  "name": "llmletsplay-chronicle-worker",
   "version": "0.0.1",
   "scripts": {
     "dev": "wrangler dev src/index.ts",

@@ -27,6 +27,7 @@ from trackers.zora_achievement_tracker import (
 )
 from services.screenshot_manager import get_screenshot_manager
 from trackers.achievement_tracker import create_achievement_tracker, AchievementType
+from core.chronicle_client import get_chronicle_client
 
 log = logging.getLogger("zora_poster")
 
@@ -62,12 +63,11 @@ class ZoraPosterService:
     def __init__(self):
         self.tracker = get_zora_achievement_tracker()
         self.screenshot_manager = get_screenshot_manager()
-        self.sidecar_url = ZORA_SIDECAR_URL
+        self.chronicle_client = get_chronicle_client()
 
         self._running = False
         self._last_post_time = 0
         self._worker_task: Optional[asyncio.Task] = None
-        self._client: Optional[httpx.AsyncClient] = None
 
         # State for ComfyUI generation (if needed)
         self.comfyui_service = None  # To be injected or imported
@@ -97,15 +97,7 @@ class ZoraPosterService:
             except asyncio.CancelledError:
                 pass
 
-        if self._client:
-            await self._client.aclose()
-
-    async def _get_client(self) -> httpx.AsyncClient:
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                timeout=120.0
-            )  # Long timeout for upload/mint
-        return self._client
+        await self.chronicle_client.close()
 
     async def _worker_loop(self):
         """Main loop checking for pending posts."""
@@ -288,92 +280,28 @@ class ZoraPosterService:
 
     async def _send_to_sidecar(self, post_data: Dict) -> bool:
         """Send post data to Chronicle Server."""
-        client = await self._get_client()
 
+        attributes = []
         try:
-            # Get API Key from environment
-            api_key = os.getenv("CHRONICLE_SECRET_KEY")
-            if not api_key:
-                log.error(
-                    "CHRONICLE_SECRET_KEY not set. Cannot authenticate with Chronicle."
-                )
-                return False
+            attributes = post_data["attributes"]
+        except Exception:
+            attributes = []
 
-            # Prepare files list for multipart upload
-            files_list = []
+        success = await self.chronicle_client.create_draft(
+            name=post_data["name"],
+            symbol=post_data["symbol"],
+            description=post_data["description"],
+            attributes=attributes,
+            image_path=post_data["image_path"],
+            exclusive_path=post_data.get("exclusive_path"),
+            status=post_data.get("status", "draft"),
+        )
 
-            # Public Image
-            img_f = open(post_data["image_path"], "rb")
-            files_list.append(("image", ("image.png", img_f, "image/png")))
+        if success:
+            # Side effect: Mock the coin address since it's a draft
+            post_data["coinAddress"] = "draft-pending"
 
-            # Exclusive Content (Optional)
-            ex_f = None
-            if post_data.get("exclusive_path"):
-                ex_f = open(post_data["exclusive_path"], "rb")
-                files_list.append(
-                    ("exclusive", ("content.dat", ex_f, "application/octet-stream"))
-                )
-
-            data = {
-                "name": post_data["name"],
-                "symbol": post_data["symbol"],
-                "description": post_data["description"],
-                "attributes": json.dumps(post_data["attributes"]),
-                "status": post_data.get(
-                    "status", "draft"
-                ),  # Default to draft if not specified
-            }
-
-            try:
-                # Add retry logic for sidecar connection
-                response = None
-                max_retries = 3
-
-                if not HTTPX_AVAILABLE:
-                    log.error("httpx not available, cannot post to sidecar")
-                    return False
-
-                for attempt in range(max_retries):
-                    try:
-                        response = await client.post(
-                            f"{self.sidecar_url}/api/drop",
-                            data=data,
-                            files=files_list,
-                            timeout=120.0,
-                            headers={"x-api-key": api_key},  # Auth Header
-                        )
-                        break  # Success
-                    except Exception as e:
-                        # Catch generic exception if httpx types aren't available to reference directly
-                        if attempt == max_retries - 1:
-                            raise  # Re-raise on final failure
-                        log.warning(
-                            f"Sidecar connection failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
-                        )
-                        await asyncio.sleep(2 * (attempt + 1))  # Backoff
-
-                if response and response.status_code == 200:
-                    result = response.json()
-                    if result.get("success"):
-                        post_data["coinAddress"] = result.get(
-                            "coinAddress"
-                        ) or result.get("id")
-                        return True
-                    else:
-                        log.error(f"Sidecar error: {result.get('error')}")
-                else:
-                    log.error(
-                        f"Sidecar HTTP error: {response.status_code if response else 'None'} {response.text if response else 'None'}"
-                    )
-            finally:
-                img_f.close()
-                if ex_f:
-                    ex_f.close()
-
-        except Exception as e:
-            log.error(f"Failed to call sidecar: {e}")
-
-        return False
+        return success
 
 
 # Singleton

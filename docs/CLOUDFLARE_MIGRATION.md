@@ -23,13 +23,13 @@ This guide details how to migrate the Chronicle backend from a local Node.js ser
 
 1.  **Create D1 Database**
     ```bash
-    wrangler d1 create chronicle-db
+    wrangler d1 create llmletsplay-chronicle-db
     ```
     *Copy the `database_id` output.*
 
 2.  **Create R2 Bucket**
     ```bash
-    wrangler r2 bucket create chronicle-assets
+    wrangler r2 bucket create llmletsplay-chronicle-assets
     ```
 
 ### Step B: Configure Worker
@@ -41,7 +41,7 @@ This guide details how to migrate the Chronicle backend from a local Node.js ser
 
 2.  Edit `wrangler.toml` with your IDs:
     ```toml
-    name = "chronicle-worker"
+    name = "llmletsplay-chronicle-worker"
     main = "src/index.ts"
     compatibility_date = "2023-12-01"
 
@@ -53,12 +53,12 @@ This guide details how to migrate the Chronicle backend from a local Node.js ser
 
     [[d1_databases]]
     binding = "DB"
-    database_name = "chronicle-db"
+    database_name = "llmletsplay-chronicle-db"
     database_id = "PASTE_YOUR_D1_ID_HERE"
 
     [[r2_buckets]]
     binding = "BUCKET"
-    bucket_name = "chronicle-assets"
+    bucket_name = "llmletsplay-chronicle-assets"
     ```
 
 3.  **Set Secrets** (Do not commit these!):
@@ -75,7 +75,7 @@ This guide details how to migrate the Chronicle backend from a local Node.js ser
 
 1.  Run the migration using the provided schema file:
     ```bash
-    wrangler d1 execute chronicle-db --file=../chronicle-server/data/schema_d1.sql
+    wrangler d1 execute llmletsplay-chronicle-db --file=../chronicle-server/data/schema_d1.sql
     ```
 
 ### Step D: Deploy Worker
@@ -89,26 +89,26 @@ This guide details how to migrate the Chronicle backend from a local Node.js ser
     ```bash
     npm run deploy
     ```
-    *Note the URL output (e.g., `https://chronicle-worker.yourname.workers.dev`).*
+    *Note the URL output (e.g., `https://llmletsplay-chronicle-worker.yourname.workers.dev`).*
 
 ## 4. Frontend Update
 
 1.  Go to `apps/chronicle-ui`.
 2.  Update `.env` (or Cloudflare Pages Environment Variables):
     ```bash
-    VITE_CHRONICLE_API_URL=https://chronicle-worker.yourname.workers.dev
+    VITE_CHRONICLE_API_URL=https://llmletsplay-chronicle-worker.yourname.workers.dev
     ```
 3.  Deploy Frontend to Cloudflare Pages:
     ```bash
     npm run build
-    wrangler pages deploy dist --project-name chronicle-ui
+    wrangler pages deploy dist --project-name llmletsplay-chronicle-ui
     ```
 
 ## 5. Agent Update
 
 1.  Update the root `.env` for the Python Agent:
     ```bash
-    ZORA_SIDECAR_URL=https://chronicle-worker.yourname.workers.dev
+    ZORA_SIDECAR_URL=https://llmletsplay-chronicle-worker.yourname.workers.dev
     CHRONICLE_SECRET_KEY=your_secret_key
     ```
 

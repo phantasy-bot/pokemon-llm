@@ -1,4 +1,4 @@
-name = "chronicle-worker"
+name = "llmletsplay-chronicle-worker"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -8,11 +8,37 @@ compatibility_flags = ["nodejs_compat"]
 CHAIN_ID = "8453"
 BASE_RPC_URL = "https://mainnet.base.org"
 
+# Production Routes
+routes = [
+	{ pattern = "chronicle-api.llmletsplay.com", custom_domain = true }
+]
+
 [[d1_databases]]
 binding = "DB"
-database_name = "chronicle-db"
-database_id = "a3d84f56-a205-421e-a889-120f433c9416"
+database_name = "llmletsplay-chronicle-db"
+database_id = "4698d735-c81d-4e37-a18e-1074c57f3c8d"
 
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "chronicle-assets"
+bucket_name = "llmletsplay-chronicle-assets"
+
+# Dev Environment
+[env.dev]
+name = "llmletsplay-chronicle-worker-dev"
+routes = [
+	{ pattern = "chronicle-api-dev.llmletsplay.com", custom_domain = true }
+]
+
+[env.dev.vars]
+CHAIN_ID = "84532"
+BASE_RPC_URL = "https://sepolia.base.org"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "llmletsplay-chronicle-db-dev"
+database_id = "839d6edc-2cf8-40be-adea-57646eaf5479"
+
+[[env.dev.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "llmletsplay-chronicle-assets-dev"
+
