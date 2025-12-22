@@ -157,7 +157,7 @@ export function FolderLayout() {
           ) : null}
         </div>
 
-        <div className="max-w-7xl mx-auto pt-4 pb-20">
+        <div className="max-w-7xl mx-auto pt-4 pb-32">
           
           {/* Header Section */}
           <div className="hidden md:flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4 pl-12 lg:pl-0">
@@ -167,7 +167,7 @@ export function FolderLayout() {
               transition={{ duration: 0.5 }}
             >
               <button onClick={handleChronicleClick} className="block cursor-pointer hover:opacity-80 transition-opacity text-left">
-                <h1 className="text-6xl lg:text-8xl font-bold font-display tracking-tighter mb-2 text-ink leading-none translate-y-4">
+                <h1 className="text-6xl lg:text-8xl font-bold font-display tracking-tighter mb-2 text-ink leading-none translate-y-4 md:translate-y-6">
                   CHRONICLE<span className="animate-blink">.</span>
                 </h1>
               </button>
@@ -179,7 +179,7 @@ export function FolderLayout() {
           </div>
 
           {/* Main Folder Container Wrapper - includes pagination */}
-          <div className="relative mt-16">
+          <div className="relative mt-16 md:overflow-visible">
             
             {/* Back to Timeline Arrow - Only show on content pages */}
             {isContentPage && (
@@ -278,13 +278,9 @@ export function FolderLayout() {
                     <span className="font-bold lg:hidden">LOGS</span>
                   </div>
 
-                  {/* Timeline Strip */}
-                  <div className="absolute -top-[34px] lg:-top-[42px] right-0 left-[160px] lg:left-[360px] h-[36px] lg:h-[44px] flex items-center justify-end px-4 z-0">
-                     <TimelineStrip 
-                        drops={drops} 
-                        currentIndex={currentIndex} 
-                        onSelect={handleSelectDrop} 
-                     />
+                  {/* Timeline Strip - Now below folder */}
+                  <div className="hidden">
+                     {/* Removed from here */}
                   </div>
                   
                   {/* Folder Body */}
@@ -315,8 +311,17 @@ export function FolderLayout() {
                         <Outlet context={{ drops, currentIndex, setCurrentIndex, handleBackToTimeline }} />
                       </motion.div>
                     </AnimatePresence>
-
                   </div>
+                  
+                  {/* Timeline Strip - Moved Below Folder */}
+                  <div className="absolute top-[calc(100%+16px)] left-0 right-0 flex justify-center z-0">
+                     <TimelineStrip 
+                        drops={drops} 
+                        currentIndex={currentIndex} 
+                        onSelect={handleSelectDrop} 
+                     />
+                  </div>
+
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -326,3 +331,4 @@ export function FolderLayout() {
     </Navigation>
   );
 }
+

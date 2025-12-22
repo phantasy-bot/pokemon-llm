@@ -7,7 +7,7 @@ const getWalletIcon = (name: string) => {
   if (n.includes('metamask')) return 'https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg'
   if (n.includes('coinbase')) return 'https://avatars.githubusercontent.com/u/18060234?s=200&v=4'
   if (n.includes('walletconnect')) return 'https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue%20(Default)/Logo.svg'
-  if (n.includes('phantom')) return 'https://raw.githubusercontent.com/solana-labs/wallet-adapter/master/packages/wallets/phantom/src/icon.svg'
+  if (n.includes('phantom')) return 'https://phantom.app/img/phantom-logo.svg'
   if (n.includes('brave')) return 'https://upload.wikimedia.org/wikipedia/commons/5/51/Brave_icon_lionface.png'
   return null
 }
@@ -43,7 +43,7 @@ export function WalletConnection() {
     <div className="relative">
       <button 
         onClick={() => setShowConnectors(!showConnectors)}
-        className="flex items-center gap-2 px-3 md:px-6 py-2 bg-black text-white shadow-brutal-sm hover:shadow-brutal hover:bg-[#FDFBF7] hover:text-black border border-transparent hover:border-black hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all font-mono text-sm uppercase tracking-wide rounded-full"
+        className="flex items-center gap-2 px-3 md:px-6 py-2 bg-[#FDFBF7] text-black shadow-brutal-sm hover:shadow-brutal border border-black hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all font-mono text-sm uppercase tracking-wide rounded-full"
       >
         <Wallet size={14} />
         <span className="hidden md:inline">Connect Wallet</span>

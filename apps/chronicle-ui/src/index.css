@@ -26,7 +26,7 @@
 
 @layer base {
   body {
-    @apply bg-white text-zinc-900 min-h-screen antialiased overflow-y-auto relative transition-colors duration-500;
+    @apply bg-white text-zinc-900 min-h-screen antialiased overflow-y-auto overflow-x-hidden relative transition-colors duration-500;
     font-family: 'Space Mono', monospace;
   }
 
@@ -156,7 +156,7 @@
 
   /* Folder Tab */
   .folder-tab {
-    @apply absolute -top-[34px] lg:-top-[42px] left-0 h-[36px] lg:h-[44px] px-4 lg:px-8 pr-16 lg:pr-48 flex items-center bg-[#FFFEFA] border-2 border-black border-b-0 rounded-t-lg lg:rounded-t-xl font-bold z-10;
+    @apply absolute -top-[34px] lg:-top-[42px] left-0 h-[36px] lg:h-[44px] px-4 lg:px-8 pr-16 md:pr-80 lg:pr-48 flex items-center bg-[#FFFEFA] border-2 border-black border-b-0 rounded-t-lg lg:rounded-t-xl font-bold z-10;
     transform-origin: bottom center;
     /* Align with container's left edge by shifting left by border width */
     margin-left: -0.75px;

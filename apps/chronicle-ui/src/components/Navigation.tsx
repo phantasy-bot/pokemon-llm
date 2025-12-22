@@ -107,6 +107,15 @@ export function Navigation({ children, walletConnect }: NavigationProps) {
             <span className="text-3xl md:text-4xl font-display font-bold">ZORA</span>
           </a>
         </nav>
+
+        {/* Footer inside menu */}
+        <div className="absolute bottom-8 left-0 right-0 text-center px-1">
+            <p className="text-[10px] text-zinc-500 font-mono leading-relaxed max-w-2xl mx-auto">
+              All Pokémon trademarks, logos, and images are owned by The Pokémon Company. We are not affiliated with or endorsed by The Pokémon Company, Nintendo, or related entities.
+              <br />
+              © 2025 LLM Let's Play.
+            </p>
+        </div>
       </div>
     </>
   )

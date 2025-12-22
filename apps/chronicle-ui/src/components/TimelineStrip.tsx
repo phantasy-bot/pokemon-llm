@@ -38,7 +38,7 @@ export function TimelineStrip({ drops, currentIndex, onSelect }: TimelineStripPr
   }));
 
   return (
-    <div className="flex items-center gap-1 h-full px-4 overflow-hidden">
+    <div className="flex items-center gap-1 h-full px-4 py-2 overflow-hidden">
       {start > 0 && <span className="text-xs text-ink-light">...</span>}
       
       {visibleItems.map((item, i) => (
@@ -48,7 +48,7 @@ export function TimelineStrip({ drops, currentIndex, onSelect }: TimelineStripPr
           className={`
             group relative flex items-center justify-center w-5 h-5 rounded-full transition-all
             ${item.isCurrent 
-              ? 'bg-black text-white scale-125 z-10 shadow-brutal-sm' 
+              ? 'bg-[#FDFBF7] text-black scale-125 z-10 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] border border-black' 
               : item.originalIndex < currentIndex
                 ? 'bg-black/80 text-white hover:bg-black hover:scale-110'  // Past: filled but slightly lighter
                 : 'text-ink-light hover:bg-black/5 hover:scale-110'}       // Future: unfilled
