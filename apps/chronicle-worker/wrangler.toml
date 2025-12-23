@@ -5,24 +5,31 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 # Public variables (secrets should be set via wrangler secret put)
-CHAIN_ID = "8453"
-BASE_RPC_URL = "https://mainnet.base.org"
+# DEFAULT: TESTNET (Base Sepolia) for safety during development
+CHAIN_ID = "84532"
+BASE_RPC_URL = "https://sepolia.base.org"
 
-# Production Routes
+# Production Environment (Mainnet)
+[env.production]
+name = "llmletsplay-chronicle-worker-prod"
 routes = [
 	{ pattern = "chronicle-api.llmletsplay.com", custom_domain = true }
 ]
 
-[[d1_databases]]
+[env.production.vars]
+CHAIN_ID = "8453"
+BASE_RPC_URL = "https://mainnet.base.org"
+
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "llmletsplay-chronicle-db"
 database_id = "4698d735-c81d-4e37-a18e-1074c57f3c8d"
 
-[[r2_buckets]]
+[[env.production.r2_buckets]]
 binding = "BUCKET"
 bucket_name = "llmletsplay-chronicle-assets"
 
-# Dev Environment
+# Dev Environment (Explicit)
 [env.dev]
 name = "llmletsplay-chronicle-worker-dev"
 routes = [

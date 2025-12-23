@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start Chronicle Server and UI
+# Start Chronicle Ecosystem (Worker + UI)
 echo "🚀 Starting Chronicle Ecosystem..."
 
 # Function to kill all background processes on exit
@@ -10,19 +10,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 1. Start Chronicle Server
-echo "📦 Starting Chronicle Server (Port 3001)..."
-cd apps/chronicle-server
+# 1. Start Chronicle Worker (API)
+echo "📦 Starting Chronicle Worker API (Port 8787)..."
+cd apps/chronicle-worker
 if [ ! -d "node_modules" ]; then
-    echo "Installing server dependencies..."
+    echo "Installing worker dependencies..."
     npm install
 fi
-npm run dev &
-SERVER_PID=$!
+# Use npx wrangler dev to start the worker locally
+npx wrangler dev &
+WORKER_PID=$!
 cd ../..
 
-# Wait for server to start
-sleep 2
+# Wait for worker to start
+sleep 5
 
 # 2. Start Chronicle UI
 echo "💻 Starting Chronicle UI (Port 5173)..."
@@ -36,9 +37,9 @@ UI_PID=$!
 cd ../..
 
 echo "✅ Chronicle is running!"
-echo "   - Server: http://localhost:3001"
-echo "   - UI:     http://localhost:5173"
-echo "   - Agent:  Run 'python run.py' in a separate terminal"
+echo "   - API (Worker): http://localhost:8787"
+echo "   - UI:           http://localhost:5173"
+echo "   - Agent Config: Ensure ZORA_SIDECAR_URL=http://localhost:8787 in .env"
 echo ""
 echo "Press Ctrl+C to stop."
 

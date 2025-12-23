@@ -15,7 +15,7 @@ class ChronicleClient:
     """
 
     def __init__(self):
-        self.base_url = os.getenv("ZORA_SIDECAR_URL", "http://localhost:3001")
+        self.base_url = os.getenv("ZORA_SIDECAR_URL", "http://localhost:8787")
         self.api_key = os.getenv("CHRONICLE_SECRET_KEY")
 
         # Cloudflare Access Service Token (for Zero Trust)

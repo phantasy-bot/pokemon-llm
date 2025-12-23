@@ -27,7 +27,16 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-app.use('/*', cors());
+app.use('/*', cors({
+  origin: (origin) => {
+    // Allow localhost for dev (5173=UI, 3001=Legacy Server, 8787=Worker)
+    if (origin.startsWith('http://localhost:')) return origin;
+    // Allow production domains
+    if (origin.endsWith('.llmletsplay.com')) return origin;
+    // Block others
+    return null;
+  }
+}));
 
 app.get('/health', (c) => c.json({ status: 'ok' }));
 

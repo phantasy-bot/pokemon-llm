@@ -3,6 +3,12 @@ import logging
 import json
 import os
 import base64
+import subprocess
+import time
+import shutil
+import sys
+import atexit
+import socket
 
 log = logging.getLogger("opencode_client")
 
@@ -15,6 +21,8 @@ class OpenCodeClient:
         self.chat = self._Chat(self)
         self._last_msg_len = 0
         self.models = self._Models(self)
+        self._server_proc = None
+        self._has_tried_starting = False
 
     class _Chat:
         def __init__(self, client):
@@ -33,11 +41,97 @@ class OpenCodeClient:
             self.data = []  # Mock data
 
         def list(self):
-            # Mock response for client_setup verification
+            # Perform a real connection check by ensuring a session exists
+            # This validates that the server is reachable and responsive
+            self.client._ensure_session()
+
+            # Return mock model data since OpenCode doesn't have a models endpoint yet
+            # but we've now verified the server is actually up and talking
             class ModelList:
                 data = [{"id": "opencode-agent"}]
 
             return ModelList()
+
+    def _start_server(self):
+        """Attempts to start the OpenCode server as a subprocess."""
+        if self._has_tried_starting:
+            return False
+
+        self._has_tried_starting = True
+        log.info("🚀 Attempting to start OpenCode server automatically...")
+
+        # 1. Find executable
+        opencode_bin = shutil.which("opencode")
+
+        # Fallback for conda environment if not in PATH
+        if not opencode_bin:
+            conda_prefix = os.environ.get("CONDA_PREFIX")
+            if conda_prefix:
+                candidate = os.path.join(conda_prefix, "bin", "opencode")
+                if os.path.exists(candidate):
+                    opencode_bin = candidate
+
+        if not opencode_bin:
+            log.error("❌ Could not find 'opencode' executable in PATH.")
+            return False
+
+        try:
+            # 2. Start subprocess
+            log.info(f"Starting: {opencode_bin} --port 4096")
+            self._server_proc = subprocess.Popen(
+                [opencode_bin, "--port", "4096"],
+                stdout=subprocess.DEVNULL,  # Redirect to prevent spam
+                stderr=subprocess.PIPE,  # Capture errors if needed
+                text=True,
+            )
+
+            # Register cleanup
+            atexit.register(self._kill_server)
+
+            # 3. Wait for it to be ready (up to 10s)
+            log.info("⏳ Waiting for OpenCode server to initialize...")
+            for i in range(20):
+                if self._server_proc.poll() is not None:
+                    # It died immediately
+                    err = ""
+                    if self._server_proc.stderr:
+                        err = self._server_proc.stderr.read()
+                    log.error(f"❌ OpenCode server failed to start: {err}")
+                    return False
+
+                try:
+                    # Check if port is open and responding
+                    # We use a raw socket check or just try to connect with httpx
+                    # Simple TCP connect check to avoid 404s on unknown endpoints
+                    with socket.create_connection(("localhost", 4096), timeout=0.5):
+                        return True
+                except (socket.error, socket.timeout):
+                    pass  # Still starting
+                except Exception:
+                    pass
+
+                time.sleep(0.5)
+
+            log.error("❌ Timed out waiting for OpenCode server.")
+            self._kill_server()
+            return False
+
+        except Exception as e:
+            log.error(f"Failed to auto-start OpenCode: {e}")
+            return False
+
+    def _kill_server(self):
+        if self._server_proc:
+            try:
+                log.info("🛑 Stopping auto-started OpenCode server...")
+                self._server_proc.terminate()
+                self._server_proc.wait(timeout=2)
+            except Exception:
+                try:
+                    self._server_proc.kill()
+                except:
+                    pass
+            self._server_proc = None
 
     def _ensure_session(self):
         if not self.session_id:
@@ -59,6 +153,12 @@ class OpenCodeClient:
                 self.session_id = data.get("id")
                 log.info(f"Created OpenCode session: {self.session_id}")
             except httpx.ConnectError:
+                # Auto-start logic
+                if not self._has_tried_starting:
+                    if self._start_server():
+                        # Retry session creation recursively (once)
+                        return self._ensure_session()
+
                 log.critical(
                     f"❌ Could not connect to OpenCode server at {self.base_url}"
                 )

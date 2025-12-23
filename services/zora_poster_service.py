@@ -49,7 +49,7 @@ except ImportError:
 
 
 # Configuration
-ZORA_SIDECAR_URL = os.getenv("ZORA_SIDECAR_URL", "http://localhost:3001")
+ZORA_SIDECAR_URL = os.getenv("ZORA_SIDECAR_URL", "http://localhost:8787")
 ZORA_POSTING_ENABLED = os.getenv("ZORA_POSTING_ENABLED", "true").lower() == "true"
 ZORA_GATING_ENABLED = os.getenv("ZORA_GATING_ENABLED", "false").lower() == "true"
 MIN_POST_INTERVAL = int(os.getenv("ZORA_MIN_POST_INTERVAL", "300"))
