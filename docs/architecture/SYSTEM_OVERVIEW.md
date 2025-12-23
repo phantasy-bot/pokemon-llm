@@ -2,24 +2,59 @@
 
 This document describes the high-level architecture of the Pokemon LLM agent.
 
-## System Diagram
+## System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              Pokemon LLM Agent                                │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐  │
-│  │   mGBA      │────▶│  Lua Script │────▶│  Python     │────▶│  React UI │  │
-│  │  Emulator   │◀────│  (Socket)   │◀────│  Agent      │◀────│  (WS)     │  │
-│  └─────────────┘     └─────────────┘     └─────────────┘     └───────────┘  │
-│        │                    │                   │                   │        │
-│        ▼                    ▼                   ▼                   ▼        │
-│   ROM Execution        RAM Reading         LLM Analysis        Visualization │
-│   Button Input         Screenshots         Memory Store        Game Feed     │
-│                        Minimap Gen         TTS Audio           Analysis Log  │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Emulator["Game Environment (mGBA)"]
+        A[Pokémon Red ROM]
+        B[socketserver.lua]
+        A <--> B
+    end
+
+    subgraph Engine["Engine Library (pyAIAgent)"]
+        C[Socket Client]
+        D[RAM Parser]
+        E[GameState Object]
+        B <--> C
+        C --> D
+        D --> E
+    end
+
+    subgraph Logic["Agent Logic (Core)"]
+        F[Scenario Manager]
+        G[LLM Controller]
+        H[Achievement Tracker]
+        E --> F
+        F --> G
+        G --> H
+    end
+
+    subgraph AI["AI Services"]
+        I[Vision API]
+        J[Main LLM API]
+        K[TTS Service]
+        G <--> I
+        G <--> J
+        G --> K
+    end
+
+    subgraph Frontend["Social & Web UI"]
+        L[Livestream Overlay]
+        M[Twitch/X Bots]
+        N[Chronicle Zora Gallery]
+        G --> L
+        G --> M
+        H --> N
+    end
+
+    subgraph Blockchain["Base L2 (Zora)"]
+        O[Smart Contract]
+        N --> O
+    end
+
+    K --> L
+    E --> L
 ```
 
 ## Data Flow
@@ -84,10 +119,10 @@ Component Re-render
 | --------------------------------- | -------------------------------------- |
 | `run.py`                          | Main entry point, async orchestration  |
 | `core/llmdriver.py`               | LLM interaction loop, action execution |
-| `core/prompts.py`                 | System prompts, 12-section format      |
+| `core/prompts/`                   | System prompts, 12-section format      |
 | `core/battle_strategy.py`         | Battle decision logic                  |
 | `pyAIAgent/game/state.py`         | RAM reading, game state parsing        |
-| `trackers/memory_storage.py`      | Persistent memory, quest tracking      |
+| `core/memory/manager.py`          | Persistent memory, quest tracking      |
 | `services/comfyui_tts_service.py` | Text-to-speech generation              |
 | `services/websocket_service.py`   | Real-time UI updates                   |
 
@@ -158,15 +193,14 @@ interface TTSMessage {
 
 | File                      | Purpose                               |
 | ------------------------- | ------------------------------------- |
-| `data/memories.json`      | Spatial, gameplay, narrative memories |
-| `coordinate_history.json` | Last 10 player positions              |
+| `data/pokemon_memories.json` | Spatial, gameplay, narrative memories |
 | `pokemon_runs.db`         | SQLite run metadata                   |
 | `roms/*.ss1`              | Save states                           |
 
 ### Memory Types
 
 ```python
-# From trackers/memory_storage.py
+# From core/memory/manager.py
 SpatialMemory   # Exits, landmarks, navigation
 GameplayMemory  # Battles, items, events
 NarrativeMemory # Story, choices, mistakes
@@ -190,4 +224,4 @@ The agent uses a standardized 12-section format across all screen types:
 11. **COMMENTARY** - Stream personality (extracted for TTS)
 12. **MEMORY_WRITE** - Events to save to memory
 
-See [core/prompts.py](../core/prompts.py) for full prompt definitions.
+See [Prompt Reference](../reference/PROMPTS.md) for full prompt definitions.

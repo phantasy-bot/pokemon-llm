@@ -42,11 +42,6 @@ class ChatResponseService:
         """
         self._client = client
         self.model = model
-
-        # Legacy/Internal fallback if client not provided (should be avoided in new usage)
-        self.api_key = None
-        self.base_url = None
-
         self._is_configured = bool(self._client and self.model)
 
         # Context for Lass personality consistency
@@ -537,7 +532,6 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
         return {
             "available": self.is_available,
             "model": self.model,
-            "base_url": self.base_url,
             "response_count": self._response_count,
         }
 
@@ -559,12 +553,6 @@ def create_chat_response_service(provider: str = None) -> ChatResponseService:
     # Default to FEATHERLESS if nothing is specified but FEATHERLESS_API_KEY exists
     if not provider and os.getenv("FEATHERLESS_API_KEY"):
         provider = "FEATHERLESS"
-
-    # Default to ALKAHEST if explicitly ALKAHEST keys are present (legacy fallback)
-    if not provider and os.getenv("ALKAHEST_API_KEY"):
-        # Note: We need to ensure ALKAHEST uses a compatible setup or map it to FEATHERLESS config if keys match
-        # Ideally user should set LLM_CHAT_PROVIDER="FEATHERLESS" and put alkahest keys in FEATHERLESS_API_KEY
-        pass
 
     if not provider:
         log.warning("No LLM_CHAT_PROVIDER specified and no default keys found.")

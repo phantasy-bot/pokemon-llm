@@ -1,0 +1,88 @@
+:root {
+  --terminal-background: #1a1a1a;
+  --terminal-foreground: #f0f0f0;
+  --terminal-accent: #ff6666;
+}
+
+body {
+  background-color: var(--terminal-background);
+  color: var(--terminal-foreground);
+}
+
+.terminal-header {
+  border-bottom: 1px solid var(--terminal-accent);
+}
+
+a {
+  color: var(--terminal-accent) !important;
+}
+
+/* Mermaid Diagrams - Seamless integration */
+.mermaid {
+  background-color: var(--terminal-background) !important;
+  color: var(--terminal-foreground) !important;
+  padding: 10px;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+
+.mermaid svg {
+  background-color: transparent !important;
+}
+
+/* Ensure Mermaid text is readable in terminal theme */
+.mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon, .mermaid .node path {
+  fill: #2a2a2a !important;
+  stroke: var(--terminal-accent) !important;
+}
+
+.mermaid .node .label {
+  color: var(--terminal-foreground) !important;
+}
+
+.mermaid .edgePath .path {
+  stroke: #666 !important;
+}
+
+.mermaid .marker {
+  fill: #666 !important;
+}
+
+/* Code Block Enhancements */
+pre, code {
+  background-color: #242424 !important;
+  color: #f0f0f0 !important;
+  border: 1px solid #333;
+}
+
+/* mkdocstrings / griffe line numbers fix */
+.doc-contents table {
+  border-collapse: separate;
+  border-spacing: 15px 0; /* More horizontal space */
+  width: 100%;
+}
+
+/* Fixing the squashed line numbers */
+.linenos {
+  padding-right: 25px !important;
+  border-right: 1px solid #444; /* Thicker border */
+  color: #666 !important;
+  text-align: right;
+  min-width: 70px !important; /* Wider column */
+  white-space: pre;
+  user-select: none;
+}
+
+code .linenos {
+  display: inline-block;
+  margin-right: 20px;
+  user-select: none;
+}
+
+/* Syntax Highlighting overrides for terminal feel */
+.hll { background-color: #333 }
+.c { color: #75715e } /* Comment */
+.k { color: #ff6666 } /* Keyword */
+.n { color: #f0f0f0 } /* Name */
+.s { color: #e6db74 } /* String */
+.nf { color: #a6e22e } /* Name.Function */

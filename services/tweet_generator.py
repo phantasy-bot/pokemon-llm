@@ -21,7 +21,6 @@ from typing import Optional, Any, Dict, List
 from services.comfyui_image_service import ComfyUIImageService, create_image_service
 from core.chronicle_client import get_chronicle_client
 
-# Discord and Twitter services removed/deprecated
 from trackers.achievement_tracker import (
     Achievement,
     AchievementType,
@@ -44,8 +43,6 @@ class TweetGeneratorResult(Enum):
     """Final result of the tweet generation process."""
 
     POSTED = "posted"  # Successfully sent to Chronicle as Draft
-    DENIED = "denied"  # Deprecated
-    TIMEOUT = "timeout"  # Deprecated
     MAX_REGENERATIONS = "max_regenerations"  # Hit max regeneration limit
     DISABLED = "disabled"  # Service disabled
     ERROR = "error"  # Error during process
@@ -73,8 +70,6 @@ class TweetGenerator:
     def __init__(
         self,
         image_service: ComfyUIImageService = None,
-        twitter_service: Any = None,  # Kept for signature compatibility
-        discord_service: Any = None,  # Kept for signature compatibility
         llm_client: Any = None,
     ):
         """
@@ -83,7 +78,7 @@ class TweetGenerator:
         self.image_service = image_service or create_image_service()
         self.llm_client = llm_client
         self.chronicle_client = get_chronicle_client()
-        self.enabled = True  # Always enabled now, handled by client
+        self.enabled = True
 
         log.info("Tweet Generator initialized with Chronicle Client")
 
@@ -116,7 +111,7 @@ class TweetGenerator:
         # Get achievement-specific image prompt
         image_prompt = ACHIEVEMENT_IMAGE_PROMPTS.get(
             achievement.achievement_type,
-            AchievementImagePrompt(positive_prompt="", scene_description=""),
+            AchievementImagePrompt(),  # Empty prompt as fallback
         )
 
         # Build run context

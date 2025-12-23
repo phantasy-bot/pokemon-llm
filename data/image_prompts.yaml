@@ -1,0 +1,383 @@
+# Image Prompts Configuration for Lass Character
+# ================================================
+# This is the single source of truth for all image generation prompts.
+# Documentation is auto-generated from this file via scripts/generate_prompt_docs.py
+#
+# Prompt Structure:
+#   - base_prompt: Constant character elements (Lass appearance)
+#   - checkpoints: Predetermined prompts for specific achievements
+#   - dynamic_template: LLM prompt for generating dynamic posts
+#
+# Each checkpoint has 4 components:
+#   - setting: background, location, camera angle
+#   - mood_expression: facial expression, emotional state
+#   - action: pose, what she's doing
+#   - extras: lighting, effects, additional elements
+
+# =============================================================================
+# BASE PROMPT - Constant for ALL images (Lass character trigger)
+# =============================================================================
+base_prompt: >-
+  masterpiece, best quality,
+  1 human woman, adult, solo, medium tits, sexy hips,
+  lass \(pokemon rby\), brown eyes, brown hair, long hair, bangs,
+  white shirt, collared shirt, short sleeves, red bowtie,
+  blue skirt, pleated skirt, miniskirt, white socks, kneehighs
+
+# =============================================================================
+# CHECKPOINT PROMPTS - Predetermined for each achievement type
+# =============================================================================
+checkpoints:
+
+  # ---------------------------------------------------------------------------
+  # STREAM EVENTS
+  # ---------------------------------------------------------------------------
+  stream_start:
+    name: "Stream Start"
+    description: "Starting a new Pokemon adventure"
+    setting: "pallet town exterior, sunny morning, wide shot, pokemon world background"
+    mood_expression: "excited expression, bright smile, sparkling eyes, energetic"
+    action: "waving at viewer, dynamic pose, one arm raised high"
+    extras: "sparkles, lens flare, adventure beginning vibes, warm sunlight"
+
+  # ---------------------------------------------------------------------------
+  # EARLY GAME MILESTONES
+  # ---------------------------------------------------------------------------
+  first_pokemon:
+    name: "First Pokemon"
+    description: "Receiving starter from Professor Oak"
+    setting: "professor oak's lab interior, warm indoor lighting, medium shot"
+    mood_expression: "gentle smile, happy tears, emotional expression, touched"
+    action: "holding pokeball lovingly, cradling against chest, tender embrace"
+    extras: "soft glow from pokeball, heartwarming moment, dust motes in light"
+
+  route_1_flower:
+    name: "Route 1 Flowers"
+    description: "Taking a peaceful moment on Route 1"
+    setting: "route 1 grassland, flower field, golden hour, low angle shot"
+    mood_expression: "peaceful expression, serene smile, eyes closed, content"
+    action: "kneeling in flower field, smelling flowers, hands on knees"
+    extras: "wildflowers, butterflies, soft breeze, warm sunlight, nature beauty"
+
+  first_catch:
+    name: "First Catch"
+    description: "Catching first wild Pokemon"
+    setting: "tall grass area, outdoor clearing, dynamic angle, action shot"
+    mood_expression: "triumphant expression, excited grin, eyes shining with pride"
+    action: "holding pokeball up victoriously, arm extended high, victory pose"
+    extras: "sparkles around pokeball, celebration effects, energy burst"
+
+  viridian_forest_break:
+    name: "Viridian Forest Break"
+    description: "Taking a rest in the forest"
+    setting: "viridian forest clearing, dappled sunlight through trees, medium shot"
+    mood_expression: "relaxed expression, gentle smile, tired but happy"
+    action: "sitting on fallen log, drinking from canteen, resting pose"
+    extras: "bug pokemon silhouettes nearby, forest atmosphere, peaceful rest"
+
+  team_rocket_first:
+    name: "First Team Rocket Encounter"
+    description: "First encounter with Team Rocket"
+    setting: "underground hideout background, dim lighting, dramatic angle"
+    mood_expression: "determined expression, fierce eyes, resolute face"
+    action: "defensive battle stance, pokeball ready, standing ground"
+    extras: "dramatic shadows, heroic lighting, tension in the air"
+
+  # ---------------------------------------------------------------------------
+  # EVOLUTION MILESTONES
+  # ---------------------------------------------------------------------------
+  starter_evolution_1:
+    name: "Starter First Evolution"
+    description: "Watching starter Pokemon evolve for the first time"
+    setting: "outdoor battle area, evolution light effects, medium shot"
+    mood_expression: "amazed expression, wide eyes, jaw dropped, awestruck"
+    action: "watching evolution, hands clasped together, leaning forward"
+    extras: "bright glow effects, evolution energy swirling, magical particles"
+
+  starter_evolution_2:
+    name: "Starter Final Evolution"
+    description: "Starter Pokemon reaches final evolution"
+    setting: "epic outdoor location, dramatic sky, wide shot with pokemon silhouette"
+    mood_expression: "proud expression, confident smile, emotional tears of joy"
+    action: "standing alongside fully evolved pokemon, powerful pose, arms crossed"
+    extras: "dramatic lighting, bond between trainer and pokemon, epic moment, wind effect"
+
+  # ---------------------------------------------------------------------------
+  # GYM BADGES
+  # ---------------------------------------------------------------------------
+  badge_boulder:
+    name: "Boulder Badge"
+    description: "Earning the Boulder Badge from Brock"
+    setting: "pewter city gym interior, rocky environment, medium close-up"
+    mood_expression: "proud expression, determined smile, accomplished look"
+    action: "holding boulder badge up to camera, showing off badge"
+    extras: "rock type aesthetic, dust particles, first gym victory glow"
+
+  badge_cascade:
+    name: "Cascade Badge"
+    description: "Earning the Cascade Badge from Misty"
+    setting: "cerulean city gym, aquarium background, water reflections"
+    mood_expression: "refreshed expression, happy smile, victorious look"
+    action: "holding cascade badge, water droplets on skin, posing"
+    extras: "water droplets, aquatic lighting, blue tones, swimming pokemon background"
+
+  badge_thunder:
+    name: "Thunder Badge"
+    description: "Earning the Thunder Badge from Lt. Surge"
+    setting: "vermilion city gym, industrial electric background, dramatic angle"
+    mood_expression: "electrified expression, fierce grin, adrenaline high"
+    action: "holding thunder badge, static in hair, power pose"
+    extras: "electric sparks, lightning effects, yellow energy, industrial aesthetic"
+
+  badge_rainbow:
+    name: "Rainbow Badge"
+    description: "Earning the Rainbow Badge from Erika"
+    setting: "celadon city gym, greenhouse garden, soft natural lighting"
+    mood_expression: "gentle expression, serene smile, at peace"
+    action: "holding rainbow badge, surrounded by flowers, graceful pose"
+    extras: "flowers and plants, colorful lighting, grass type aesthetic, petals floating"
+
+  badge_soul:
+    name: "Soul Badge"
+    description: "Earning the Soul Badge from Koga"
+    setting: "fuchsia city gym, ninja dojo interior, mysterious atmosphere"
+    mood_expression: "mysterious expression, slight smirk, knowing look"
+    action: "holding soul badge, ninja-like pose, stealthy stance"
+    extras: "ninja aesthetic, purple mist, poison type vibes, shadows"
+
+  badge_marsh:
+    name: "Marsh Badge"
+    description: "Earning the Marsh Badge from Sabrina"
+    setting: "saffron city gym, psychic chamber, surreal background"
+    mood_expression: "mystical expression, focused eyes, enlightened look"
+    action: "holding marsh badge, psychic energy around hands, meditation pose"
+    extras: "psychic energy effects, floating objects, mystical atmosphere, purple glow"
+
+  badge_volcano:
+    name: "Volcano Badge"
+    description: "Earning the Volcano Badge from Blaine"
+    setting: "cinnabar island gym, lava and fire background, intense lighting"
+    mood_expression: "intense expression, sweating, determined fire in eyes"
+    action: "holding volcano badge, wiping sweat from brow, victory stance"
+    extras: "fire and lava background, heat waves, orange glow, fire type power"
+
+  badge_earth:
+    name: "Earth Badge"
+    description: "Earning the Earth Badge - all 8 badges collected"
+    setting: "viridian city gym, ground type environment, epic wide shot"
+    mood_expression: "triumphant expression, tears of joy, ultimate pride"
+    action: "displaying all eight badges, arms spread wide, champion pose"
+    extras: "all badges visible, ground type aesthetic, epic achievement glow, confetti"
+
+  # ---------------------------------------------------------------------------
+  # SCRIPTED LOCATION MOMENTS
+  # ---------------------------------------------------------------------------
+  ss_anne_deck:
+    name: "SS Anne Deck"
+    description: "Enjoying the view from SS Anne deck"
+    setting: "ship deck, ocean horizon, sunset over water, wide scenic shot"
+    mood_expression: "serene expression, peaceful smile, windswept look"
+    action: "standing at ship bow, looking out at ocean, wind in hair"
+    extras: "sunset colors, nautical atmosphere, seagulls, peaceful ocean view"
+
+  pokemon_tower_spooked:
+    name: "Pokemon Tower Spooked"
+    description: "Spooked by ghosts in Pokemon Tower"
+    setting: "haunted tower interior, purple mist, spooky lighting, dutch angle"
+    mood_expression: "scared expression, wide frightened eyes, nervous"
+    action: "holding pokeball nervously, looking over shoulder, startled pose"
+    extras: "ghost pokemon silhouettes, purple mist, lavender town cemetery vibes, eerie glow"
+
+  game_corner_slots:
+    name: "Game Corner Slots"
+    description: "Trying luck at the Game Corner slots"
+    setting: "game corner interior, neon casino lights, close-up shot"
+    mood_expression: "excited expression, hopeful eyes, anticipation"
+    action: "sitting at slot machine, pulling lever, lucky pose"
+    extras: "casino lights, coins and tokens, neon signs, fun atmosphere, jackpot effects"
+
+  fighting_dojo:
+    name: "Fighting Dojo"
+    description: "Training at the Fighting Dojo"
+    setting: "fighting dojo interior, traditional martial arts room, action shot"
+    mood_expression: "determined expression, focused eyes, warrior spirit"
+    action: "martial arts pose, karate stance, training position"
+    extras: "black belt aesthetic, powerful aura, traditional decorations, training energy"
+
+  safari_zone_explorer:
+    name: "Safari Zone Explorer"
+    description: "Exploring the Safari Zone"
+    setting: "safari zone wilderness, tall grass, exotic environment, adventure shot"
+    mood_expression: "excited expression, adventurous smile, explorer enthusiasm"
+    action: "wearing safari hat, holding binoculars, explorer pose"
+    extras: "exotic pokemon in background, tall grass, adventure outfit elements, wild nature"
+
+  # ---------------------------------------------------------------------------
+  # SCENIC/NATURE PHOTO MOMENTS
+  # ---------------------------------------------------------------------------
+  cerulean_cape:
+    name: "Cerulean Cape"
+    description: "Enjoying the ocean view from Cerulean Cape"
+    setting: "coastal cliff, ocean panorama, bill's cottage visible, golden hour"
+    mood_expression: "peaceful expression, content smile, windswept"
+    action: "standing on cliff edge, looking at ocean, hands behind back"
+    extras: "sea breeze blowing hair, sparkling water, seagulls flying, peaceful seaside"
+
+  mt_moon_exit:
+    name: "Mt. Moon Exit"
+    description: "Finally emerging from Mt. Moon into daylight"
+    setting: "cave exit to daylight, mountain exterior, bright sky, relief shot"
+    mood_expression: "relieved expression, squinting at light, happy to see sun"
+    action: "stepping into sunlight, shielding eyes, emerging from cave"
+    extras: "bright daylight streaming, fresh air feeling, blue sky, mountain backdrop"
+
+  rock_tunnel_exit:
+    name: "Rock Tunnel Exit"
+    description: "Escaping the darkness of Rock Tunnel"
+    setting: "cave exit, daylight streaming in, route 10 visible, dramatic lighting"
+    mood_expression: "exhausted but relieved expression, tired smile, survivor look"
+    action: "blinking in bright light, dusty from tunnel, triumphant emergence"
+    extras: "daylight rays, dust particles, cave behind, freedom feeling"
+
+  cycling_road:
+    name: "Cycling Road"
+    description: "Cruising down Cycling Road"
+    setting: "cycling road downhill, ocean visible below, speed lines, action shot"
+    mood_expression: "excited expression, exhilarated grin, wind rush"
+    action: "riding bicycle, leaning into wind, sporty pose, speed"
+    extras: "speed lines, wind in hair, bike path scenery, freedom feeling, motion blur"
+
+  seafoam_islands:
+    name: "Seafoam Islands"
+    description: "Exploring the frozen Seafoam Islands caves"
+    setting: "icy cave interior, frozen crystals, blue ice lighting"
+    mood_expression: "cold but amazed expression, breath visible, wonder"
+    action: "bundled up from cold, hugging arms, marveling at ice"
+    extras: "frozen crystals, breath visible, ice formations, winter wonderland, blue glow"
+
+  route_12_fishing:
+    name: "Route 12 Fishing"
+    description: "Peaceful fishing on Route 12"
+    setting: "pier on route 12, calm water, sunset colors, relaxed shot"
+    mood_expression: "patient expression, relaxed smile, zen fishing"
+    action: "sitting on pier, holding fishing rod, waiting for bite"
+    extras: "sunset colors, calm water reflections, tackle box nearby, peaceful moment"
+
+  # ---------------------------------------------------------------------------
+  # MILESTONE PHOTO MOMENTS
+  # ---------------------------------------------------------------------------
+  pewter_gym_entrance:
+    name: "Pewter Gym Entrance"
+    description: "About to enter the first gym"
+    setting: "pewter city gym exterior, gym sign visible, determination shot"
+    mood_expression: "nervous but excited expression, determined eyes, pre-battle jitters"
+    action: "standing at gym entrance, taking deep breath, fists clenched"
+    extras: "rock type decorations, first challenge vibes, building anticipation"
+
+  indigo_plateau:
+    name: "Indigo Plateau"
+    description: "Arriving at the Indigo Plateau Pokemon League"
+    setting: "pokemon league entrance, grand building, majestic architecture, epic wide shot"
+    mood_expression: "awe-struck expression, emotional, journey's end realization"
+    action: "standing at entrance, looking up at building, moment of arrival"
+    extras: "majestic architecture, elite four awaits, epic journey complete, grand scale"
+
+  daycare_visit:
+    name: "Daycare Visit"
+    description: "Visiting the Pokemon Daycare on Route 5"
+    setting: "daycare exterior, pastoral setting, route 5, wholesome atmosphere"
+    mood_expression: "curious expression, warm smile, wholesome feeling"
+    action: "standing at daycare fence, looking at pokemon playing"
+    extras: "elderly daycare couple nearby, baby pokemon in background, pastoral setting, heartwarming"
+
+  # ---------------------------------------------------------------------------
+  # LEGENDARY CAPTURES
+  # ---------------------------------------------------------------------------
+  legendary_articuno:
+    name: "Legendary Articuno"
+    description: "Capturing the legendary Articuno"
+    setting: "seafoam islands ice cave, frozen beauty, legendary encounter, epic wide shot"
+    mood_expression: "awe-struck expression, reverent, breathless wonder"
+    action: "standing with articuno, reaching toward legendary bird"
+    extras: "majestic ice wings, snowflakes swirling, frozen beauty, legendary aura, blue glow"
+
+  legendary_zapdos:
+    name: "Legendary Zapdos"
+    description: "Capturing the legendary Zapdos"
+    setting: "power plant interior, electric legendary, storm energy, dramatic shot"
+    mood_expression: "electrified expression, hair standing from static, intense"
+    action: "standing with zapdos, electricity arcing around"
+    extras: "lightning storm effects, electric legendary, yellow energy, static electricity"
+
+  legendary_moltres:
+    name: "Legendary Moltres"
+    description: "Capturing the legendary Moltres"
+    setting: "victory road cavern, fire legendary, blazing environment, epic shot"
+    mood_expression: "warm expression, inspired, fire in eyes"
+    action: "standing with moltres, bathed in warm glow"
+    extras: "blazing wings, warm orange glow, phoenix-like majesty, fire particles"
+
+  legendary_mewtwo:
+    name: "Legendary Mewtwo"
+    description: "Capturing the legendary Mewtwo"
+    setting: "cerulean cave depths, psychic legendary, mysterious chamber, cinematic shot"
+    mood_expression: "intense expression, focused, mental connection"
+    action: "standing with mewtwo, psychic energy between them"
+    extras: "mysterious purple aura, genetic power, ultimate pokemon, psychic glow, floating debris"
+
+  # ---------------------------------------------------------------------------
+  # ENDGAME
+  # ---------------------------------------------------------------------------
+  pokemon_champion:
+    name: "Pokemon Champion"
+    description: "Becoming the Pokemon League Champion"
+    setting: "hall of fame, championship room, golden lighting, ultimate victory shot"
+    mood_expression: "tears of joy, ultimate triumph, overwhelming happiness"
+    action: "champion pose, arms raised in victory, surrounded by team"
+    extras: "trophy, confetti, all pokemon team behind her, golden lighting, epic finale, legendary achievement"
+
+# =============================================================================
+# DYNAMIC PROMPT TEMPLATE - For LLM to generate CYCLE_CHECKPOINT posts
+# =============================================================================
+dynamic_template:
+  system_prompt: |
+    You are generating image prompt components for Lass, a Pokemon trainer taking a 
+    social media photo during her Pokemon Red adventure.
+    
+    Based on the current game state, generate creative and varied prompt components.
+    Make each photo unique and fitting for the location/situation.
+    
+    Current game state:
+    - Location: {location}
+    - Map Type: {map_type}
+    - Party Pokemon: {party}
+    - Badges: {badges}/8
+    - Recent events: {recent_events}
+    
+    Generate a JSON object with these 4 fields:
+    - setting: background, location details, camera angle (be specific to location)
+    - mood_expression: facial expression and emotional state (vary based on situation)
+    - action: pose and what Lass is doing (make it natural for the location)
+    - extras: lighting, effects, additional scene elements
+    
+    Keep each field concise (under 100 characters). Be creative and avoid repetition.
+    
+  response_format: |
+    {
+      "setting": "...",
+      "mood_expression": "...",
+      "action": "...",
+      "extras": "..."
+    }
+
+# =============================================================================
+# NEGATIVE PROMPT - Applied to all images
+# =============================================================================
+negative_prompt: >-
+  lowres, bad anatomy, bad hands, text, error, missing fingers, 
+  extra digit, fewer digits, cropped, worst quality, low quality, 
+  normal quality, jpeg artifacts, signature, watermark, username, 
+  blurry, bad feet, poorly drawn hands, poorly drawn face, mutation, 
+  deformed, ugly, bad proportions, extra limbs, cloned face, 
+  disfigured, gross proportions, malformed limbs, missing arms, 
+  missing legs, extra arms, extra legs, fused fingers, too many fingers

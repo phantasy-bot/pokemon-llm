@@ -136,7 +136,9 @@ export function PokemonCard({ pokemon, compact = false }: PokemonCardProps) {
 
 ```
 pokemon-llm/
-├── core/              # LLM logic
+├── core/              # Core logic
+│   ├── memory/        # Persistent memory
+│   │   └── manager.py
 │   ├── llmdriver.py   # Main LLM interaction loop
 │   ├── prompts.py     # System prompts (12-section format)
 │   └── battle_strategy.py
@@ -144,23 +146,23 @@ pokemon-llm/
 │   ├── comfyui_tts_service.py
 │   └── websocket_service.py
 ├── trackers/          # State tracking
-│   ├── memory_storage.py
-│   └── history_tracker.py
+│   ├── history_tracker.py
+│   └── achievement_tracker.py
 ├── pyAIAgent/         # mGBA communication
 │   ├── game/state.py  # RAM reading
 │   └── utils/socket_utils.py
 ├── apps/              # Frontend applications
 │   ├── livestream/    # React stream overlay
-│   └── obs-widgets/   # OBS overlay widgets
+│   └── chronicle-worker/ # Cloudflare backend
 ├── docs/              # Documentation
 └── scripts/           # CLI utilities
 ```
 
 ## Key Documentation
 
-- [docs/MEMORY_MAP.md](docs/MEMORY_MAP.md) - RAM addresses and data formats
-- [docs/CHARACTER_ASSETS.md](docs/CHARACTER_ASSETS.md) - Lass avatar poses
-- [docs/game_hints.md](docs/game_hints.md) - Area-specific navigation hints
+- [docs/architecture/MEMORY.md](docs/architecture/MEMORY.md) - RAM addresses and data formats
+- [docs/reference/ASSETS.md](docs/reference/ASSETS.md) - Lass avatar poses
+- [docs/features/GAME_HINTS.md](docs/features/GAME_HINTS.md) - Area-specific navigation hints
 
 ## Testing
 
@@ -189,14 +191,14 @@ cd apps/livestream && npm run dev
 1. Find address in [DataCrystal RAM Map](https://datacrystal.romhacking.net/wiki/Pok%C3%A9mon_Red/Blue:RAM_map)
 2. Add to `socketserver.lua` if reading from Lua
 3. Add to `pyAIAgent/game/state.py` for Python access
-4. Document in `docs/MEMORY_MAP.md`
+4. Document in `docs/architecture/MEMORY.md`
 
 ### Modifying the Analysis Format
 
 1. Update prompts in `core/prompts.py`
 2. Update UI parsing in `AnalysisPanel.tsx` if needed
 3. Update TTS regex in `llmdriver.py` if COMMENTARY moves
-4. Update memory regex in `memory_storage.py` if MEMORY_WRITE moves
+4. Update memory regex in `core/memory/manager.py` if MEMORY_WRITE moves
 
 ## Questions?
 

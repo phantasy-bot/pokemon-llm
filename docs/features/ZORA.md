@@ -14,11 +14,12 @@ This document details the integration of Zora functionality into the Pokemon LLM
 
 ## 🛠️ Components
 
-### 1. Zora Sidecar (Node.js)
-Located in `apps/zora-sidecar/`.
-A lightweight Node.js microservice that interfaces with the **Zora Coins SDK**.
+### 1. Chronicle Worker (Cloudflare)
+Located in `apps/chronicle-worker/`.
+A scalable Edge Worker that interfaces with the **Zora Coins SDK**.
 *   **Coin Creation**: Mints new ERC-20 coins on Base for achievements.
-*   **IPFS Upload**: Handles uploading screenshot/images and metadata.
+*   **Storage**: Uses Cloudflare R2 for images/assets.
+*   **Database**: Uses Cloudflare D1 for state and draft management.
 *   **API**: Exposes HTTP endpoints for the Python agent.
 
 ### 2. Zora Chat Service (Python)
@@ -72,16 +73,16 @@ BASE_TOKEN_ADDRESS=0x... # The contract address of your main coin on Base
 BASE_RPC_URL=https://mainnet.base.org
 ```
 
-### Starting the Sidecar
+### Starting the Worker
+
+See [CHRONICLE.md](../architecture/CHRONICLE.md) for full deployment instructions.
 
 ```bash
-cd apps/zora-sidecar
-npm install
-npm run build
-npm start
+cd apps/chronicle-worker
+npm run deploy
 ```
 
-The sidecar runs on port **3001** by default.
+The worker is serverless and runs on Cloudflare's Edge.
 
 ## 📸 Achievement Types
 
@@ -109,7 +110,7 @@ The agent prioritizes chat messages in this order:
 
 ## 📂 File Structure
 
-*   `apps/zora-sidecar/`: Node.js minting service.
+*   `apps/chronicle-worker/`: Cloudflare backend for minting and state.
 *   `services/zora_chat_service.py`: Chat connection.
 *   `services/zora_poster_service.py`: Posting logic.
 *   `services/base_token_service.py`: Holder detection.

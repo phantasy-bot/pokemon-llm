@@ -17,7 +17,6 @@ All Lass assets are located in: `apps/livestream/public/lass/`
 | `lass-default.png`        | Idle             | Default standing pose      | Fallback if no other state matches           |
 | `lass-walking-1.png`      | Walking Frame 1  | Animation frame 1 of 2     | Overworld exploration (alternates)           |
 | `lass-walking-2.png`      | Walking Frame 2  | Animation frame 2 of 2     | Overworld exploration (alternates)           |
-| `lass-walking.png`        | Walking (static) | Legacy single frame        | Not currently used                           |
 | `lass-speech.png`         | Dialogue         | Talking/reading expression | `textState.is_printing === true`             |
 | `lass-menu.png`           | Menu Open        | Thoughtful/planning pose   | `inMenu === true`                            |
 | `lass-stressed.png`       | Low HP           | Worried expression         | Active Pokemon HP status = "critical"        |
@@ -76,5 +75,5 @@ To add a new pose:
 
 ### Related Files
 
-- **Avatar Logic**: [PokemonStreamOverlay.tsx](../apps/livestream/src/components/layout/PokemonStreamOverlay.tsx) - `getAvatarImage()` function
-- **Game State Types**: [gameTypes.ts](../apps/livestream/src/types/gameTypes.ts) - `PokemonGameState` interface
+- **Avatar Logic**: `apps/livestream/src/components/layout/PokemonStreamOverlay.tsx` - `getAvatarImage()` function
+- **Game State Types**: `apps/livestream/src/types/gameTypes.ts` - `PokemonGameState` interface

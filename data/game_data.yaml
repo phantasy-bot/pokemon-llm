@@ -1,0 +1,144 @@
+# Pokemon Game Data Source of Truth
+# ================================
+
+# Location Classification
+# -----------------------
+locations:
+  routes:
+    - "ROUTE_1"
+    - "ROUTE_2"
+    - "ROUTE_3"
+    - "ROUTE_4"
+    - "ROUTE_5"
+    - "ROUTE_6"
+    - "ROUTE_7"
+    - "ROUTE_8"
+    - "ROUTE_9"
+    - "ROUTE_10"
+    - "ROUTE_11"
+    - "ROUTE_12"
+    - "ROUTE_13"
+    - "ROUTE_14"
+    - "ROUTE_15"
+    - "ROUTE_16"
+    - "ROUTE_17"
+    - "ROUTE_18"
+    - "ROUTE_19"
+    - "ROUTE_20"
+    - "ROUTE_21"
+    - "ROUTE_22"
+    - "ROUTE_23"
+    - "ROUTE_24"
+    - "ROUTE_25"
+  cities:
+    - "PALLET_TOWN"
+    - "VIRIDIAN_CITY"
+    - "PEWTER_CITY"
+    - "CERULEAN_CITY"
+    - "VERMILION_CITY"
+    - "LAVENDER_TOWN"
+    - "CELADON_CITY"
+    - "FUCHSIA_CITY"
+    - "SAFFRON_CITY"
+    - "CINNABAR_ISLAND"
+    - "INDIGO_PLATEAU"
+  dungeons:
+    - "MT_MOON"
+    - "ROCK_TUNNEL"
+    - "POKEMON_TOWER"
+    - "SILPH_CO"
+    - "POKEMON_MANSION"
+    - "SEAFOAM_ISLANDS"
+    - "VICTORY_ROAD"
+    - "CERULEAN_CAVE"
+    - "DIGLETTS_CAVE"
+    - "VIRIDIAN_FOREST"
+    - "SS_ANNE"
+    - "POWER_PLANT"
+    - "SAFARI_ZONE"
+
+# Item Classifications
+# --------------------
+items:
+  hms:
+    - "CUT"
+    - "FLY"
+    - "SURF"
+    - "STRENGTH"
+    - "FLASH"
+  key_items:
+    - "BICYCLE"
+    - "SILPH_SCOPE"
+    - "POKE_FLUTE"
+    - "LIFT_KEY"
+    - "CARD_KEY"
+    - "GOLD_TEETH"
+    - "SECRET_KEY"
+    - "GOOD_ROD"
+    - "SUPER_ROD"
+    - "SS_TICKET"
+    - "OLD_AMBER"
+    - "DOME_FOSSIL"
+    - "HELIX_FOSSIL"
+    - "TOWN_MAP"
+
+# Pokemon Data
+# ------------
+pokemon:
+  legendaries:
+    - "ARTICUNO"
+    - "ZAPDOS"
+    - "MOLTRES"
+    - "MEWTWO"
+# Scripted Photo Moments
+# ----------------------
+photo_moments:
+  route_1_flower:
+    map_id: 0x0C
+    position: [10, 18]
+    range: 2
+  viridian_forest_break:
+    map_id: 0x33
+    position: [17, 25]
+    range: 3
+  ss_anne_deck:
+    map_id: 0x63
+    position: [7, 2]
+    range: 2
+  game_corner_slots:
+    map_id: 0x87
+    position: [7, 8]
+    range: 3
+  cerulean_cape:
+    map_id: 0x1B
+    position: [45, 3]
+    range: 4
+  route_12_fishing:
+    map_id: 0x17
+    position: [8, 30]
+    range: 5
+  mt_moon_exit:
+    map_id: 0x0F
+    min_x: 10
+  rock_tunnel_exit:
+    map_id: 0x15
+    min_y: 35
+  # Map-entry based (no position required)
+  pokemon_tower_spooked:
+    map_ids: [0x90, 0x91]
+  fighting_dojo:
+    map_id: 0xB1
+  safari_zone_explorer:
+    map_id: 0xDC
+  team_rocket_first:
+    map_id: 0xC7
+  cycling_road:
+    map_ids: [0x11, 0x12]
+  seafoam_islands:
+    map_id: 0xC0
+  pewter_gym_entrance:
+    map_id: 0x36
+  indigo_plateau:
+    map_id: 0x76
+  daycare_visit:
+    map_id: 0x48

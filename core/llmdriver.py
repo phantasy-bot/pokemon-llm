@@ -16,7 +16,7 @@ import functools
 import subprocess
 import threading
 import random
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List, Tuple, Callable
 
 from PIL import Image
 from core.token_counter import count_tokens, calculate_prompt_tokens
@@ -341,10 +341,10 @@ async def run_auto_loop(
     broadcast_func,
     interval: float = 10.0,
     max_loops=math.inf,
-    benchmark: Benchmark = None,
+    benchmark: Optional[Benchmark] = None,
     persistence=None,
     run_state=None,
-    mgba_proc=None,
+    mgba_proc: Optional[Any] = None,
 ):
     """Main async loop: Get state, call LLM, send action, update/broadcast state.
 
@@ -1247,10 +1247,6 @@ Your intro message:"""
     if tweet_outcome:
         if tweet_outcome.result == TweetGeneratorResult.POSTED:
             log.info(f"🐦 Tweet posted successfully: {tweet_outcome.tweet_url}")
-        elif tweet_outcome.result == TweetGeneratorResult.DENIED:
-            log.info("🐦 Tweet was denied by Discord vote")
-        elif tweet_outcome.result == TweetGeneratorResult.TIMEOUT:
-            log.info("🐦 Tweet approval timed out")
         elif tweet_outcome.result == TweetGeneratorResult.MAX_REGENERATIONS:
             log.info("🐦 Tweet skipped: max regenerations reached")
         elif tweet_outcome.result == TweetGeneratorResult.ERROR:

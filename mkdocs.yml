@@ -1,0 +1,52 @@
+site_name: Lass Plays Pokemon Red
+site_description: Documentation for the Lass Pokemon LLM Agent project.
+site_author: Lite (@lightnolimit)
+site_url: https://docs.llmletsplay.com
+
+theme:
+  name: terminal
+  palette: dark
+  
+extra_css:
+  - css/terminal_overrides.css
+
+plugins:
+  - search
+  - mermaid2
+  - awesome-pages:
+      collapse_single_pages: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            import_identifier_as_base: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - System Architecture: architecture/index.md
+  - Features: features/index.md
+  - API Reference: api/index.md
+  - Development Guides: setup/index.md
+  - Data Reference: reference/index.md

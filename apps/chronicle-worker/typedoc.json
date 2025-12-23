@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/index.ts", "src/db.ts", "src/auth.ts"],
+  "out": "../../docs/api/frontend/chronicle-worker",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "hideBreadcrumbs": true,
+  "hidePageTitle": true,
+  "entryPointStrategy": "expand",
+  "excludeExternals": true,
+  "cleanOutputDir": true
+}

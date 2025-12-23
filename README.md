@@ -2,7 +2,7 @@
 
 **Autonomous AI Agent that plays Pokemon Red/FireRed using LLMs.**
 
-![Web UI](../images/ui.png)
+![Web UI](images/ui.png)
 
 ## 🌟 Key Features
 *   **Visual Gameplay**: Uses Vision Models (GLM-4V, GPT-4o) to "see" the game screen.
@@ -13,20 +13,22 @@
 
 ## 📚 Documentation
 
+The full technical documentation is available at **[docs.llmletsplay.com](https://docs.llmletsplay.com)**.
+
 ### 🚀 Getting Started
-*   **[Installation Guide](setup/INSTALLATION.md)**: Setup Python, mGBA, and ROMs.
-*   **[Cloudflare Setup](setup/CLOUDFLARE.md)**: Deploy the Chronicle backend.
-*   **[Socials Setup](setup/SOCIALS.md)**: Configure Twitter & Discord bots.
+*   **[Installation Guide](docs/setup/INSTALLATION.md)**: Setup Python, mGBA, and ROMs.
+*   **[Cloudflare Setup](docs/setup/CLOUDFLARE.md)**: Deploy the Chronicle backend.
+*   **[Socials Setup](docs/setup/SOCIALS.md)**: Configure Twitter & Discord bots.
 
 ### 🧠 Architecture
-*   **[System Overview](architecture/SYSTEM_OVERVIEW.md)**: High-level diagrams.
-*   **[Stream Cycle](architecture/STREAM_CYCLE.md)**: The main event loop timing.
-*   **[Pathfinding](architecture/PATHFINDING.md)**: Deep dive into navigation logic.
-*   **[Chronicle System](architecture/CHRONICLE.md)**: Token-gated content architecture.
+*   **[System Overview](docs/architecture/SYSTEM_OVERVIEW.md)**: High-level diagrams.
+*   **[Stream Cycle](docs/architecture/STREAM_CYCLE.md)**: The main event loop timing.
+*   **[Pathfinding](docs/architecture/PATHFINDING.md)**: Deep dive into navigation logic.
+*   **[Chronicle System](docs/architecture/CHRONICLE.md)**: Token-gated content architecture.
 
 ### 🛠️ Guides
-*   **[Testing Runbook](guides/TESTING.md)**: End-to-end testing procedures.
-*   **[Dev Markers](guides/DEV_MARKERS.md)**: How to annotate maps for the AI.
+*   **[Testing Runbook](docs/guides/TESTING.md)**: End-to-end testing procedures.
+*   **[Dev Markers](docs/guides/DEV_MARKERS.md)**: How to annotate maps for the AI.
 
 ---
 
@@ -34,3 +36,16 @@
 ```bash
 python run.py --mode ZAI --auto
 ```
+
+## 🛠️ Development
+
+### Building Documentation
+To build and serve the documentation site locally:
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Build and serve
+python -m mkdocs serve
+```
+The site will be available at `http://127.0.0.1:8000`.

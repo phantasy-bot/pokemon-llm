@@ -118,7 +118,7 @@ class ComfyUIImageService:
             log.warning(f"ComfyUI image connection check failed: {e}")
             return False
 
-    def load_workflow(self) -> Optional[dict]:
+    async def load_workflow(self) -> Optional[dict]:
         """Load and convert the workflow template."""
         if self._workflow_template:
             return self._workflow_template
@@ -133,7 +133,11 @@ class ComfyUIImageService:
 
             # Check if export format (has "nodes" list) or API format
             if "nodes" in raw:
-                self._workflow_template = self._convert_export_to_api_format(raw)
+                # Fetch object info to map widget values
+                object_info = await self._fetch_object_info()
+                self._workflow_template = self._convert_export_to_api_format(
+                    raw, object_info
+                )
             else:
                 self._workflow_template = raw
 
@@ -142,9 +146,23 @@ class ComfyUIImageService:
             log.error(f"Failed to load image workflow: {e}")
             return None
 
-    def _convert_export_to_api_format(self, export_workflow: dict) -> dict:
+    async def _fetch_object_info(self) -> dict:
+        """Fetch node definitions from ComfyUI to map widgets."""
+        try:
+            async with self._create_client() as client:
+                response = await client.get(f"{self.base_url}/object_info")
+                if response.status_code == 200:
+                    return response.json()
+        except Exception as e:
+            log.warning(f"Failed to fetch object_info: {e}")
+        return {}
+
+    def _convert_export_to_api_format(
+        self, export_workflow: dict, object_info: dict
+    ) -> dict:
         """
         Convert ComfyUI export format (graph with nodes list) to API format (prompt dict).
+        Uses object_info to map unnamed widget values to named inputs.
         """
         nodes = export_workflow.get("nodes", [])
         links = export_workflow.get("links", [])
@@ -170,17 +188,60 @@ class ComfyUIImageService:
                     from_node, from_slot = link_map[link_id]
                     inputs[input_name] = [str(from_node), from_slot]
 
-            # Process widget values
+            # Process widget values using object_info schema
             widgets_values = node.get("widgets_values", [])
+            if widgets_values:
+                # Get input names from schema
+                node_info = object_info.get(node_type, {})
+                input_schema = node_info.get("input", {})
+                required = input_schema.get("required", {})
+                optional = input_schema.get("optional", {})
 
-            # Handle common node types
-            if node_type == "SaveImage" and widgets_values:
-                inputs["filename_prefix"] = (
-                    widgets_values[0] if widgets_values else "lass_tweet"
-                )
+                # Combine keys in order (ComfyUI standard seems to be required then optional,
+                # but widgets usually correspond to specific non-link inputs)
 
-            # For other nodes, we preserve widget values as-is
-            # The workflow should work with its defaults
+                # Heuristic: Map widgets_values to remaining inputs that aren't links
+                # This is complex because ComfyUI's internal mapping varies.
+                # A safer bet for common nodes is often just positional mapping if names match known patterns
+                # OR rely on specific known node types if generic fails.
+
+                # Better approach: Iterate over required keys. If a key is NOT a link input (check `inputs`),
+                # then it might be a widget.
+
+                # Let's use a simpler heuristic for now that covers 90% of cases:
+                # Map values to keys sequentially from the 'required' list that match widget types
+                # (INT, FLOAT, STRING, COMBO)
+
+                widget_keys = []
+                # Scan required inputs
+                for group in [required, optional]:
+                    if isinstance(group, dict):
+                        for name, config in group.items():
+                            type_name = config[0]
+                            # If it's a primitive type or list (COMBO), it's likely a widget
+                            if type_name in [
+                                "INT",
+                                "FLOAT",
+                                "STRING",
+                                "BOOLEAN",
+                            ] or isinstance(type_name, list):
+                                widget_keys.append(name)
+
+                # Assign values
+                for i, value in enumerate(widgets_values):
+                    if i < len(widget_keys):
+                        key = widget_keys[i]
+                        # Don't overwrite if it's already linked (rare for widgets but possible)
+                        if key not in inputs:
+                            inputs[key] = value
+
+            # Fallback for explicit SaveImage prefix if schema failed
+            if (
+                node_type == "SaveImage"
+                and "filename_prefix" not in inputs
+                and widgets_values
+            ):
+                inputs["filename_prefix"] = widgets_values[0]
 
             api_prompt[node_id] = {"class_type": node_type, "inputs": inputs}
 
@@ -204,7 +265,7 @@ class ComfyUIImageService:
             Path to the downloaded image file, or None on failure.
         """
         # Load workflow
-        workflow = self.load_workflow()
+        workflow = await self.load_workflow()
         if not workflow:
             log.error("Failed to load image generation workflow")
             return None
@@ -212,7 +273,533 @@ class ComfyUIImageService:
         import copy
         import random
 
-        prompt = copy.deepcopy(workflow.get("prompt", workflow))
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
+
+        # Update seed if provided (find KSampler or similar nodes)
+        if seed is None:
+            seed = random.randint(0, 2**32 - 1)
+
+        for node_id, node_data in prompt.items():
+            class_type = node_data.get("class_type", "")
+
+            # Update seed on sampler nodes
+            if "Sampler" in class_type or "KSampler" in class_type:
+                if "seed" in node_data.get("inputs", {}):
+                    node_data["inputs"]["seed"] = seed
+                    log.debug(f"Set seed={seed} on node {node_id}")
+
+            # Update prompts on CLIPTextEncode nodes
+            if class_type == "CLIPTextEncode" and (
+                positive_prompt_addition or negative_prompt_addition
+            ):
+                inputs = node_data.get("inputs", {})
+                # Check if this is a text widget (widgets_values style)
+                # or direct input style
+                if "text" in inputs and isinstance(inputs["text"], str):
+                    current_text = inputs["text"]
+
+                    # Determine if positive or negative based on content
+                    is_negative = any(
+                        neg in current_text.lower()
+                        for neg in ["lowres", "worst quality", "bad anatomy", "ugly"]
+                    )
+
+                    if is_negative and negative_prompt_addition:
+                        inputs["text"] = current_text + ", " + negative_prompt_addition
+                        log.debug(f"Added to negative prompt on node {node_id}")
+                    elif not is_negative and positive_prompt_addition:
+                        inputs["text"] = current_text + ", " + positive_prompt_addition
+                        log.debug(f"Added to positive prompt on node {node_id}")
+
+        # Queue the workflow
+        try:
+            async with self._create_client() as client:
+                response = await client.post(
+                    f"{self.base_url}/prompt", json={"prompt": prompt}
+                )
+
+            if response.status_code != 200:
+                log.error(f"Failed to queue image workflow: {response.text}")
+                return None
+
+            prompt_id = response.json().get("prompt_id")
+            if not prompt_id:
+                log.error("No prompt_id in response")
+                return None
+
+            log.info(f"Queued image generation workflow: {prompt_id}")
+
+            # Wait for completion and get the image
+            return await self._wait_for_completion(prompt_id)
+
+        except Exception as e:
+            log.error(f"Image generation error: {e}")
+            return None
+
+        import copy
+        import random
+
+        # Ensure we have a dict, whether it was raw API format or converted
+        prompt_data = workflow.get("prompt", workflow)
+        if not isinstance(prompt_data, dict):
+            log.error(
+                f"Invalid workflow format: expected dict, got {type(prompt_data)}"
+            )
+            return None
+
+        prompt = copy.deepcopy(prompt_data)
 
         # Update seed if provided (find KSampler or similar nodes)
         if seed is None:

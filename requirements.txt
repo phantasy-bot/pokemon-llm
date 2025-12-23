@@ -10,3 +10,10 @@ mutagen
 soundfile
 tweepy>=4.14.0
 discord.py>=2.3.0
+pyyaml
+
+# Documentation
+mkdocs
+mkdocs-material
+mkdocstrings[python]
+mkdocs-mermaid2-plugin

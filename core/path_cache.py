@@ -31,7 +31,7 @@ class PathCache:
             cache.set(map_id, start, goal, path)
     """
 
-    def __init__(self, max_size=100, ttl=300):
+    def __init__(self, max_size: int = 100, ttl: int = 300):
         """
         Initialize path cache.
 
@@ -188,7 +188,7 @@ class PathCache:
 _global_path_cache: Optional[PathCache] = None
 
 
-def get_path_cache(max_size=100, ttl=300) -> PathCache:
+def get_path_cache(max_size: int = 100, ttl: int = 300) -> PathCache:
     """
     Get the global path cache instance (singleton).
 

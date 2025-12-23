@@ -56,9 +56,6 @@ class ComfyUIVisionService:
                 f"🔐 ComfyUI vision auth configured for user: {self._auth_username}"
             )
 
-        self._client: Optional[httpx.AsyncClient] = (
-            None  # Deprecated in favor of per-request clients
-        )
         self._workflow_template: Optional[dict] = None
 
         # Check configuration

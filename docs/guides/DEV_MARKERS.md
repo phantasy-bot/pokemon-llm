@@ -56,15 +56,6 @@ Professor Oak: [5,2] - marker_char: 'O'
      - Prompts LLM to choose and navigate to a starter
    - Includes distance and direction hints to each marker
 
-### 3. Test Script - `test_dev_markers.py`
-
-Comprehensive test suite validating:
-- ✅ Marker registration and retrieval
-- ✅ Correct positions for all 3 starters
-- ✅ Overlay marker generation with coordinate transformation
-- ✅ LLM context formatting
-- ✅ Adjacent tile interaction requirements
-
 ## How It Works
 
 ### Coordinate System
@@ -162,20 +153,3 @@ The LLM can then:
 5. **Integration**: Works seamlessly with existing navigation and pathfinding systems
 
 ## Future Enhancements
-
-Potential additions:
-- Mark Poké Center healing stations
-- Mark Poké Mart entrances/exits
-- Mark gym leader positions
-- Mark important NPCs (Oak's Parcel delivery, etc.)
-- Mark HM/TM locations
-- Mark legendary Pokémon positions
-
-## Testing
-
-Run test suite:
-```bash
-python test_dev_markers.py
-```
-
-Expected output: All tests pass with ✅ markers showing correct positions and coordinate transformations.

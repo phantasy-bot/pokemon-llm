@@ -115,13 +115,13 @@ Valid examples:
 - "Named my rival GARY"
 - "None" (if nothing important)
 
-Parsed by: `trackers/memory_storage.py` → `_extract_narrative_memories()`
+Parsed by: `core/memory/manager.py` → `_extract_narrative_memories()`
 
 ## Prompt File Location
 
-All prompts are defined in: [core/prompts.py](../core/prompts.py)
+All prompts are defined in the `core/prompts/` package. See [Core API Reference](../api/core.md) for technical details.
 
-Key functions:
+Key functions (available in `core.prompts`):
 
 - `get_base_prompt()` - Core system prompt
 - `get_screen_specific_prompt(screen_type)` - Returns appropriate screen prompt
@@ -129,7 +129,7 @@ Key functions:
 
 ## Adding a New Screen Type
 
-1. Create `NEW_SCREEN_PROMPT` constant in `prompts.py`
+1. Create `NEW_SCREEN_PROMPT` constant in `core/prompts/screens.py`
 2. Follow 12-section format (customize section 7)
 3. Add to `get_screen_specific_prompt()` function
 4. Update vision analysis to detect new screen type

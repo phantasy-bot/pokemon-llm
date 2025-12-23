@@ -13,7 +13,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, List, Set, Any
+from typing import Optional, Dict, List, Set, Any, cast
 from pathlib import Path
 
 log = logging.getLogger("achievement_tracker")
@@ -80,24 +80,34 @@ class AchievementType(Enum):
     POKEMON_CHAMPION = "pokemon_champion"  # Defeated Elite 4 and Champion
 
 
-# Starter evolution chains for detection
-STARTER_EVOLUTIONS = {
-    # Charmander line
-    "CHARMANDER": {"stage": 1, "next": "CHARMELEON", "line": "fire"},
-    "CHARMELEON": {"stage": 2, "next": "CHARIZARD", "line": "fire"},
-    "CHARIZARD": {"stage": 3, "next": None, "line": "fire"},
-    # Squirtle line
-    "SQUIRTLE": {"stage": 1, "next": "WARTORTLE", "line": "water"},
-    "WARTORTLE": {"stage": 2, "next": "BLASTOISE", "line": "water"},
-    "BLASTOISE": {"stage": 3, "next": None, "line": "water"},
-    # Bulbasaur line
-    "BULBASAUR": {"stage": 1, "next": "IVYSAUR", "line": "grass"},
-    "IVYSAUR": {"stage": 2, "next": "VENUSAUR", "line": "grass"},
-    "VENUSAUR": {"stage": 3, "next": None, "line": "grass"},
-}
+# Starter evolution chains and legendary data (loaded from YAML)
+STARTER_EVOLUTIONS: Dict[str, Any] = {}
+LEGENDARY_POKEMON: Set[str] = set()
 
-# Legendary Pokemon names
-LEGENDARY_POKEMON = {"ARTICUNO", "ZAPDOS", "MOLTRES", "MEWTWO"}
+
+def _load_game_constants():
+    """Load game constants from YAML."""
+    global STARTER_EVOLUTIONS, LEGENDARY_POKEMON
+    data_path = Path(__file__).parent.parent / "data" / "game_data.yaml"
+    if not data_path.exists():
+        log.warning(f"Game data YAML not found: {data_path}")
+        return
+
+    try:
+        import yaml
+
+        with open(data_path, "r") as f:
+            data = yaml.safe_load(f)
+
+        STARTER_EVOLUTIONS = data.get("pokemon", {}).get("starter_evolutions", {})
+        LEGENDARY_POKEMON = set(data.get("pokemon", {}).get("legendaries", []))
+        log.info("Loaded game constants from YAML")
+    except Exception as e:
+        log.error(f"Failed to load game constants YAML: {e}")
+
+
+# Load on module import
+_load_game_constants()
 
 # Badge name to achievement type mapping
 BADGE_TO_ACHIEVEMENT = {
@@ -122,160 +132,245 @@ LEGENDARY_TO_ACHIEVEMENT = {
 
 @dataclass
 class AchievementImagePrompt:
-    """Image generation prompts for an achievement."""
+    """
+    Image generation prompts for an achievement.
 
-    positive_prompt: str  # Added to base prompt for image generation
-    negative_prompt: str = ""  # Additional negative prompt (optional)
-    scene_description: str = ""  # Description for tweet context
+    Prompts are composed from 4 structured fields that are combined at runtime:
+    - setting: background, location, camera angle
+    - mood_expression: facial expression, emotional state
+    - action: pose, what she's doing
+    - extras: lighting, effects, additional elements
+
+    The positive_prompt property combines these fields into a single string.
+    """
+
+    # Structured prompt components
+    setting: str = ""  # background, location, camera angle
+    mood_expression: str = ""  # facial expression, emotional state
+    action: str = ""  # pose, what she's doing
+    extras: str = ""  # lighting, effects, additional elements
+
+    # Compose positive prompt from structured fields
+    @property
+    def positive_prompt(self) -> str:
+        """Combine structured fields into a single prompt string."""
+        parts = [
+            self.setting,
+            self.mood_expression,
+            self.action,
+            self.extras,
+        ]
+        # Filter empty parts and join with commas
+        return ", ".join(p.strip() for p in parts if p and p.strip())
 
 
-# Achievement-specific image prompts
-# These are ADDED to the base Lass character prompt
-ACHIEVEMENT_IMAGE_PROMPTS: Dict[AchievementType, AchievementImagePrompt] = {
+# YAML-based prompt loading
+_PROMPTS_YAML_PATH = Path(__file__).parent.parent / "data" / "image_prompts.yaml"
+_yaml_prompts_cache: Optional[Dict[str, Any]] = None
+
+
+def _load_yaml_prompts() -> Dict[str, Any]:
+    """Load prompts from YAML file with caching."""
+    global _yaml_prompts_cache
+
+    if _yaml_prompts_cache is not None:
+        return _yaml_prompts_cache
+
+    if not _PROMPTS_YAML_PATH.exists():
+        log.warning(f"Image prompts YAML not found: {_PROMPTS_YAML_PATH}")
+        return {}
+
+    try:
+        import yaml
+
+        with open(_PROMPTS_YAML_PATH, "r") as f:
+            loaded_data = yaml.safe_load(f)
+
+        if loaded_data is None:
+            log.warning("Image prompts YAML is empty")
+            return {}
+
+        _yaml_prompts_cache = cast(Dict[str, Any], loaded_data)
+
+        # Safe access to checkpoints
+        checkpoints = _yaml_prompts_cache.get("checkpoints", {})
+        checkpoint_count = len(checkpoints) if checkpoints else 0
+        log.info(f"Loaded image prompts from YAML: {checkpoint_count} checkpoints")
+        return _yaml_prompts_cache
+    except ImportError:
+        log.warning("PyYAML not installed, using fallback prompts")
+        return {}
+    except Exception as e:
+        log.error(f"Failed to load image prompts YAML: {e}")
+        return {}
+
+
+def _build_prompts_from_yaml() -> Dict[AchievementType, AchievementImagePrompt]:
+    """Build ACHIEVEMENT_IMAGE_PROMPTS dict from YAML data."""
+    yaml_data = _load_yaml_prompts()
+    checkpoints = yaml_data.get("checkpoints", {})
+
+    prompts: Dict[AchievementType, AchievementImagePrompt] = {}
+
+    for key, data in checkpoints.items():
+        try:
+            # Convert YAML key to AchievementType enum
+            achievement_type = AchievementType(key)
+
+            prompts[achievement_type] = AchievementImagePrompt(
+                setting=data.get("setting", ""),
+                mood_expression=data.get("mood_expression", ""),
+                action=data.get("action", ""),
+                extras=data.get("extras", ""),
+            )
+        except ValueError:
+            log.warning(f"Unknown achievement type in YAML: {key}")
+
+    return prompts
+
+
+def get_achievement_image_prompts() -> Dict[AchievementType, AchievementImagePrompt]:
+    """Get achievement image prompts, preferring YAML source."""
+    yaml_prompts = _build_prompts_from_yaml()
+    if yaml_prompts:
+        return yaml_prompts
+    return _FALLBACK_ACHIEVEMENT_IMAGE_PROMPTS
+
+
+# Fallback prompts (used if YAML not available)
+_FALLBACK_ACHIEVEMENT_IMAGE_PROMPTS: Dict[AchievementType, AchievementImagePrompt] = {
     AchievementType.STREAM_START: AchievementImagePrompt(
-        positive_prompt="excited pose, waving at viewer, sparkles, happy expression, energetic, ready for adventure",
-        scene_description="Starting a new Pokemon adventure",
+        action="excited pose, waving at viewer, sparkles, happy expression, energetic, ready for adventure",
     ),
     AchievementType.FIRST_POKEMON: AchievementImagePrompt(
-        positive_prompt="holding pokeball lovingly, gentle smile, warm lighting, professor oak's lab background, first pokemon moment, emotional, happy tears",
-        scene_description="Receiving first Pokemon from Professor Oak",
-    ),
-    AchievementType.ROUTE_1_FLOWER: AchievementImagePrompt(
-        positive_prompt="kneeling in flower field, smelling flowers, peaceful expression, route 1 grassland, wildflowers, butterflies, serene nature scene, golden hour lighting",
-        scene_description="Taking a peaceful moment on Route 1",
+        setting="professor oak's lab background",
+        mood_expression="gentle smile, emotional, happy tears",
+        action="holding pokeball lovingly",
+        extras="warm lighting, first pokemon moment",
     ),
     AchievementType.FIRST_CATCH: AchievementImagePrompt(
-        positive_prompt="triumphant pose, holding pokeball up victoriously, excited expression, celebration, first catch success, sparkles around pokeball",
-        scene_description="Catching first wild Pokemon",
-    ),
-    AchievementType.VIRIDIAN_FOREST_BREAK: AchievementImagePrompt(
-        positive_prompt="sitting on log, forest background, dappled sunlight through trees, peaceful rest, viridian forest, bug pokemon nearby, relaxed pose, drinking from canteen",
-        scene_description="Taking a break in Viridian Forest",
-    ),
-    AchievementType.STARTER_EVOLUTION_1: AchievementImagePrompt(
-        positive_prompt="amazed expression, watching evolution light, bright glow effects, evolution energy swirling, proud moment, emotional",
-        scene_description="Watching starter Pokemon evolve for the first time",
-    ),
-    AchievementType.STARTER_EVOLUTION_2: AchievementImagePrompt(
-        positive_prompt="standing with fully evolved starter, powerful pose, dramatic lighting, final evolution complete, bond between trainer and pokemon, epic moment",
-        scene_description="Starter Pokemon reaches final evolution",
-    ),
-    AchievementType.BADGE_BOULDER: AchievementImagePrompt(
-        positive_prompt="holding boulder badge proudly, pewter city gym, rock type aesthetic, determined expression, first gym victory",
-        scene_description="Earning the Boulder Badge from Brock",
-    ),
-    AchievementType.BADGE_CASCADE: AchievementImagePrompt(
-        positive_prompt="holding cascade badge, cerulean city gym, water droplets, aquarium background, refreshed and victorious",
-        scene_description="Earning the Cascade Badge from Misty",
-    ),
-    AchievementType.BADGE_THUNDER: AchievementImagePrompt(
-        positive_prompt="holding thunder badge, electric sparks, vermilion city gym, lightning effects, electrifying victory",
-        scene_description="Earning the Thunder Badge from Lt. Surge",
-    ),
-    AchievementType.BADGE_RAINBOW: AchievementImagePrompt(
-        positive_prompt="holding rainbow badge, celadon city gym, flowers and nature, colorful lighting, grass type aesthetic",
-        scene_description="Earning the Rainbow Badge from Erika",
-    ),
-    AchievementType.BADGE_SOUL: AchievementImagePrompt(
-        positive_prompt="holding soul badge, fuchsia city gym, ninja aesthetic, mysterious atmosphere, poison type vibes",
-        scene_description="Earning the Soul Badge from Koga",
-    ),
-    AchievementType.BADGE_MARSH: AchievementImagePrompt(
-        positive_prompt="holding marsh badge, saffron city gym, psychic energy effects, mystical atmosphere, mind power",
-        scene_description="Earning the Marsh Badge from Sabrina",
-    ),
-    AchievementType.BADGE_VOLCANO: AchievementImagePrompt(
-        positive_prompt="holding volcano badge, cinnabar island gym, fire and lava background, intense heat, fire type power",
-        scene_description="Earning the Volcano Badge from Blaine",
-    ),
-    AchievementType.BADGE_EARTH: AchievementImagePrompt(
-        positive_prompt="holding earth badge, viridian city gym, ground type aesthetic, final badge triumph, all eight badges complete, epic achievement",
-        scene_description="Earning the Earth Badge - all 8 badges collected",
-    ),
-    AchievementType.LEGENDARY_ARTICUNO: AchievementImagePrompt(
-        positive_prompt="standing with articuno, ice cave background, frozen beauty, legendary bird, majestic ice wings, snowflakes, awe-struck expression",
-        scene_description="Capturing the legendary Articuno",
-    ),
-    AchievementType.LEGENDARY_ZAPDOS: AchievementImagePrompt(
-        positive_prompt="standing with zapdos, power plant background, electric legendary, lightning storm, electrifying presence, hair standing from static",
-        scene_description="Capturing the legendary Zapdos",
-    ),
-    AchievementType.LEGENDARY_MOLTRES: AchievementImagePrompt(
-        positive_prompt="standing with moltres, victory road background, fire legendary, blazing wings, warm glow, phoenix-like majesty",
-        scene_description="Capturing the legendary Moltres",
-    ),
-    AchievementType.LEGENDARY_MEWTWO: AchievementImagePrompt(
-        positive_prompt="standing with mewtwo, cerulean cave background, psychic legendary, mysterious aura, ultimate pokemon, genetic power",
-        scene_description="Capturing the legendary Mewtwo",
+        mood_expression="excited expression",
+        action="triumphant pose, holding pokeball up victoriously",
+        extras="celebration, first catch success, sparkles around pokeball",
     ),
     AchievementType.POKEMON_CHAMPION: AchievementImagePrompt(
-        positive_prompt="champion pose, hall of fame, trophy, confetti, championship victory, ultimate triumph, tears of joy, all pokemon team behind her, legendary achievement, golden lighting, epic finale",
-        scene_description="Becoming the Pokemon League Champion",
-    ),
-    # New scripted location moments
-    AchievementType.TEAM_ROCKET_FIRST: AchievementImagePrompt(
-        positive_prompt="defensive battle pose, facing team rocket grunt, determined expression, standing ground against evil, heroic moment, underground hideout background",
-        scene_description="First encounter with Team Rocket",
-    ),
-    AchievementType.SS_ANNE_DECK: AchievementImagePrompt(
-        positive_prompt="standing on ship deck, looking out at ocean, wind in hair, peaceful ocean view, sunset over water, SS Anne cruise ship, nautical atmosphere, serene expression",
-        scene_description="Enjoying the view from SS Anne deck",
-    ),
-    AchievementType.POKEMON_TOWER_SPOOKED: AchievementImagePrompt(
-        positive_prompt="scared expression, haunted tower background, ghost pokemon silhouettes, spooky purple mist, lavender town cemetery, frightened but brave, holding onto pokeball nervously",
-        scene_description="Spooked by ghosts in Pokemon Tower",
-    ),
-    AchievementType.GAME_CORNER_SLOTS: AchievementImagePrompt(
-        positive_prompt="sitting at slot machine, casino lights, excited gambling expression, coins and tokens, game corner neon signs, celadon city, lucky pose, fun atmosphere",
-        scene_description="Trying luck at the Game Corner slots",
-    ),
-    AchievementType.FIGHTING_DOJO: AchievementImagePrompt(
-        positive_prompt="martial arts pose, fighting dojo background, karate stance, determined expression, training with fighting type pokemon, saffron city dojo, black belt aesthetic, powerful aura",
-        scene_description="Training at the Fighting Dojo",
-    ),
-    AchievementType.SAFARI_ZONE_EXPLORER: AchievementImagePrompt(
-        positive_prompt="wearing safari hat, explorer pose, binoculars in hand, safari zone wilderness, exotic pokemon in background, adventure outfit, excited explorer expression, tall grass",
-        scene_description="Exploring the Safari Zone",
-    ),
-    # Scenic/Nature photo moments
-    AchievementType.CERULEAN_CAPE: AchievementImagePrompt(
-        positive_prompt="standing on coastal cliff, ocean view, sea breeze blowing hair, cerulean cape, bill's cottage in background, peaceful seaside, sparkling water, seagulls flying",
-        scene_description="Enjoying the ocean view from Cerulean Cape",
-    ),
-    AchievementType.MT_MOON_EXIT: AchievementImagePrompt(
-        positive_prompt="stepping into sunlight, shielding eyes from brightness, relief expression, mountain exit, fresh air, blue sky visible, leaving cave behind, happy to see daylight",
-        scene_description="Finally emerging from Mt. Moon into daylight",
-    ),
-    AchievementType.ROCK_TUNNEL_EXIT: AchievementImagePrompt(
-        positive_prompt="blinking in bright light, exhausted but relieved, cave exit, daylight streaming in, dusty from tunnel, triumphant survival, route 10 visible ahead",
-        scene_description="Escaping the darkness of Rock Tunnel",
-    ),
-    AchievementType.CYCLING_ROAD: AchievementImagePrompt(
-        positive_prompt="riding bicycle, wind in hair, cycling road downhill, speed lines, excited expression, bike path scenery, ocean visible below, freedom feeling, sporty pose",
-        scene_description="Cruising down Cycling Road",
-    ),
-    AchievementType.SEAFOAM_ISLANDS: AchievementImagePrompt(
-        positive_prompt="bundled up from cold, icy cave background, frozen crystals, breath visible in cold air, beautiful ice formations, seafoam islands interior, winter wonderland underground",
-        scene_description="Exploring the frozen Seafoam Islands caves",
-    ),
-    AchievementType.ROUTE_12_FISHING: AchievementImagePrompt(
-        positive_prompt="sitting on pier with fishing rod, relaxed pose, waiting for bite, route 12 silence pier, calm water, peaceful fishing moment, sunset colors, patient expression, tackle box nearby",
-        scene_description="Peaceful fishing on Route 12",
-    ),
-    # Milestone photo moments
-    AchievementType.PEWTER_GYM_ENTRANCE: AchievementImagePrompt(
-        positive_prompt="standing at gym entrance, determined expression, pewter city gym sign, first gym challenge, nervous but excited, rock type decorations, taking deep breath before entering",
-        scene_description="About to enter the first gym",
-    ),
-    AchievementType.INDIGO_PLATEAU: AchievementImagePrompt(
-        positive_prompt="standing at pokemon league entrance, awe-struck expression, indigo plateau grand building, final destination reached, epic journey complete, majestic architecture, elite four awaits",
-        scene_description="Arriving at the Indigo Plateau Pokemon League",
-    ),
-    AchievementType.DAYCARE_VISIT: AchievementImagePrompt(
-        positive_prompt="standing at daycare fence, looking at pokemon playing, route 5 daycare, wholesome scene, curious expression, elderly daycare couple, baby pokemon in background, pastoral setting",
-        scene_description="Visiting the Pokemon Daycare on Route 5",
+        setting="hall of fame, golden lighting, epic finale",
+        mood_expression="tears of joy, ultimate triumph",
+        action="champion pose, all pokemon team behind her",
+        extras="trophy, confetti, championship victory, legendary achievement",
     ),
 }
+
+# Main export - dynamically loads from YAML
+ACHIEVEMENT_IMAGE_PROMPTS: Dict[AchievementType, AchievementImagePrompt] = (
+    get_achievement_image_prompts()
+)
+
+
+def get_dynamic_prompt_template() -> str:
+    """
+    Get the dynamic prompt template for LLM-generated image prompts.
+
+    Used for CYCLE_CHECKPOINT (progress/fallback) posts where the LLM
+    generates prompt components based on the current game state.
+
+    Returns:
+        The system prompt template with placeholders for game state.
+    """
+    yaml_data = _load_yaml_prompts()
+    dynamic = yaml_data.get("dynamic_template", {})
+    return dynamic.get("system_prompt", _DEFAULT_DYNAMIC_TEMPLATE)
+
+
+# Default template if YAML not available
+_DEFAULT_DYNAMIC_TEMPLATE = """You are generating image prompt components for Lass, a Pokemon trainer taking a 
+social media photo during her Pokemon Red adventure.
+
+Based on the current game state, generate creative and varied prompt components.
+Make each photo unique and fitting for the location/situation.
+
+Current game state:
+- Location: {location}
+- Map Type: {map_type}
+- Party Pokemon: {party}
+- Badges: {badges}/8
+- Recent events: {recent_events}
+
+Generate a JSON object with these 4 fields:
+- setting: background, location details, camera angle (be specific to location)
+- mood_expression: facial expression and emotional state (vary based on situation)
+- action: pose and what Lass is doing (make it natural for the location)
+- extras: lighting, effects, additional scene elements
+
+Keep each field concise (under 100 characters). Be creative and avoid repetition.
+"""
+
+
+def build_dynamic_prompt_context(
+    location: str = "",
+    map_type: str = "",
+    party: Optional[List[str]] = None,
+    badges: int = 0,
+    recent_events: str = "",
+) -> str:
+    """
+    Build the dynamic prompt with game state filled in.
+
+    Args:
+        location: Current map/location name
+        map_type: Type of location (city, route, dungeon, etc.)
+        party: List of Pokemon names in party
+        badges: Number of badges earned
+        recent_events: Description of recent game events
+
+    Returns:
+        Formatted prompt string ready to send to LLM.
+    """
+    template = get_dynamic_prompt_template()
+    party_str = ", ".join(party) if party else "None"
+
+    return template.format(
+        location=location or "Unknown",
+        map_type=map_type or "unknown",
+        party=party_str,
+        badges=badges,
+        recent_events=recent_events or "Continuing the adventure",
+    )
+
+
+def parse_dynamic_prompt_response(response: str) -> Optional[AchievementImagePrompt]:
+    """
+    Parse LLM response into an AchievementImagePrompt.
+
+    Expects JSON with: setting, mood_expression, action, extras
+
+    Args:
+        response: Raw LLM response string
+
+    Returns:
+        AchievementImagePrompt or None if parsing fails.
+    """
+    import json
+    import re
+
+    try:
+        # Try to extract JSON from response (may have extra text)
+        json_match = re.search(r"\{[^{}]*\}", response, re.DOTALL)
+        if not json_match:
+            log.warning("No JSON found in dynamic prompt response")
+            return None
+
+        data = json.loads(json_match.group())
+
+        return AchievementImagePrompt(
+            setting=data.get("setting", ""),
+            mood_expression=data.get("mood_expression", ""),
+            action=data.get("action", ""),
+            extras=data.get("extras", ""),
+        )
+    except Exception as e:
+        log.error(f"Error parsing dynamic prompt response: {e}")
+        return None
 
 
 @dataclass
@@ -391,7 +486,7 @@ class AchievementTracker:
     def trigger(
         self,
         achievement_type: AchievementType,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Optional[Achievement]:
         """
         Trigger an achievement if not already triggered.
@@ -429,7 +524,7 @@ class AchievementTracker:
         self._pending_achievement = None
 
     def mark_tweet_posted(
-        self, achievement_type: AchievementType, tweet_url: str = None
+        self, achievement_type: AchievementType, tweet_url: Optional[str] = None
     ) -> None:
         """Mark an achievement's tweet as posted."""
         if achievement_type.value in self.triggered:
@@ -443,7 +538,7 @@ class AchievementTracker:
         """Get the image prompt for an achievement type."""
         return ACHIEVEMENT_IMAGE_PROMPTS.get(
             achievement_type,
-            AchievementImagePrompt(positive_prompt="", scene_description=""),
+            AchievementImagePrompt(),  # Empty prompt as fallback
         )
 
     # =========================================================================
@@ -455,7 +550,7 @@ class AchievementTracker:
         current_party: List[Dict],
         current_badges: List[str],
         current_map: str,
-        game_state: Dict[str, Any] = None,
+        game_state: Optional[Dict[str, Any]] = None,
     ) -> Optional[Achievement]:
         """
         Check current game state for new achievements.
@@ -633,7 +728,7 @@ class AchievementTracker:
         return None
 
     def _check_champion(
-        self, current_map: str, game_state: Dict[str, Any] = None
+        self, current_map: str, game_state: Optional[Dict[str, Any]] = None
     ) -> Optional[Achievement]:
         """Check for Pokemon Champion victory."""
         if self.is_triggered(AchievementType.POKEMON_CHAMPION):

@@ -52,6 +52,16 @@ When a major achievement occurs:
     *   If valid, generates a signed R2 URL (Time-limited) for the exclusive file.
     *   Redirects user to the secure download.
 
+### 4. Human-in-the-Loop (Discord -> Worker)
+1.  **Notification**: When a draft is created, the Worker sends an Embed to Discord with "Approve", "Edit", and "Delete" buttons.
+2.  **Interaction**: User clicks a button in Discord.
+3.  **Webhook**: Discord calls `POST /api/interactions` on the Worker.
+4.  **Verification**: Worker verifies the `Ed25519` signature using the `DISCORD_PUBLIC_KEY` to ensure authenticity.
+5.  **Action**:
+    *   **Approve**: Worker triggers the minting process and updates the Discord message to "Published".
+    *   **Edit**: Opens the Chronicle Admin UI with `?edit=[id]` for immediate editing.
+    *   **Delete**: Marks the draft as deleted in the database.
+
 ---
 
 ## 📊 Content Strategy

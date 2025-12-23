@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Loader2, Twitter, RefreshCw } from 'lucide-react';
 import { useAdmin } from '../hooks/useAdmin';
 import { DraftEditor } from '../components/admin/DraftEditor';
@@ -6,6 +7,18 @@ import { DraftEditor } from '../components/admin/DraftEditor';
 export function Admin() {
   const { drafts, loading, isAuthorized, address, publishing, tweeting, handlePublish, handleTweet, handleUpdate, refreshDrafts } = useAdmin();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle deep link to edit
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && !loading && drafts.length > 0) {
+        const drop = drafts.find(d => d.id === editId);
+        if (drop) {
+            setEditingId(editId);
+        }
+    }
+  }, [searchParams, loading, drafts]);
 
   const getImageUrl = (url: string) => {
     if (url.startsWith('http') || url.startsWith('ipfs')) return url;
@@ -70,8 +83,18 @@ export function Admin() {
                         onSave={async (id, data) => {
                             await handleUpdate(id, data);
                             setEditingId(null);
+                            setSearchParams(params => {
+                                params.delete('edit');
+                                return params;
+                            });
                         }}
-                        onCancel={() => setEditingId(null)}
+                        onCancel={() => {
+                            setEditingId(null);
+                            setSearchParams(params => {
+                                params.delete('edit');
+                                return params;
+                            });
+                        }}
                       />
                     ) : (
                       <>

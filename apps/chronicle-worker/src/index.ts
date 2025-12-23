@@ -23,9 +23,121 @@ type Bindings = {
   TWITTER_ACCESS_TOKEN: string;
   TWITTER_ACCESS_TOKEN_SECRET: string;
   ZORA_PRIVATE_KEY: string;
+  DISCORD_APP_ID: string;
+  DISCORD_PUBLIC_KEY: string;
+  DISCORD_BOT_TOKEN: string;
+  DISCORD_CHANNEL_ID: string;
+  FRONTEND_URL: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// --- DISCORD HELPERS ---
+
+async function verifyDiscordSignature(request: Request, publicKey: string): Promise<boolean> {
+  const signature = request.headers.get('X-Signature-Ed25519');
+  const timestamp = request.headers.get('X-Signature-Timestamp');
+  const body = await request.clone().text();
+
+  if (!signature || !timestamp || !body) return false;
+
+  try {
+    const encoder = new TextEncoder();
+    const keyData = hexToUint8Array(publicKey);
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'Ed25519', namedCurve: 'Ed25519' }, 
+      false,
+      ['verify']
+    );
+
+    const verified = await crypto.subtle.verify(
+        'Ed25519',
+        key,
+        hexToUint8Array(signature),
+        encoder.encode(timestamp + body)
+    );
+    
+    return verified;
+  } catch (e) {
+    console.error("Signature verification failed:", e);
+    return false;
+  }
+}
+
+function hexToUint8Array(hex: string) {
+  return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
+}
+
+async function sendDiscordNotification(c: any, drop: any, dropId: string) {
+    if (!c.env.DISCORD_BOT_TOKEN || !c.env.DISCORD_CHANNEL_ID) return;
+
+    const frontendUrl = c.env.FRONTEND_URL || "https://chronicle.llmletsplay.com";
+    const editUrl = `${frontendUrl}/admin?edit=${dropId}`;
+    
+    // Construct Embed
+    const embed = {
+        title: "New Draft Created",
+        description: drop.description || "No description",
+        url: editUrl,
+        color: 0x00FF00,
+        fields: [
+            { name: "Name", value: drop.name, inline: true },
+            { name: "Symbol", value: drop.symbol, inline: true },
+            { name: "Status", value: drop.status, inline: true }
+        ],
+        image: {
+            url: drop.publicImageUrl.startsWith('http') ? drop.publicImageUrl : `${frontendUrl}${drop.publicImageUrl}`
+        },
+        footer: {
+            text: `ID: ${dropId}`
+        }
+    };
+
+    // Components (Buttons)
+    const components = [
+        {
+            type: 1, // Action Row
+            components: [
+                {
+                    type: 2, // Button
+                    style: 3, // Green (Success)
+                    label: "Approve & Publish",
+                    custom_id: `publish_${dropId}`,
+                    emoji: { name: "🚀" }
+                },
+                {
+                    type: 2, // Button
+                    style: 5, // Link
+                    label: "Edit in Chronicle",
+                    url: editUrl,
+                    emoji: { name: "✏️" }
+                },
+                {
+                    type: 2, // Button
+                    style: 4, // Red (Danger)
+                    label: "Delete",
+                    custom_id: `delete_${dropId}`,
+                    emoji: { name: "🗑️" }
+                }
+            ]
+        }
+    ];
+
+    await fetch(`https://discord.com/api/v10/channels/${c.env.DISCORD_CHANNEL_ID}/messages`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bot ${c.env.DISCORD_BOT_TOKEN}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            embeds: [embed],
+            components: components
+        })
+    });
+}
+
 
 app.use('/*', cors({
   origin: (origin) => {
@@ -39,6 +151,102 @@ app.use('/*', cors({
 }));
 
 app.get('/health', (c) => c.json({ status: 'ok' }));
+
+// --- DISCORD INTERACTION ENDPOINT ---
+
+app.post('/api/interactions', async (c) => {
+    const signature = c.req.header('X-Signature-Ed25519');
+    const timestamp = c.req.header('X-Signature-Timestamp');
+    
+    if (!signature || !timestamp || !c.env.DISCORD_PUBLIC_KEY) {
+        return c.text('Invalid request signature', 401);
+    }
+
+    // Verify signature
+    const isValid = await verifyDiscordSignature(c.req.raw, c.env.DISCORD_PUBLIC_KEY);
+    if (!isValid) {
+        return c.text('Invalid request signature', 401);
+    }
+
+    const body = await c.req.json();
+
+    // Handle PING
+    if (body.type === 1) {
+        return c.json({ type: 1 });
+    }
+
+    // Handle Button Interactions
+    if (body.type === 3) { // Message Component
+        const customId = body.data.custom_id;
+        const [action, dropId] = customId.split('_');
+
+        const db = getDB(c);
+        
+        if (action === 'publish') {
+            try {
+                const drop = await db.getDrop(dropId);
+                if (!drop) return c.json({ type: 4, data: { content: "Drop not found!", flags: 64 } });
+                
+                if (drop.status === 'published') {
+                     return c.json({ type: 4, data: { content: "Already published!", flags: 64 } });
+                }
+
+                // Perform Minting (Reusing helper)
+                // Note: mintCoin relies on c.env so we pass c
+                const { coinAddress, metadataUri } = await mintCoin(c, drop);
+
+                await db.updateDrop({
+                    id: dropId,
+                    name: drop.name,
+                    description: drop.description,
+                    publicImageUrl: metadataUri,
+                    metadataUri: metadataUri,
+                    status: 'published',
+                    coinAddress: coinAddress,
+                    images: drop.images
+                });
+
+                // Update the message to remove buttons and show success
+                return c.json({
+                    type: 7, // Update Message
+                    data: {
+                        content: `✅ **PUBLISHED**\nCoin Address: \`${coinAddress}\``,
+                        components: [] // Remove buttons
+                    }
+                });
+
+            } catch (e: any) {
+                return c.json({ type: 4, data: { content: `Error publishing: ${e.message}`, flags: 64 } });
+            }
+        }
+
+        if (action === 'delete') {
+            try {
+                const existing = await db.getDrop(dropId);
+                if (!existing) {
+                     return c.json({ type: 4, data: { content: "Drop not found!", flags: 64 } });
+                }
+
+                await db.updateDrop({
+                    ...existing,
+                    status: 'deleted'
+                });
+
+                return c.json({
+                    type: 7, // Update Message
+                    data: {
+                        content: `🗑️ **DELETED** (Marked as deleted)`,
+                        components: []
+                    }
+                });
+            } catch (e: any) {
+                 return c.json({ type: 4, data: { content: `Error deleting: ${e.message}`, flags: 64 } });
+            }
+        }
+    }
+
+    return c.json({ error: 'Unknown interaction' }, 400);
+});
 
 // Helper factories
 const getDB = (c: any) => new Database(c.env.DB);
@@ -206,6 +414,11 @@ app.post('/api/drop', authMiddleware, async (c) => {
         // The Admin UI handles publishing.
         images: JSON.stringify(images)
     });
+
+    // Send Discord Notification
+    c.executionCtx.waitUntil(sendDiscordNotification(c, {
+        name, symbol, description, publicImageUrl, status: 'draft', images
+    }, dropId));
       
     return c.json({ success: true, id: dropId, status: 'draft' });
 

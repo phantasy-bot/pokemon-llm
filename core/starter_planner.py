@@ -160,7 +160,8 @@ class StarterPlanner:
         Check if player is at the target position for starter selection.
 
         Args:
-            player_x, player_y: Current player world coordinates
+            player_x: Current player world X coordinate
+            player_y: Current player world Y coordinate
 
         Returns:
             True if at target position
@@ -201,7 +202,8 @@ class StarterPlanner:
         Get navigation context for LLM about starter selection.
 
         Args:
-            player_x, player_y: Current player position
+            player_x: Current player X position
+            player_y: Current player Y position
 
         Returns:
             Formatted string for LLM context

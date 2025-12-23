@@ -1,0 +1,7 @@
+nav:
+  - Home: index.md
+  - System Architecture: architecture/
+  - Features: features/
+  - API Reference: api/
+  - Development Guides: setup/
+  - Data Reference: reference/

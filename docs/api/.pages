@@ -1,0 +1,6 @@
+nav:
+  - pyAIAgent.md
+  - core.md
+  - services.md
+  - trackers.md
+  - Frontend: frontend/

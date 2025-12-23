@@ -136,86 +136,44 @@ ACHIEVEMENT_TIERS: Dict[ZoraAchievementType, ZoraAchievementTier] = {
 }
 
 
-# Location classification for detection
-# Maps can be classified as routes, cities, or dungeons
-ROUTES = {
-    "ROUTE_1",
-    "ROUTE_2",
-    "ROUTE_3",
-    "ROUTE_4",
-    "ROUTE_5",
-    "ROUTE_6",
-    "ROUTE_7",
-    "ROUTE_8",
-    "ROUTE_9",
-    "ROUTE_10",
-    "ROUTE_11",
-    "ROUTE_12",
-    "ROUTE_13",
-    "ROUTE_14",
-    "ROUTE_15",
-    "ROUTE_16",
-    "ROUTE_17",
-    "ROUTE_18",
-    "ROUTE_19",
-    "ROUTE_20",
-    "ROUTE_21",
-    "ROUTE_22",
-    "ROUTE_23",
-    "ROUTE_24",
-    "ROUTE_25",
-}
-
-CITIES = {
-    "PALLET_TOWN",
-    "VIRIDIAN_CITY",
-    "PEWTER_CITY",
-    "CERULEAN_CITY",
-    "VERMILION_CITY",
-    "LAVENDER_TOWN",
-    "CELADON_CITY",
-    "FUCHSIA_CITY",
-    "SAFFRON_CITY",
-    "CINNABAR_ISLAND",
-    "INDIGO_PLATEAU",
-}
-
-DUNGEONS = {
-    "MT_MOON",
-    "ROCK_TUNNEL",
-    "POKEMON_TOWER",
-    "SILPH_CO",
-    "POKEMON_MANSION",
-    "SEAFOAM_ISLANDS",
-    "VICTORY_ROAD",
-    "CERULEAN_CAVE",
-    "DIGLETTS_CAVE",
-    "VIRIDIAN_FOREST",
-    "SS_ANNE",
-    "POWER_PLANT",
-    "SAFARI_ZONE",
-}
-
 # HM names for detection
-HM_NAMES = {"CUT", "FLY", "SURF", "STRENGTH", "FLASH"}
+HM_NAMES = set()
 
 # Key items for detection
-KEY_ITEMS = {
-    "BICYCLE",
-    "SILPH_SCOPE",
-    "POKE_FLUTE",
-    "LIFT_KEY",
-    "CARD_KEY",
-    "GOLD_TEETH",
-    "SECRET_KEY",
-    "GOOD_ROD",
-    "SUPER_ROD",
-    "SS_TICKET",
-    "OLD_AMBER",
-    "DOME_FOSSIL",
-    "HELIX_FOSSIL",
-    "TOWN_MAP",
-}
+KEY_ITEMS = set()
+
+# Location classification
+ROUTES = set()
+CITIES = set()
+DUNGEONS = set()
+
+
+def _load_game_data():
+    """Load game data constants from YAML."""
+    global HM_NAMES, KEY_ITEMS, ROUTES, CITIES, DUNGEONS
+    data_path = Path(__file__).parent.parent / "data" / "game_data.yaml"
+    if not data_path.exists():
+        log.warning(f"Game data YAML not found: {data_path}")
+        return
+
+    try:
+        import yaml
+
+        with open(data_path, "r") as f:
+            data = yaml.safe_load(f)
+
+        HM_NAMES = set(data.get("items", {}).get("hms", []))
+        KEY_ITEMS = set(data.get("items", {}).get("key_items", []))
+        ROUTES = set(data.get("locations", {}).get("routes", []))
+        CITIES = set(data.get("locations", {}).get("cities", []))
+        DUNGEONS = set(data.get("locations", {}).get("dungeons", []))
+        log.info("Loaded game data from YAML")
+    except Exception as e:
+        log.error(f"Failed to load game data YAML: {e}")
+
+
+# Load on module import
+_load_game_data()
 
 
 @dataclass

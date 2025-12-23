@@ -1,0 +1,17 @@
+# Pre-commit hooks configuration
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Auto-regenerate documentation and build site when data or code changes
+  - repo: local
+    hooks:
+      - id: build-docs
+        name: Build Technical Documentation
+        entry: /opt/homebrew/Caskroom/miniconda/base/envs/pokemon-llm/bin/python scripts/build_docs.py
+        language: python
+        files: ^(data/.*\.yaml|core/.*\.py|trackers/.*\.py|docs/.*\.md|mkdocs\.yml)$
+        pass_filenames: false
+        description: >-
+          Runs modular doc generators and MkDocs build to ensure 
+          documentation is infallible and in-sync.

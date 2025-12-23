@@ -39,3 +39,4 @@ web_ui/*.png
 # These are created at runtime and cleaned up after use
 outputs/
 !outputs/.gitkeep
+site/

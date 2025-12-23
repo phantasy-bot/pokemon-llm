@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/main.tsx", "src/App.tsx", "src/lib/*.ts"],
+  "out": "../../docs/api/frontend/chronicle-ui",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "hideBreadcrumbs": true,
+  "hidePageTitle": true,
+  "entryPointStrategy": "expand",
+  "excludeExternals": true,
+  "cleanOutputDir": true
+}

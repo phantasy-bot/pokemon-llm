@@ -144,10 +144,6 @@ class NamePlanner:
             f"NamePlanner: Preplanned rival name set to '{name}' (source: {source})"
         )
 
-    def set_rival_name(self, name: str):
-        """Set the rival's name (legacy method, use set_preplanned_rival_name)."""
-        self.set_preplanned_rival_name(name, source="manual")
-
     def set_current_starter_nickname(self, nickname: str):
         """
         Set the nickname for the current starter Pokemon being named.

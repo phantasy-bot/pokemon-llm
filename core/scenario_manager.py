@@ -1,52 +1,34 @@
 import logging
-from typing import Optional, Dict, Any, Tuple, Callable
+from pathlib import Path
+from typing import Optional, Dict, Any, Tuple, Callable, Set
 from pyAIAgent.game.name_planner import get_name_planner
 from core.navigation_controller import NavigationController
 from core.starter_planner import get_starter_planner, OAKS_LAB_MAP_ID
 
 log = logging.getLogger("scenario_manager")
 
-# Map IDs for scripted photo locations
-ROUTE_1_MAP_ID = 0x0C  # Route 1
-VIRIDIAN_FOREST_MAP_ID = 0x33  # Viridian Forest
-SS_ANNE_BOW_MAP_ID = 0x63  # SS Anne Bow/Deck
-POKEMON_TOWER_3F_MAP_ID = 0x90  # Pokemon Tower 3F (spooky floor)
-POKEMON_TOWER_4F_MAP_ID = 0x91  # Pokemon Tower 4F
-GAME_CORNER_MAP_ID = 0x87  # Game Corner
-FIGHTING_DOJO_MAP_ID = 0xB1  # Fighting Dojo
-SAFARI_ZONE_CENTER_MAP_ID = 0xDC  # Safari Zone Center
-ROCKET_HIDEOUT_B1F_MAP_ID = 0xC7  # Rocket Hideout B1F (first encounter)
+# Photo moments configuration (loaded from YAML)
+PHOTO_MOMENTS = {}
 
-# New scenic/nature photo locations
-ROUTE_25_MAP_ID = 0x1B  # Route 25 (Cerulean Cape / Bill's area)
-ROUTE_4_MAP_ID = 0x0F  # Route 4 (Mt. Moon exit)
-ROUTE_10_MAP_ID = 0x15  # Route 10 (Rock Tunnel exit)
-ROUTE_16_MAP_ID = 0x11  # Route 16 (Cycling Road start)
-ROUTE_17_MAP_ID = 0x12  # Route 17 (Cycling Road main)
-SEAFOAM_B4F_MAP_ID = 0xC0  # Seafoam Islands B4F (ice area)
-ROUTE_12_MAP_ID = 0x17  # Route 12 (Fishing pier)
 
-# Milestone photo locations
-PEWTER_GYM_MAP_ID = 0x36  # Pewter City Gym
-INDIGO_PLATEAU_LOBBY_MAP_ID = 0x76  # Indigo Plateau Lobby
-DAYCARE_MAP_ID = 0x48  # Pokemon Daycare (Route 5)
+def _load_scenario_data():
+    """Load scenario data from YAML."""
+    global PHOTO_MOMENTS
+    data_path = Path(__file__).parent.parent / "data" / "game_data.yaml"
+    if not data_path.exists():
+        return
 
-# Scripted photo positions (x, y) - specific scenic spots
-ROUTE_1_FLOWER_POSITION = (10, 18)  # Middle of Route 1, flower area
-VIRIDIAN_FOREST_BREAK_POSITION = (17, 25)  # Clearing in forest
-SS_ANNE_DECK_POSITION = (7, 2)  # Bow of SS Anne looking out
-POKEMON_TOWER_POSITION = (10, 8)  # Center of tower floor
-GAME_CORNER_SLOT_POSITION = (7, 8)  # Slot machine area
-FIGHTING_DOJO_POSITION = (5, 5)  # Center of dojo
-SAFARI_ZONE_POSITION = (15, 15)  # Safari Zone exploration spot
+    try:
+        import yaml
 
-# New scenic photo positions
-CERULEAN_CAPE_POSITION = (45, 3)  # Near Bill's house, ocean view
-ROUTE_4_EXIT_POSITION = (15, 10)  # East side of Route 4 after Mt. Moon
-ROUTE_10_EXIT_POSITION = (8, 40)  # South Route 10 after Rock Tunnel
-CYCLING_ROAD_START_POSITION = (10, 5)  # Start of Cycling Road
-SEAFOAM_ICE_POSITION = (12, 10)  # Near ice puzzle area
-ROUTE_12_FISHING_POSITION = (8, 30)  # Fishing pier on Route 12 (Silence Bridge area)
+        with open(data_path, "r") as f:
+            data = yaml.safe_load(f)
+        PHOTO_MOMENTS = data.get("photo_moments", {})
+    except Exception as e:
+        log.error(f"Failed to load scenario data: {e}")
+
+
+_load_scenario_data()
 
 
 class ScenarioManager:
@@ -57,7 +39,7 @@ class ScenarioManager:
     - Starter Pokemon selection (LLM-preplanned choice + nickname)
     - Pallet Town loop breaking
     - Invisible obstacle handling (stuck state)
-    - Scripted photo moments (Route 1 flowers, Viridian Forest break)
+    - Scripted photo moments (Loaded from game_data.yaml)
     """
 
     def __init__(self, navigation_controller: NavigationController):
@@ -65,26 +47,8 @@ class ScenarioManager:
         self._achievement_tracker = None  # Set externally when initialized
         self._photo_callback = None  # Callback when photo moment triggers
 
-        # Track if we've already triggered each photo moment this session
-        self._route1_photo_triggered = False
-        self._viridian_photo_triggered = False
-        self._ss_anne_photo_triggered = False
-        self._pokemon_tower_photo_triggered = False
-        self._game_corner_photo_triggered = False
-        self._fighting_dojo_photo_triggered = False
-        self._safari_zone_photo_triggered = False
-        self._team_rocket_photo_triggered = False
-        # New scenic/nature photo flags
-        self._cerulean_cape_photo_triggered = False
-        self._mt_moon_exit_photo_triggered = False
-        self._rock_tunnel_exit_photo_triggered = False
-        self._cycling_road_photo_triggered = False
-        self._seafoam_photo_triggered = False
-        self._route12_fishing_photo_triggered = False
-        # Milestone photo flags
-        self._pewter_gym_photo_triggered = False
-        self._indigo_plateau_photo_triggered = False
-        self._daycare_photo_triggered = False
+        # Track triggered photo moments this session to avoid spam
+        self._triggered_moments: Set[str] = set()
 
     def set_achievement_tracker(self, tracker) -> None:
         """Set the achievement tracker reference for photo moment triggers."""
@@ -111,7 +75,7 @@ class ScenarioManager:
         if starter_action:
             return starter_action
 
-        # 3. Scripted Photo Moments (Route 1 flowers, Viridian Forest break)
+        # 3. Scripted Photo Moments
         self._check_photo_moments(state)
 
         # 4. Pallet Town Loop Breaker (Only if no goal exists)
@@ -359,245 +323,57 @@ class ScenarioManager:
     def _check_photo_moments(self, state: Dict[str, Any]) -> None:
         """
         Check if player is at a scripted photo location and trigger photo moment.
-
-        Scripted photo moments:
-        - Route 1 flowers: Scenic spot to appreciate nature
-        - Viridian Forest break: Rest spot in the forest
-        - SS Anne deck: Looking out at the ocean
-        - Pokemon Tower: Spooked by ghosts
-        - Game Corner: Playing the slots
-        - Fighting Dojo: Training martial arts
-        - Safari Zone: Explorer adventure
-        - Rocket Hideout: First Team Rocket encounter
+        Uses configuration from game_data.yaml.
         """
         if not self._achievement_tracker:
-            return  # No tracker set, skip
+            return
 
         map_id = state.get("map_id", 0)
         player_x = state.get("world_x", 0)
         player_y = state.get("world_y", 0)
 
-        # Route 1 Flower Photo
-        if (
-            map_id == ROUTE_1_MAP_ID
-            and not self._route1_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("route_1_flower")
-            )
-        ):
-            target_x, target_y = ROUTE_1_FLOWER_POSITION
-            if abs(player_x - target_x) <= 2 and abs(player_y - target_y) <= 2:
-                self._trigger_photo_moment("route_1_flower")
-                self._route1_photo_triggered = True
+        for moment_id, info in PHOTO_MOMENTS.items():
+            # Skip if already triggered this session
+            if moment_id in self._triggered_moments:
+                continue
 
-        # Viridian Forest Break Photo
-        if (
-            map_id == VIRIDIAN_FOREST_MAP_ID
-            and not self._viridian_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("viridian_forest_break")
-            )
-        ):
-            target_x, target_y = VIRIDIAN_FOREST_BREAK_POSITION
-            if abs(player_x - target_x) <= 3 and abs(player_y - target_y) <= 3:
-                self._trigger_photo_moment("viridian_forest_break")
-                self._viridian_photo_triggered = True
+            # Skip if already in achievement tracker
+            achievement_type = self._get_achievement_type(moment_id)
+            if not achievement_type or self._achievement_tracker.is_triggered(
+                achievement_type
+            ):
+                self._triggered_moments.add(moment_id)
+                continue
 
-        # SS Anne Deck Photo - Looking out at the ocean
-        if (
-            map_id == SS_ANNE_BOW_MAP_ID
-            and not self._ss_anne_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("ss_anne_deck")
-            )
-        ):
-            target_x, target_y = SS_ANNE_DECK_POSITION
-            if abs(player_x - target_x) <= 2 and abs(player_y - target_y) <= 2:
-                self._trigger_photo_moment("ss_anne_deck")
-                self._ss_anne_photo_triggered = True
+            # Check Map ID (can be single ID or list)
+            target_map_ids = info.get("map_ids") or [info.get("map_id")]
+            if map_id not in target_map_ids:
+                continue
 
-        # Pokemon Tower Spooked Photo - Any floor 3-5 (spookiest)
-        if (
-            map_id in (POKEMON_TOWER_3F_MAP_ID, POKEMON_TOWER_4F_MAP_ID)
-            and not self._pokemon_tower_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("pokemon_tower_spooked")
-            )
-        ):
-            # Trigger anywhere on these floors (always spooky!)
-            self._trigger_photo_moment("pokemon_tower_spooked")
-            self._pokemon_tower_photo_triggered = True
+            # Check specific triggers
+            triggered = False
 
-        # Game Corner Slots Photo - At the slot machines
-        if (
-            map_id == GAME_CORNER_MAP_ID
-            and not self._game_corner_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("game_corner_slots")
-            )
-        ):
-            target_x, target_y = GAME_CORNER_SLOT_POSITION
-            if abs(player_x - target_x) <= 3 and abs(player_y - target_y) <= 3:
-                self._trigger_photo_moment("game_corner_slots")
-                self._game_corner_photo_triggered = True
+            if "position" in info:
+                target_x, target_y = info["position"]
+                dist_range = info.get("range", 2)
+                if (
+                    abs(player_x - target_x) <= dist_range
+                    and abs(player_y - target_y) <= dist_range
+                ):
+                    triggered = True
+            elif "min_x" in info:
+                if player_x >= info["min_x"]:
+                    triggered = True
+            elif "min_y" in info:
+                if player_y >= info["min_y"]:
+                    triggered = True
+            else:
+                # Map entry only
+                triggered = True
 
-        # Fighting Dojo Photo - Training at the dojo
-        if (
-            map_id == FIGHTING_DOJO_MAP_ID
-            and not self._fighting_dojo_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("fighting_dojo")
-            )
-        ):
-            # Trigger when entering the dojo
-            self._trigger_photo_moment("fighting_dojo")
-            self._fighting_dojo_photo_triggered = True
-
-        # Safari Zone Explorer Photo
-        if (
-            map_id == SAFARI_ZONE_CENTER_MAP_ID
-            and not self._safari_zone_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("safari_zone_explorer")
-            )
-        ):
-            # Trigger when entering Safari Zone center
-            self._trigger_photo_moment("safari_zone_explorer")
-            self._safari_zone_photo_triggered = True
-
-        # Team Rocket First Encounter Photo
-        if (
-            map_id == ROCKET_HIDEOUT_B1F_MAP_ID
-            and not self._team_rocket_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("team_rocket_first")
-            )
-        ):
-            # Trigger when first entering Rocket Hideout
-            self._trigger_photo_moment("team_rocket_first")
-            self._team_rocket_photo_triggered = True
-
-        # ═══════════════════════════════════════════════════════════════════════════
-        # NEW SCENIC/NATURE PHOTO MOMENTS
-        # ═══════════════════════════════════════════════════════════════════════════
-
-        # Cerulean Cape - Ocean view near Bill's house (position-based)
-        if (
-            map_id == ROUTE_25_MAP_ID
-            and not self._cerulean_cape_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("cerulean_cape")
-            )
-        ):
-            target_x, target_y = CERULEAN_CAPE_POSITION
-            if abs(player_x - target_x) <= 4 and abs(player_y - target_y) <= 3:
-                self._trigger_photo_moment("cerulean_cape")
-                self._cerulean_cape_photo_triggered = True
-
-        # Mt. Moon Exit - Relief after darkness (position-based, east side of Route 4)
-        if (
-            map_id == ROUTE_4_MAP_ID
-            and not self._mt_moon_exit_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("mt_moon_exit")
-            )
-        ):
-            target_x, target_y = ROUTE_4_EXIT_POSITION
-            # Trigger when on east side of Route 4 (exited Mt. Moon)
-            if player_x >= 10 and abs(player_y - target_y) <= 3:
-                self._trigger_photo_moment("mt_moon_exit")
-                self._mt_moon_exit_photo_triggered = True
-
-        # Rock Tunnel Exit - Daylight after darkness (position-based, south Route 10)
-        if (
-            map_id == ROUTE_10_MAP_ID
-            and not self._rock_tunnel_exit_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("rock_tunnel_exit")
-            )
-        ):
-            target_x, target_y = ROUTE_10_EXIT_POSITION
-            # Trigger when in southern part of Route 10 (exited Rock Tunnel)
-            if player_y >= 35:
-                self._trigger_photo_moment("rock_tunnel_exit")
-                self._rock_tunnel_exit_photo_triggered = True
-
-        # Cycling Road - Cruising down the bike path (map-entry based)
-        if (
-            map_id in (ROUTE_16_MAP_ID, ROUTE_17_MAP_ID)
-            and not self._cycling_road_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("cycling_road")
-            )
-        ):
-            # Trigger when entering Cycling Road
-            self._trigger_photo_moment("cycling_road")
-            self._cycling_road_photo_triggered = True
-
-        # Seafoam Islands - Icy cave adventure (map-entry based)
-        if (
-            map_id == SEAFOAM_B4F_MAP_ID
-            and not self._seafoam_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("seafoam_islands")
-            )
-        ):
-            # Trigger when reaching the deep ice floor
-            self._trigger_photo_moment("seafoam_islands")
-            self._seafoam_photo_triggered = True
-
-        # Route 12 Fishing - Peaceful fishing moment (position-based)
-        if (
-            map_id == ROUTE_12_MAP_ID
-            and not self._route12_fishing_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("route_12_fishing")
-            )
-        ):
-            target_x, target_y = ROUTE_12_FISHING_POSITION
-            if abs(player_x - target_x) <= 3 and abs(player_y - target_y) <= 5:
-                self._trigger_photo_moment("route_12_fishing")
-                self._route12_fishing_photo_triggered = True
-
-        # ═══════════════════════════════════════════════════════════════════════════
-        # MILESTONE PHOTO MOMENTS
-        # ═══════════════════════════════════════════════════════════════════════════
-
-        # Pewter Gym Entrance - First gym challenge (map-entry based)
-        if (
-            map_id == PEWTER_GYM_MAP_ID
-            and not self._pewter_gym_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("pewter_gym_entrance")
-            )
-        ):
-            # Trigger when entering Pewter Gym for the first time
-            self._trigger_photo_moment("pewter_gym_entrance")
-            self._pewter_gym_photo_triggered = True
-
-        # Indigo Plateau - Arriving at Pokemon League (map-entry based)
-        if (
-            map_id == INDIGO_PLATEAU_LOBBY_MAP_ID
-            and not self._indigo_plateau_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("indigo_plateau")
-            )
-        ):
-            # Trigger when arriving at the Pokemon League
-            self._trigger_photo_moment("indigo_plateau")
-            self._indigo_plateau_photo_triggered = True
-
-        # Daycare Visit - First visit to Pokemon Daycare (map-entry based)
-        if (
-            map_id == DAYCARE_MAP_ID
-            and not self._daycare_photo_triggered
-            and not self._achievement_tracker.is_triggered(
-                self._get_achievement_type("daycare_visit")
-            )
-        ):
-            # Trigger when visiting the daycare
-            self._trigger_photo_moment("daycare_visit")
-            self._daycare_photo_triggered = True
+            if triggered:
+                self._trigger_photo_moment(moment_id)
+                self._triggered_moments.add(moment_id)
 
     def _get_achievement_type(self, name: str):
         """Get AchievementType enum from string name."""

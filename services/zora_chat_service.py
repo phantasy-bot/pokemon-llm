@@ -491,6 +491,22 @@ class ZoraChatService:
         log.info(f"🧪 Generated {len(msgs)} Zora test messages")
         return msgs
 
+    def generate_single_test_message(self) -> dict:
+        """Generate a single random test message."""
+        username = random.choice(TEST_USERNAMES)
+        message = random.choice(TEST_MESSAGES)
+
+        return {
+            "username": username,
+            "display_name": username,
+            "message": message,
+            "timestamp": time.time(),
+            "user_address": f"0xTEST{username}",
+            "source": "zora",
+            "is_test": True,
+            "_original": None,
+        }
+
 
 # Factory
 def create_zora_chat_service(

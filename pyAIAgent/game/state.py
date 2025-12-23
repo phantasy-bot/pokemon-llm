@@ -3,6 +3,7 @@ import sys
 import struct
 import time
 import logging
+from typing import Tuple, Optional, Any, Dict, List
 
 try:
     from pyAIAgent.game.graphics import dump_minimal_map, dump_minimap_map_array
@@ -384,18 +385,19 @@ def get_player_movement_state(sock) -> dict:
         }
 
 
-def get_name_entry_state(sock, menu_state: dict = None) -> dict | None:
+def get_name_entry_state(
+    sock: Any, menu_state: Optional[Dict[str, Any]] = None
+) -> Optional[Dict[str, Any]]:
     """
     Detect if player is on name entry screen and get cursor position.
     OPTIMIZED: Reuses menu_state data if provided, skips expensive tile buffer read.
 
     The name entry screen displays a character grid where the player selects letters.
-    Detection is done by checking menu item count and dialog text patterns.
+    Detection is done by checking menu item count patterns.
 
     Args:
         sock: Socket connection to mGBA
         menu_state: Optional pre-read menu state to avoid redundant reads
-        dialog_text: Optional dialog text to check for name entry patterns
 
     Returns:
         dict with cursor info if on name entry, None otherwise
@@ -900,9 +902,12 @@ def get_enemy_pokemon(sock) -> dict | None:
         return None
 
 
-def get_active_battle_pokemon(sock) -> dict | None:
+def get_active_battle_pokemon(sock: Any) -> Optional[Dict[str, Any]]:
     """
     Get current active player Pokemon in battle.
+
+    Args:
+        sock: Socket connection to mGBA
     """
     _flush_socket(sock)
     try:
