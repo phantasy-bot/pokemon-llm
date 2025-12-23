@@ -508,7 +508,7 @@ class ZAIMCPClient:
         import httpx
 
         try:
-            api_key = os.getenv("ZAI_API_KEY") or self.api_key
+            api_key = os.getenv("Z_AI_API_KEY") or self.api_key
             if not api_key:
                 log.warning("No API key for Flash fallback")
                 return None
@@ -569,172 +569,6 @@ class ZAIMCPClient:
         except Exception as e:
             log.warning(f"Flash fallback exception: {e}")
             return None
-
-    def analyze_image_sync(
-        self, image_path: str, prompt: str = "What does this image show?"
-    ) -> Optional[str]:
-        """
-        Compare two screenshots using ui_diff_check MCP tool to detect UI changes.
-
-        This tool is designed to flag visual or implementation drift between
-        two UI screenshots - perfect for detecting what changed between cycles.
-
-        Args:
-            prev_image_path: Path to the previous cycle's screenshot
-            curr_image_path: Path to the current cycle's screenshot
-
-        Returns:
-            Description of changes between the two images, or None if failed
-        """
-        if not self.is_connected:
-            log.error("MCP server not connected for ui_diff_check")
-            return None
-
-        if not os.path.exists(prev_image_path):
-            log.error(f"Previous image not found for diff: {prev_image_path}")
-            return None
-
-        if not os.path.exists(curr_image_path):
-            log.error(f"Current image not found for diff: {curr_image_path}")
-            return None
-
-        # CRITICAL: Convert to absolute paths - MCP server requires absolute paths
-        prev_abs_path = os.path.abspath(prev_image_path)
-        curr_abs_path = os.path.abspath(curr_image_path)
-
-        try:
-            # CRITICAL: Acquire lock to prevent concurrent access with analyze_image
-            # Use shorter timeout for diff check since it's lower priority
-            if not self._mcp_lock.acquire(timeout=5.0):
-                log.warning("Skipping ui_diff_check - could not acquire MCP lock")
-                return None
-
-            try:
-                tool_name = "ui_diff_check"
-                request_id = self._get_next_request_id()
-
-                # Create MCP request for UI diff check
-                # MCP requires: expected_image_source, actual_image_source, prompt
-                mcp_request = {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": {
-                            "expected_image_source": prev_abs_path,
-                            "actual_image_source": curr_abs_path,
-                            "prompt": "Compare these two game screenshots. Describe what changed: player position, screen type, UI elements, dialogue, menu states. Focus on movement direction and any new/removed elements.",
-                        },
-                    },
-                }
-
-                log.info(
-                    f"Sending ui_diff_check request: prev={prev_image_path}, curr={curr_image_path}"
-                )
-
-                # Send request
-                request_json = json.dumps(mcp_request) + "\n"
-                self.mcp_process.stdin.write(request_json.encode())
-                self.mcp_process.stdin.flush()
-
-                # Wait for response with short timeout to prevent blocking
-                # Use slightly longer timeout since we have the lock
-                response_data = self._read_response_with_id_match(
-                    request_id, timeout=20.0
-                )
-
-                if response_data is None:
-                    log.error(f"Failed to get {tool_name} response (timeout)")
-                    return None
-
-                if "result" in response_data:
-                    result = response_data["result"]
-                    if isinstance(result, dict) and "content" in result:
-                        content = result["content"]
-                        if isinstance(content, list) and len(content) > 0:
-                            if isinstance(content[0], dict) and "text" in content[0]:
-                                diff_analysis = content[0]["text"]
-                                log.info(
-                                    f"✅ ui_diff_check completed: {len(diff_analysis)} chars"
-                                )
-                                return diff_analysis
-                    # Fallback parsing
-                    if isinstance(result, str):
-                        return result
-                    return str(result)
-                elif "error" in response_data:
-                    log.error(f"MCP error for {tool_name}: {response_data['error']}")
-                    return None
-                else:
-                    log.error(f"Unexpected response for {tool_name}: {response_data}")
-                    return None
-            finally:
-                self._mcp_lock.release()
-
-        except Exception as e:
-            log.error(f"ui_diff_check failed: {e}", exc_info=True)
-            return None
-
-    def ui_diff_check_sync(
-        self,
-        prev_image_path: str,
-        curr_image_path: str,
-        max_attempts: int = 2,
-        timeout: int = 10,
-    ) -> Optional[str]:
-        """
-        Synchronous wrapper for ui_diff_check with limited retries.
-
-        Unlike analyze_image_sync which retries forever, this has limited retries
-        since diff analysis is optional/supplementary context.
-
-        Args:
-            prev_image_path: Path to previous screenshot
-            curr_image_path: Path to current screenshot
-            max_attempts: Maximum retry attempts (default 2)
-            timeout: Maximum time in seconds for each diff attempt (default 10)
-
-        Returns:
-            Diff analysis or None if failed after retries
-        """
-        import time as time_module
-
-        log.info(f"🔍 Starting ui_diff_check (max {max_attempts} attempts)")
-
-        for attempt in range(max_attempts):
-            try:
-                result = asyncio.run(
-                    self.ui_diff_check(prev_image_path, curr_image_path)
-                )
-                if result:
-                    log.info(f"✅ ui_diff_check succeeded on attempt {attempt + 1}")
-                    return result
-                else:
-                    log.warning(
-                        f"ui_diff_check returned empty on attempt {attempt + 1}"
-                    )
-            except Exception as e:
-                log.error(f"ui_diff_check attempt {attempt + 1} failed: {e}")
-
-            if attempt < max_attempts - 1:
-                time_module.sleep(1.0)
-
-        log.warning(f"ui_diff_check failed after {max_attempts} attempts")
-        return None
-
-    async def stop_mcp_server(self):
-        """Stop the MCP server"""
-        if self.mcp_process:
-            try:
-                self.mcp_process.terminate()
-                await self.mcp_process.wait()
-                log.info("Z.AI MCP vision server stopped")
-            except Exception as e:
-                log.warning(f"Error stopping MCP server: {e}")
-            finally:
-                self.mcp_process = None
-                self.is_connected = False
 
     async def analyze_image(
         self, image_path: str, prompt: str = "What does this image show?"
@@ -918,7 +752,7 @@ class ZAIVisionFallback:
         # Use the same coding plan endpoint for vision to avoid rate limits
         from openai import OpenAI
 
-        api_key = os.getenv("ZAI_API_KEY")
+        api_key = os.getenv("Z_AI_API_KEY")
         if api_key:
             self.client = OpenAI(
                 base_url="https://api.z.ai/api/paas/v4",  # Standard endpoint for Flash vision fallback
@@ -932,7 +766,7 @@ class ZAIVisionFallback:
             # Fallback to provided client if no API key
             self.client = client
             log.warning(
-                "No ZAI_API_KEY found, using provided client for vision fallback"
+                "No Z_AI_API_KEY found, using provided client for vision fallback"
             )
         self.model = model
 
@@ -1078,7 +912,7 @@ class ZAIVisionFallback:
             }
 
             headers = {
-                "Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}",
+                "Authorization": f"Bearer {os.getenv('Z_AI_API_KEY')}",
                 "Content-Type": "application/json",
             }
 
@@ -1174,7 +1008,7 @@ class ZAIVisionFallback:
             }
 
             headers = {
-                "Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}",
+                "Authorization": f"Bearer {os.getenv('Z_AI_API_KEY')}",
                 "Content-Type": "application/json",
             }
 
@@ -1229,8 +1063,8 @@ def create_zai_vision_client(client, model: str, use_mcp: bool = True) -> Any:
         Vision client instance
     """
     # Check for MCP disable toggle - allows easy switching to Flash fallback
-    # Set ZAI_MCP_DISABLED=true to bypass MCP and use GLM-4.6V-Flash directly
-    mcp_disabled = os.getenv("ZAI_MCP_DISABLED", "false").lower() in (
+    # Set Z_AI_MCP_DISABLED=true to bypass MCP and use GLM-4.6V-Flash directly
+    mcp_disabled = os.getenv("Z_AI_MCP_DISABLED", "false").lower() in (
         "true",
         "1",
         "yes",
@@ -1238,20 +1072,20 @@ def create_zai_vision_client(client, model: str, use_mcp: bool = True) -> Any:
 
     if mcp_disabled:
         # Use specific flash model for direct fallback if available
-        flash_model = os.getenv("ZAI_DIRECT_MODEL", "glm-4.6v-flash")
+        flash_model = os.getenv("Z_AI_DIRECT_MODEL", "glm-4.6v-flash")
         log.info(
-            f"ZAI_MCP_DISABLED=true - Bypassing MCP, using {flash_model} fallback directly"
+            f"Z_AI_MCP_DISABLED=true - Bypassing MCP, using {flash_model} fallback directly"
         )
         return ZAIVisionFallback(client, flash_model)
 
     if use_mcp:
-        api_key = os.getenv("ZAI_API_KEY")
+        api_key = os.getenv("Z_AI_API_KEY")
         if api_key:
             log.info("Creating Z.AI MCP vision client")
             return ZAIMCPClient(api_key=api_key)
         else:
-            log.warning("ZAI_API_KEY not found, falling back to direct API")
+            log.warning("Z_AI_API_KEY not found, falling back to direct API")
 
     log.info("Creating Z.AI direct API vision client")
-    flash_model = os.getenv("ZAI_DIRECT_MODEL", "glm-4.6v-flash")
+    flash_model = os.getenv("Z_AI_DIRECT_MODEL", "glm-4.6v-flash")
     return ZAIVisionFallback(client, flash_model)

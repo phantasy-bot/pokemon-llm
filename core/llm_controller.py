@@ -259,7 +259,6 @@ class LLMController:
         screenshot = payload.pop("screenshot", None)
         minimap = payload.pop("minimap", None)
         screenshot_path = payload.pop("screenshot_path", None)
-        payload.pop("previous_screenshot_path", None)
         payload.pop("minimap_path", None)
 
         if not self.config.get("minimap_2d", True):

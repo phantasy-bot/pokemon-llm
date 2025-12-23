@@ -24,42 +24,30 @@ class ChatResponseService:
     """
     Service for generating chat responses using a separate LLM.
 
-    Uses Featherless AI (dev) or Alkahest (prod) for chat responses,
+    Uses a configurable LLM provider (e.g., Featherless, Alkahest, OpenAI)
     keeping the main game LLM separate from chat interactions.
     """
 
     def __init__(
         self,
-        api_key: str = None,
-        base_url: str = None,
+        client: Optional[OpenAI] = None,
         model: str = None,
-        is_production: bool = False,
     ):
         """
         Initialize the chat response service.
 
         Args:
-            api_key: API key for LLM provider
-            base_url: Base URL for API calls
+            client: Initialized OpenAI-compatible client
             model: Model name to use
-            is_production: If True, use Alkahest; else use Featherless AI
         """
-        # Determine which API to use
-        if is_production:
-            self.api_key = api_key or os.getenv("ALKAHEST_API_KEY", "")
-            self.base_url = base_url or os.getenv(
-                "ALKAHEST_BASE_URL", "https://api.alkahest.ai/v1"
-            )
-            self.model = model or os.getenv("ALKAHEST_MODEL", "zai-org/GLM-4.6")
-        else:
-            self.api_key = api_key or os.getenv("FEATHERLESS_API_KEY", "")
-            self.base_url = base_url or os.getenv(
-                "FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1"
-            )
-            self.model = model or os.getenv("FEATHERLESS_MODEL", "zai-org/GLM-4.6")
+        self._client = client
+        self.model = model
 
-        self._client: Optional[OpenAI] = None
-        self._is_configured = bool(self.api_key and self.base_url and self.model)
+        # Legacy/Internal fallback if client not provided (should be avoided in new usage)
+        self.api_key = None
+        self.base_url = None
+
+        self._is_configured = bool(self._client and self.model)
 
         # Context for Lass personality consistency
         self._recent_game_context: str = ""
@@ -77,14 +65,11 @@ class ChatResponseService:
         )
 
         if not self._is_configured:
-            env_prefix = "ALKAHEST" if is_production else "FEATHERLESS"
             log.warning(
-                f"Chat response service not configured. Set {env_prefix}_API_KEY in .env"
+                "Chat response service not configured (no client/model provided)."
             )
         else:
-            log.info(
-                f"Chat response service configured: {self.base_url} using {self.model}"
-            )
+            log.info(f"Chat response service configured with model: {self.model}")
 
     @property
     def is_available(self) -> bool:
@@ -166,8 +151,6 @@ class ChatResponseService:
 
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client."""
-        if self._client is None:
-            self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         return self._client
 
     def update_context(
@@ -560,24 +543,37 @@ IMPORTANT: Output ONLY the response text. Do NOT include any <think> tags, reaso
 
 
 # Factory function
-def create_chat_response_service(is_production: bool = None) -> ChatResponseService:
+def create_chat_response_service(provider: str = None) -> ChatResponseService:
     """
-    Create a ChatResponseService instance.
+    Create a ChatResponseService instance using a configured LLM provider.
 
     Args:
-        is_production: Force production mode. If None, auto-detect from environment.
+        provider: Explicit provider name. If None, reads LLM_CHAT_PROVIDER from env.
     """
-    if is_production is None:
-        # Check explicit provider config first
-        provider = os.getenv("CHAT_LLM_PROVIDER", "").lower()
-        if provider == "alkahest":
-            is_production = True
-        elif provider == "featherless":
-            is_production = False
-        else:
-            # Auto-detect: production if ALKAHEST_API_KEY is set and FEATHERLESS is not
-            has_alkahest = bool(os.getenv("ALKAHEST_API_KEY"))
-            has_featherless = bool(os.getenv("FEATHERLESS_API_KEY"))
-            is_production = has_alkahest and not has_featherless
+    from core.client_setup import setup_llm_client
 
-    return ChatResponseService(is_production=is_production)
+    if not provider:
+        # Check LLM_CHAT_PROVIDER (new standard) or fallback to CHAT_LLM_PROVIDER
+        provider = os.getenv("LLM_CHAT_PROVIDER") or os.getenv("CHAT_LLM_PROVIDER")
+
+    # Default to FEATHERLESS if nothing is specified but FEATHERLESS_API_KEY exists
+    if not provider and os.getenv("FEATHERLESS_API_KEY"):
+        provider = "FEATHERLESS"
+
+    # Default to ALKAHEST if explicitly ALKAHEST keys are present (legacy fallback)
+    if not provider and os.getenv("ALKAHEST_API_KEY"):
+        # Note: We need to ensure ALKAHEST uses a compatible setup or map it to FEATHERLESS config if keys match
+        # Ideally user should set LLM_CHAT_PROVIDER="FEATHERLESS" and put alkahest keys in FEATHERLESS_API_KEY
+        pass
+
+    if not provider:
+        log.warning("No LLM_CHAT_PROVIDER specified and no default keys found.")
+        return ChatResponseService()
+
+    log.info(f"Creating ChatResponseService using provider: {provider}")
+
+    # Setup client using the unified client setup
+    # This ensures we get a properly configured OpenAI client for the chosen provider
+    client, model, _ = setup_llm_client(mode=provider)
+
+    return ChatResponseService(client=client, model=model)

@@ -181,9 +181,9 @@ class VisionManager:
             # If main client is NOT ZAI, we need to create a dedicated one here.
             # Or if self.client is None (e.g. text-only mode where we passed None? No, we pass client)
 
-            vision_api_key = os.getenv("ZAI_API_KEY")
+            vision_api_key = os.getenv("Z_AI_API_KEY")
             vision_base_url = os.getenv(
-                "ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
+                "Z_AI_BASE_URL", "https://api.z.ai/api/coding/paas/v4"
             )
 
             # If we already have a client and it looks like a ZAI/OpenAI client, check if we can reuse it
@@ -191,7 +191,7 @@ class VisionManager:
 
             if not vision_api_key:
                 log.error(
-                    "VISION_PROVIDER is ZAI but ZAI_API_KEY is missing. Vision disabled."
+                    "VISION_PROVIDER is ZAI but Z_AI_API_KEY is missing. Vision disabled."
                 )
                 return
 
@@ -351,92 +351,6 @@ class VisionManager:
         # Post-processing
         processed = self._process_vision_result(vision_result)
         return processed, t_duration_ms
-
-        # --- COMFYUI PATH ---
-        if self.vision_provider == "COMFYUI" and self.comfy_service:
-            try:
-                log.info("👁️ Analyzing image via ComfyUI (Moondream)...")
-                t_start = time.time()
-
-                # Run sync wrapper for async method if we are in sync context
-                # But analyze_image seems to be called synchronously?
-                # ComfyUIVisionService.analyze_image is async.
-                # We need to run it in event loop?
-                # VisionManager is usually called from async context in llmdriver (via run_in_executor usually? No)
-                # In llmdriver:
-                #   vision_result, _ = vision_manager.analyze_image(image_path)
-                # It is called synchronously!
-                # We need to use asyncio.run or loop.run_until_complete?
-                # But we might be inside a loop already.
-
-                # Check if there's a running loop
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # We are in an async function but calling this synchronously?
-                        # This is problematic.
-                        # If llmdriver calls this from a sync block, we can't await.
-                        # BUT llmdriver calls it from:
-                        #   (async) run_auto_loop -> (sync block?)
-                        # Actually llmdriver runs a big async loop.
-                        # But `analyze_image` is defined as sync `def analyze_image`.
-                        # If we want to use async Comfy service, we should make this async or run it appropriately.
-                        pass
-                except RuntimeError:
-                    pass
-
-                # HACK: For now, use asyncio.run if no loop, or...
-                # Actually, ComfyUITTSService uses httpx.AsyncClient.
-                # Ideally VisionManager should be async.
-                # But changing signature breaks callers.
-                # Let's check callers.
-                # llm_controller.py calls it.
-                # llmdriver.py calls it.
-
-                # If we cannot change signature easily, we can use a fresh loop for this call if standalone,
-                # or we have to bridge sync/async.
-                # Given Python's asyncio, calling async from sync is hard if loop is running.
-
-                # ALTERNATIVE: Use `asyncio.create_task` and wait? No, that's for async.
-                #
-                # Let's try to run it.
-                # If we assume we are inside an async loop (llmdriver), we can't use run_until_complete.
-                # We might need to upgrade `analyze_image` to `async analyze_image`.
-                #
-                # Let's check llmdriver usage.
-                # Line 1006: vision_result, _ = vision_manager.analyze_image(SAVED_SCREENSHOT_PATH)
-                # This is inside `async def run_auto_loop`.
-                # So we are in async context.
-                # But `analyze_image` is sync.
-                # So it blocks the loop?
-                # ZAI MCP client `analyze_image_sync` uses threading Lock and blocks?
-                # Yes.
-
-                # So if we want to use ComfyUI (async httpx), we should ideally await it.
-                # But we can't await a sync function.
-                #
-                # OPTION: Make `analyze_image` async?
-                # If I change `def analyze_image` to `async def analyze_image`:
-                # 1. Update `VisionManager` definition.
-                # 2. Update `llmdriver.py` call sites to `await vision_manager.analyze_image(...)`.
-                # 3. Update `llm_controller.py` call sites.
-                #
-                # This seems correct path for modern async app.
-                # ZAI client has `analyze_image` (sync wrapper) and `analyze_image_async`?
-                # ZAI client has `analyze_image_sync`.
-
-                # Let's try to keep it sync for now to avoid refactoring everything?
-                # How to run async function from sync in running loop?
-                # You can't block.
-                #
-                # Okay, I will upgrade `analyze_image` to `async def`.
-                # And update callers.
-                pass
-
-            except Exception as e:
-                pass
-
-        # ... (Rest of existing ZAI logic)
 
     def _process_vision_result(self, raw_result: str) -> str:
         """Clean up raw vision output: remove Japanese chars, extract JSON."""

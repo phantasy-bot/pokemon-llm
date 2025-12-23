@@ -21,17 +21,35 @@ echo "🚀 Pokemon LLM Agent Launcher"
 echo "============================="
 
 # 0. Ensure dependencies are installed in the correct conda environment
-CONDA_ENV="/opt/homebrew/Caskroom/miniconda/base/envs/pokemon-llm"
-CONDA_PIP="$CONDA_ENV/bin/pip"
+# Detect Conda environment path dynamically
+CONDA_ENV_NAME="pokemon-llm"
+# Try to find conda base path
+if command -v conda >/dev/null 2>&1; then
+    CONDA_BASE=$(conda info --base)
+    CONDA_ENV="$CONDA_BASE/envs/$CONDA_ENV_NAME"
+else
+    # Fallback to standard locations if conda command not found (rare but possible in scripts)
+    if [ -d "/opt/homebrew/Caskroom/miniconda/base/envs/$CONDA_ENV_NAME" ]; then
+        CONDA_ENV="/opt/homebrew/Caskroom/miniconda/base/envs/$CONDA_ENV_NAME"
+    elif [ -d "$HOME/miniconda3/envs/$CONDA_ENV_NAME" ]; then
+        CONDA_ENV="$HOME/miniconda3/envs/$CONDA_ENV_NAME"
+    elif [ -d "$HOME/anaconda3/envs/$CONDA_ENV_NAME" ]; then
+        CONDA_ENV="$HOME/anaconda3/envs/$CONDA_ENV_NAME"
+    else
+        echo "⚠️ Could not auto-detect conda environment '$CONDA_ENV_NAME'."
+        CONDA_ENV=""
+    fi
+fi
 
-if [ -f "$CONDA_PIP" ]; then
-    echo "📦 Checking Python dependencies..."
+if [ -n "$CONDA_ENV" ] && [ -f "$CONDA_ENV/bin/pip" ]; then
+    CONDA_PIP="$CONDA_ENV/bin/pip"
+    echo "📦 Checking Python dependencies (Environment: $CONDA_ENV)..."
     # Install/update critical dependencies quietly
     $CONDA_PIP install -q --upgrade mutagen >/dev/null 2>&1
     echo "✅ Python dependencies ready"
 else
-    echo "⚠️ Conda environment not found at $CONDA_ENV"
-    echo "   Please create it with: conda create -n pokemon-llm python=3.10"
+    echo "⚠️ Conda environment '$CONDA_ENV_NAME' not found or pip missing."
+    echo "   Please create it with: conda create -n $CONDA_ENV_NAME python=3.10"
 fi
 
 # 1. Start Frontend (in background)
@@ -72,11 +90,10 @@ LLM_PROVIDER=""
 if [ -f .env ]; then
     # Safely extract variables by grepping
     LLM_PROVIDER=$(grep "^LLM_PROVIDER=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
-    MODE=$(grep "^MODE=" .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 fi
 
 # Check either LLM_PROVIDER or MODE
-if [ "$LLM_PROVIDER" = "OPENCODE" ] || [ "$MODE" = "OPENCODE" ]; then
+if [ "$LLM_PROVIDER" = "OPENCODE" ]; then
     echo "🔍 Checking OpenCode Server (Port 4096)..."
     echo "🔍 Checking OpenCode Server (Port 4096)..."
     if ! nc -z localhost 4096; then

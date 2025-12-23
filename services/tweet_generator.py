@@ -351,7 +351,7 @@ class TweetGenerator:
             if hasattr(self.llm_client, "chat"):
                 # OpenAI-style client (synchronous)
                 response = self.llm_client.chat.completions.create(
-                    model=os.getenv("ZAI_MODEL", "glm-4.6"),
+                    model=os.getenv("Z_AI_MODEL", "glm-4.6"),
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=150,
                     temperature=0.8,

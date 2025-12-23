@@ -10,10 +10,10 @@ To temporarily disable the MCP server and use GLM-4.6V-Flash fallback directly:
 
 ```bash
 # Disable MCP, use Flash fallback
-export ZAI_MCP_DISABLED=true
+export Z_AI_MCP_DISABLED=true
 
 # Re-enable MCP (default)
-export ZAI_MCP_DISABLED=false
+export Z_AI_MCP_DISABLED=false
 ```
 
 This is useful when:
@@ -35,8 +35,8 @@ The system will automatically download and run the MCP server when needed:
 
 ```bash
 # Set your environment variables
-export ZAI_API_KEY=your_api_key_here
-export ZAI_MODE=ZAI
+export Z_AI_API_KEY=your_api_key_here
+export Z_AI_MODE=ZAI
 
 # Run with ZAI mode
 python run.py --mode ZAI
@@ -64,7 +64,7 @@ When using Z.AI mode, the system will:
 
 1. Ensure Node.js is installed: `node --version` (should be v22+)
 2. Check if npm is available: `npm --version`
-3. Verify API key is set: `echo $ZAI_API_KEY`
+3. Verify API key is set: `echo $Z_AI_API_KEY`
 
 ### Network Issues
 
@@ -88,11 +88,11 @@ You'll see log messages indicating which mode is active.
 ## Environment Variables
 
 ```bash
-ZAI_API_KEY=your_zai_api_key_here    # Required
-ZAI_MODEL=glm-4v                      # Optional, default model
-ZAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/  # Optional, custom endpoint
-ZAI_MODE=ZAI                          # Required for MCP
-ZAI_MCP_DISABLED=false                # Set to "true" to bypass MCP and use Flash fallback
+Z_AI_API_KEY=your_zai_api_key_here    # Required
+Z_AI_MODEL=glm-4v                      # Optional, default model
+Z_AI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/  # Optional, custom endpoint
+Z_AI_MODE=ZAI                          # Required for MCP
+Z_AI_MCP_DISABLED=false                # Set to "true" to bypass MCP and use Flash fallback
 ```
 
 ## Supported Image Formats

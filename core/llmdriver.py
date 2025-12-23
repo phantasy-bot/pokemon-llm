@@ -430,11 +430,11 @@ async def run_auto_loop(
     last_map_name = None  # Track previous map for transition detection
     log.info("🗺️ Map visit tracker initialized (loop detection enabled)")
 
-    # Initialize screenshot history tracker for ui_diff_check (keeps N through N-4)
+    # Initialize screenshot history tracker for file lifecycle management (cleanup)
     screenshot_history = ScreenshotHistoryTracker(
         snapshot_dir="snapshots", max_history=5
     )
-    log.info("📸 Screenshot history tracker initialized (5 cycles for multi-diff)")
+    log.info("📸 Screenshot history tracker initialized (keeping last 5 snapshots)")
 
     # Initialize coordinate tracker for loop detection and target tracking
     coord_tracker = CoordinateTracker(
@@ -699,7 +699,7 @@ async def run_auto_loop(
         log.info(f"💬 Chat response service configured: {chat_response_service.model}")
     else:
         log.info(
-            "💬 Chat response service not configured (set FEATHERLESS_* env vars to enable)"
+            "💬 Chat response service not configured (set LLM_CHAT_PROVIDER and keys to enable)"
         )
 
     # Initialize Tweet Generator service (Discord approval + X posting during intro)
@@ -3043,10 +3043,6 @@ Your intro message:"""
             # For Z.AI MCP, use the CLEAN screenshot (UI_IMAGE_PATH) per user request
             # The minimap context is no longer sent to vision - user prefers clean image
             llm_input_state["screenshot_path"] = UI_IMAGE_PATH
-            # Keep previous_screenshot_path for backwards compatibility
-            llm_input_state["previous_screenshot_path"] = (
-                screenshot_history.get_previous_screenshot()
-            )
             if not ONE_IMAGE_PER_PROMPT and MINIMAP_ENABLED:
                 llm_input_state["minimap_path"] = MINIMAP_PATH
 
