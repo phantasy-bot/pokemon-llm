@@ -42,17 +42,15 @@ body {
   border-bottom: 1px solid var(--terminal-accent);
 }
 
-/* Header Navigation Menu (Untouched) */
-.terminal-header .terminal-nav a {
-  color: var(--terminal-gray) !important;
-  text-decoration: none !important;
-  margin-right: 20px;
+/* Header Navigation Menu - Hide links to avoid duplication with sidebar */
+.terminal-header .terminal-nav ul {
+  display: none !important;
 }
 
-.terminal-header .terminal-nav a.active, 
-.terminal-header .terminal-nav a:hover {
-  color: var(--terminal-accent) !important;
-  background-color: transparent !important;
+/* Ensure header nav container itself doesn't cause issues but allows search */
+.terminal-header .terminal-nav {
+  display: flex;
+  align-items: center;
 }
 
 /* Global Link Hover Polish (Sidebar & Content) */
