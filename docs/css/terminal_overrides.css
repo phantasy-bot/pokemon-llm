@@ -43,14 +43,22 @@ body {
 }
 
 /* Header Navigation Menu - Hide links to avoid duplication with sidebar */
-.terminal-header .terminal-nav ul {
+.terminal-header .terminal-menu li {
   display: none !important;
+}
+
+/* Re-show only the search button */
+.terminal-header .terminal-menu li:has([data-target="#mkdocs_search_modal"]),
+.terminal-header .terminal-menu li:has(.fa-search) {
+  display: inline-block !important;
 }
 
 /* Ensure header nav container itself doesn't cause issues but allows search */
 .terminal-header .terminal-nav {
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  width: 100%;
 }
 
 /* Global Link Hover Polish (Sidebar & Content) */
