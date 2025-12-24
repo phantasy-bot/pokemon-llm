@@ -20,32 +20,51 @@ body {
 /* Site Title Styling */
 .terminal-prompt {
   font-family: 'UltraHyper', sans-serif !important;
+  font-size: 2.2rem !important;
   color: var(--terminal-accent) !important;
   text-decoration: none !important;
+  transition: color 0.2s ease;
 }
 
-/* Remove blinking cursor and terminal effects from the title */
+/* Remove terminal prompt '>' and blinking cursor */
+.terminal-prompt::before,
 .terminal-prompt::after {
   content: "" !important;
   animation: none !important;
   display: none !important;
 }
 
+.terminal-prompt:hover {
+  color: var(--terminal-gray) !important;
+}
+
 .terminal-header {
   border-bottom: 1px solid var(--terminal-accent);
 }
 
-/* Navigation Menu Items */
-.terminal-nav a {
+/* Header Navigation Menu (Untouched) */
+.terminal-header .terminal-nav a {
   color: var(--terminal-gray) !important;
   text-decoration: none !important;
   margin-right: 20px;
 }
 
-.terminal-nav a.active, .terminal-nav a:hover {
+.terminal-header .terminal-nav a.active, 
+.terminal-header .terminal-nav a:hover {
   color: var(--terminal-accent) !important;
+  background-color: transparent !important;
 }
 
+/* Global Link Hover Polish (Sidebar & Content) */
+/* Targets links NOT in header nav to turn gray on hover and remove background */
+a:hover:not(.terminal-header .terminal-nav a),
+.terminal-sidebar a:hover,
+main a:hover {
+  background-color: transparent !important;
+  color: var(--terminal-gray) !important;
+}
+
+/* Standard link color */
 a {
   color: var(--terminal-accent) !important;
 }
