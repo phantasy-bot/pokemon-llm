@@ -1,7 +1,15 @@
+@font-face {
+  font-family: 'UltraHyper';
+  src: url('../assets/fonts/UltraHyper-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   --terminal-background: #1a1a1a;
   --terminal-foreground: #f0f0f0;
   --terminal-accent: #ff6666;
+  --terminal-gray: #888888;
 }
 
 body {
@@ -9,8 +17,33 @@ body {
   color: var(--terminal-foreground);
 }
 
+/* Site Title Styling */
+.terminal-prompt {
+  font-family: 'UltraHyper', sans-serif !important;
+  color: var(--terminal-accent) !important;
+  text-decoration: none !important;
+}
+
+/* Remove blinking cursor and terminal effects from the title */
+.terminal-prompt::after {
+  content: "" !important;
+  animation: none !important;
+  display: none !important;
+}
+
 .terminal-header {
   border-bottom: 1px solid var(--terminal-accent);
+}
+
+/* Navigation Menu Items */
+.terminal-nav a {
+  color: var(--terminal-gray) !important;
+  text-decoration: none !important;
+  margin-right: 20px;
+}
+
+.terminal-nav a.active, .terminal-nav a:hover {
+  color: var(--terminal-accent) !important;
 }
 
 a {
@@ -58,17 +91,16 @@ pre, code {
 /* mkdocstrings / griffe line numbers fix */
 .doc-contents table {
   border-collapse: separate;
-  border-spacing: 15px 0; /* More horizontal space */
+  border-spacing: 15px 0;
   width: 100%;
 }
 
-/* Fixing the squashed line numbers */
 .linenos {
   padding-right: 25px !important;
-  border-right: 1px solid #444; /* Thicker border */
+  border-right: 1px solid #444;
   color: #666 !important;
   text-align: right;
-  min-width: 70px !important; /* Wider column */
+  min-width: 70px !important;
   white-space: pre;
   user-select: none;
 }

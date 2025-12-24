@@ -1,4 +1,4 @@
-site_name: Lass Plays Pokemon Red
+site_name: Lass Plays Pokemon
 site_description: Documentation for the Lass Pokemon LLM Agent project.
 site_author: Lite (@lightnolimit)
 site_url: https://docs.llmletsplay.com
@@ -44,9 +44,8 @@ markdown_extensions:
   - md_in_html
 
 nav:
-  - Home: index.md
-  - System Architecture: architecture/index.md
+  - System: architecture/index.md
   - Features: features/index.md
-  - API Reference: api/index.md
-  - Development Guides: setup/index.md
-  - Data Reference: reference/index.md
+  - Reference: api/index.md
+  - Data: reference/index.md
+  - Guides: setup/index.md

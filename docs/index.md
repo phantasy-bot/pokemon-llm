@@ -1,4 +1,4 @@
-# Lass Pokemon Agent Documentation
+# Lass Plays Pokemon Documentation
 
 Welcome to the technical documentation for the Lass Pokemon LLM Agent. This project implements an autonomous AI agent capable of playing Pokémon Red while interacting with a live Twitch audience.
 
